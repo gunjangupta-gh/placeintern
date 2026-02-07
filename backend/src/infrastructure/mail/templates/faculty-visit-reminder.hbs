@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Faculty Visit Reminder</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #1a365d; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+    .content { background: #f7fafc; padding: 20px; border: 1px solid #e2e8f0; }
+    .button { display: inline-block; background: #3182ce; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin-top: 15px; }
+    .footer { text-align: center; padding: 20px; color: #718096; font-size: 12px; }
+    .highlight { background: #fef3c7; padding: 15px; border-left: 4px solid #f59e0b; margin: 15px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Faculty Visit Reminder</h1>
+    </div>
+    <div class="content">
+      <p>Dear {{name}},</p>
+
+      <div class="highlight">
+        <strong>Action Required:</strong>
+        {{#if pendingCount}}
+          You have <strong>{{pendingCount}} student(s)</strong> pending faculty visits.
+        {{else}}
+          You have <strong>{{studentCount}} student(s)</strong> pending faculty visits.
+        {{/if}}
+        {{#if upcomingCount}}
+          <br />You also have <strong>{{upcomingCount}} upcoming visit(s)</strong> in the next 7 days.
+        {{/if}}
+      </div>
+
+      <p>Regular faculty visits are essential for monitoring student progress during their internships. Please schedule visits for your assigned students at your earliest convenience.</p>
+
+      <p>As per guidelines, faculty visits should be conducted at least once per month for each active internship.</p>
+
+      <p>
+        <a href="{{dashboardUrl}}" class="button">View Pending Visits</a>
+      </p>
+
+      <p>If you have any questions, please contact the administration.</p>
+
+      <p>Best regards,<br>College Management System</p>
+    </div>
+    <div class="footer">
+      <p>This is an automated reminder. Please do not reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>

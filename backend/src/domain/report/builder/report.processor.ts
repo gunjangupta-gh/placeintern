@@ -1,0 +1,693 @@
+import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Injectable, Logger } from '@nestjs/common';
+import { Job } from 'bullmq';
+import { PrismaService } from '../../../core/database/prisma.service';
+import { ReportGeneratorService } from './report-generator.service';
+import { ExcelService } from './export/excel.service';
+import { PdfService } from './export/pdf.service';
+import { CsvService } from './export/csv.service';
+import {
+  ReportJobData,
+  ReportStatus,
+  ExportFormat,
+  ReportType,
+  ExportConfig,
+} from './interfaces/report.interface';
+import { FileStorageService } from '../../../infrastructure/file-storage/file-storage.service';
+import { WebSocketService } from '../../../infrastructure/websocket/websocket.service';
+
+@Processor('report-generation')
+@Injectable()
+export class ReportProcessor extends WorkerHost {
+  private readonly logger = new Logger(ReportProcessor.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private reportGenerator: ReportGeneratorService,
+    private excelService: ExcelService,
+    private pdfService: PdfService,
+    private csvService: CsvService,
+    private fileStorage: FileStorageService,
+    private webSocketService: WebSocketService,
+  ) {
+    super();
+  }
+
+  async process(job: Job<ReportJobData>): Promise<any> {
+    const { userId, userRole, reportType, config: jobConfig, reportId } = job.data;
+
+    // Extract format from config or use default
+    const formatStr = jobConfig?.format || job.data.format || 'excel';
+    let filters = jobConfig?.filters || job.data.filters || {};
+    const selectedColumns = jobConfig?.columns || [];
+
+    // Transform dateRange arrays to Start/End fields (in case controller transformation didn't work)
+    filters = this.transformDateRangeFilters(filters);
+
+    // Determine if user is admin (can view all institutions)
+    const normalizedRole = userRole?.toUpperCase();
+    const isAdmin = normalizedRole === 'STATE_DIRECTORATE' || normalizedRole === 'SYSTEM_ADMIN';
+    this.logger.log(`User role: ${userRole}, normalized: ${normalizedRole}, isAdmin: ${isAdmin}`);
+
+    // Convert string format to ExportFormat enum
+    const formatMap: Record<string, ExportFormat> = {
+      'excel': ExportFormat.EXCEL,
+      'pdf': ExportFormat.PDF,
+      'csv': ExportFormat.CSV,
+      'json': ExportFormat.JSON,
+    };
+    const format = formatMap[formatStr] || ExportFormat.EXCEL;
+
+    this.logger.log(
+      `Processing report generation job ${job.id} for user ${userId}`,
+    );
+    this.logger.log(`Selected columns: ${selectedColumns.length > 0 ? selectedColumns.join(', ') : 'all'}`);
+
+    try {
+      // Update status to processing (with WebSocket notification)
+      await this.updateReportStatus(reportId, ReportStatus.PROCESSING, null, null, userId, reportType);
+
+      // Fetch data based on report type
+      this.logger.log(`Fetching data for report type: ${reportType}, isAdmin: ${isAdmin}`);
+      const data = await this.reportGenerator.generateReport(
+        reportType as ReportType,
+        filters,
+        isAdmin,
+      );
+
+      if (!data || data.length === 0) {
+        throw new Error('No data found for the given filters');
+      }
+
+      // Get report configuration with selected columns
+      const config = this.getExportConfig(reportType, data, filters, userId, format, selectedColumns);
+
+      // Generate file based on format
+      this.logger.log(`Generating ${format} file`);
+      let fileBuffer: Buffer;
+      let fileName: string;
+      let mimeType: string;
+
+      switch (format) {
+        case ExportFormat.EXCEL:
+          fileBuffer = await this.excelService.generateExcel(config);
+          fileName = `${reportType}_${Date.now()}.xlsx`;
+          mimeType =
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+          break;
+
+        case ExportFormat.PDF:
+          fileBuffer = await this.pdfService.generatePdf(config);
+          fileName = `${reportType}_${Date.now()}.pdf`;
+          mimeType = 'application/pdf';
+          break;
+
+        case ExportFormat.CSV:
+          fileBuffer = await this.csvService.generateCsv(config);
+          fileName = `${reportType}_${Date.now()}.csv`;
+          mimeType = 'text/csv';
+          break;
+
+        case ExportFormat.JSON:
+          // Generate JSON export with structured data
+          const jsonData = {
+            title: config.title,
+            generatedAt: new Date().toISOString(),
+            generatedBy: config.metadata?.generatedBy,
+            filters: config.metadata?.filters,
+            totalRecords: config.data.length,
+            columns: config.columns.map(col => ({
+              field: col.field,
+              header: col.header,
+              type: col.type,
+            })),
+            data: config.data,
+          };
+          fileBuffer = Buffer.from(JSON.stringify(jsonData, null, 2), 'utf-8');
+          fileName = `${reportType}_${Date.now()}.json`;
+          mimeType = 'application/json';
+          break;
+
+        default:
+          throw new Error(`Unsupported format: ${format}`);
+      }
+
+      // Validate buffer before upload
+      this.logger.log(`Generated file buffer size: ${fileBuffer?.length || 0} bytes`);
+
+      if (!fileBuffer || fileBuffer.length === 0) {
+        throw new Error('Generated file buffer is empty');
+      }
+
+      // Upload to MinIO
+      this.logger.log('Uploading file to MinIO');
+      const institutionId = filters?.institutionId as string;
+
+      // Get institution name for folder structure
+      let institutionName: string | undefined;
+      if (institutionId) {
+        const institution = await this.prisma.institution.findUnique({
+          where: { id: institutionId },
+          select: { name: true },
+        });
+        institutionName = institution?.name;
+      }
+
+      const formatExtMap: Record<ExportFormat, string> = {
+        [ExportFormat.EXCEL]: 'xlsx',
+        [ExportFormat.PDF]: 'pdf',
+        [ExportFormat.CSV]: 'csv',
+        [ExportFormat.JSON]: 'json',
+      };
+      const formatExt = formatExtMap[format] || 'xlsx';
+
+      const uploadResult = await this.fileStorage.uploadReport(fileBuffer, {
+        institutionName,
+        reportType,
+        format: formatExt,
+      });
+
+      this.logger.log(`Upload complete. File size: ${uploadResult.size} bytes, URL: ${uploadResult.url}`);
+
+      // Update report status to completed (with WebSocket notification)
+      await this.updateReportStatus(
+        reportId,
+        ReportStatus.COMPLETED,
+        uploadResult.url,
+        null,
+        userId,
+        reportType,
+        data.length,
+      );
+
+      // Send notification to user (non-blocking)
+      this.sendNotification(userId, reportType, uploadResult.url).catch((err) => {
+        this.logger.warn(`Failed to send notification: ${err.message}`);
+      });
+
+      this.logger.log(`Report generation completed for job ${job.id}`);
+
+      return {
+        success: true,
+        downloadUrl: uploadResult.url,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error processing report generation job ${job.id}:`,
+        error,
+      );
+
+      // Update report status to failed (with WebSocket notification)
+      await this.updateReportStatus(
+        reportId,
+        ReportStatus.FAILED,
+        null,
+        error.message,
+        userId,
+        reportType,
+      );
+
+      throw error;
+    }
+  }
+
+  /**
+   * Transform dateRange arrays to Start/End fields
+   * e.g., startDateRange: [date1, date2] -> startDateStart: date1, startDateEnd: date2
+   */
+  private transformDateRangeFilters(filters: Record<string, unknown>): Record<string, unknown> {
+    if (!filters) return {};
+
+    const transformed = { ...filters };
+
+    Object.keys(transformed).forEach((key) => {
+      const value = transformed[key];
+      if (Array.isArray(value) && value.length === 2) {
+        const [start, end] = value;
+        // Check if both elements look like dates (ISO strings)
+        const isDateArray = (typeof start === 'string' && /^\d{4}-\d{2}/.test(start)) &&
+                           (typeof end === 'string' && /^\d{4}-\d{2}/.test(end));
+        if (isDateArray && key.toLowerCase().includes('date')) {
+          const baseName = key.replace(/Range$/i, '');
+          transformed[`${baseName}Start`] = start;
+          transformed[`${baseName}End`] = end;
+          delete transformed[key];
+          this.logger.log(`[ReportProcessor] Transformed ${key} to ${baseName}Start and ${baseName}End`);
+        }
+      }
+    });
+
+    return transformed;
+  }
+
+  /**
+   * Update report status in database and emit WebSocket event
+   */
+  private async updateReportStatus(
+    reportId: string,
+    status: ReportStatus,
+    downloadUrl?: string,
+    errorMessage?: string,
+    userId?: string,
+    reportType?: string,
+    totalRecords?: number,
+  ) {
+    try {
+      const updateData: Record<string, unknown> = {
+        status: status,
+      };
+
+      if (status === ReportStatus.COMPLETED && downloadUrl) {
+        updateData.fileUrl = downloadUrl;
+        updateData.generatedAt = new Date();
+      }
+
+      if (status === ReportStatus.FAILED && errorMessage) {
+        updateData.errorMessage = errorMessage;
+      }
+
+      const updatedReport = await this.prisma.generatedReport.update({
+        where: { id: reportId },
+        data: updateData,
+      });
+
+      this.logger.log(`Report ${reportId} status updated to ${status}`);
+
+      // Emit WebSocket event for real-time updates
+      if (userId) {
+        this.webSocketService.sendReportStatus(userId, {
+          reportId,
+          status: status.toLowerCase() as 'pending' | 'processing' | 'completed' | 'failed',
+          reportType,
+          reportName: updatedReport.reportName,
+          format: updatedReport.format,
+          totalRecords,
+          fileUrl: downloadUrl,
+          errorMessage,
+          generatedAt: updatedReport.generatedAt,
+        });
+      }
+    } catch (err) {
+      this.logger.error(`Failed to update report status: ${err.message}`);
+    }
+  }
+
+  /**
+   * Get export configuration
+   */
+  private getExportConfig(
+    reportType: string,
+    data: any[],
+    filters: any,
+    userId: string,
+    format: ExportFormat,
+    selectedColumns: string[] = [],
+  ): ExportConfig {
+    // Normalize report type for matching
+    const normalizedType = reportType.toLowerCase().replace(/-/g, '_');
+
+    // Title mapping - supports both enum values and string variants
+    const reportTitles: Record<string, string> = {
+      'student_progress': 'Student Progress Report',
+      'student_directory': 'Student Directory Report',
+      'internship': 'Internship Report',
+      'internship_applications': 'Internship Applications Report',
+      'internship_status': 'Internship Status Report',
+      'self_identified_internships': 'Self-Identified Internships Report',
+      'joining_report_status': 'Joining Report Status',
+      'faculty_visit_compliance': 'Faculty Visit Compliance Report',
+      'faculty_visit': 'Faculty Visit Report',
+      'mentor_list': 'Mentor List Report',
+      'monthly': 'Monthly Report',
+      'monthly_report_status': 'Monthly Report Status',
+      'placement': 'Placement Report',
+      'institution_performance': 'Institution Performance Report',
+      'internship_by_institution': 'Internships by Institution Report',
+      'industry_wise_students_stipend': 'Industry-wise Student Distribution & Stipend Analysis',
+      'top_institutes_per_industry': 'Top 3 Institutes per Industry/Company',
+    };
+
+    // Column mapping - matches actual data fields from generator
+    const reportColumns: Record<string, any[]> = {
+      // Student reports - matches generateStudentProgressReport output
+      'student_progress': [
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'name', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'email', header: 'Email', type: 'string' as const, width: 25 },
+        { field: 'phoneNumber', header: 'Phone', type: 'string' as const, width: 15 },
+        { field: 'branch', header: 'Branch', type: 'string' as const, width: 15 },
+        { field: 'currentYear', header: 'Year', type: 'number' as const, width: 8 },
+        { field: 'currentSemester', header: 'Semester', type: 'number' as const, width: 10 },
+        { field: 'internshipsCount', header: 'Internships', type: 'number' as const, width: 12 },
+        { field: 'placementsCount', header: 'Placements', type: 'number' as const, width: 12 },
+        { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
+        { field: 'studentActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
+        { field: 'userActive', header: 'User Active', type: 'boolean' as const, width: 12 },
+      ],
+      'student_directory': [
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'name', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'gender', header: 'Gender', type: 'string' as const, width: 10 },
+        { field: 'email', header: 'Email', type: 'string' as const, width: 25 },
+        { field: 'phoneNumber', header: 'Phone', type: 'string' as const, width: 15 },
+        { field: 'branchName', header: 'Branch', type: 'string' as const, width: 15 },
+        { field: 'currentYear', header: 'Year', type: 'number' as const, width: 8 },
+        { field: 'currentSemester', header: 'Semester', type: 'number' as const, width: 10 },
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
+        { field: 'mentorName', header: 'Mentor', type: 'string' as const, width: 18 },
+        { field: 'internshipStatus', header: 'Internship Status', type: 'string' as const, width: 15 },
+        { field: 'internshipsCount', header: 'Internships', type: 'number' as const, width: 12 },
+        { field: 'placementsCount', header: 'Placements', type: 'number' as const, width: 12 },
+        { field: 'studentActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
+        { field: 'userActive', header: 'User Active', type: 'boolean' as const, width: 12 },
+      ],
+      // Internship reports - matches generateInternshipReport output
+      'internship': [
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'branchName', header: 'Branch', type: 'string' as const, width: 15 },
+        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'jobProfile', header: 'Job Profile', type: 'string' as const, width: 20 },
+        { field: 'appliedDate', header: 'Applied Date', type: 'date' as const, width: 12 },
+        { field: 'startDate', header: 'Start Date', type: 'date' as const, width: 12 },
+        { field: 'endDate', header: 'End Date', type: 'date' as const, width: 12 },
+        { field: 'duration', header: 'Duration', type: 'string' as const, width: 12 },
+        { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
+        { field: 'mentorName', header: 'Mentor', type: 'string' as const, width: 18 },
+        { field: 'reportsSubmitted', header: 'Reports', type: 'number' as const, width: 10 },
+        { field: 'location', header: 'Location', type: 'string' as const, width: 15 },
+        { field: 'isSelfIdentified', header: 'Self Identified', type: 'boolean' as const, width: 12 },
+        { field: 'isActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
+      ],
+      // Self-identified internships report
+      'self_identified_internships': [
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'gender', header: 'Gender', type: 'string' as const, width: 10 },
+        { field: 'phoneNumber', header: 'Phone Number', type: 'string' as const, width: 15 },
+        { field: 'email', header: 'Email', type: 'string' as const, width: 25 },
+        { field: 'branchName', header: 'Branch', type: 'string' as const, width: 15 },
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
+        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'companyCity', header: 'Company City', type: 'string' as const, width: 15 },
+        { field: 'companyAddress', header: 'Company Address', type: 'string' as const, width: 30 },
+        { field: 'companyContact', header: 'Company Contact', type: 'string' as const, width: 15 },
+        { field: 'companyEmail', header: 'Company Email', type: 'string' as const, width: 25 },
+        { field: 'hrName', header: 'HR Name', type: 'string' as const, width: 18 },
+        { field: 'hrDesignation', header: 'HR Designation', type: 'string' as const, width: 15 },
+        { field: 'hrContact', header: 'HR Contact', type: 'string' as const, width: 15 },
+        { field: 'hrEmail', header: 'HR Email', type: 'string' as const, width: 25 },
+        { field: 'jobProfile', header: 'Job Profile', type: 'string' as const, width: 20 },
+        { field: 'stipend', header: 'Stipend', type: 'number' as const, width: 12 },
+        { field: 'appliedDate', header: 'Applied Date', type: 'date' as const, width: 12 },
+        { field: 'startDate', header: 'Start Date', type: 'date' as const, width: 12 },
+        { field: 'endDate', header: 'End Date', type: 'date' as const, width: 12 },
+        { field: 'duration', header: 'Duration', type: 'string' as const, width: 12 },
+        { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
+        { field: 'internshipStatus', header: 'Internship Status', type: 'string' as const, width: 15 },
+        { field: 'verificationStatus', header: 'Verification', type: 'string' as const, width: 12 },
+        { field: 'mentorName', header: 'Mentor', type: 'string' as const, width: 18 },
+        { field: 'mentorEmail', header: 'Mentor Email', type: 'string' as const, width: 25 },
+        { field: 'mentorPhone', header: 'Mentor Phone', type: 'string' as const, width: 15 },
+        { field: 'applicationFillRate', header: 'Fill Rate %', type: 'number' as const, width: 12 },
+        { field: 'isActive', header: 'Active', type: 'boolean' as const, width: 12 },
+      ],
+      // Internship by Institution report - matches generateInternshipByInstitutionReport output
+      'internship_by_institution': [
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 30 },
+        { field: 'totalStudents', header: 'Total Students', type: 'number' as const, width: 12 },
+        { field: 'activeInternships', header: 'Active Internships', type: 'number' as const, width: 15 },
+        { field: 'completedInternships', header: 'Completed', type: 'number' as const, width: 12 },
+        { field: 'pendingApplications', header: 'Pending', type: 'number' as const, width: 12 },
+        { field: 'totalSubmittedVisits', header: 'Submitted Visits', type: 'number' as const, width: 15 },
+        { field: 'totalSubmittedReports', header: 'Submitted Reports', type: 'number' as const, width: 15 },
+        { field: 'totalJoiningLetters', header: 'Joining Report', type: 'number' as const, width: 15 },
+        { field: 'internshipRate', header: 'Internship Rate %', type: 'number' as const, width: 15 },
+      ],
+      'internship_status': [
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
+        { field: 'mentorName', header: 'Mentor', type: 'string' as const, width: 18 },
+        { field: 'reportsSubmitted', header: 'Reports', type: 'number' as const, width: 10 },
+        { field: 'isActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
+      ],
+      // Faculty/Mentor reports - matches generateFacultyVisitReport output
+      'joining_report_status': [
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 22 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'gender', header: 'Gender', type: 'string' as const, width: 10 },
+        { field: 'branchName', header: 'Branch', type: 'string' as const, width: 15 },
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
+        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'internshipStartDate', header: 'Internship Start', type: 'date' as const, width: 15 },
+        { field: 'joiningLetterStatus', header: 'Joining Letter Status', type: 'string' as const, width: 18 },
+        { field: 'joiningLetterSubmittedAt', header: 'Submitted At', type: 'date' as const, width: 15 },
+        { field: 'joiningLetterApprovedAt', header: 'Approved At', type: 'date' as const, width: 15 },
+        { field: 'daysSinceStart', header: 'Days Since Start', type: 'number' as const, width: 14 },
+        { field: 'mentorName', header: 'Mentor', type: 'string' as const, width: 20 },
+        { field: 'isActive', header: 'Active', type: 'boolean' as const, width: 10 },
+      ],
+      'faculty_visit_compliance': [
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 22 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'gender', header: 'Gender', type: 'string' as const, width: 10 },
+        { field: 'branchName', header: 'Branch', type: 'string' as const, width: 15 },
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
+        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'internshipStartDate', header: 'Internship Start', type: 'date' as const, width: 15 },
+        { field: 'mentorName', header: 'Mentor Name', type: 'string' as const, width: 20 },
+        { field: 'requiredVisits', header: 'Required Visits', type: 'number' as const, width: 14 },
+        { field: 'completedVisits', header: 'Completed Visits', type: 'number' as const, width: 14 },
+        { field: 'pendingVisits', header: 'Pending Visits', type: 'number' as const, width: 14 },
+        { field: 'compliancePercent', header: 'Compliance %', type: 'number' as const, width: 14 },
+        { field: 'lastVisitDate', header: 'Last Visit Date', type: 'date' as const, width: 15 },
+        { field: 'lastVisitType', header: 'Visit Type', type: 'string' as const, width: 14 },
+        { field: 'studentActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
+      ],
+      // 'faculty_visit': [
+      //   { field: 'facultyName', header: 'Faculty Name', type: 'string' as const, width: 20 },
+      //   { field: 'facultyDesignation', header: 'Designation', type: 'string' as const, width: 15 },
+      //   { field: 'facultyActive', header: 'Faculty Active', type: 'boolean' as const, width: 12 },
+      //   { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
+      //   { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+      //   { field: 'studentActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
+      //   { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+      //   { field: 'visitDate', header: 'Visit Date', type: 'date' as const, width: 12 },
+      //   { field: 'visitType', header: 'Visit Type', type: 'string' as const, width: 12 },
+      //   { field: 'visitLocation', header: 'Location', type: 'string' as const, width: 15 },
+      //   { field: 'followUpRequired', header: 'Follow-up', type: 'boolean' as const, width: 10 },
+      //   { field: 'nextVisitDate', header: 'Next Visit', type: 'date' as const, width: 12 },
+      // ],
+      'mentor_list': [
+        { field: 'facultyName', header: 'Faculty Name', type: 'string' as const, width: 20 },
+        { field: 'facultyDesignation', header: 'Designation', type: 'string' as const, width: 15 },
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+      ],
+      // Monthly reports - matches generateMonthlyReport output
+      'monthly': [
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'month', header: 'Month', type: 'number' as const, width: 8 },
+        { field: 'year', header: 'Year', type: 'number' as const, width: 8 },
+        { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
+        { field: 'submittedAt', header: 'Submitted At', type: 'date' as const, width: 15 },
+        { field: 'reportFileUrl', header: 'Report URL', type: 'string' as const, width: 30 },
+        { field: 'isActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
+      ],
+      'monthly_report_status': [
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'month', header: 'Month', type: 'number' as const, width: 8 },
+        { field: 'year', header: 'Year', type: 'number' as const, width: 8 },
+        { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
+        { field: 'isActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
+      ],
+      // Placement reports - matches generatePlacementReport output
+      'placement': [
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'email', header: 'Email', type: 'string' as const, width: 25 },
+        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'jobRole', header: 'Job Role', type: 'string' as const, width: 20 },
+        { field: 'salary', header: 'Salary (LPA)', type: 'number' as const, width: 12 },
+        { field: 'offerDate', header: 'Offer Date', type: 'date' as const, width: 12 },
+        { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
+        { field: 'isActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
+      ],
+      // Institution performance - matches generateInstitutionPerformanceReport output
+      'institution_performance': [
+        { field: 'metric', header: 'Metric', type: 'string' as const, width: 25 },
+        { field: 'value', header: 'Value', type: 'number' as const, width: 15 },
+        { field: 'category', header: 'Category', type: 'string' as const, width: 15 },
+      ],
+      'industry_wise_students_stipend': [
+        { field: 'companyName', header: 'Company/Industry Name', type: 'string' as const, width: 30 },
+        { field: 'companyAddress', header: 'Company Address', type: 'string' as const, width: 35 },
+        { field: 'totalStudents', header: 'Total Students', type: 'number' as const, width: 12 },
+        { field: 'activeStudents', header: 'Active Students', type: 'number' as const, width: 12 },
+        { field: 'completedStudents', header: 'Completed Students', type: 'number' as const, width: 12 },
+        { field: 'totalStipend', header: 'Total Stipend', type: 'number' as const, width: 12 },
+        { field: 'avgStipend', header: 'Avg Stipend', type: 'number' as const, width: 12 },
+        { field: 'minStipend', header: 'Min Stipend', type: 'number' as const, width: 12 },
+        { field: 'maxStipend', header: 'Max Stipend', type: 'number' as const, width: 12 },
+      ],
+      'top_institutes_per_industry': [
+        { field: 'companyName', header: 'Company/Industry Name', type: 'string' as const, width: 30 },
+        { field: 'companyAddress', header: 'Company Address', type: 'string' as const, width: 30 },
+        { field: 'companyTotalStudents', header: 'Company Total Students', type: 'number' as const, width: 18 },
+        { field: 'instituteRank', header: 'Rank', type: 'number' as const, width: 6 },
+        { field: 'instituteName', header: 'Institute Name', type: 'string' as const, width: 30 },
+        { field: 'totalStudents', header: 'Students from Institute', type: 'number' as const, width: 18 },
+        { field: 'avgStipend', header: 'Average Stipend', type: 'number' as const, width: 14 },
+        { field: 'totalStipend', header: 'Total Stipend', type: 'number' as const, width: 14 },
+        { field: 'activeStudents', header: 'Active Students', type: 'number' as const, width: 14 },
+        { field: 'completedStudents', header: 'Completed Students', type: 'number' as const, width: 14 },
+      ],
+      // Compliance reports - matches generateStudentComplianceReport output
+      'student_compliance': [
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'name', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'gender', header: 'Gender', type: 'string' as const, width: 10 },
+        { field: 'branchName', header: 'Branch', type: 'string' as const, width: 15 },
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
+        { field: 'mentorName', header: 'Mentor', type: 'string' as const, width: 18 },
+        { field: 'hasInternship', header: 'Has Internship', type: 'string' as const, width: 12 },
+        { field: 'joiningReportStatus', header: 'Joining Report', type: 'string' as const, width: 15 },
+        { field: 'monthlyReportsSubmitted', header: 'Reports Submitted', type: 'number' as const, width: 15 },
+        { field: 'lastReportDate', header: 'Last Report Date', type: 'date' as const, width: 15 },
+        { field: 'isActive', header: 'Active', type: 'boolean' as const, width: 8 },
+      ],
+      'compliance': [
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'name', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'gender', header: 'Gender', type: 'string' as const, width: 10 },
+        { field: 'branchName', header: 'Branch', type: 'string' as const, width: 15 },
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
+        { field: 'mentorName', header: 'Mentor', type: 'string' as const, width: 18 },
+        { field: 'hasInternship', header: 'Has Internship', type: 'string' as const, width: 12 },
+        { field: 'joiningReportStatus', header: 'Joining Report', type: 'string' as const, width: 15 },
+        { field: 'monthlyReportsSubmitted', header: 'Reports Submitted', type: 'number' as const, width: 15 },
+        { field: 'lastReportDate', header: 'Last Report Date', type: 'date' as const, width: 15 },
+        { field: 'isActive', header: 'Active', type: 'boolean' as const, width: 8 },
+      ],
+    };
+
+    // Get columns for this report type
+    let columns = reportColumns[normalizedType];
+
+    // If no predefined columns, generate from data
+    if (!columns || columns.length === 0) {
+      this.logger.warn(`No predefined columns for report type: ${reportType}, generating from data`);
+      if (data.length > 0) {
+        const firstRow = data[0];
+        columns = Object.keys(firstRow).map(key => ({
+          field: key,
+          header: key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
+          type: this.inferColumnType(firstRow[key]),
+          width: 15,
+        }));
+      } else {
+        columns = [];
+      }
+    }
+
+    // Filter columns based on user selection (if provided)
+    // Skip filtering if predefined columns exist for this report type (prevents stale frontend selections from overriding)
+    const hasPredefinedColumns = !!reportColumns[normalizedType];
+    if (!hasPredefinedColumns && selectedColumns && selectedColumns.length > 0) {
+      this.logger.log(`Filtering to selected columns: ${selectedColumns.join(', ')}`);
+
+      // Filter to only include selected columns while preserving order
+      const filteredColumns = selectedColumns
+        .map(colId => columns.find(c => c.field === colId))
+        .filter(Boolean);
+
+      // Only use filtered columns if at least one matched
+      if (filteredColumns.length > 0) {
+        columns = filteredColumns;
+
+        // Also filter the data to only include selected fields
+        const selectedFields = new Set(selectedColumns);
+        data = data.map(row => {
+          const filteredRow: Record<string, unknown> = {};
+          for (const field of selectedFields) {
+            if (field in row) {
+              filteredRow[field] = row[field];
+            }
+          }
+          return filteredRow;
+        });
+      }
+    }
+
+    const title = reportTitles[normalizedType] ||
+      reportType.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) + ' Report';
+
+    this.logger.log(`Export config: type=${reportType}, columns=${columns.length}, rows=${data.length}`);
+
+    // Define merge columns for specific report types
+    const mergeColumnsMap: Record<string, string[]> = {
+      'top_institutes_per_industry': ['companyName', 'companyAddress', 'companyTotalStudents'],
+    };
+
+    return {
+      title,
+      columns,
+      data,
+      format,
+      metadata: {
+        generatedAt: new Date(),
+        generatedBy: userId,
+        filters,
+      },
+      mergeColumns: mergeColumnsMap[normalizedType],
+    };
+  }
+
+  /**
+   * Infer column type from value
+   */
+  private inferColumnType(value: any): 'string' | 'number' | 'date' | 'boolean' {
+    if (value === null || value === undefined) return 'string';
+    if (typeof value === 'number') return 'number';
+    if (typeof value === 'boolean') return 'boolean';
+    if (value instanceof Date) return 'date';
+    if (typeof value === 'string') {
+      // Check if it looks like a date
+      if (/^\d{4}-\d{2}-\d{2}/.test(value)) return 'date';
+    }
+    return 'string';
+  }
+
+
+  /**
+   * Send notification to user
+   */
+  private async sendNotification(
+    userId: string,
+    reportType: string,
+    downloadUrl: string,
+  ) {
+    try {
+      await this.prisma.notification.create({
+        data: {
+          userId,
+          title: 'Report Generated',
+          body: `Your ${reportType} report has been generated successfully.`,
+          type: 'REPORT',
+          data: {
+            reportType,
+            downloadUrl,
+          },
+        },
+      });
+    } catch (error) {
+      this.logger.error('Error sending notification:', error);
+      // Don't throw error, notification failure shouldn't fail the job
+    }
+  }
+}

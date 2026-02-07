@@ -1,0 +1,285 @@
+# ===========================================
+# CMS Production Docker Compose
+# ===========================================
+# Optimized for 2GB RAM / 2 vCPU with 1000 concurrent users
+#
+# Usage:
+#   1. Ensure you have a .env file with all required environment variables.
+#   2. Run: docker compose -f docker-compose.prod.yml up -d
+#
+
+services:
+  # ===========================================
+  # Frontend - React/Vite (Served with internal Nginx)
+  # ===========================================
+  frontend:
+    image: ghcr.io/nikhil2247/cms-new/frontend:latest
+    container_name: cms-frontend
+    ports:
+      - "5173:80"
+    networks:
+      - cms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.20"
+          memory: 64M
+        reservations:
+          cpus: "0.05"
+          memory: 32M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ===========================================
+  # Backend - NestJS with PM2
+  # ===========================================
+  backend:
+    image: ghcr.io/nikhil2247/cms-new/backend:latest
+    container_name: cms-backend
+    ports:
+      - "8080:6000"
+    environment:
+      # Core
+      - NODE_ENV=production
+      - PORT=6000
+      - BACKEND_PORT=6000
+      # Database (PostgreSQL) - hardcoded for Docker network
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@72.61.246.176:5432/${POSTGRES_DB:-cms}
+      # Cache (connects to Dragonfly service)
+      - REDIS_URL=${REDIS_URL:-redis://dragonfly:6379}
+      - REDIS_HOST=dragonfly
+      - REDIS_PORT=6379
+      # JWT
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-30m}
+      - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION:-7d}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      # CORS
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - CORS_ORIGIN=${CORS_ORIGIN}
+      # File Storage (connects to MinIO service)
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_BUCKET=cms-uploads
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin123
+      - MINIO_REGION=${MINIO_REGION:-us-east-1}
+      # PM2 - Limited instances for resource constraints
+      - PM2_INSTANCES=2
+      # Node.js memory optimization
+      - NODE_OPTIONS=--max-old-space-size=450
+    volumes:
+      - backend-uploads:/app/uploads
+      - backend-logs:/app/logs
+    user: "appuser"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dragonfly:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    networks:
+      - cms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 600M
+        reservations:
+          cpus: "0.25"
+          memory: 300M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:6000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  # ===========================================
+  # PostgreSQL 18 - Primary Database
+  # ===========================================
+  postgres:
+    image: postgres:18-alpine
+    container_name: cms-postgres
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      POSTGRES_DB: ${POSTGRES_DB:-cms_db}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - cms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 550M
+        reservations:
+          cpus: "0.15"
+          memory: 200M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-cms_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=384MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - wal_buffers=4MB
+      - -c
+      - default_statistics_target=100
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - work_mem=2MB
+      - -c
+      - huge_pages=off
+      - -c
+      - min_wal_size=256MB
+      - -c
+      - max_wal_size=1GB
+      - -c
+      - max_connections=150
+      - -c
+      - log_statement=none
+      - -c
+      - log_min_duration_statement=1000
+
+  # ===========================================
+  # DragonflyDB - Redis-compatible Cache
+  # ===========================================
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    container_name: cms-dragonfly
+    ports:
+      - "6379:6379"
+    volumes:
+      - dragonfly-data:/data
+    networks:
+      - cms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 384M
+        reservations:
+          cpus: "0.05"
+          memory: 128M
+    ulimits:
+      memlock: -1
+    command: >
+      --logtostderr
+      --cache_mode=true
+      --maxmemory=256mb
+      --proactor_threads=1
+      --default_lua_flags=allow-undeclared-keys
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # ===========================================
+  # MinIO - S3-compatible Object Storage
+  # ===========================================
+  minio:
+    image: minio/minio:latest
+    container_name: cms-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: "minioadmin"
+      MINIO_ROOT_PASSWORD: "minioadmin123"
+    volumes:
+      - minio-data:/data
+    networks:
+      - cms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 384M
+        reservations:
+          cpus: "0.05"
+          memory: 128M
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ===========================================
+  # MinIO Init - Creates the bucket on startup
+  # ===========================================
+  minio-init:
+    image: minio/mc:latest
+    container_name: cms-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - cms-network
+    restart: "no"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.05"
+          memory: 64M
+        reservations:
+          cpus: "0.01"
+          memory: 32M
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        sleep 3
+        mc alias set myminio http://minio:9000 minioadmin minioadmin123
+        mc mb myminio/cms-uploads --ignore-existing
+        mc anonymous set download myminio/cms-uploads
+        echo "MinIO bucket 'cms-uploads' is ready."
+
+networks:
+  cms-network:
+    driver: bridge
+    name: cms-prod-network
+
+volumes:
+  postgres-data:
+    name: cms-prod-postgres-data
+  dragonfly-data:
+    name: cms-prod-dragonfly-data
+  minio-data:
+    name: cms-prod-minio-data
+  backend-uploads:
+    name: cms-prod-backend-uploads
+  backend-logs:
+    name: cms-prod-backend-logs

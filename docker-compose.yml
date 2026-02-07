@@ -1,0 +1,310 @@
+# Docker Compose for CMS - Production
+# All images pinned to stable versions
+# Total Memory Allocation: ~5GB
+# - Backend: 1.5GB | Frontend: 0.5GB | PostgreSQL: 2GB | Dragonfly: 0.5GB | MinIO: 0.5GB
+
+services:
+  # ===========================================
+  # Frontend - React/Vite with Nginx (512MB)
+  # ===========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api}
+        VITE_APP_NAME: ${VITE_APP_NAME:-PlaceIntern Portal}
+        VITE_APP_ENV: ${VITE_APP_ENV:-production}
+    image: cms-frontend:latest
+    container_name: cms-frontend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - cms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ===========================================
+  # Backend - NestJS with PM2 Cluster (1.5GB)
+  # ===========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: cms-backend:latest
+    container_name: cms-backend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      # Core Settings
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=8000
+      - BACKEND_PORT=8000
+      # Database (PostgreSQL)
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres123@postgres:5432/cms_db?schema=public}
+      # Redis/Cache (DragonflyDB)
+      - REDIS_URL=${REDIS_URL:-redis://dragonfly:6379}
+      - REDIS_HOST=dragonfly
+      - REDIS_PORT=6379
+      # JWT Authentication
+      - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-30m}
+      - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION:-7d}
+      # CORS Settings
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost,http://localhost:80,http://127.0.0.1,http://127.0.0.1:80,http://localhost:5173}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost,http://127.0.0.1}
+      # Rate Limiting
+      - THROTTLE_TTL=${THROTTLE_TTL:-60}
+      - THROTTLE_LIMIT=${THROTTLE_LIMIT:-100}
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      # File Upload
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-10485760}
+      - UPLOAD_PATH=/app/uploads
+      # MinIO/S3 Configuration (FileStorageService expects MINIO_* variables)
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
+      - MINIO_BUCKET=${MINIO_BUCKET:-cms-uploads}
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
+      - MINIO_REGION=${MINIO_REGION:-us-east-1}
+      # Mail Configuration (optional)
+      - MAIL_USER=${MAIL_USER:-}
+      - MAIL_PASS=${MAIL_PASS:-}
+      # Firebase Configuration (optional)
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY:-}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL:-}
+      - FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-}
+      # Google OAuth (optional)
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_CALLBACK_URL=${GOOGLE_CALLBACK_URL:-}
+      # Cloudinary (optional)
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      # PM2 Settings - optimized for 1.5GB container
+      - PM2_INSTANCES=${PM2_INSTANCES:-2}
+      - NODE_OPTIONS=--max-old-space-size=600
+    volumes:
+      - backend-uploads:/app/uploads
+      - backend-logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dragonfly:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    networks:
+      - cms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ===========================================
+  # PostgreSQL 18 - Primary Database (2GB)
+  # ===========================================
+  postgres:
+    image: postgres:18-alpine
+    container_name: cms-postgres
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      POSTGRES_DB: ${POSTGRES_DB:-cms_db}
+      # Performance tuning
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - cms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-cms_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command:
+      - postgres
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - wal_buffers=16MB
+      - -c
+      - default_statistics_target=100
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - work_mem=4MB
+      - -c
+      - huge_pages=off
+      - -c
+      - min_wal_size=1GB
+      - -c
+      - max_wal_size=4GB
+      - -c
+      - max_connections=200
+      - -c
+      - log_statement=none
+      - -c
+      - log_min_duration_statement=1000
+
+  # ===========================================
+  # DragonflyDB 1.x - Redis-compatible Cache (512MB)
+  # High-performance, memory-efficient
+  # ===========================================
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    container_name: cms-dragonfly
+    ports:
+      - "${DRAGONFLY_PORT:-6379}:6379"
+    volumes:
+      - dragonfly-data:/data
+    networks:
+      - cms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 256M
+    ulimits:
+      memlock: -1
+    command: >
+      --logtostderr
+      --cache_mode=true
+      --maxmemory=512mb
+      --keys_output_limit=12288
+      --proactor_threads=2
+      --default_lua_flags=allow-undeclared-keys
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ===========================================
+  # MinIO - S3-compatible Object Storage (512MB)
+  # ===========================================
+  minio:
+    image: minio/minio:latest
+    container_name: cms-minio
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      # Memory optimization
+      MINIO_CACHE: "on"
+      MINIO_CACHE_QUOTA: 80
+      MINIO_CACHE_AFTER: 1
+      MINIO_CACHE_WATERMARK_LOW: 70
+      MINIO_CACHE_WATERMARK_HIGH: 90
+    volumes:
+      - minio-data:/data
+    networks:
+      - cms-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ===========================================
+  # MinIO Init - Create buckets on startup
+  # ===========================================
+  minio-init:
+    image: minio/mc:latest
+    container_name: cms-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - cms-network
+    restart: "no"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "Waiting for MinIO to be ready..."
+        sleep 5
+        mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin123}
+        mc mb myminio/${AWS_S3_BUCKET:-cms-uploads} --ignore-existing
+        mc anonymous set download myminio/${AWS_S3_BUCKET:-cms-uploads}
+        echo "MinIO bucket initialized successfully!"
+
+networks:
+  cms-network:
+    driver: bridge
+    name: cms-network
+
+volumes:
+  postgres-data:
+    name: cms-postgres-data
+  dragonfly-data:
+    name: cms-dragonfly-data
+  minio-data:
+    name: cms-minio-data
+  backend-uploads:
+    name: cms-backend-uploads
+  backend-logs:
+    name: cms-backend-logs

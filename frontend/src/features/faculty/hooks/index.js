@@ -1,0 +1,1 @@
+export { useFacultyDashboard } from './useFacultyDashboard';

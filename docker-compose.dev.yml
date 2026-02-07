@@ -1,0 +1,115 @@
+# Docker Compose for Development
+# Runs only infrastructure services (PostgreSQL, DragonflyDB, MinIO)
+# Frontend and Backend run locally for hot-reloading
+
+services:
+  # ===========================================
+  # PostgreSQL 18 - Primary Database
+  # ===========================================
+  postgres:
+    image: postgres:18-alpine
+    container_name: cms-postgres-dev
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_DB: cms_db
+    volumes:
+      - postgres-dev-data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - cms-dev-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cms_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ===========================================
+  # DragonflyDB (Redis-compatible)
+  # ===========================================
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    container_name: cms-dragonfly-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - dragonfly-dev-data:/data
+    networks:
+      - cms-dev-network
+    ulimits:
+      memlock: -1
+    command: >
+      --logtostderr
+      --cache_mode=true
+      --maxmemory=256mb
+      --proactor_threads=1
+      --default_lua_flags=allow-undeclared-keys
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ===========================================
+  # MinIO - S3-compatible Object Storage
+  # ===========================================
+  minio:
+    image: minio/minio:latest
+    container_name: cms-minio-dev
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio-dev-data:/data
+    networks:
+      - cms-dev-network
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ===========================================
+  # MinIO bucket initialization
+  # ===========================================
+  minio-init:
+    image: minio/mc:latest
+    container_name: cms-minio-init-dev
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - cms-dev-network
+    restart: "no"
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "Initializing MinIO bucket..."
+        sleep 3
+        mc alias set myminio http://minio:9000 minioadmin minioadmin123
+        mc mb myminio/cms-uploads --ignore-existing
+        mc anonymous set download myminio/cms-uploads
+        echo "MinIO bucket ready!"
+
+networks:
+  cms-dev-network:
+    driver: bridge
+    name: cms-dev-network
+
+volumes:
+  postgres-dev-data:
+    name: cms-postgres-dev-data
+  dragonfly-dev-data:
+    name: cms-dragonfly-dev-data
+  minio-dev-data:
+    name: cms-minio-dev-data

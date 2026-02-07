@@ -1,0 +1,1576 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Models
+
+model User {
+  id          String   @id @default(uuid())
+  email       String?  @unique
+  password    String
+  name        String
+  phoneNo     String?
+  rollNumber  String?
+  dob         String?
+
+  // Branch - for STUDENT and TEACHER roles
+  branchId    String?
+  branch      Branch?  @relation(fields: [branchId], references: [id])
+  branchName  String?  // Cached for quick access
+
+  designation String?  // Only for TEACHER/PRINCIPAL
+  role        Role?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  // Password reset fields
+  resetPasswordToken  String?
+  resetPasswordExpiry DateTime?
+  Student             Student?
+  Institution         Institution?            @relation(fields: [institutionId], references: [id])
+  institutionId       String?
+  // Internship relations
+  menteeApplications  InternshipApplication[] @relation("StudentMentor")
+  mentorAssignments   MentorAssignment[]      @relation("AssignedMentor")
+  assignedBy          MentorAssignment[]      @relation("AssignedBy")
+  facultyVisitLogs    FacultyVisitLog[]       @relation("FacultyVisits")
+  auditLogs           AuditLog[]              @relation("AuditUser")
+
+  // Notification relations
+  Notification Notification[]
+
+  // Grievance relations
+  supervisedGrievances   Grievance[]              @relation("GrievanceFacultySupervisor")
+  assignedGrievances     Grievance[]              @relation("GrievanceAssignedTo")
+  grievanceStatusChanges GrievanceStatusHistory[]
+
+  // Help & Support relations
+  submittedTickets SupportTicket[]   @relation("TicketSubmitter")
+  assignedTickets  SupportTicket[]   @relation("TicketAssignee")
+  supportResponses SupportResponse[] @relation("ResponseAuthor")
+  faqArticles      FAQArticle[]      @relation("FAQAuthor")
+
+  // consent
+  consent   Boolean?  @default(false)
+  consentAt DateTime?
+
+  // Login Activity Tracking
+  lastLoginAt     DateTime?
+  lastLoginIp     String?
+  loginCount      Int       @default(0)
+  previousLoginAt DateTime?
+
+  // Password Management
+  hasChangedDefaultPassword Boolean   @default(false)
+  passwordChangedAt         DateTime?
+  passwordExpiresAt         DateTime?
+
+  // Password History (prevent reuse)
+  passwordHistory PasswordHistory[] @relation("UserPasswordHistory")
+
+  // Account Lockout (Security)
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastFailedLoginAt   DateTime?
+
+  // Optional MFA/2FA (Security)
+  mfaEnabled     Boolean  @default(false)
+  mfaSecret      String?
+  mfaBackupCodes String[] @default([])
+
+  // Session Management
+  sessions UserSession[] @relation("UserSessions")
+
+  // System Alerts
+  createdAlerts     SystemAlert[]          @relation("AlertCreator")
+  dismissedAlerts   SystemAlertDismissal[] @relation("AlertDismissals")
+
+  // Performance Indexes
+  @@index([institutionId])
+  @@index([role])
+  @@index([institutionId, role])
+  @@index([active])
+  @@index([lastLoginAt])
+  @@index([role, active])
+  @@index([institutionId, active])
+  @@index([institutionId, role, active])
+  @@index([role, active, createdAt])
+  @@index([branchId])
+  @@index([institutionId, branchId])
+  @@index([role, branchId])
+}
+
+enum Role {
+  STUDENT
+  PRINCIPAL
+  TEACHER
+  STATE_DIRECTORATE
+  SYSTEM_ADMIN
+}
+
+// Student Information linked with admissiontype, category, batch, fees, results, documents, and scholarship
+
+model Student {
+  id           String  @id @default(uuid())
+  profileImage String?
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // REMOVED DUPLICATES - Now use User fields via relation:
+  // name → user.name
+  // email → user.email
+  // contact → user.phoneNo
+  // dob → user.dob
+  // rollNumber → user.rollNumber
+  // branchName → user.branchName
+  // isActive → user.active
+
+  // Student-specific fields only
+  admissionNumber String?
+
+  // Address (student's permanent address)
+  address String?
+  pinCode String?
+  tehsil  String?
+  district String?
+  city    String?
+  state   String?
+
+  // Family
+  parentName    String?
+  parentContact String?
+  motherName    String?
+
+  // Demographics
+  gender String?
+
+  // Academic
+  currentYear          Int?
+  currentSemester      Int?
+  currentSemesterMarks Float?
+  tenthper             Float?
+  twelthper            Float?
+  diplomaPercentage    Float?
+  totalBacklogs        Int?            @default(0)
+  clearanceStatus      ClearanceStatus @default(PENDING)
+
+  // Batch & Category
+  batchId       String?
+  batch         Batch?         @relation(fields: [batchId], references: [id])
+  admissionType AdmissionType?
+  category      Category?
+
+  // Institution & Branch (keep FKs for direct queries, but User is SOT)
+  institutionId String?
+  Institution   Institution? @relation(fields: [institutionId], references: [id])
+  branchId      String?
+  branch        Branch?      @relation(fields: [branchId], references: [id])
+
+  // Relations
+  document               Document[]
+  createdAt              DateTime                @default(now())
+  internshipApplications InternshipApplication[]
+  mentorAssignments      MentorAssignment[]
+  monthlyReports         MonthlyReport[]
+  grievances             Grievance[]
+
+  // Performance Indexes
+  @@index([institutionId])
+  @@index([batchId])
+  @@index([branchId])
+  @@index([institutionId, batchId])
+  @@index([institutionId, branchId])
+  @@index([clearanceStatus])
+}
+
+enum ClearanceStatus {
+  PENDING
+  CLEARED
+  HOLD
+  REJECTED
+}
+
+enum AdmissionType {
+  FIRST_YEAR
+  LEET
+}
+
+enum Category {
+  GENERAL
+  OBC
+  ST
+  SC
+}
+
+// Batch Management (Simplified)
+model Batch {
+  id            String       @id @default(uuid())
+  name          String       @unique // e.g., "2023-26"
+  isActive      Boolean      @default(true)
+  students      Student[]
+  createdAt     DateTime     @default(now())
+  Institution   Institution? @relation(fields: [institutionId], references: [id])
+  institutionId String?
+
+  // Performance Indexes
+  @@index([institutionId])
+  @@index([isActive])
+}
+
+// Document Management (Simplified)
+model Document {
+  id        String       @id @default(uuid())
+  studentId String
+  type      DocumentType
+  fileName  String
+  fileUrl   String
+  isDeleted Boolean      @default(false)
+  deletedAt DateTime?
+  createdAt DateTime     @default(now())
+  Student   Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  // Performance Indexes
+  @@index([studentId])
+  @@index([type])
+  @@index([isDeleted])
+  @@index([studentId, isDeleted])
+}
+
+enum DocumentType {
+  MARKSHEET_10TH
+  MARKSHEET_12TH
+  CASTE_CERTIFICATE
+  PHOTO
+  OTHER
+}
+
+// Fee Management (Simplified)
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  body      String
+  type      String?
+  data      Json?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  // Performance Indexes
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+  @@index([userId, read])
+}
+
+// Institution Model
+model Institution {
+  id        String          @id @default(uuid())
+  code      String?         @unique // The unique code for the institution (e.g., "INST001", "MAIN_CAMPUS")
+  name      String? // Optional: Full name of the institution
+  shortName String?
+  type      InstitutionType @default(POLYTECHNIC)
+
+  // Contact Information
+  address        String?
+  city           String?
+  state          String? @default("Punjab")
+  district       String?
+  pinCode        String?
+  country        String? @default("India")
+  contactEmail   String?
+  contactPhone   String?
+  alternatePhone String?
+  website        String?
+
+  // Administrative Details
+  establishedYear  Int?
+  affiliatedTo     String? // University/Board affiliation
+  recognizedBy     String? // AICTE, UGC, etc.
+  naacGrade        String?
+  autonomousStatus Boolean @default(false)
+
+  // Seat Management
+  totalStudentSeats Int? // Total allocated seats for students
+  totalStaffSeats   Int? // Total allocated seats for staff
+
+  // Configuration
+  isActive  Boolean  @default(true)
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // --- Relations to other models ---
+  // Add relations for models that DIRECTLY belong to an institution
+  users     User[]
+  batches   Batch[]
+  auditLogs AuditLog[] // Audit logs should track the institution context
+
+  Student Student[]
+
+  // Internship (self-identified only)
+  Branch               Branch[]
+  Department           Department[]
+
+  // Help & Support
+  supportTickets SupportTicket[]
+}
+
+enum InstitutionType {
+  POLYTECHNIC
+  ENGINEERING_COLLEGE
+  UNIVERSITY
+  DEGREE_COLLEGE
+  ITI
+  SKILL_CENTER
+}
+
+// =============================================
+// ACADEMIC STRUCTURE
+// =============================================
+
+model Branch {
+  id        String  @id @default(uuid())
+  name      String
+  shortName String
+  code      String  @unique
+  duration  Int // Duration in years
+  isActive  Boolean @default(true)
+
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id])
+
+  // Relations
+  users    User[]    // Teachers and Students with branchId
+  students Student[] // Direct student relation (for backward compatibility)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("branches")
+}
+
+model Department {
+  id        String  @id @default(uuid())
+  name      String
+  shortName String?
+  code      String  @unique
+  hodId     String? // Head of Department
+  isActive  Boolean @default(true)
+
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("departments")
+}
+
+model AuditLog {
+  id         String      @id @default(uuid())
+  // Core Tracking Information
+  entityType String // e.g., "Student", "Internship", "InternshipApplication", "Industry"
+  entityId   String? // ID of the affected entity
+  action     AuditAction // Standardized actions
+
+  // User Context
+  userId   String?
+  user     User?   @relation("AuditUser", fields: [userId], references: [id])
+  userRole Role // Role of the user performing the action
+  userName String? // Cache user name for quick reference
+
+  // Change Details
+  oldValues     Json? // Previous state of the entity (for updates)
+  newValues     Json? // New state of the entity (for creates/updates)
+  changedFields String[] // Array of field names that changed
+
+  // Context Information
+  description String? // Human-readable description of the action
+  category    AuditCategory // Categorize the type of operation
+  severity    AuditSeverity @default(LOW) // Importance level
+
+  timestamp     DateTime     @default(now())
+  Institution   Institution? @relation(fields: [institutionId], references: [id])
+  institutionId String?
+
+  // Performance Indexes
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([timestamp])
+  @@index([category, timestamp])
+  @@index([institutionId])
+  @@index([action])
+}
+
+// =============================================
+// AUDIT ENUMS
+// =============================================
+
+enum AuditAction {
+  // User Management
+  USER_LOGIN
+  USER_LOGOUT
+  USER_REGISTRATION
+  USER_PROFILE_UPDATE
+  PASSWORD_CHANGE
+  PASSWORD_RESET
+  USER_ACTIVATION
+  USER_DEACTIVATION
+  USER_DELETION
+
+  // Student Operations
+  STUDENT_PROFILE_VIEW
+  STUDENT_PROFILE_UPDATE
+  STUDENT_DOCUMENT_UPLOAD
+  STUDENT_DOCUMENT_DELETE
+  STUDENT_DOCUMENT_RESTORE
+
+  // Internship Operations
+  INTERNSHIP_CREATE
+  INTERNSHIP_UPDATE
+  INTERNSHIP_DELETE
+  INTERNSHIP_ACTIVATE
+  INTERNSHIP_DEACTIVATE
+  INTERNSHIP_VIEW
+  INTERNSHIP_SEARCH
+
+  // Application Operations
+  APPLICATION_SUBMIT
+  APPLICATION_UPDATE
+  APPLICATION_WITHDRAW
+  APPLICATION_VIEW
+  APPLICATION_APPROVE
+  APPLICATION_REJECT
+  APPLICATION_BULK_ACTION
+
+  // Industry Operations
+  INDUSTRY_REGISTER
+  INDUSTRY_PROFILE_UPDATE
+  INDUSTRY_APPROVAL
+  INDUSTRY_REJECTION
+  INDUSTRY_VIEW_APPLICANTS
+
+  // Mentor Assignment
+  MENTOR_ASSIGN
+  MENTOR_UNASSIGN
+  MENTOR_UPDATE
+
+  // Feedback Operations
+  MONTHLY_FEEDBACK_SUBMIT
+  MONTHLY_FEEDBACK_UPDATE
+  COMPLETION_FEEDBACK_SUBMIT
+  FEEDBACK_VIEW
+
+  // Faculty Operations
+  VISIT_LOG_CREATE
+  VISIT_LOG_UPDATE
+  VISIT_LOG_DELETE
+  VISIT_LOG_RESTORE
+  VISIT_LOG_VIEW
+  FACULTY_ASSIGNMENT
+
+  // Monthly Report Operations
+  MONTHLY_REPORT_SUBMIT
+  MONTHLY_REPORT_UPDATE
+  MONTHLY_REPORT_APPROVE
+  MONTHLY_REPORT_REJECT
+  MONTHLY_REPORT_DELETE
+  MONTHLY_REPORT_RESTORE
+
+  // Joining Letter Operations
+  JOINING_LETTER_UPLOAD
+  JOINING_LETTER_VERIFY
+  JOINING_LETTER_REJECT
+  JOINING_LETTER_DELETE
+
+  // Administrative Operations
+  REPORT_GENERATE
+  REPORT_DOWNLOAD
+  REPORT_VIEW
+  BULK_OPERATION
+  DATA_EXPORT
+  DATA_IMPORT
+
+  // Institution Operations
+  INSTITUTION_CREATE
+  INSTITUTION_UPDATE
+  INSTITUTION_DELETE
+
+  // System Operations
+  SYSTEM_BACKUP
+  SYSTEM_RESTORE
+  CONFIGURATION_CHANGE
+  PERMISSION_CHANGE
+
+  // Security Events
+  UNAUTHORIZED_ACCESS
+  FAILED_LOGIN
+  SUSPICIOUS_ACTIVITY
+  DATA_BREACH_ATTEMPT
+
+  // Support Operations
+  GRIEVANCE_SUBMIT
+  GRIEVANCE_UPDATE
+  GRIEVANCE_RESOLVE
+  TECHNICAL_QUERY_SUBMIT
+  TECHNICAL_QUERY_RESOLVE
+
+  // Compliance Operations
+  COMPLIANCE_CHECK
+  AUDIT_TRAIL_ACCESS
+  PRIVACY_POLICY_UPDATE
+  CONSENT_GIVEN
+  CONSENT_WITHDRAWN
+}
+
+enum AuditCategory {
+  AUTHENTICATION // Login, logout, password changes
+  PROFILE_MANAGEMENT // Profile updates, document uploads
+  INTERNSHIP_WORKFLOW // Internship-related operations
+  APPLICATION_PROCESS // Application submissions, approvals
+  FEEDBACK_SYSTEM // All feedback operations
+  ADMINISTRATIVE // Admin operations, reports
+  SECURITY // Security-related events
+  COMPLIANCE // Compliance and audit operations
+  SYSTEM // System-level operations
+  DATA_MANAGEMENT // Data operations, exports, imports
+  SUPPORT // Grievances, technical queries
+  USER_MANAGEMENT // User creation, updates, deletion
+  SYSTEM_ADMIN // System administration operations
+}
+
+enum AuditSeverity {
+  LOW // Regular operations, views
+  MEDIUM // Updates, submissions
+  HIGH // Approvals, rejections, assignments
+  CRITICAL // Security events, system changes, compliance
+}
+
+// =============================================
+// MENTOR & COMPLIANCE MANAGEMENT
+// =============================================
+
+model MentorAssignment {
+  id String @id @default(uuid())
+
+  // Relations
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  mentorId  String
+  mentor    User    @relation("AssignedMentor", fields: [mentorId], references: [id])
+
+  // Assignment tracking
+  assignedBy       String
+  assignedByUser   User     @relation("AssignedBy", fields: [assignedBy], references: [id])
+  assignmentDate   DateTime @default(now())
+  assignmentReason String?
+
+  // Status
+  isActive           Boolean   @default(true)
+  deactivatedAt      DateTime?
+  deactivatedBy      String?
+  deactivationReason String?
+
+  // Context
+  academicYear        String
+  semester            String?
+  specialInstructions String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String?
+
+  // Note: Uniqueness of active assignment per student is enforced in application code
+  // (by deactivating existing assignments before creating new ones)
+  // Performance Indexes
+  @@index([studentId])
+  @@index([mentorId])
+  @@index([isActive])
+  @@index([mentorId, isActive])
+  @@index([studentId, isActive]) // For fast lookup of active assignment
+  @@map("mentor_assignments")
+}
+
+
+// Student Internship Application
+model InternshipApplication {
+  id String @id @default(uuid())
+
+  // Relations
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  // Application Details
+  applicationDate DateTime @default(now())
+  coverLetter     String?
+  resume          String?
+  additionalInfo  String?
+
+  // Selection Status
+  status          ApplicationStatus @default(APPROVED)
+  appliedDate     DateTime          @default(now())
+  reviewedDate    DateTime?
+  internshipPhase InternshipPhase   @default(NOT_STARTED)
+  isActive        Boolean           @default(true)
+
+  // Industry Decision
+  isSelected      Boolean   @default(false)
+  selectionDate   DateTime?
+  rejectionReason String?
+
+  // Joining Information
+  joiningDate    DateTime?
+  completionDate DateTime?
+
+  // Mentor Assignment
+  mentorId         String?
+  mentor           User?     @relation("StudentMentor", fields: [mentorId], references: [id])
+  mentorAssignedAt DateTime?
+  mentorAssignedBy String? // Principal/Admin who assigned
+
+  // Self-Identified Internship Fields
+  isSelfIdentified Boolean @default(false)
+  companyName      String?
+  companyAddress   String?
+  companyContact   String?
+  companyEmail     String?
+  hrName           String?
+  hrDesignation    String?
+  hrContact        String?
+  hrEmail          String?
+
+  // Joining Letter
+  joiningLetterUrl        String?
+  joiningLetterUploadedAt DateTime?
+
+  // Faculty Mentor Details (for self-identified internships)
+  facultyMentorName        String?
+  facultyMentorContact     String?
+  facultyMentorEmail       String?
+  facultyMentorDesignation String?
+
+  // Additional Details
+  internshipDuration String?
+  stipend            String?
+  startDate          DateTime?
+  endDate            DateTime?
+  jobProfile         String?
+
+  // Review Details
+  reviewedAt    DateTime?
+  reviewRemarks String?
+
+  // Notes
+  notes String?
+
+  // Relations
+  monthlyReports     MonthlyReport[]
+  proposedFirstVisit DateTime?
+  secondVisit        DateTime?
+  facultyVisitLogs   FacultyVisitLog[]
+
+  // Report & Visit Counter Fields
+  totalExpectedReports          Int       @default(0) // Calculated from internship dates
+  totalExpectedVisits           Int       @default(0) // Calculated from internship dates
+  submittedReportsCount         Int       @default(0) // Incremented when student submits report
+  completedVisitsCount          Int       @default(0) // Incremented when faculty logs visit
+  expectedCountsLastCalculated  DateTime?             // When expected counts were last calculated
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Performance Indexes
+  @@index([studentId])
+  @@index([status])
+  @@index([studentId, status])
+  @@index([mentorId])
+  @@index([isSelfIdentified])
+  @@index([applicationDate])
+  @@index([mentorId, appliedDate])
+  @@index([isSelfIdentified, status, applicationDate])
+  @@index([mentorId, isSelfIdentified, status])
+  @@index([applicationDate, status])
+  @@index([studentId, status, isSelfIdentified])
+  @@index([internshipPhase])
+  @@index([internshipPhase, isActive])
+  @@index([studentId, internshipPhase])
+  @@index([status, internshipPhase])
+  @@map("internship_applications")
+}
+
+// Student Monthly Report Model
+model MonthlyReport {
+  id String @id @default(uuid())
+
+  // Relations
+  applicationId String
+  application   InternshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  // Report Period
+  reportMonth Int // Month number (1-12)
+  reportYear  Int
+  monthName   String? // e.g., "January", "February" for display
+
+  // Report File
+  reportFileUrl String? // PDF/Document file of the report
+
+  // Soft Delete
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+
+  // Submission Details
+  status      MonthlyReportStatus @default(DRAFT)
+  submittedAt DateTime?
+
+  // Review Details (optional - for mentor/faculty review)
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  reviewComments String?
+
+  // Approval
+  isApproved Boolean   @default(false)
+  approvedBy String?
+  approvedAt DateTime?
+
+  // Submission Window (1st-10th of next month)
+  dueDate               DateTime? // 10th of next month
+  submissionWindowStart DateTime? // 1st of next month
+  submissionWindowEnd   DateTime? // 10th of next month
+  isOverdue             Boolean   @default(false)
+
+  // Late submission tracking
+  isLateSubmission Boolean @default(false)
+  daysLate         Int?
+
+  // Report Period Details
+  periodStartDate DateTime? // First day of internship month
+  periodEndDate   DateTime? // Last day of internship month
+  isPartialMonth  Boolean   @default(false) // True for first/last partial months
+  isFinalReport   Boolean   @default(false) // True if last report of internship
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([applicationId, reportMonth, reportYear]) // One report per month per application
+  // Performance Indexes
+  @@index([applicationId])
+  @@index([studentId])
+  @@index([status])
+  @@index([reportMonth, reportYear])
+  @@index([dueDate])
+  @@index([isDeleted])
+  @@index([applicationId, status])
+  @@index([studentId, status])
+  @@index([status, dueDate])
+  @@index([studentId, reportMonth, reportYear])
+  @@index([studentId, isDeleted])
+  @@index([applicationId, isDeleted])
+  @@map("monthly_reports")
+}
+
+// Faculty Visit Log
+model FacultyVisitLog {
+  id String @id @default(uuid())
+
+  // Relations
+  applicationId String
+  application   InternshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  facultyId String?
+  faculty   User?   @relation("FacultyVisits", fields: [facultyId], references: [id])
+
+  //location of visit
+  visitLocation String?
+
+  // GPS Coordinates
+  latitude    Float?
+  longitude   Float?
+  gpsAccuracy Float? // GPS accuracy in meters
+
+  // Signed Visit Document (official signed document)
+  signedDocumentUrl String? // URL to signed visit document (PDF/image)
+
+  // Visit Details
+  visitNumber   Int?
+  visitDate     DateTime? // Optional for scheduled visits, set when visit is completed
+  visitDuration String? // e.g., "2 hours"
+  visitType     VisitType      @default(PHYSICAL)
+  status        VisitLogStatus @default(SCHEDULED)
+
+  // Observations
+  studentPerformance   String?
+  workEnvironment      String?
+  industrySupport      String?
+  skillsDevelopment    String?
+  attendanceStatus     String?
+  workQuality          String?
+  organisationFeedback String?
+  projectTopics        String?
+
+  // New fields from the form
+  titleOfProjectWork              String? // Title of Project/Work
+  assistanceRequiredFromInstitute String? // Assistance Required from the Institute
+  responseFromOrganisation        String? // Response from the Organisation
+  remarksOfOrganisationSupervisor String? // Remarks of Organisation Supervisor
+  significantChangeInPlan         String? // Any significant change with respect to the plan of project/work
+  observationsAboutStudent        String? // Observations about the Student (at least 100 words)
+  feedbackSharedWithStudent       String? // Feedback shared with the Student (at least 100 words)
+
+  // Ratings (1-5 scale)
+  studentProgressRating     Int?
+  industryCooperationRating Int?
+  workEnvironmentRating     Int?
+  mentoringSupportRating    Int?
+  overallSatisfactionRating Int?
+
+  // Issues and Recommendations
+  issuesIdentified String?
+  recommendations  String?
+  actionRequired   String?
+
+  filesUrl String? // URLs to any files/photos uploaded
+
+  // Documentation
+  visitPhotos    String[] // URLs to photos taken during visit
+  meetingMinutes String?
+  attendeesList  String[] // Names of people met during visit
+
+  // Administrative
+  reportSubmittedTo String? // Principal/Admin
+  followUpRequired  Boolean   @default(false)
+  nextVisitDate     DateTime?
+
+  // Monthly Visit Tracking
+  visitMonth     Int? // Month number (1-12)
+  visitYear      Int? // Year of the visit
+  requiredByDate DateTime? // Due date for this visit (last day of month or internship end)
+  isMonthlyVisit Boolean   @default(true) // True if this is a required monthly visit
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Soft Delete
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+
+  // Performance Indexes
+  @@index([applicationId])
+  @@index([facultyId])
+  @@index([isDeleted])
+  @@index([facultyId, isDeleted])
+  @@index([visitDate])
+  @@index([applicationId, visitDate])
+  @@index([facultyId, visitDate])
+  @@index([visitMonth, visitYear])
+  @@index([applicationId, status])
+  @@index([facultyId, status])
+  @@index([visitMonth, visitYear, status])
+  @@index([applicationId, isMonthlyVisit, status])
+  @@map("faculty_visit_logs")
+}
+
+
+enum InternshipStatus {
+  ACTIVE
+  INACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum ApplicationStatus {
+  APPROVED
+  APPLIED
+  UNDER_REVIEW
+  SHORTLISTED
+  SELECTED
+  REJECTED
+  JOINED
+  COMPLETED
+  WITHDRAWN
+}
+
+enum InternshipPhase {
+  NOT_STARTED // Before joining date
+  ACTIVE // Currently ongoing
+  COMPLETED // Successfully finished
+  TERMINATED // Ended early/cancelled
+}
+
+enum VisitType {
+  PHYSICAL
+  VIRTUAL
+  TELEPHONIC
+}
+
+enum VisitLogStatus {
+  DRAFT
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ReportType {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  CUSTOM
+}
+
+
+
+
+// Student Grievance Model
+model Grievance {
+  id                     String            @id @default(uuid())
+  studentId              String
+  student                Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  title                  String // Changed from 'subject' to match frontend
+  category               GrievanceCategory
+  description            String
+  severity               GrievancePriority @default(MEDIUM) // Changed from 'priority' to match frontend
+  status                 GrievanceStatus   @default(PENDING)
+  // Internship/Industry removed (self-identified only)
+  facultySupervisorId    String?
+  facultySupervisor      User?             @relation("GrievanceFacultySupervisor", fields: [facultySupervisorId], references: [id])
+  assignedToId           String?
+  assignedTo             User?             @relation("GrievanceAssignedTo", fields: [assignedToId], references: [id])
+  actionRequested        String? // What student wants to happen
+  preferredContactMethod String? // EMAIL, PHONE, IN_PERSON
+  submittedDate          DateTime          @default(now())
+  addressedDate          DateTime?
+  resolvedDate           DateTime?
+  resolution             String?
+  comments               String? // Changed from 'remarks' to match frontend
+  attachments            String[]
+
+  // Escalation tracking
+  escalationLevel   EscalationLevel @default(MENTOR) // Current escalation level
+  escalationHistory Json[]          @default([]) // Array of escalation records
+  escalatedById     String? // Last person who escalated
+  escalatedAt       DateTime? // Last escalation timestamp
+  escalationCount   Int             @default(0) // Number of times escalated
+  previousAssignees String[]        @default([]) // Track all previous assignees
+
+  // Status history relation
+  statusHistory GrievanceStatusHistory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Performance Indexes
+  @@index([studentId])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([studentId, status])
+  @@index([escalationLevel])
+}
+
+enum GrievanceCategory {
+  INTERNSHIP_RELATED
+  MENTOR_RELATED
+  INDUSTRY_RELATED
+  PAYMENT_ISSUE
+  WORKPLACE_HARASSMENT
+  WORK_CONDITION
+  DOCUMENTATION
+  WORK_ENVIRONMENT
+  SAFETY_CONCERN
+  HARASSMENT
+  MENTORSHIP
+  LEARNING_OPPORTUNITY
+  DISCRIMINATION
+  WORK_HOURS
+  OTHER
+}
+
+enum GrievanceStatus {
+  SUBMITTED
+  PENDING
+  UNDER_REVIEW
+  IN_PROGRESS
+  ADDRESSED
+  RESOLVED
+  CLOSED
+  REJECTED
+  ESCALATED
+}
+
+enum GrievancePriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// Escalation levels for grievance workflow
+enum EscalationLevel {
+  MENTOR // Level 1: Assigned mentor/faculty
+  PRINCIPAL // Level 2: Institution principal
+  STATE_DIRECTORATE // Level 3: State level authority
+}
+
+// Track all status changes for grievances
+model GrievanceStatusHistory {
+  id          String    @id @default(uuid())
+  grievanceId String
+  grievance   Grievance @relation(fields: [grievanceId], references: [id], onDelete: Cascade)
+
+  fromStatus GrievanceStatus?
+  toStatus   GrievanceStatus
+
+  // Who made this change
+  changedById String
+  changedBy   User   @relation(fields: [changedById], references: [id])
+
+  // Escalation tracking
+  escalationLevel EscalationLevel?
+  escalatedToId   String?
+
+  // Additional context
+  remarks String?
+  action  String // SUBMITTED, ASSIGNED, ESCALATED, RESPONDED, RESOLVED, CLOSED, etc.
+
+  createdAt DateTime @default(now())
+
+  @@index([grievanceId])
+  @@index([changedById])
+}
+
+enum MonthlyReportStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  REVISION_REQUIRED
+}
+
+// =============================================
+// HELP & SUPPORT SYSTEM
+// =============================================
+
+enum SupportCategory {
+  TECHNICAL_ISSUES
+  ACCOUNT_PROFILE
+  FEATURE_GUIDANCE
+  DATA_REPORTS
+  INTERNSHIP_QUERIES
+  GENERAL_INQUIRIES
+}
+
+enum SupportTicketStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  PENDING_USER
+  RESOLVED
+  CLOSED
+}
+
+enum SupportTicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// Support Ticket - Main ticket model for help requests
+model SupportTicket {
+  id           String @id @default(uuid())
+  ticketNumber String @unique // Format: SUP-YYYYMMDD-XXXX
+
+  // Submitter information
+  submittedById  String
+  submittedBy    User    @relation("TicketSubmitter", fields: [submittedById], references: [id])
+  submitterRole  Role
+  submitterName  String // Cached for quick reference
+  submitterEmail String?
+
+  // Ticket content
+  subject     String
+  description String
+  category    SupportCategory
+  priority    SupportTicketPriority @default(MEDIUM)
+  attachments String[]              @default([])
+
+  // Status tracking
+  status        SupportTicketStatus @default(OPEN)
+  statusHistory Json[]              @default([]) // Track status changes
+
+  // Assignment
+  assignedToId String?
+  assignedTo   User?     @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  assignedAt   DateTime?
+  assignedBy   String?
+
+  // Resolution
+  resolution     String?
+  resolvedAt     DateTime?
+  resolvedById   String?
+  closedAt       DateTime?
+  closedById     String?
+  closureRemarks String?
+
+  // Responses/Thread
+  responses SupportResponse[]
+
+  // Context
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id])
+
+  // Metadata
+  lastResponseAt   DateTime?
+  lastResponseById String?
+  responseCount    Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Performance Indexes
+  @@index([submittedById])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([category])
+  @@index([priority])
+  @@index([institutionId])
+  @@index([status, priority])
+  @@index([submittedById, status])
+  @@index([createdAt])
+  @@map("support_tickets")
+}
+
+// Support Response - Conversation thread for tickets
+model SupportResponse {
+  id       String        @id @default(uuid())
+  ticketId String
+  ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  // Responder info
+  responderId   String
+  responder     User   @relation("ResponseAuthor", fields: [responderId], references: [id])
+  responderRole Role
+  responderName String // Cached for quick reference
+
+  // Response content
+  message     String
+  attachments String[] @default([])
+
+  // Metadata
+  isInternal Boolean @default(false) // Internal notes not visible to submitter
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ticketId])
+  @@index([responderId])
+  @@index([createdAt])
+  @@map("support_responses")
+}
+
+// FAQ Article - Knowledge base articles
+model FAQArticle {
+  id String @id @default(uuid())
+
+  // Content
+  title    String
+  content  String // Markdown/HTML content
+  summary  String? // Brief summary for search results
+  category SupportCategory
+  tags     String[]        @default([])
+
+  // Role-based visibility - which roles can see this FAQ
+  // Empty array means visible to ALL roles (public)
+  targetRoles String[] @default([])
+
+  // Publishing
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+  publishedBy String?
+
+  // Author
+  authorId   String
+  author     User   @relation("FAQAuthor", fields: [authorId], references: [id])
+  authorName String // Cached for display
+
+  // Analytics
+  viewCount    Int @default(0)
+  helpfulCount Int @default(0)
+
+  // SEO & Search
+  slug        String   @unique // URL-friendly slug
+  searchTerms String[] @default([]) // Additional search keywords
+
+  // Ordering
+  sortOrder Int @default(0) // For manual ordering within category
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([isPublished])
+  @@index([viewCount])
+  @@index([category, isPublished])
+  @@map("faq_articles")
+}
+
+// =============================================
+// BULK JOB TRACKING SYSTEM
+// =============================================
+
+// Track all bulk operations for history and reporting
+model BulkJob {
+  id String @id @default(uuid())
+
+  // Job identification
+  jobId  String        @unique // BullMQ job ID
+  type   BulkJobType
+  status BulkJobStatus @default(QUEUED)
+
+  // File information
+  fileName     String
+  fileSize     Int
+  originalName String?
+
+  // Progress tracking
+  totalRows     Int @default(0)
+  processedRows Int @default(0)
+  successCount  Int @default(0)
+  failedCount   Int @default(0)
+  progress      Int @default(0) // 0-100 percentage
+
+  // Results (stored as JSON for flexibility)
+  errorReport   Json? // Array of failed rows with reasons
+  successReport Json? // Array of created records summary
+  warnings      Json? // Array of warnings
+
+  // Timing
+  queuedAt       DateTime  @default(now())
+  startedAt      DateTime?
+  completedAt    DateTime?
+  processingTime Int? // In milliseconds
+
+  // Error handling
+  errorMessage String? // Overall error message if job failed
+  retryCount   Int     @default(0)
+  maxRetries   Int     @default(3)
+
+  // Context
+  institutionId String
+  createdById   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Performance Indexes
+  @@index([institutionId])
+  @@index([createdById])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@index([institutionId, status])
+  @@index([institutionId, type])
+  @@index([createdById, status])
+  @@map("bulk_jobs")
+}
+
+enum BulkJobType {
+  STUDENTS
+  USERS
+  INSTITUTIONS
+  SELF_INTERNSHIPS
+}
+
+enum BulkJobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// =============================================
+// REPORT BUILDER SYSTEM
+// =============================================
+
+// Saved Report Templates - Users can save report configurations for reuse
+model ReportTemplate {
+  id          String  @id @default(uuid())
+  name        String
+  reportType  String // e.g., "mentor-student-assignments", "student-directory"
+  description String?
+
+  // Configuration stored as JSON
+  columns   Json // Selected columns array
+  filters   Json // Applied filters object
+  groupBy   String?
+  sortBy    String?
+  sortOrder String? // "asc" | "desc"
+
+  // Metadata
+  createdBy     String
+  institutionId String?
+  isPublic      Boolean @default(false) // Share with other users
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("report_templates")
+}
+
+// Generated Reports - Track generated reports and their outputs
+model GeneratedReport {
+  id            String  @id @default(uuid())
+  reportType    String
+  reportName    String? // Human-readable name
+  configuration Json // Full config used to generate
+
+  // Output
+  fileUrl String? // Path to generated file
+  format  String // "pdf" | "excel" | "csv" | "json"
+
+  // Statistics
+  totalRecords Int?
+  generatedAt  DateTime @default(now())
+
+  // Metadata
+  generatedBy   String
+  institutionId String?
+  expiresAt     DateTime // Auto-cleanup old reports
+
+  status       String  @default("pending") // pending, processing, completed, failed
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+
+  @@index([generatedBy])
+  @@index([expiresAt])
+  @@index([status])
+  @@map("generated_reports")
+}
+
+// =============================================
+// TOKEN BLACKLIST & SESSION MANAGEMENT
+// =============================================
+
+model TokenBlacklist {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique // SHA-256 hash of the token
+  expiresAt DateTime // When the token expires
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+  @@map("token_blacklist")
+}
+
+model UserSession {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Session tracking
+  ipAddress  String?
+  userAgent  String?
+  deviceInfo String?
+
+  // Session lifecycle
+  createdAt      DateTime  @default(now())
+  lastActivityAt DateTime  @default(now())
+  expiresAt      DateTime
+  invalidatedAt  DateTime? // When session was explicitly invalidated
+
+  // Session metadata
+  refreshTokenHash String? // Hash of refresh token for this session
+
+  @@index([userId])
+  @@index([invalidatedAt])
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
+// Password History - Prevents password reuse
+model PasswordHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation("UserPasswordHistory", fields: [userId], references: [id], onDelete: Cascade)
+  hash      String // Bcrypt hash of the password
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@map("password_history")
+}
+
+// =============================================
+// SYSTEM ADMIN - BACKUP & CONFIGURATION
+// =============================================
+
+model BackupRecord {
+  id               String       @id @default(uuid())
+  filename         String
+  description      String?
+  size             Int // Size in bytes
+  storageLocations String[] // ['minio', 'local']
+  minioKey         String? // Key in MinIO bucket
+  localPath        String? // Path on local filesystem
+  status           BackupStatus @default(COMPLETED)
+
+  // Creator tracking
+  createdById String
+  createdAt   DateTime @default(now())
+
+  // Restore tracking
+  restoredAt   DateTime?
+  restoredById String?
+
+  @@index([createdAt])
+  @@index([status])
+  @@map("backup_records")
+}
+
+enum BackupStatus {
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  RESTORED
+}
+
+model BackupSchedule {
+  id             String    @id @default(uuid())
+  name           String
+  cronExpression String // Cron expression for schedule timing
+  storageType    String // 'minio', 'local', 'both'
+  retentionDays  Int       @default(30)
+  isActive       Boolean   @default(true)
+  lastRun        DateTime?
+  createdById    String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([isActive])
+  @@map("backup_schedules")
+}
+
+model SystemConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  category  String // 'general', 'security', 'features', 'notifications', 'maintenance'
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([category])
+  @@map("system_configs")
+}
+
+// System-wide alerts created by admin for users
+model SystemAlert {
+  id          String   @id @default(uuid())
+  title       String
+  message     String   @db.Text
+  type        AlertType @default(INFO)
+  priority    AlertPriority @default(NORMAL)
+
+  // Target roles - which user roles should see this alert
+  targetRoles Role[] // Array of roles that should see this alert
+
+  // Visibility settings
+  isActive    Boolean  @default(true)
+  startDate   DateTime @default(now())
+  endDate     DateTime? // Optional end date for the alert
+
+  // Dismissal settings
+  isDismissible Boolean @default(true) // Can users dismiss this alert?
+
+  // Track who dismissed this alert
+  dismissedBy SystemAlertDismissal[]
+
+  // Audit
+  createdById String
+  createdBy   User     @relation("AlertCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive, startDate, endDate])
+  @@index([createdAt])
+  @@map("system_alerts")
+}
+
+// Track which users dismissed which alerts
+model SystemAlertDismissal {
+  id        String   @id @default(uuid())
+  alertId   String
+  alert     SystemAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("AlertDismissals", fields: [userId], references: [id], onDelete: Cascade)
+  dismissedAt DateTime @default(now())
+
+  @@unique([alertId, userId])
+  @@index([userId])
+  @@map("system_alert_dismissals")
+}
+
+enum AlertType {
+  INFO
+  WARNING
+  ERROR
+  SUCCESS
+  ANNOUNCEMENT
+}
+
+enum AlertPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+// =============================================
+// COMPANY MASTER DATA
+// =============================================
+
+model Company {
+  id   String @id @default(uuid())
+  name String @unique // Normalized company name
+
+  // Optional metadata
+  displayName String? // Alternative display name if needed
+  alias       String[] @default([]) // Alternative names/variations
+
+  // Address & Contact Information
+  address String? // Company address
+  city    String?
+  state   String?
+  pinCode String?
+  contact String? // Company contact number
+  email   String? // Company email
+
+  // Status
+  isActive Boolean @default(true)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@index([isActive])
+  @@index([city])
+  @@index([state])
+  @@map("companies")
+}

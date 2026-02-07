@@ -1,0 +1,126 @@
+# Artillery Load Test Configuration
+# Alternative to k6 - npm based
+#
+# Installation:
+#   npm install -g artillery
+#
+# Usage:
+#   artillery run artillery-config.yml
+#   artillery run --target http://your-server:8080 artillery-config.yml
+#   artillery run -e production artillery-config.yml
+
+config:
+  target: "http://localhost:8080"
+
+  environments:
+    production:
+      target: "http://your-production-server:8080"
+    staging:
+      target: "http://your-staging-server:8080"
+
+  phases:
+    # Warm up
+    - duration: 30
+      arrivalRate: 5
+      name: "Warm up"
+
+    # Ramp up load
+    - duration: 60
+      arrivalRate: 5
+      rampTo: 50
+      name: "Ramp up to 50 users/sec"
+
+    # Sustain load
+    - duration: 120
+      arrivalRate: 50
+      name: "Sustained load at 50 users/sec"
+
+    # Peak load
+    - duration: 60
+      arrivalRate: 50
+      rampTo: 100
+      name: "Ramp up to 100 users/sec"
+
+    # Sustain peak
+    - duration: 60
+      arrivalRate: 100
+      name: "Sustained peak at 100 users/sec"
+
+    # Cool down
+    - duration: 30
+      arrivalRate: 100
+      rampTo: 0
+      name: "Cool down"
+
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+  plugins:
+    expect: {}
+
+  # Thresholds
+  ensure:
+    p95: 500      # 95th percentile under 500ms
+    p99: 1000     # 99th percentile under 1000ms
+    maxErrorRate: 5  # Max 5% error rate
+
+scenarios:
+  # Health check flow (40% of traffic)
+  - name: "Health Check"
+    weight: 40
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+      - think: 1
+
+  # Browse API flow (30% of traffic)
+  - name: "API Browsing"
+    weight: 30
+    flow:
+      - get:
+          url: "/api/v1/content"
+          expect:
+            - statusCode:
+                - 200
+                - 401
+                - 404
+      - think: 2
+      - get:
+          url: "/api/v1/users"
+          expect:
+            - statusCode:
+                - 200
+                - 401
+                - 404
+      - think: 1
+
+  # Auth flow (20% of traffic)
+  - name: "Authentication"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/v1/auth/login"
+          json:
+            email: "test@example.com"
+            password: "password123"
+          expect:
+            - statusCode:
+                - 200
+                - 201
+                - 401
+      - think: 2
+
+  # Heavy operations (10% of traffic)
+  - name: "Heavy Operations"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/v1/content?page=1&limit=50"
+      - think: 3
+      - get:
+          url: "/api/v1/dashboard"
+      - think: 2

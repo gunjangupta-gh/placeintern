@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Monthly Report Reminder</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+    .content { background: #f7fafc; padding: 20px; border: 1px solid #e2e8f0; }
+    .button { display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin-top: 15px; }
+    .footer { text-align: center; padding: 20px; color: #718096; font-size: 12px; }
+    .info-box { background: #dbeafe; padding: 15px; border-radius: 5px; margin: 15px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Monthly Report Reminder</h1>
+    </div>
+    <div class="content">
+      <p>Dear {{name}},</p>
+
+      <div class="info-box">
+        <strong>Report Due:</strong> {{month}} {{year}}
+      </div>
+
+      <p>This is a friendly reminder to submit your monthly internship report for <strong>{{month}} {{year}}</strong>.</p>
+
+      <p>Your monthly report should include:</p>
+      <ul>
+        <li>Summary of tasks completed during the month</li>
+        <li>Skills learned and applied</li>
+        <li>Challenges faced and how you overcame them</li>
+        <li>Goals for the upcoming month</li>
+      </ul>
+
+      <p>
+        <a href="{{reportUrl}}" class="button">Submit Report Now</a>
+      </p>
+
+      <p>Timely submission of reports is important for tracking your internship progress.</p>
+
+      <p>Best regards,<br>College Management System</p>
+    </div>
+    <div class="footer">
+      <p>This is an automated reminder. Please do not reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>

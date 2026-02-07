@@ -1,0 +1,288 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*']
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      deploy_environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - staging
+          - production
+      skip_tests:
+        description: 'Skip tests (emergency deploys only)'
+        required: false
+        default: false
+        type: boolean
+      fresh_deploy:
+        description: 'Fresh deploy (removes old containers/volumes)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  NODE_VERSION: '22'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # 1. Detect Changes
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.changes.outputs.backend }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+      workflow: ${{ steps.changes.outputs.workflow }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'package.json'
+            frontend:
+              - 'frontend/**'
+              - 'package.json'
+            workflow:
+              - '.github/workflows/**'
+
+  # 2. Test Backend
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflow == 'true' || github.event_name == 'workflow_dispatch'
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ./backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run build
+      - name: Run tests
+        if: ${{ !inputs.skip_tests }}
+        run: npm test -- --passWithNoTests
+        env:
+          NODE_ENV: test
+
+  # 3. Test Frontend
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.workflow == 'true' || github.event_name == 'workflow_dispatch'
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ./frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://api.sukeerat.com' }}
+          VITE_APP_NAME: ${{ vars.VITE_APP_NAME || 'PlaceIntern Portal' }}
+          VITE_APP_ENV: production
+
+  # 4. Build & Push Docker Images
+  build-images:
+    name: Build Images
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend, changes]
+    if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # FIX: Convert repository name to lowercase for Docker Registry compatibility
+      - name: Set lower case owner and repo name
+        run: |
+          echo "REPO_LOWER=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Backend Build using Lowercase Repo Name
+      - name: Build and push Backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.REPO_LOWER }}/backend:latest
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Frontend Build using Lowercase Repo Name
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.REPO_LOWER }}/frontend:latest
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL || 'https://api.sukeerat.com' }}
+            VITE_APP_NAME=${{ vars.VITE_APP_NAME || 'PlaceIntern Portal' }}
+            VITE_APP_ENV=production
+
+  # 5. Deploy to Production (App Only - Infrastructure deployed separately)
+  deploy-production:
+    name: Deploy Production
+    runs-on: ubuntu-latest
+    needs: [build-images]
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && inputs.deploy_environment == 'production')
+    environment:
+      name: production
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          command_timeout: 10m
+          script: |
+            set -e
+
+            # Navigate to deployment directory
+            cd ${{ vars.DEPLOY_PATH || '/root/punjabinternship/placeintern' }}
+
+            # Pull latest code
+            git pull origin main || true
+
+            # Login to container registry
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # ============================================
+            # APP DEPLOYMENT ONLY (Infrastructure is separate)
+            # ============================================
+            # Prerequisites:
+            #   - Infrastructure must be running: docker-compose.infra.yml
+            #   - infra-network must exist
+            # ============================================
+
+            # Verify infrastructure is running
+            echo "Verifying infrastructure..."
+            if ! docker network inspect infra-network > /dev/null 2>&1; then
+              echo "ERROR: infra-network not found!"
+              echo "Please deploy infrastructure first:"
+              echo "  docker compose -f docker-compose.infra.yml up -d"
+              exit 1
+            fi
+
+            # Check if PostgreSQL is accessible
+            if ! docker exec infra-postgres pg_isready -U postgres > /dev/null 2>&1; then
+              echo "WARNING: PostgreSQL (infra-postgres) not ready. Attempting to start infrastructure..."
+              docker compose -f docker-compose.infra.yml up -d || true
+              sleep 10
+            fi
+
+            # Stop only app containers (not infrastructure)
+            echo "Stopping app containers..."
+            docker compose -f docker-compose.app.yml down --timeout 30 || true
+
+            # Pull new app images
+            echo "Pulling new app images..."
+            docker compose -f docker-compose.app.yml pull
+
+            # Start app services
+            echo "Starting app services..."
+            docker compose -f docker-compose.app.yml up -d --remove-orphans
+
+            # Wait for PostgreSQL to be ready (infra container)
+            echo "Waiting for PostgreSQL (infra-postgres)..."
+            for i in {1..30}; do
+              if docker exec infra-postgres pg_isready -U postgres > /dev/null 2>&1; then
+                echo "PostgreSQL is ready!"
+                break
+              fi
+              echo "Waiting for PostgreSQL... attempt $i"
+              sleep 2
+            done
+
+            # Run Prisma migrations
+            echo "Running Prisma migrations..."
+            docker exec cms-backend npx prisma migrate deploy || {
+              echo "Migration failed, trying to push schema..."
+              docker exec cms-backend npx prisma db push --accept-data-loss || true
+            }
+
+            # Restart backend after migrations
+            echo "Restarting backend after migrations..."
+            docker restart cms-backend
+            sleep 10
+
+            # Wait for backend to be healthy
+            echo "Running health checks on backend..."
+            for i in {1..30}; do
+              if curl -sf http://localhost:8090/health > /dev/null 2>&1; then
+                echo "Backend is healthy!"
+                break
+              fi
+              echo "Waiting for backend startup... attempt $i"
+              sleep 5
+            done
+
+            # Final health check
+            if curl -sf http://localhost:8090/health > /dev/null 2>&1; then
+              echo "======================================"
+              echo "SUCCESS: App Deployment Complete!"
+              echo "======================================"
+              echo ""
+              echo "=== App Containers ==="
+              docker ps --filter "name=cms-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+              echo ""
+              echo "=== Infrastructure Containers ==="
+              docker ps --filter "name=infra-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+              exit 0
+            else
+              echo "======================================"
+              echo "ERROR: Health check failed!"
+              echo "======================================"
+              echo ""
+              echo "=== Infrastructure Status ==="
+              docker exec infra-postgres pg_isready -U postgres || echo "PostgreSQL not ready"
+              docker exec infra-dragonfly redis-cli ping || echo "Dragonfly not ready"
+              echo ""
+              echo "=== Backend Container Logs ==="
+              docker logs cms-backend --tail 100
+              echo ""
+              echo "=== PM2 Logs ==="
+              docker exec cms-backend cat /app/logs/error.log 2>/dev/null || echo "No error.log"
+              docker exec cms-backend cat /app/logs/out.log 2>/dev/null || echo "No out.log"
+              exit 1
+            fi

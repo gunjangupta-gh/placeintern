@@ -1,0 +1,71 @@
+import { ReportDefinition } from '../interfaces/report-definition.interface';
+
+export const industryReportDefinitions: Record<string, ReportDefinition> = {
+  'industry-wise-students-stipend': {
+    type: 'industry-wise-students-stipend',
+    name: 'Industry-wise Student Distribution & Stipend Analysis',
+    description: 'Company/Industry-wise student count and stipend breakdown (company names normalized at database level)',
+    category: 'Industry',
+    icon: 'shop',
+    availableFor: ['STATE_DIRECTORATE', 'PRINCIPAL', 'SYSTEM_ADMIN'],
+    columns: [
+      { id: 'companyName', label: 'Company/Industry Name', type: 'string', default: true, sortable: true },
+      { id: 'companyAddress', label: 'Company Address', type: 'string', default: true, sortable: true },
+      { id: 'totalStudents', label: 'Total Students', type: 'number', default: true, sortable: true },
+      { id: 'totalStipend', label: 'Total Stipend', type: 'number', default: true, sortable: true },
+      { id: 'avgStipend', label: 'Average Stipend', type: 'number', default: true, sortable: true },
+      { id: 'minStipend', label: 'Minimum Stipend', type: 'number', default: true },
+      { id: 'maxStipend', label: 'Maximum Stipend', type: 'number', default: true },
+      { id: 'activeStudents', label: 'Active Students', type: 'number', default: true },
+      { id: 'completedStudents', label: 'Completed Students', type: 'number', default: true },
+    ],
+    filters: [
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false, placeholder: 'All Institutions' },
+      { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
+      { id: 'minStudents', label: 'Minimum Students', type: 'number', required: false, placeholder: 'Min students count' },
+      { id: 'status', label: 'Internship Status', type: 'select', required: false, options: [
+        { label: 'All', value: 'ALL' },
+        { label: 'Active Only', value: 'ACTIVE' },
+        { label: 'Completed Only', value: 'COMPLETED' },
+      ]},
+      { id: 'startDateRange', label: 'Start Date Range', type: 'dateRange', required: false },
+    ],
+    groupBy: ['companyName'],
+    sortableColumns: ['companyName', 'totalStudents', 'totalStipend', 'avgStipend'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
+  },
+
+  'top-institutes-per-industry': {
+    type: 'top-institutes-per-industry',
+    name: 'Top 3 Institutes per Industry/Company',
+    description: 'For each company/industry, shows the top 3 institutes by student count along with total students, average stipend, and key metrics',
+    category: 'Industry',
+    icon: 'trophy',
+    availableFor: ['STATE_DIRECTORATE', 'PRINCIPAL', 'SYSTEM_ADMIN'],
+    columns: [
+      { id: 'companyName', label: 'Company/Industry Name', type: 'string', default: true, sortable: true },
+      { id: 'companyAddress', label: 'Company Address', type: 'string', default: true },
+      { id: 'companyTotalStudents', label: 'Company Total Students', type: 'number', default: true, sortable: true },
+      { id: 'instituteRank', label: 'Rank', type: 'number', default: true },
+      { id: 'instituteName', label: 'Institute Name', type: 'string', default: true, sortable: true },
+      { id: 'totalStudents', label: 'Students from Institute', type: 'number', default: true, sortable: true },
+      { id: 'avgStipend', label: 'Average Stipend', type: 'number', default: true, sortable: true },
+      { id: 'totalStipend', label: 'Total Stipend', type: 'number', default: true },
+      { id: 'activeStudents', label: 'Active Students', type: 'number', default: true },
+      { id: 'completedStudents', label: 'Completed Students', type: 'number', default: true },
+    ],
+    filters: [
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false, placeholder: 'All Institutions' },
+      { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
+      { id: 'status', label: 'Internship Status', type: 'select', required: false, options: [
+        { label: 'All', value: 'ALL' },
+        { label: 'Active Only', value: 'ACTIVE' },
+        { label: 'Completed Only', value: 'COMPLETED' },
+      ]},
+      { id: 'startDateRange', label: 'Start Date Range', type: 'dateRange', required: false },
+    ],
+    groupBy: ['companyName', 'instituteName'],
+    sortableColumns: ['companyName', 'companyTotalStudents', 'instituteName', 'totalStudents', 'avgStipend'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
+  },
+};

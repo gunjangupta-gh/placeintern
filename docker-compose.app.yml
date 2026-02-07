@@ -1,0 +1,131 @@
+# ===========================================
+# CMS Application Only - Docker Compose
+# ===========================================
+# Use this when running with shared infrastructure (docker-compose.infra.yml)
+#
+# Prerequisites:
+#   1. Start infrastructure: docker compose -f docker-compose.infra.yml --env-file .env.infra up -d
+#   2. Ensure infra-network exists: docker network ls | grep infra-network
+#
+# Usage:
+#   docker compose -f docker-compose.app.yml up -d
+#
+# This file contains only the application services (frontend + backend)
+# and connects to the shared infrastructure network.
+
+services:
+  # ===========================================
+  # Frontend - React/Vite (Served with Nginx)
+  # ===========================================
+  frontend:
+    image: ghcr.io/nikhil2247/cms-new/frontend:latest
+    container_name: cms-frontend
+    ports:
+      - "5173:80"
+    networks:
+      - infra-network
+      - coolify
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cms-frontend.rule=Host(`your-domain.com`)"
+      - "traefik.http.routers.cms-frontend.entrypoints=https"
+      - "traefik.http.routers.cms-frontend.tls=true"
+      - "traefik.http.routers.cms-frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.cms-frontend.loadbalancer.server.port=80"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ===========================================
+  # Backend - NestJS with PM2
+  # ===========================================
+  backend:
+    image: ghcr.io/nikhil2247/cms-new/backend:latest
+    container_name: cms-backend
+    ports:
+      - "8090:6000"
+    environment:
+      # Core
+      - NODE_ENV=production
+      - PORT=6000
+      - BACKEND_PORT=6000
+      # Database - connects to shared PostgreSQL
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@infra-postgres:5432/${POSTGRES_DB:-cms_db}?schema=public
+      # Cache - connects to shared Dragonfly
+      - REDIS_URL=redis://infra-dragonfly:6379
+      - REDIS_HOST=infra-dragonfly
+      - REDIS_PORT=6379
+      # JWT
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-30m}
+      - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION:-7d}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      # CORS
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - CORS_ORIGIN=${CORS_ORIGIN}
+      # File Storage - connects to shared MinIO
+      - MINIO_ENDPOINT=http://infra-minio:9000
+      - MINIO_BUCKET=${MINIO_BUCKET:-cms-uploads}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin123}
+      - MINIO_REGION=${MINIO_REGION:-us-east-1}
+      # PM2
+      - PM2_INSTANCES=${PM2_INSTANCES:-2}
+      # Node.js memory optimization
+      - NODE_OPTIONS=--max-old-space-size=512
+    volumes:
+      - backend-uploads:/app/uploads
+      - backend-logs:/app/logs
+    user: "appuser"
+    networks:
+      - infra-network
+      - coolify
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cms-backend.rule=Host(`api.your-domain.com`)"
+      - "traefik.http.routers.cms-backend.entrypoints=https"
+      - "traefik.http.routers.cms-backend.tls=true"
+      - "traefik.http.routers.cms-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.cms-backend.loadbalancer.server.port=6000"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 768M
+        reservations:
+          cpus: "0.25"
+          memory: 384M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:6000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+networks:
+  infra-network:
+    external: true
+    name: infra-network
+  coolify:
+    external: true
+    name: coolify
+
+volumes:
+  backend-uploads:
+    name: cms-backend-uploads
+  backend-logs:
+    name: cms-backend-logs

@@ -1,0 +1,252 @@
+# ===========================================
+# Shared Infrastructure - Coolify Compatible
+# ===========================================
+# PostgreSQL + Dragonfly (Redis) + MinIO
+# Optimized for 6GB RAM total
+#
+# Coolify Deployment:
+#   1. Create new "Docker Compose" resource in Coolify
+#   2. Paste this file or link to repository
+#   3. Set environment variables in Coolify UI (or use defaults)
+#   4. Deploy
+#
+# Environment Variables (set in Coolify UI):
+#   POSTGRES_USER       - PostgreSQL username (default: postgres)
+#   POSTGRES_PASSWORD   - PostgreSQL password (default: postgres123)
+#   POSTGRES_DB         - Database name (default: app_db)
+#   MINIO_ROOT_USER     - MinIO admin username (default: minioadmin)
+#   MINIO_ROOT_PASSWORD - MinIO admin password (default: minioadmin123)
+#   MINIO_DEFAULT_BUCKETS - Comma-separated bucket names (default: uploads,backups,cms-uploads)
+#
+# Connecting from other services (use these in your app):
+#   - PostgreSQL: postgresql://postgres:password@infra-postgres:5432/app_db
+#   - Dragonfly:  redis://infra-dragonfly:6379
+#   - MinIO API:  http://infra-minio:9000
+#   - MinIO Console: http://infra-minio:9001
+#
+# To create additional databases, connect via psql or pgAdmin:
+#   CREATE DATABASE your_new_db;
+#
+# Resource Allocation (6GB total):
+#   - PostgreSQL: 3GB
+#   - Dragonfly:  1.5GB
+#   - MinIO:      1GB
+#   - Buffer:     0.5GB
+# ===========================================
+
+services:
+  # ===========================================
+  # PostgreSQL 18 - Primary Database
+  # ===========================================
+  postgres:
+    image: postgres:18-alpine
+    container_name: infra-postgres
+    hostname: infra-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      POSTGRES_DB: ${POSTGRES_DB:-app_db}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+      POSTGRES_MULTIPLE_DATABASES: ${POSTGRES_MULTIPLE_DATABASES:-} 
+    volumes:
+      - infra-postgres-data:/var/lib/postgresql/data
+    networks:
+      - infra-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 3G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-app_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command:
+      - postgres
+      # Memory settings (optimized for 3GB limit)
+      - -c
+      - shared_buffers=768MB
+      - -c
+      - effective_cache_size=2GB
+      - -c
+      - maintenance_work_mem=256MB
+      - -c
+      - work_mem=16MB
+      # WAL settings
+      - -c
+      - wal_buffers=16MB
+      - -c
+      - min_wal_size=512MB
+      - -c
+      - max_wal_size=2GB
+      - -c
+      - checkpoint_completion_target=0.9
+      # Connection settings
+      - -c
+      - max_connections=200
+      - -c
+      - superuser_reserved_connections=3
+      # Performance settings
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - default_statistics_target=100
+      - -c
+      - huge_pages=try
+      # Logging
+      - -c
+      - log_statement=none
+      - -c
+      - log_min_duration_statement=1000
+      - -c
+      - log_checkpoints=on
+      - -c
+      - log_connections=off
+      - -c
+      - log_disconnections=off
+      # Autovacuum
+      - -c
+      - autovacuum_max_workers=2
+      - -c
+      - autovacuum_naptime=30s
+
+  # ===========================================
+  # DragonflyDB - Redis-compatible Cache
+  # ===========================================
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    container_name: infra-dragonfly
+    hostname: infra-dragonfly
+    ports:
+      - "6379:6379"
+    volumes:
+      - infra-dragonfly-data:/data
+    networks:
+      - infra-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1536M
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+    ulimits:
+      memlock: -1
+    command: >
+      --logtostderr
+      --cache_mode=false
+      --maxmemory=1200mb
+      --proactor_threads=2
+      --cluster_mode=emulated
+      --lock_on_hashtags
+      --default_lua_flags=allow-undeclared-keys
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ===========================================
+  # MinIO - S3-compatible Object Storage
+  # ===========================================
+  minio:
+    image: minio/minio:latest
+    container_name: infra-minio
+    hostname: infra-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_BROWSER_REDIRECT_URL: ${MINIO_BROWSER_REDIRECT_URL:-}
+    volumes:
+      - infra-minio-data:/data
+    networks:
+      - infra-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ===========================================
+  # MinIO Init - Creates default buckets
+  # ===========================================
+  minio-init:
+    image: minio/mc:latest
+    container_name: infra-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - infra-network
+    restart: "no"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 64M
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_DEFAULT_BUCKETS: ${MINIO_DEFAULT_BUCKETS:-uploads,backups,cms-uploads}
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        sleep 3
+        echo "Configuring MinIO..."
+        mc alias set myminio http://infra-minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD}
+
+        # Create buckets from comma-separated list
+        IFS=',' read -ra BUCKETS <<< "$${MINIO_DEFAULT_BUCKETS}"
+        for bucket in "$${BUCKETS[@]}"; do
+          bucket=$$(echo "$$bucket" | xargs)
+          if [ -n "$$bucket" ]; then
+            echo "Creating bucket: $$bucket"
+            mc mb myminio/$$bucket --ignore-existing
+            mc anonymous set download myminio/$$bucket
+            echo "Set public download policy for: $$bucket"
+          fi
+        done
+
+        echo "MinIO initialization complete."
+        mc admin info myminio
+
+networks:
+  infra-network:
+    driver: bridge
+    name: infra-network
+
+volumes:
+  infra-postgres-data:
+    name: infra-postgres-data
+  infra-dragonfly-data:
+    name: infra-dragonfly-data
+  infra-minio-data:
+    name: infra-minio-data
