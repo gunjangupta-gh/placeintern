@@ -11,6 +11,7 @@ import { InternshipModule } from '../../domain/internship/internship.module';
 
 // Training module
 import { PrincipalTrainingModule } from './training/principal-training.module';
+import { AuditService } from '../../infrastructure/audit/audit.service';
 
 @Module({
   imports: [
