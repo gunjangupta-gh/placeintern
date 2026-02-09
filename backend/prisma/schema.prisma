@@ -14,20 +14,20 @@ datasource db {
 // Models
 
 model User {
-  id          String   @id @default(uuid())
-  email       String?  @unique
-  password    String
-  name        String
-  phoneNo     String?
-  rollNumber  String?
-  dob         String?
+  id         String  @id @default(uuid())
+  email      String? @unique
+  password   String
+  name       String
+  phoneNo    String?
+  rollNumber String?
+  dob        String?
 
   // Branch - for STUDENT and TEACHER roles
-  branchId    String?
-  branch      Branch?  @relation(fields: [branchId], references: [id])
-  branchName  String?  // Cached for quick access
+  branchId   String?
+  branch     Branch? @relation(fields: [branchId], references: [id])
+  branchName String? // Cached for quick access
 
-  designation String?  // Only for TEACHER/PRINCIPAL
+  designation String? // Only for TEACHER/PRINCIPAL
   role        Role?
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -91,8 +91,8 @@ model User {
   sessions UserSession[] @relation("UserSessions")
 
   // System Alerts
-  createdAlerts     SystemAlert[]          @relation("AlertCreator")
-  dismissedAlerts   SystemAlertDismissal[] @relation("AlertDismissals")
+  createdAlerts   SystemAlert[]          @relation("AlertCreator")
+  dismissedAlerts SystemAlertDismissal[] @relation("AlertDismissals")
 
   // Performance Indexes
   @@index([institutionId])
@@ -138,12 +138,12 @@ model Student {
   admissionNumber String?
 
   // Address (student's permanent address)
-  address String?
-  pinCode String?
-  tehsil  String?
+  address  String?
+  pinCode  String?
+  tehsil   String?
   district String?
-  city    String?
-  state   String?
+  city     String?
+  state    String?
 
   // Family
   parentName    String?
@@ -320,8 +320,8 @@ model Institution {
   Student Student[]
 
   // Internship (self-identified only)
-  Branch               Branch[]
-  Department           Department[]
+  Branch     Branch[]
+  Department Department[]
 
   // Help & Support
   supportTickets SupportTicket[]
@@ -352,7 +352,7 @@ model Branch {
   institution   Institution? @relation(fields: [institutionId], references: [id])
 
   // Relations
-  users    User[]    // Teachers and Students with branchId
+  users    User[] // Teachers and Students with branchId
   students Student[] // Direct student relation (for backward compatibility)
 
   createdAt DateTime @default(now())
@@ -603,7 +603,6 @@ model MentorAssignment {
   @@map("mentor_assignments")
 }
 
-
 // Student Internship Application
 model InternshipApplication {
   id String @id @default(uuid())
@@ -682,11 +681,11 @@ model InternshipApplication {
   facultyVisitLogs   FacultyVisitLog[]
 
   // Report & Visit Counter Fields
-  totalExpectedReports          Int       @default(0) // Calculated from internship dates
-  totalExpectedVisits           Int       @default(0) // Calculated from internship dates
-  submittedReportsCount         Int       @default(0) // Incremented when student submits report
-  completedVisitsCount          Int       @default(0) // Incremented when faculty logs visit
-  expectedCountsLastCalculated  DateTime?             // When expected counts were last calculated
+  totalExpectedReports         Int       @default(0) // Calculated from internship dates
+  totalExpectedVisits          Int       @default(0) // Calculated from internship dates
+  submittedReportsCount        Int       @default(0) // Incremented when student submits report
+  completedVisitsCount         Int       @default(0) // Incremented when faculty logs visit
+  expectedCountsLastCalculated DateTime? // When expected counts were last calculated
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -828,7 +827,7 @@ model FacultyVisitLog {
   responseFromOrganisation        String? // Response from the Organisation
   remarksOfOrganisationSupervisor String? // Remarks of Organisation Supervisor
   significantChangeInPlan         String? // Any significant change with respect to the plan of project/work
-           String? // Observations about the Student (at least 100 words)
+  observationsAboutStudent        String? // Observations about the Student (at least 100 words)
   feedbackSharedWithStudent       String? // Feedback shared with the Student (at least 100 words)
 
   // Ratings (1-5 scale)
@@ -884,7 +883,6 @@ model FacultyVisitLog {
   @@map("faculty_visit_logs")
 }
 
-
 enum InternshipStatus {
   ACTIVE
   INACTIVE
@@ -931,9 +929,6 @@ enum ReportType {
   ANNUAL
   CUSTOM
 }
-
-
-
 
 // Student Grievance Model
 model Grievance {
@@ -1481,19 +1476,19 @@ model SystemConfig {
 
 // System-wide alerts created by admin for users
 model SystemAlert {
-  id          String   @id @default(uuid())
-  title       String
-  message     String   @db.Text
-  type        AlertType @default(INFO)
-  priority    AlertPriority @default(NORMAL)
+  id       String        @id @default(uuid())
+  title    String
+  message  String        @db.Text
+  type     AlertType     @default(INFO)
+  priority AlertPriority @default(NORMAL)
 
   // Target roles - which user roles should see this alert
   targetRoles Role[] // Array of roles that should see this alert
 
   // Visibility settings
-  isActive    Boolean  @default(true)
-  startDate   DateTime @default(now())
-  endDate     DateTime? // Optional end date for the alert
+  isActive  Boolean   @default(true)
+  startDate DateTime  @default(now())
+  endDate   DateTime? // Optional end date for the alert
 
   // Dismissal settings
   isDismissible Boolean @default(true) // Can users dismiss this alert?
@@ -1514,12 +1509,12 @@ model SystemAlert {
 
 // Track which users dismissed which alerts
 model SystemAlertDismissal {
-  id        String   @id @default(uuid())
-  alertId   String
-  alert     SystemAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation("AlertDismissals", fields: [userId], references: [id], onDelete: Cascade)
-  dismissedAt DateTime @default(now())
+  id          String      @id @default(uuid())
+  alertId     String
+  alert       SystemAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User        @relation("AlertDismissals", fields: [userId], references: [id], onDelete: Cascade)
+  dismissedAt DateTime    @default(now())
 
   @@unique([alertId, userId])
   @@index([userId])
