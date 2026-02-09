@@ -299,6 +299,14 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
       width={900}
       destroyOnHidden
     >
+      <Alert
+        message="Important: All Fields Required"
+        description="All input fields are mandatory to complete the visit log. Images/photos are optional."
+        type="info"
+        showIcon
+        closable
+        className="mb-4"
+      />
       <Form form={form} layout="vertical" className="mt-4">
         {/* Basic Information */}
         <Row gutter={16}>

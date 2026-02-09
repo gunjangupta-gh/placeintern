@@ -313,6 +313,14 @@ const UnifiedVisitLogModal = ({
         </Space>
       }
     >
+      <Alert
+        message="Important: All Fields Required"
+        description="All input fields are mandatory to complete the visit log. Images and signed documents are optional."
+        type="info"
+        showIcon
+        closable
+        className="mb-3"
+      />
       <Form form={form} layout="vertical" size="small" className="space-y-3">
         {/* Core Visit Info */}
         <Card size="small" className="!mb-3">

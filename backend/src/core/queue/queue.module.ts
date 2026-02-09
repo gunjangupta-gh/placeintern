@@ -35,8 +35,8 @@ const queueLogger = new Logger('QueueModule');
           host: redisHost,
           port: redisPort,
           password: redisPassword || undefined,
-          // Disable offline queue to prevent memory issues
-          enableOfflineQueue: false,
+          // Enable offline queue in development to prevent errors when Redis is unavailable
+          enableOfflineQueue: process.env.NODE_ENV === 'production' ? false : true,
           // Required for BullMQ compatibility
           maxRetriesPerRequest: null,
           // Connection timeouts - increased for DragonflyDB stability
@@ -46,13 +46,19 @@ const queueLogger = new Logger('QueueModule');
           enableReadyCheck: true,
           keepAlive: 30000, // Send keepalive every 30 seconds
           noDelay: true, // Disable Nagle's algorithm for lower latency
-          // Retry strategy - stop after 10 attempts to prevent infinite retries
+          // Retry strategy - stop after fewer attempts in development
           retryStrategy: (times: number) => {
-            if (times > 10) {
+            const maxRetries = process.env.NODE_ENV === 'production' ? 10 : 3;
+            if (times > maxRetries) {
+              if (times === maxRetries + 1) {
+                queueLogger.warn(`Redis connection failed after ${maxRetries} attempts. Queues will be disabled.`);
+              }
               return null; // Stop retrying
             }
             return Math.min(times * 1000, 30000); // Max 30 seconds
           },
+          // Suppress errors when Redis is unavailable in development
+          lazyConnect: process.env.NODE_ENV !== 'production',
         };
 
         return {

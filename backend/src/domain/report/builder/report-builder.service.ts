@@ -99,11 +99,6 @@ export class ReportBuilderService {
     const catalog: Record<string, ReportCatalogItem[]> = {};
     const normalizedRoles = this.normalizeRole(role);
 
-    this.logger.debug(`getReportCatalog called with role: ${role}`);
-    this.logger.debug(`Normalized roles: ${JSON.stringify(normalizedRoles)}`);
-    this.logger.debug(`Available categories: ${Object.keys(reportCategories).join(', ')}`);
-    this.logger.debug(`Total definitions: ${Object.keys(allReportDefinitions).length}`);
-
     Object.entries(reportCategories).forEach(([categoryKey, category]) => {
       const categoryReports: ReportCatalogItem[] = [];
 
@@ -134,7 +129,6 @@ export class ReportBuilderService {
       }
     });
 
-    this.logger.debug(`Catalog result: ${JSON.stringify(Object.keys(catalog))}`);
     return catalog;
   }
 

@@ -828,7 +828,7 @@ model FacultyVisitLog {
   responseFromOrganisation        String? // Response from the Organisation
   remarksOfOrganisationSupervisor String? // Remarks of Organisation Supervisor
   significantChangeInPlan         String? // Any significant change with respect to the plan of project/work
-  observationsAboutStudent        String? // Observations about the Student (at least 100 words)
+           String? // Observations about the Student (at least 100 words)
   feedbackSharedWithStudent       String? // Feedback shared with the Student (at least 100 words)
 
   // Ratings (1-5 scale)

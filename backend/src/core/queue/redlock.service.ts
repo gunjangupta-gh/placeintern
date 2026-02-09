@@ -18,7 +18,7 @@ export class RedlockService implements OnModuleInit {
       port: parseInt(process.env.REDIS_PORT || '6379'),
       password: process.env.REDIS_PASSWORD || undefined,
       lazyConnect: true,
-      enableOfflineQueue: false,
+      enableOfflineQueue: process.env.NODE_ENV === 'production' ? false : true,
       maxRetriesPerRequest: 3, // Allow a few retries for transient failures
       connectTimeout: 10000, // 10 second connection timeout (increased for DragonflyDB)
       commandTimeout: 10000, // 10 second command timeout (increased for DragonflyDB)
@@ -27,7 +27,8 @@ export class RedlockService implements OnModuleInit {
       keepAlive: 30000, // Send keepalive every 30 seconds
       noDelay: true, // Disable Nagle's algorithm for lower latency
       retryStrategy: (times) => {
-        if (times > 10) {
+        const maxRetries = process.env.NODE_ENV === 'production' ? 10 : 3;
+        if (times > maxRetries) {
           return null; // Stop retrying
         }
         return Math.min(times * 1000, 30000);

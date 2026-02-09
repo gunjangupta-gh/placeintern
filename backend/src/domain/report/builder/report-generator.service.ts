@@ -1964,13 +1964,15 @@ export class ReportGeneratorService {
         // Set filter to only show self-identified internships
         return this.generateInternshipReport({ ...filters, isSelfIdentified: true }, pagination);
 
-      // ==================== Compliance Reports (3) ====================
+      // ==================== Compliance Reports (4) ====================
       case 'faculty-visit-compliance':
         return this.generateFacultyVisitComplianceReport(filters, pagination);
       case 'monthly-report-compliance':
         return this.generateMonthlyReportComplianceReport(filters, pagination);
       case 'joining-report-status':
         return this.generateJoiningReportStatusReport(filters, pagination);
+      case 'faculty-visit-details':
+        return this.generateFacultyVisitDetailsReport(filters, pagination);
 
       // ==================== Institute Reports (3) ====================
       case 'institute-summary':
@@ -2852,6 +2854,138 @@ export class ReportGeneratorService {
     // Apply joining letter status filter if specified
     if (filters?.joiningLetterStatus) {
       return results.filter((r) => r.joiningLetterStatus === filters.joiningLetterStatus);
+    }
+
+    return results;
+  }
+
+  /**
+   * Generate Faculty Visit Details Report
+   * Detailed faculty visit logs with observations and feedback
+   * @param filters - Filter criteria (institutionId, branchId, mentorId, visitType, visitStatus, dateRange)
+   * @param pagination - Optional pagination options
+   */
+  async generateFacultyVisitDetailsReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    // Build the where clause for faculty visit logs
+    const visitWhere: Record<string, unknown> = {
+      isDeleted: false,
+    };
+
+    // Filter by visit type
+    if (filters?.visitType) {
+      visitWhere.visitType = filters.visitType;
+    }
+
+    // Filter by visit status
+    if (filters?.visitStatus) {
+      visitWhere.status = filters.visitStatus;
+    }
+
+    // Filter by date range
+    if (filters?.dateRange) {
+      const dateFilter: Record<string, unknown> = {};
+      if (filters.dateRange.start) {
+        dateFilter.gte = new Date(filters.dateRange.start);
+      }
+      if (filters.dateRange.end) {
+        const endDate = new Date(filters.dateRange.end);
+        endDate.setUTCHours(23, 59, 59, 999);
+        dateFilter.lte = endDate;
+      }
+      if (Object.keys(dateFilter).length > 0) {
+        visitWhere.visitDate = dateFilter;
+      }
+    }
+
+    // Filter by mentor
+    if (filters?.mentorId) {
+      visitWhere.facultyId = filters.mentorId;
+    }
+
+    // Fetch faculty visit logs with related data
+    const visitLogs = await this.prisma.facultyVisitLog.findMany({
+      where: visitWhere,
+      include: {
+        faculty: {
+          select: {
+            id: true,
+            name: true,
+            institutionId: true,
+          },
+        },
+        application: {
+          select: {
+            companyName: true,
+            student: {
+              select: {
+                id: true,
+                institutionId: true,
+                branchId: true,
+                gender: true,
+                user: { select: { name: true, rollNumber: true, branchName: true, active: true } },
+                branch: { select: { name: true } },
+                Institution: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+      take,
+      skip,
+      orderBy: { visitDate: 'desc' },
+    });
+
+    this.warnOnLargeResultSet(visitLogs.length, 'FacultyVisitDetailsReport');
+
+    const results: any[] = [];
+
+    for (const visit of visitLogs) {
+      const student = visit.application?.student;
+      const facultyInstitutionId = visit.faculty?.institutionId;
+
+      // Apply institution filter
+      if (filters?.institutionId) {
+        const matchesInstitution =
+          student?.institutionId === filters.institutionId ||
+          facultyInstitutionId === filters.institutionId;
+        if (!matchesInstitution) {
+          continue;
+        }
+      }
+
+      // Apply branch filter
+      if (filters?.branchId && student?.branchId !== filters.branchId) {
+        continue;
+      }
+
+      const visitDone = visit.status === 'COMPLETED';
+
+      results.push({
+        mentorName: visit.faculty?.name ?? 'N/A',
+        studentName: student?.user?.name ?? 'N/A',
+        rollNumber: student?.user?.rollNumber ?? 'N/A',
+        institutionName: student?.Institution?.name ?? 'N/A',
+        branchName: student?.branch?.name ?? student?.user?.branchName ?? 'N/A',
+        companyName: visit.application?.companyName ?? 'N/A',
+        visitDone,
+        visitDate: this.formatToISTDateOnly(visit.visitDate),
+        visitType: visit.visitType ?? 'N/A',
+        visitLocation: visit.visitLocation ?? 'N/A',
+        visitNumber: visit.visitNumber ?? 0,
+        visitStatus: visit.status ?? 'N/A',
+        titleOfProjectWork: visit.titleOfProjectWork ?? 'N/A',
+        assistanceRequiredFromInstitute: visit.assistanceRequiredFromInstitute ?? 'N/A',
+        responseFromOrganisation: visit.responseFromOrganisation ?? 'N/A',
+        remarksOfOrganisationSupervisor: visit.remarksOfOrganisationSupervisor ?? 'N/A',
+        significantChangeInPlan: visit.significantChangeInPlan ?? 'N/A',
+        observationsAboutStudent: visit.observationsAboutStudent ?? 'N/A',
+        feedbackSharedWithStudent: visit.feedbackSharedWithStudent ?? 'N/A',
+      });
     }
 
     return results;

@@ -218,10 +218,19 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
           <Spin size="large" />
         </div>
       ) : (
-        <Form form={form} layout="vertical" onFinish={onFinish}>
-          <Divider plain>Visit Information</Divider>
+        <>
+          <Alert
+            message="Important: All Fields Required"
+            description="All input fields are mandatory to complete the visit log. Attachments/documents are optional."
+            type="info"
+            showIcon
+            closable
+            className="mb-4"
+          />
+          <Form form={form} layout="vertical" onFinish={onFinish}>
+            <Divider plain>Visit Information</Divider>
 
-          <Row gutter={16}>
+            <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item
                 name="visitDate"
@@ -442,6 +451,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
             </Button>
           </div>
         </Form>
+        </>
       )}
     </Modal>
   );
