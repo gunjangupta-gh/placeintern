@@ -679,6 +679,7 @@ export class ReportGeneratorService {
         mentorEmail: application.mentor?.email ?? application.student.mentorAssignments?.[0]?.mentor?.email ?? 'N/A',
         mentorPhone: application.mentor?.phoneNo ?? application.student.mentorAssignments?.[0]?.mentor?.phoneNo ?? 'N/A',
         applicationFillRate,
+        joiningLetterStatus: application.joiningLetterUrl ? 'Submitted' : 'Pending',
         reportsSubmitted: application._count.monthlyReports ?? 0,
         location: application.companyAddress ?? 'N/A',
         isSelfIdentified: application.isSelfIdentified ?? false,

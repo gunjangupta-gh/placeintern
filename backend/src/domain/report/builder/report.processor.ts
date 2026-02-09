@@ -410,6 +410,7 @@ export class ReportProcessor extends WorkerHost {
         { field: 'mentorEmail', header: 'Mentor Email', type: 'string' as const, width: 25 },
         { field: 'mentorPhone', header: 'Mentor Phone', type: 'string' as const, width: 15 },
         { field: 'applicationFillRate', header: 'Fill Rate %', type: 'number' as const, width: 12 },
+        { field: 'joiningLetterStatus', header: 'Joining Letter', type: 'string' as const, width: 15 },
         { field: 'isActive', header: 'Active', type: 'boolean' as const, width: 12 },
       ],
       // Internship by Institution report - matches generateInternshipByInstitutionReport output

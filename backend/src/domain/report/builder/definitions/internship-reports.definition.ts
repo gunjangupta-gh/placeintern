@@ -63,6 +63,7 @@ export const internshipReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'mentorName', label: 'Mentor', type: 'string', default: true },
       { id: 'mentorEmail', label: 'Mentor Email', type: 'string', default: false },
       { id: 'mentorPhone', label: 'Mentor Phone', type: 'string', default: false },
+      { id: 'joiningLetterStatus', label: 'Joining Letter', type: 'string', default: true, description: 'Joining letter submission status (Submitted/Pending)' },
       { id: 'applicationFillRate', label: 'Application Fill Rate %', type: 'number', default: true, description: 'Percentage of internship application details filled' },
       { id: 'isActive', label: 'Active', type: 'boolean', default: true, description: 'Combined student and user active status' },
       { id: 'userActive', label: 'User Account Active', type: 'boolean', default: false, description: 'User account active status' },

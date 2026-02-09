@@ -1,8 +1,8 @@
 import { Helmet } from 'react-helmet';
 
 const SEO = ({
-  title = 'College Management System',
-  description = 'Comprehensive internship and college management platform',
+  title = 'PlaceIntern - College Internship Management Portal',
+  description = 'Internship Management Portal for PSBTE - Punjab State Board of Technical Education. Comprehensive platform for managing student internships, mentor assignments, and institutional coordination',
 }) => (
   <Helmet>
     <title>{title}</title>
