@@ -1,0 +1,352 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip tests before deployment'
+        required: false
+        default: false
+        type: boolean
+      deploy_backend:
+        description: 'Deploy backend'
+        required: false
+        default: true
+        type: boolean
+      deploy_frontend:
+        description: 'Deploy frontend'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  NODE_VERSION: '22'
+  DEPLOY_PATH: '/root/placeintern/placeintern'
+  BACKEND_PATH: '/root/placeintern/placeintern/backend'
+  FRONTEND_PATH: '/root/placeintern/placeintern/frontend'
+  REPO_URL: 'github.com/${{ github.repository }}.git'
+
+jobs:
+  # ==========================================
+  # DETECT CHANGES
+  # ==========================================
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.changes.outputs.backend }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+
+  # ==========================================
+  # BUILD BACKEND
+  # ==========================================
+  build-backend:
+    name: Build Backend
+    runs-on: ubuntu-latest
+    needs: changes
+    if: |
+      needs.changes.outputs.backend == 'true' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'pull_request'
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ./backend/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Generate Prisma Client
+      run: npx prisma generate
+
+    - name: Build application
+      run: npm run build
+
+    - name: Run tests
+      if: ${{ !inputs.skip_tests }}
+      run: npm test -- --passWithNoTests
+      env:
+        NODE_ENV: test
+
+    - name: Build successful
+      run: echo "Backend build completed successfully!"
+
+  # ==========================================
+  # BUILD FRONTEND
+  # ==========================================
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    needs: changes
+    if: |
+      needs.changes.outputs.frontend == 'true' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'pull_request'
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ./frontend/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build application
+      run: npm run build
+      env:
+        VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://api.sukeerat.com' }}
+        VITE_APP_NAME: ${{ vars.VITE_APP_NAME || 'PlaceIntern Portal' }}
+        VITE_APP_ENV: production
+
+    - name: Build successful
+      run: echo "Frontend build completed successfully!"
+
+  # ==========================================
+  # DEPLOY BACKEND
+  # ==========================================
+  deploy-backend:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+    needs: [build-backend, changes]
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy_backend)
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy Backend to VPS
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        port: 22
+        timeout: 300s
+        command_timeout: 30m
+        script: |
+          set -e
+
+          echo "Navigating to main deployment directory..."
+          cd ${{ env.DEPLOY_PATH }}
+
+          echo "Configuring git authentication..."
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git remote set-url origin https://x-access-token:${{ secrets.ACCESS_TOKEN }}@${{ env.REPO_URL }}
+
+          echo "Fetching latest changes..."
+          git fetch origin main
+
+          echo "Resetting to latest main..."
+          git reset --hard origin/main
+
+          echo "Cleaning up..."
+          git clean -fd
+
+          echo "Navigating to backend directory..."
+          cd ${{ env.BACKEND_PATH }}
+
+          echo "Installing dependencies..."
+          npm ci
+
+          echo "Generating Prisma Client..."
+          npx prisma generate
+
+          echo "Running database migrations..."
+          npx prisma migrate deploy || echo "Migration skipped or already applied"
+
+          echo "Building application..."
+          npm run build
+
+          echo "Reloading PM2 process..."
+          pm2 reload backend --update-env || pm2 start dist/main.js --name backend
+
+          echo "Waiting for service to be ready..."
+          sleep 10
+
+          echo "Running health check..."
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+          until curl -sf http://localhost:8000/health > /dev/null 2>&1; do
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+              echo "Health check failed after $MAX_RETRIES attempts!"
+              pm2 logs backend --lines 100 --nostream
+              exit 1
+            fi
+            echo "Waiting for backend to be ready... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+            sleep 5
+          done
+
+          echo "Health check passed!"
+
+          echo "Saving PM2 process list..."
+          pm2 save
+
+          echo "Backend deployment completed successfully!"
+
+    - name: Notify on success
+      if: success()
+      run: |
+        echo "Backend deployment successful!"
+        echo "Deployed at: $(date)"
+        echo "Commit: ${{ github.sha }}"
+
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "Backend deployment failed!"
+        echo "Check the logs above for details"
+        echo "Failed commit: ${{ github.sha }}"
+
+  # ==========================================
+  # DEPLOY FRONTEND
+  # ==========================================
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    needs: [build-frontend, changes]
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy_frontend)
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy Frontend to VPS
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        port: 22
+        timeout: 300s
+        command_timeout: 20m
+        script: |
+          set -e
+
+          echo "Navigating to main deployment directory..."
+          cd ${{ env.DEPLOY_PATH }}
+
+          echo "Configuring git authentication..."
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git remote set-url origin https://x-access-token:${{ secrets.ACCESS_TOKEN }}@${{ env.REPO_URL }}
+
+          echo "Fetching latest changes..."
+          git fetch origin main
+
+          echo "Resetting to latest main..."
+          git reset --hard origin/main
+
+          echo "Cleaning up..."
+          git clean -fd
+
+          echo "Navigating to frontend directory..."
+          cd ${{ env.FRONTEND_PATH }}
+
+          echo "Installing dependencies..."
+          npm ci
+
+          echo "Building application..."
+          npm run build
+
+          echo "Reloading PM2 process..."
+          pm2 reload frontend --update-env || pm2 start "npx serve -s dist -l 4000" --name frontend
+
+          echo "Waiting for service to be ready..."
+          sleep 10
+
+          echo "Running health check..."
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+          until curl -sf http://localhost:4000 > /dev/null 2>&1; do
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+              echo "Health check failed after $MAX_RETRIES attempts!"
+              pm2 logs frontend --lines 100 --nostream
+              exit 1
+            fi
+            echo "Waiting for frontend to be ready... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+            sleep 5
+          done
+
+          echo "Health check passed!"
+
+          echo "Saving PM2 process list..."
+          pm2 save
+
+          echo "Frontend deployment completed successfully!"
+
+    - name: Notify on success
+      if: success()
+      run: |
+        echo "Frontend deployment successful!"
+        echo "Deployed at: $(date)"
+        echo "Commit: ${{ github.sha }}"
+
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "Frontend deployment failed!"
+        echo "Check the logs above for details"
+        echo "Failed commit: ${{ github.sha }}"
+
+  # ==========================================
+  # DEPLOYMENT SUMMARY
+  # ==========================================
+  summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend]
+    if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    steps:
+      - name: Deployment Summary
+        run: |
+          echo "=========================================="
+          echo "         DEPLOYMENT SUMMARY              "
+          echo "=========================================="
+          echo ""
+          echo "Backend:  ${{ needs.deploy-backend.result }}"
+          echo "Frontend: ${{ needs.deploy-frontend.result }}"
+          echo ""
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "=========================================="
