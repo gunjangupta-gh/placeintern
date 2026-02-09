@@ -2594,11 +2594,32 @@ Your dashboard shows progress like "2/6 Reports Submitted" to help you track pen
 • Press Ctrl + F5 (Windows) or Cmd + Shift + R (Mac)
 • Forces browser to reload without cache
 
-**Step 2: Clear Browser Cache**
-• Chrome: Settings > Privacy > Clear browsing data
-• Firefox: Options > Privacy > Clear Data
-• Edge: Settings > Privacy > Clear browsing data
-• Select "Cached images and files"
+**Step 2: Clear Cache and Cookies (by device)**
+
+**Windows (Chrome/Edge):**
+• Settings > Privacy and security > Clear browsing data
+• Time range: "All time"
+• Select "Cookies and other site data" and "Cached images and files"
+• Click "Clear data"
+
+**Windows (Firefox):**
+• Settings > Privacy & Security > Cookies and Site Data
+• Click "Clear Data" and select both options
+
+**macOS (Chrome):**
+• Chrome > Settings > Privacy and security > Clear browsing data
+• Time range: "All time"; select cookies + cached files
+
+**macOS (Safari):**
+• Safari > Settings > Privacy > Manage Website Data
+• Click "Remove All"
+
+**Android (Chrome):**
+• Chrome menu (3 dots) > History > Clear browsing data
+• Time range: "All time"; select cookies + cached files
+
+**iPhone/iPad (Safari):**
+• iOS Settings > Safari > Clear History and Website Data
 
 **Step 3: Try Different Browser**
 • If Chrome fails, try Firefox or Edge
