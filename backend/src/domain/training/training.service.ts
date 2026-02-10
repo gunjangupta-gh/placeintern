@@ -353,8 +353,26 @@ export class TrainingService {
         this.prisma.training.count({ where }),
       ]);
 
+      // Calculate available seats for each training
+      const trainingsWithCapacity = await Promise.all(
+        trainings.map(async (training) => {
+          const approvedCount = await this.prisma.trainingApplication.count({
+            where: {
+              trainingId: training.id,
+              status: 'APPROVED',
+            },
+          });
+
+          return {
+            ...training,
+            availableSeats: training.capacity - approvedCount,
+            isFull: approvedCount >= training.capacity,
+          };
+        })
+      );
+
       return {
-        data: trainings,
+        data: trainingsWithCapacity,
         pagination: {
           page,
           limit,
@@ -466,7 +484,25 @@ export class TrainingService {
         take: limit,
       });
 
-      return trainings;
+      // Calculate available seats for each training based on APPROVED applications
+      const trainingsWithCapacity = await Promise.all(
+        trainings.map(async (training) => {
+          const approvedCount = await this.prisma.trainingApplication.count({
+            where: {
+              trainingId: training.id,
+              status: 'APPROVED',
+            },
+          });
+
+          return {
+            ...training,
+            availableSeats: training.capacity - approvedCount,
+            isFull: approvedCount >= training.capacity,
+          };
+        })
+      );
+
+      return trainingsWithCapacity;
     } catch (error) {
       this.logger.error(`Failed to get upcoming trainings: ${error.message}`, error.stack);
       throw error;

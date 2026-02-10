@@ -30,18 +30,6 @@ export class PrincipalTrainingController {
     return this.trainingService.findAll(filters, false); // Only published trainings
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get training details' })
-  async getTraining(@Param('id') id: string) {
-    return this.trainingService.findOne(id);
-  }
-
-  @Get(':id/stats')
-  @ApiOperation({ summary: 'Get training statistics' })
-  async getTrainingStats(@Param('id') id: string) {
-    return this.trainingService.getTrainingStats(id);
-  }
-
   @Get('calendar')
   @ApiOperation({ summary: 'Get training calendar' })
   async getCalendar(@Query() filters: CalendarFilterDto) {
@@ -52,5 +40,17 @@ export class PrincipalTrainingController {
   @ApiOperation({ summary: 'Get upcoming trainings' })
   async getUpcoming(@Query('limit') limit?: string) {
     return this.trainingService.getUpcoming(limit ? Number(limit) : 10);
+  }
+
+  @Get(':id/stats')
+  @ApiOperation({ summary: 'Get training statistics' })
+  async getTrainingStats(@Param('id') id: string) {
+    return this.trainingService.getTrainingStats(id);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get training details' })
+  async getTraining(@Param('id') id: string) {
+    return this.trainingService.findOne(id);
   }
 }

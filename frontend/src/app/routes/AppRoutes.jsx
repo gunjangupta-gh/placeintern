@@ -54,6 +54,18 @@ import RestoreCenter from '../../features/state/restore/RestoreCenter';
 import MasterData from '../../features/state/master-data/MasterData';
 import { MonthlyCompliancePage } from '../../features/state/compliance';
 import { StudentsList } from '../../features/state/students';
+import StateTrainingDashboardPage from '../../features/state/training/TrainingDashboardPage';
+import StateTrainingManagementPage from '../../features/state/training/TrainingManagementPage';
+import StateCreateTrainingPage from '../../features/state/training/CreateTrainingPage';
+import StateEditTrainingPage from '../../features/state/training/EditTrainingPage';
+import StateTrainingDetailsPage from '../../features/state/training/TrainingDetailsPage';
+import StateApplicationManagementPage from '../../features/state/training/ApplicationManagementPage';
+import StateAttendanceManagementPage from '../../features/state/training/AttendanceManagementPage';
+import StateCertificateManagementPage from '../../features/state/training/CertificateManagementPage';
+import StateFeedbackFormManagementPage from '../../features/state/training/FeedbackFormManagementPage';
+import StateFeedbackAnalyticsPage from '../../features/state/training/FeedbackAnalyticsPage';
+import StateTrainingReportsPage from '../../features/state/training/TrainingReportsPage';
+import StateLessonPlanReviewPage from '../../features/state/training/LessonPlanReviewPage';
 
 // Shared
 import GrievanceList from '../../features/shared/grievances/GrievanceList';
@@ -76,6 +88,11 @@ import Grievances from '../../features/principal/grievances/Grievances';
 import SelfIdentifiedInternships from '../../features/principal/internships/SelfIdentifiedInternships';
 import BulkSelfInternshipUpload from '../../features/principal/bulk/BulkSelfInternshipUpload';
 import BulkJobHistory from '../../features/common/bulk/BulkJobHistory';
+import PrincipalTrainingOverviewPage from '../../features/principal/training/TrainingOverviewPage';
+import PrincipalApplicationReviewPage from '../../features/principal/training/ApplicationReviewPage';
+import PrincipalLessonPlanReviewPage from '../../features/principal/training/LessonPlanReviewPage';
+import PrincipalParticipationReportPage from '../../features/principal/training/ParticipationReportPage';
+import PrincipalTrainingDetailsPage from '../../features/principal/training/TrainingDetailsPage';
 
 // Faculty
 import FacultyDashboard from '../../features/faculty/dashboard/FacultyDashboard';
@@ -85,6 +102,13 @@ import SelfIdentifiedApproval from '../../features/faculty/approvals/SelfIdentif
 import MonthlyReportsPage from '../../features/faculty/reports/MonthlyReportsPage';
 import JoiningLettersPage from '../../features/faculty/joining-letters/JoiningLettersPage';
 import FacultyGrievances from '../../features/faculty/grievances/FacultyGrievances';
+import FacultyTrainingDashboardPage from '../../features/faculty/training/TrainingDashboardPage';
+import FacultyTrainingCalendarPage from '../../features/faculty/training/TrainingCalendarPage';
+import FacultyTrainingDetailsPage from '../../features/faculty/training/TrainingDetailsPage';
+import FacultyMyApplicationsPage from '../../features/faculty/training/MyApplicationsPage';
+import FacultyMyLessonPlansPage from '../../features/faculty/training/MyLessonPlansPage';
+import FacultyLessonPlanEditorPage from '../../features/faculty/training/LessonPlanEditorPage';
+import FacultyMyCertificatesPage from '../../features/faculty/training/MyCertificatesPage';
 
 // Student
 import StudentDashboard from '../../features/student/dashboard/StudentDashboard';
@@ -335,6 +359,150 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE]}>
               <StudentsList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL, ...ROLES.FACULTY]}>
+              <TrainingHomeRouter />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/manage"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <StateTrainingManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/create"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <StateCreateTrainingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/:id/edit"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <StateEditTrainingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/:id/applications"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <StateApplicationManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/:id/attendance"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <StateAttendanceManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/:id/certificates"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <StateCertificateManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/feedback-forms"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <StateFeedbackFormManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/analytics"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <StateFeedbackAnalyticsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/reports"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL]}>
+              <TrainingReportsRouter />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/applications"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL, ...ROLES.FACULTY]}>
+              <TrainingApplicationsRouter />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/lesson-plans"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL, ...ROLES.FACULTY]}>
+              <TrainingLessonPlansRouter />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/lesson-plans/new"
+          element={
+            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+              <FacultyLessonPlanEditorPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/lesson-plans/new/:trainingId"
+          element={
+            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+              <FacultyLessonPlanEditorPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/lesson-plans/:id/edit"
+          element={
+            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+              <FacultyLessonPlanEditorPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/calendar"
+          element={
+            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+              <FacultyTrainingCalendarPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/certificates"
+          element={
+            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+              <FacultyMyCertificatesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/:id"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL, ...ROLES.FACULTY]}>
+              <TrainingDetailsRouter />
             </ProtectedRoute>
           }
         />
@@ -790,5 +958,58 @@ const DashboardRouter = () => {
 
   return <Navigate to="/login" replace />;
 };
+
+function TrainingHomeRouter() {
+  const { user } = useSelector((state) => state.auth);
+  const role = user?.role;
+
+  if (role === ROLES.STATE) return <StateTrainingDashboardPage />;
+  if (role === ROLES.PRINCIPAL) return <PrincipalTrainingOverviewPage />;
+  if (ROLES.FACULTY.includes(role)) return <FacultyTrainingDashboardPage />;
+
+  return <Navigate to="/unauthorized" replace />;
+}
+
+function TrainingApplicationsRouter() {
+  const { user } = useSelector((state) => state.auth);
+  const role = user?.role;
+
+  if (role === ROLES.PRINCIPAL) return <PrincipalApplicationReviewPage />;
+  if (ROLES.FACULTY.includes(role)) return <FacultyMyApplicationsPage />;
+
+  return <Navigate to="/unauthorized" replace />;
+}
+
+function TrainingLessonPlansRouter() {
+  const { user } = useSelector((state) => state.auth);
+  const role = user?.role;
+
+  if (role === ROLES.STATE) return <StateLessonPlanReviewPage />;
+  if (role === ROLES.PRINCIPAL) return <PrincipalLessonPlanReviewPage />;
+  if (ROLES.FACULTY.includes(role)) return <FacultyMyLessonPlansPage />;
+
+  return <Navigate to="/unauthorized" replace />;
+}
+
+function TrainingReportsRouter() {
+  const { user } = useSelector((state) => state.auth);
+  const role = user?.role;
+
+  if (role === ROLES.STATE) return <StateTrainingReportsPage />;
+  if (role === ROLES.PRINCIPAL) return <PrincipalParticipationReportPage />;
+
+  return <Navigate to="/unauthorized" replace />;
+}
+
+function TrainingDetailsRouter() {
+  const { user } = useSelector((state) => state.auth);
+  const role = user?.role;
+
+  if (role === ROLES.STATE) return <StateTrainingDetailsPage />;
+  if (role === ROLES.PRINCIPAL) return <PrincipalTrainingDetailsPage />;
+  if (ROLES.FACULTY.includes(role)) return <FacultyTrainingDetailsPage />;
+
+  return <Navigate to="/unauthorized" replace />;
+}
 
 export default AppRoutes;

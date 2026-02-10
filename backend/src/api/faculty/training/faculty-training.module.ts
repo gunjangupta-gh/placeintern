@@ -11,12 +11,12 @@ import { FeedbackModule } from '../../../domain/feedback/feedback.module';
 @Module({
   imports: [TrainingModule, FeedbackModule],
   controllers: [
-    FacultyTrainingController,
     FacultyApplicationController,
     FacultyAttendanceController,
     FacultyLessonPlanController,
     FacultyFeedbackController,
     FacultyCertificateController,
+    FacultyTrainingController,
   ],
 })
 export class FacultyTrainingModule {}

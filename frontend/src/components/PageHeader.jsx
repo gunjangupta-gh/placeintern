@@ -13,19 +13,19 @@ const PageHeader = ({
   const { token } = theme.useToken();
 
   return (
-    <Card className="rounded-2xl border-border shadow-sm mb-6 overflow-hidden" styles={{ body: { padding: '24px' } }}>
+    <Card className="rounded-xl border-border shadow-none mb-6 overflow-hidden" styles={{ body: { padding: '16px' } }}>
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             {Icon ? (
               <div
-                className="flex items-center justify-center rounded-xl w-12 h-12 bg-surface border border-border text-primary shadow-sm shrink-0"
+                className="flex items-center justify-center rounded-xl w-10 h-10 bg-surface border border-border text-primary shadow-none shrink-0"
               >
-                <Icon className="text-xl" />
+                <Icon className="text-lg" />
               </div>
             ) : null}
             <div>
-              <Title level={2} className="!m-0 !text-text-primary text-2xl">
+              <Title level={3} className="!m-0 !text-text-primary text-xl">
                 {title}
               </Title>
               {description ? (

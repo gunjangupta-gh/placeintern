@@ -31,12 +31,6 @@ export class FacultyTrainingController {
     return this.trainingService.findAll(filters, false); // Only published trainings
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get training details' })
-  async getTraining(@Param('id') id: string) {
-    return this.trainingService.findOne(id);
-  }
-
   @Get('calendar')
   @ApiOperation({ summary: 'Get training calendar' })
   async getCalendar(@Query() filters: CalendarFilterDto) {
@@ -53,6 +47,12 @@ export class FacultyTrainingController {
   @ApiOperation({ summary: 'Get trainings user is registered for' })
   async getMyTrainings(@Req() req) {
     return this.trainingService.getUserTrainings(req.user.userId);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get training details' })
+  async getTraining(@Param('id') id: string) {
+    return this.trainingService.findOne(id);
   }
 
   @Get(':id/eligibility')

@@ -4,7 +4,8 @@
       "Bash(node -e:*)",
       "Bash(npx prisma:*)",
       "Bash(tree:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(dir:*)"
     ]
   }
 }

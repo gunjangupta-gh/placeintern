@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
@@ -76,6 +77,344 @@ body {
   -webkit-user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
+}
+
+.training-ui {
+  font-family: inherit;
+}
+
+.training-ui .training-heading {
+  font-family: inherit;
+  letter-spacing: normal;
+}
+
+/* ============================================
+   Professional Training Calendar Styling
+   ============================================ */
+
+@keyframes calendar-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes badge-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes today-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 3px rgba(var(--color-primary), 0.05), 0 4px 12px rgba(var(--color-primary), 0.1);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(var(--color-primary), 0.08), 0 4px 16px rgba(var(--color-primary), 0.15);
+  }
+}
+
+@keyframes card-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.training-calendar {
+  background: linear-gradient(135deg, rgba(var(--color-primary), 0.02) 0%, rgba(var(--color-primary), 0.05) 100%);
+  border-radius: 16px;
+  overflow: hidden;
+  animation: calendar-fade-in 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.training-calendar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -200%;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(var(--color-primary), 0.03),
+    transparent
+  );
+  transition: opacity 0.3s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.training-calendar:hover::before {
+  animation: shimmer 3s infinite;
+  opacity: 1;
+}
+
+.training-calendar .ant-picker-calendar-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(var(--color-border), 0.6);
+  background: rgba(var(--color-background), 0.8);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.training-calendar .ant-picker-calendar-header .ant-select-selector {
+  border: 1px solid rgba(var(--color-border), 0.8);
+  border-radius: 10px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(var(--color-background), 0.9);
+}
+
+.training-calendar .ant-picker-calendar-header .ant-select-selector:hover {
+  border-color: rgba(var(--color-primary), 0.5);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary), 0.08);
+}
+
+.training-calendar .ant-picker-calendar-header button {
+  border-radius: 10px;
+  border: 1px solid rgba(var(--color-border), 0.6);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(var(--color-background), 0.9);
+}
+
+.training-calendar .ant-picker-calendar-header button:hover {
+  border-color: rgba(var(--color-primary), 0.5);
+  background: rgba(var(--color-primary), 0.08);
+  transform: translateY(-1px);
+}
+
+.training-calendar .ant-picker-calendar-header button:active {
+  transform: translateY(0);
+}
+
+.training-calendar .ant-picker-calendar-header .ant-select-focused .ant-select-selector {
+  border-color: rgba(var(--color-primary), 0.6);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary), 0.12);
+}
+
+.training-calendar .ant-picker-calendar-date {
+  margin: 2px;
+  padding: 0;
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+}
+
+.training-calendar .ant-picker-calendar-date:hover {
+  background: linear-gradient(135deg, rgba(var(--color-primary), 0.05) 0%, rgba(var(--color-primary), 0.08) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--color-primary), 0.15);
+  border-color: rgba(var(--color-primary), 0.2);
+}
+
+.training-calendar .ant-picker-calendar-date-content {
+  height: 85px;
+  padding: 8px;
+}
+
+.training-calendar .ant-picker-calendar-date-today {
+  border: 2px solid rgba(var(--color-primary), 0.4);
+  background: linear-gradient(135deg, rgba(var(--color-primary), 0.08) 0%, rgba(var(--color-primary), 0.12) 100%);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary), 0.05), 0 4px 12px rgba(var(--color-primary), 0.1);
+  position: relative;
+  animation: today-pulse 2s ease-in-out infinite;
+}
+
+.training-calendar .ant-picker-calendar-date-today::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  bottom: -2px;
+  left: -2px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(var(--color-primary), 0.15), rgba(var(--color-primary-600), 0.15));
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.training-calendar .ant-picker-calendar-date-today:hover::before {
+  opacity: 1;
+}
+
+.training-calendar .ant-picker-calendar-date-value {
+  font-weight: 700;
+  font-size: 13px;
+  color: rgb(var(--color-text-primary));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.training-calendar .ant-picker-calendar-date-today .ant-picker-calendar-date-value {
+  background: linear-gradient(135deg, rgb(var(--color-primary)) 0%, rgb(var(--color-primary-600)) 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(var(--color-primary), 0.35);
+  font-weight: 800;
+}
+
+.training-calendar .ant-picker-calendar thead {
+  background: rgba(var(--color-background-secondary), 0.5);
+}
+
+.training-calendar .ant-picker-calendar thead th {
+  padding: 12px 0;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgb(var(--color-text-tertiary));
+  border-bottom: 2px solid rgba(var(--color-border), 0.6);
+}
+
+/* Calendar Event Badges - Professional Styling */
+.training-calendar .ant-badge {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  animation: badge-slide-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.training-calendar .ant-badge-status-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+}
+
+.training-calendar .ant-badge-status-text {
+  flex: 1;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(var(--color-background), 0.7);
+  backdrop-filter: blur(4px);
+  transition: all 0.2s ease;
+  border: 1px solid rgba(var(--color-border), 0.3);
+}
+
+.training-calendar .ant-badge:hover .ant-badge-status-text {
+  background: rgba(var(--color-background), 0.95);
+  border-color: rgba(var(--color-border), 0.5);
+  transform: translateX(2px);
+}
+
+/* Selected/inactive dates styling */
+.training-calendar .ant-picker-calendar-date-disabled {
+  opacity: 0.4;
+}
+
+.training-calendar .ant-picker-calendar-date-selected {
+  background: linear-gradient(135deg, rgba(var(--color-primary), 0.12) 0%, rgba(var(--color-primary), 0.18) 100%);
+  border-color: rgba(var(--color-primary), 0.4);
+}
+
+/* Weekend dates subtle highlight */
+.training-calendar .ant-picker-calendar tbody tr td:first-child .ant-picker-calendar-date,
+.training-calendar .ant-picker-calendar tbody tr td:last-child .ant-picker-calendar-date {
+  background: rgba(var(--color-warning), 0.02);
+}
+
+/* Calendar body padding */
+.training-calendar .ant-picker-calendar-body {
+  padding: 12px;
+}
+
+/* Smooth scale animation on cell hover */
+.training-calendar .ant-picker-calendar-date:active {
+  transform: scale(0.98);
+}
+
+/* Month/year navigation smooth transitions */
+.training-calendar .ant-picker-calendar-header * {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Grid lines subtle enhancement */
+.training-calendar .ant-picker-calendar tbody td {
+  border-color: rgba(var(--color-border), 0.5);
+}
+
+/* Loading state support */
+.training-calendar.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.training-calendar.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(var(--color-primary), 0.2);
+  border-top-color: rgb(var(--color-primary));
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+/* ============================================
+   Calendar Side Panel Scrollbar
+   ============================================ */
+.training-calendar + * .max-h-\\[500px\\]::-webkit-scrollbar {
+  width: 6px;
+}
+
+.training-calendar + * .max-h-\\[500px\\]::-webkit-scrollbar-track {
+  background: rgba(var(--color-background-tertiary), 0.3);
+  border-radius: 10px;
+}
+
+.training-calendar + * .max-h-\\[500px\\]::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(var(--color-primary), 0.4), rgba(var(--color-primary-600), 0.6));
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+.training-calendar + * .max-h-\\[500px\\]::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(var(--color-primary), 0.6), rgba(var(--color-primary-600), 0.8));
 }
 
 /* ============================================

@@ -13,6 +13,9 @@ export { default as PrincipalService } from './principal.service';
 export { default as IndustryService } from './industry.service';
 export { default as StateService } from './state.service';
 export { default as AdminService, adminService } from './admin.service';
+export { default as TrainingService, trainingService } from './training.service';
+export { default as TrainingPrincipalService, trainingPrincipalService } from './training-principal.service';
+export { default as TrainingAdminService, trainingAdminService } from './training-admin.service';
 
 // Shared Services
 export { default as NotificationService } from './notification.service';
@@ -27,3 +30,6 @@ export { facultyService } from './faculty.service';
 export { principalService } from './principal.service';
 export { industryService } from './industry.service';
 export { stateService } from './state.service';
+export { trainingService } from './training.service';
+export { trainingPrincipalService } from './training-principal.service';
+export { trainingAdminService } from './training-admin.service';

@@ -35,6 +35,7 @@ import {
   SendOutlined,
   CheckSquareOutlined,
   PlusOutlined,
+  CalendarOutlined,
 } from "@ant-design/icons";
 import React from "react";
 
@@ -192,6 +193,49 @@ export const menuConfig = {
       },
     ],
   },
+  STATE_TRAINING: {
+    key: "state-training",
+    title: "Training",
+    icon: <CalendarOutlined />,
+    items: [
+      {
+        key: "training-dashboard",
+        label: "Dashboard",
+        icon: <DashboardOutlined />,
+        path: "/app/training",
+      },
+      {
+        key: "training-manage",
+        label: "Manage Trainings",
+        icon: <SettingOutlined />,
+        path: "/app/training/manage",
+      },
+      {
+        key: "training-create",
+        label: "Create Training",
+        icon: <PlusOutlined />,
+        path: "/app/training/create",
+      },
+      {
+        key: "training-feedback-forms",
+        label: "Feedback Forms",
+        icon: <FileTextOutlined />,
+        path: "/app/training/feedback-forms",
+      },
+      {
+        key: "training-analytics",
+        label: "Analytics",
+        icon: <BarChartOutlined />,
+        path: "/app/training/analytics",
+      },
+      {
+        key: "training-reports",
+        label: "Reports",
+        icon: <PieChartOutlined />,
+        path: "/app/training/reports",
+      },
+    ],
+  },
 
   // ==========================================
   // PRINCIPAL MENUS
@@ -266,6 +310,37 @@ export const menuConfig = {
       // { key: 'bulk-job-history', label: 'Job History', icon: <HistoryOutlined />, path: '/app/bulk/job-history' },
     ],
   },
+  PRINCIPAL_TRAINING: {
+    key: "principal-training",
+    title: "Training",
+    icon: <CalendarOutlined />,
+    items: [
+      {
+        key: "principal-training-overview",
+        label: "Overview",
+        icon: <DashboardOutlined />,
+        path: "/app/training",
+      },
+      {
+        key: "principal-training-applications",
+        label: "Applications",
+        icon: <FileTextOutlined />,
+        path: "/app/training/applications",
+      },
+      {
+        key: "principal-training-lesson-plans",
+        label: "Lesson Plans",
+        icon: <FileDoneOutlined />,
+        path: "/app/training/lesson-plans",
+      },
+      {
+        key: "principal-training-reports",
+        label: "Reports",
+        icon: <BarChartOutlined />,
+        path: "/app/training/reports",
+      },
+    ],
+  },
 
   // ==========================================
   // FACULTY MENUS
@@ -325,6 +400,43 @@ export const menuConfig = {
         label: "Grievances",
         icon: <AlertOutlined />,
         path: "/app/faculty-grievances",
+      },
+    ],
+  },
+  FACULTY_TRAINING: {
+    key: "faculty-training",
+    title: "Training",
+    icon: <CalendarOutlined />,
+    items: [
+      {
+        key: "faculty-training-dashboard",
+        label: "Dashboard",
+        icon: <DashboardOutlined />,
+        path: "/app/training",
+      },
+      {
+        key: "faculty-training-calendar",
+        label: "Calendar",
+        icon: <CalendarOutlined />,
+        path: "/app/training/calendar",
+      },
+      {
+        key: "faculty-training-applications",
+        label: "My Applications",
+        icon: <FileTextOutlined />,
+        path: "/app/training/applications",
+      },
+      {
+        key: "faculty-training-lesson-plans",
+        label: "Lesson Plans",
+        icon: <FileDoneOutlined />,
+        path: "/app/training/lesson-plans",
+      },
+      {
+        key: "faculty-training-certificates",
+        label: "Certificates",
+        icon: <SafetyCertificateOutlined />,
+        path: "/app/training/certificates",
       },
     ],
   },
@@ -582,6 +694,7 @@ export const getMenuSectionsForRole = (role) => {
       sections.push(menuConfig.STATE_HOME);
       sections.push(menuConfig.STATE_INSTITUTIONS);
       sections.push(menuConfig.STATE_COMPANIES);
+      sections.push(menuConfig.STATE_TRAINING);
       sections.push(menuConfig.STATE_BULK);
       sections.push(menuConfig.STATE_SYSTEM);
       break;
@@ -591,6 +704,7 @@ export const getMenuSectionsForRole = (role) => {
       sections.push(menuConfig.PRINCIPAL_PEOPLE);
       sections.push(menuConfig.PRINCIPAL_STAFF);
       sections.push(menuConfig.PRINCIPAL_INTERNSHIP);
+      sections.push(menuConfig.PRINCIPAL_TRAINING);
       sections.push(menuConfig.PRINCIPAL_OPERATIONS);
       break;
 
@@ -599,6 +713,7 @@ export const getMenuSectionsForRole = (role) => {
     case "FACULTY_SUPERVISOR":
       sections.push(menuConfig.FACULTY_HOME);
       sections.push(menuConfig.FACULTY_SUPERVISION);
+      sections.push(menuConfig.FACULTY_TRAINING);
       sections.push(menuConfig.FACULTY_COMMUNICATION);
       break;
 
