@@ -452,7 +452,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
               rows={2}
               placeholder="Enter feedback shared with student..."
               showCount
-              maxLength={500}
+              maxLength={2000}
             />
           </Form.Item>
 

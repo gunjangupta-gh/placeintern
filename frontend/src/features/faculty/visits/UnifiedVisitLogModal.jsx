@@ -267,8 +267,6 @@ const UnifiedVisitLogModal = ({
       // Common fields for both create and update
       const commonData = {
         status: values.status || 'COMPLETED',
-        visitType: visitTypeValue,
-        visitDate: values.visitDate ? values.visitDate.toISOString() : null,
         titleOfProjectWork: values.titleOfProjectWork || null,
         assistanceRequiredFromInstitute: values.assistanceRequiredFromInstitute || null,
         responseFromOrganisation: values.responseFromOrganisation || null,
@@ -462,7 +460,7 @@ const UnifiedVisitLogModal = ({
             rules={[minWordsRule('Feedback', isEdit)]}
             className="!mb-0"
           >
-            <TextArea rows={1} placeholder="Feedback shared with student (min 100 words)" maxLength={500} />
+            <TextArea rows={1} placeholder="Feedback shared with student (min 100 words)" maxLength={2000} />
           </Form.Item>
         </Card>
 

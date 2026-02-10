@@ -514,7 +514,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
           <TextArea
             rows={2}
             placeholder="Enter feedback shared with student..."
-            maxLength={500}
+            maxLength={2000}
             showCount
           />
         </Form.Item>
