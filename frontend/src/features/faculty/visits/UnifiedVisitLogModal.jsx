@@ -35,6 +35,23 @@ const { Option } = Select;
 const { TextArea } = Input;
 const { Text } = Typography;
 
+const MIN_WORDS = 100;
+const countWords = (value = '') => value.trim().split(/\s+/).filter(Boolean).length;
+const minWordsRule = (label, required) => ({
+  validator: (_, value) => {
+    const trimmed = (value || '').trim();
+    if (!trimmed) {
+      return required
+        ? Promise.reject(new Error(`${label} is required (${MIN_WORDS} words).`))
+        : Promise.resolve();
+    }
+    const words = countWords(trimmed);
+    return words >= MIN_WORDS
+      ? Promise.resolve()
+      : Promise.reject(new Error(`${label} must be at least ${MIN_WORDS} words (${words}/${MIN_WORDS}).`));
+  },
+});
+
 const VISIT_TYPES = [
   { value: 'PHYSICAL', label: 'Physical' },
   { value: 'VIRTUAL', label: 'Virtual' },
@@ -245,10 +262,13 @@ const UnifiedVisitLogModal = ({
       if (!isEdit && !selectedApplicationId) { toast.error('No active internship found'); return; }
       setSubmitting(true);
       const { photoUrls, signedDocUrl } = await uploadFiles();
+      const visitTypeValue = (values.visitType || '').toUpperCase();
 
       // Common fields for both create and update
       const commonData = {
         status: values.status || 'COMPLETED',
+        visitType: visitTypeValue,
+        visitDate: values.visitDate ? values.visitDate.toISOString() : null,
         titleOfProjectWork: values.titleOfProjectWork || null,
         assistanceRequiredFromInstitute: values.assistanceRequiredFromInstitute || null,
         responseFromOrganisation: values.responseFromOrganisation || null,
@@ -272,7 +292,7 @@ const UnifiedVisitLogModal = ({
           ...commonData,
           applicationId: selectedApplicationId,
           visitDate: values.visitDate.toISOString(),
-          visitType: values.visitType,
+          visitType: visitTypeValue,
           visitLocation: values.visitLocation || null,
           ...(gpsLocation && { latitude: gpsLocation.latitude, longitude: gpsLocation.longitude, gpsAccuracy: gpsLocation.accuracy }),
         };
@@ -327,12 +347,12 @@ const UnifiedVisitLogModal = ({
           <SectionTitle>Visit Details</SectionTitle>
           <Row gutter={12}>
             <Col span={8}>
-              <Form.Item name="visitDate" label="Date & Time" rules={[{ required: true }]} className="!mb-2">
+              <Form.Item name="visitDate" label="Date & Time" rules={[{ required: isEdit, message: 'Please select date & time' }]} className="!mb-2">
                 <DatePicker showTime className="w-full" format="DD/MM/YY HH:mm" disabled={isEdit} />
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item name="visitType" label="Type" rules={[{ required: true }]} className="!mb-2">
+              <Form.Item name="visitType" label="Type" rules={[{ required: isEdit, message: 'Please select visit type' }]} className="!mb-2">
                 <Select placeholder="Select" onChange={handleVisitTypeChange} disabled={isEdit}>
                   {VISIT_TYPES.map(t => <Option key={t.value} value={t.value}>{t.label}</Option>)}
                 </Select>
@@ -348,7 +368,7 @@ const UnifiedVisitLogModal = ({
           </Row>
 
           {(!selectedStudent || isEdit) && (
-            <Form.Item name="studentId" label="Student" rules={[{ required: true }]} className="!mb-2">
+            <Form.Item name="studentId" label="Student" rules={[{ required: isEdit, message: 'Please select student' }]} className="!mb-2">
               <Select placeholder="Select student" showSearch loading={loading} onChange={handleStudentSelect} disabled={isEdit}
                 filterOption={(input, option) => option.children?.toLowerCase().includes(input.toLowerCase())}>
                 {students?.map((student) => {
@@ -398,29 +418,29 @@ const UnifiedVisitLogModal = ({
           <SectionTitle>Project Information</SectionTitle>
           <Row gutter={12}>
             <Col span={12}>
-              <Form.Item name="titleOfProjectWork" label="Project Title" className="!mb-2">
+              <Form.Item name="titleOfProjectWork" label="Project Title" rules={[{ required: isEdit, message: 'Please enter project title' }]} className="!mb-2">
                 <Input placeholder="Title of project/work" maxLength={200} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="assistanceRequiredFromInstitute" label="Assistance Required" className="!mb-2">
+              <Form.Item name="assistanceRequiredFromInstitute" label="Assistance Required" rules={[{ required: isEdit, message: 'Please enter assistance details' }]} className="!mb-2">
                 <Input placeholder="Assistance from institute" maxLength={200} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={12}>
             <Col span={12}>
-              <Form.Item name="responseFromOrganisation" label="Org Response" className="!mb-2">
+              <Form.Item name="responseFromOrganisation" label="Org Response" rules={[{ required: isEdit, message: 'Please enter organisation response' }]} className="!mb-2">
                 <Input placeholder="Response from organisation" maxLength={200} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="remarksOfOrganisationSupervisor" label="Supervisor Remarks" className="!mb-2">
+              <Form.Item name="remarksOfOrganisationSupervisor" label="Supervisor Remarks" rules={[{ required: isEdit, message: 'Please enter supervisor remarks' }]} className="!mb-2">
                 <Input placeholder="Supervisor remarks" maxLength={200} />
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="significantChangeInPlan" label="Changes in Plan" className="!mb-0">
+          <Form.Item name="significantChangeInPlan" label="Changes in Plan" rules={[{ required: isEdit, message: 'Please describe changes in plan' }]} className="!mb-0">
             <Input placeholder="Any significant changes to project plan" maxLength={300} />
           </Form.Item>
         </Card>
@@ -428,11 +448,21 @@ const UnifiedVisitLogModal = ({
         {/* Observations */}
         <Card size="small" className="!mb-3">
           <SectionTitle>Observations & Feedback</SectionTitle>
-          <Form.Item name="observationsAboutStudent" label="Observations" className="!mb-2">
-            <TextArea rows={2} placeholder="Observations about student (min 100 words recommended)" maxLength={2000} showCount />
+          <Form.Item
+            name="observationsAboutStudent"
+            label="Observations"
+            rules={[minWordsRule('Observations', isEdit)]}
+            className="!mb-2"
+          >
+            <TextArea rows={2} placeholder="Observations about student (min 100 words)" maxLength={2000} showCount />
           </Form.Item>
-          <Form.Item name="feedbackSharedWithStudent" label="Feedback to Student" className="!mb-0">
-            <TextArea rows={1} placeholder="Feedback shared with student" maxLength={500} />
+          <Form.Item
+            name="feedbackSharedWithStudent"
+            label="Feedback to Student"
+            rules={[minWordsRule('Feedback', isEdit)]}
+            className="!mb-0"
+          >
+            <TextArea rows={1} placeholder="Feedback shared with student (min 100 words)" maxLength={500} />
           </Form.Item>
         </Card>
 

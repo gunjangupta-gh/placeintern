@@ -244,11 +244,14 @@ const MonthlyReportsOverviewModal = ({ visible, onClose, students = [], monthlyR
         } else if (!monthIncluded) {
           // Month doesn't meet 10-day rule - mark as N/A
           status = 'na';
+        } else {
+          // Month included for this internship
+          status = 'expected';
         }
 
         if (report) {
           status = report.status; // APPROVED, SUBMITTED, DRAFT, REJECTED
-        } else if (status !== 'na' && status !== 'future') {
+        } else if (status === 'expected') {
           // Check if this month is in the past (should have a report)
           const now = new Date();
           const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -287,6 +290,8 @@ const MonthlyReportsOverviewModal = ({ visible, onClose, students = [], monthlyR
       case 'na':
         return <Text type="secondary">N/A</Text>;
       case 'future':
+        return <MinusOutlined style={{ color: '#d1d5db', fontSize: '14px' }} />;
+      case 'expected':
         return <MinusOutlined style={{ color: '#d1d5db', fontSize: '14px' }} />;
       default:
         return <MinusOutlined style={{ color: '#d1d5db', fontSize: '14px' }} />;

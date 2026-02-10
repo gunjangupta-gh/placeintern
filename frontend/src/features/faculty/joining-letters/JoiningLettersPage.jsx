@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Card,
@@ -47,7 +47,7 @@ const { Title, Text } = Typography;
 const JoiningLettersPage = () => {
   const { token } = theme.useToken();
   const dispatch = useDispatch();
-  const { list: letters, loading } = useSelector(selectJoiningLetters);
+  const { list: letters = [], loading, total = 0 } = useSelector(selectJoiningLetters);
   const lastFetched = useSelector(selectLastFetched);
   const joiningLettersLastFetched = lastFetched?.joiningLetters;
 
@@ -58,19 +58,20 @@ const JoiningLettersPage = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [students, setStudents] = useState([]);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
 
   useEffect(() => {
-    dispatch(fetchJoiningLetters({ forceRefresh: true }));
+    dispatch(fetchJoiningLetters({ page: pagination.current, limit: pagination.pageSize, forceRefresh: true }));
     // Fetch students for the upload dropdown
     dispatch(fetchAssignedStudents({ limit: 1000 })).then((result) => {
       if (result.payload && result.payload.students) {
         setStudents(result.payload.students);
       }
     });
-  }, [dispatch]);
+  }, [dispatch, pagination.current, pagination.pageSize]);
 
   const handleRefresh = () => {
-    dispatch(fetchJoiningLetters({ forceRefresh: true }));
+    dispatch(fetchJoiningLetters({ page: pagination.current, limit: pagination.pageSize, forceRefresh: true }));
   };
 
   const handleDelete = (letter) => {
@@ -162,6 +163,10 @@ const JoiningLettersPage = () => {
 
     return filtered;
   };
+
+  const filteredLetters = useMemo(() => getFilteredLetters(), [letters, searchText]);
+
+  const totalForPagination = searchText ? filteredLetters.length : total;
 
   const columns = [
     {
@@ -282,12 +287,12 @@ const JoiningLettersPage = () => {
               </div>
             </div>
 
-            <Space size="small">
+            <Space size="small" className="w-full lg:w-auto" wrap>
               <Button
                 type="primary"
                 icon={<UploadOutlined />}
                 onClick={handleUploadClick}
-                className="rounded-lg"
+                className="rounded-lg w-full lg:w-auto"
                 size="small"
               >
                 Upload Report
@@ -296,7 +301,7 @@ const JoiningLettersPage = () => {
                 icon={<ReloadOutlined spin={loading} />}
                 onClick={handleRefresh}
                 loading={loading}
-                className="rounded-lg"
+                className="rounded-lg w-full lg:w-auto"
                 size="small"
               >
                 Refresh
@@ -325,20 +330,26 @@ const JoiningLettersPage = () => {
               prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              className="max-w-md rounded-lg h-10"
+              className="w-full lg:max-w-md rounded-lg h-10"
               allowClear
             />
           </div>
 
           <Table
             columns={columns}
-            dataSource={getFilteredLetters()}
+            dataSource={filteredLetters}
             loading={loading}
             rowKey="id"
+            scroll={{ x: 900 }}
             pagination={{
-              pageSize: 10,
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: totalForPagination,
+              onChange: (current, pageSize) => {
+                setPagination({ current, pageSize });
+              },
               showSizeChanger: true,
-              showTotal: (total) => `Total ${total} letters`,
+              showTotal: (value) => `Total ${value} letters`,
               className: 'px-4 py-3',
             }}
             size="middle"

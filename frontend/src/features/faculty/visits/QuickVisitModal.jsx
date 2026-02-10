@@ -28,6 +28,23 @@ import { createVisitLog, uploadVisitDocument } from '../store/facultySlice';
 const { Option } = Select;
 const { TextArea } = Input;
 
+const MIN_WORDS = 100;
+const countWords = (value = '') => value.trim().split(/\s+/).filter(Boolean).length;
+const minWordsRule = (label, required) => ({
+  validator: (_, value) => {
+    const trimmed = (value || '').trim();
+    if (!trimmed) {
+      return required
+        ? Promise.reject(new Error(`${label} is required (${MIN_WORDS} words).`))
+        : Promise.resolve();
+    }
+    const words = countWords(trimmed);
+    return words >= MIN_WORDS
+      ? Promise.resolve()
+      : Promise.reject(new Error(`${label} must be at least ${MIN_WORDS} words (${words}/${MIN_WORDS}).`));
+  },
+});
+
 // Constant styles outside component
 const UPLOAD_BUTTON_STYLE = { marginTop: 8 };
 const SPACE_COMPACT_STYLE = { width: '100%' };
@@ -36,6 +53,7 @@ const IMG_WINDOW_STYLE = { width: '100%' };
 const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, loading }) => {
   const dispatch = useDispatch();
   const [form] = Form.useForm();
+  const isEdit = false;
   const [visitType, setVisitType] = useState(null);
   const [capturing, setCapturing] = useState(false);
   const [location, setLocation] = useState(null);
@@ -219,13 +237,14 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
       }
 
       // Prepare visit data with applicationId
+      const visitTypeValue = (values.visitType || '').toUpperCase();
       const visitData = {
         applicationId: selectedApplicationId,
-        visitType: values.visitType,
+        visitType: visitTypeValue,
         visitDate: new Date().toISOString(),
         status: 'COMPLETED',
         // Location for physical visits
-        ...(values.visitType === 'PHYSICAL' && {
+        ...(visitTypeValue === 'PHYSICAL' && {
           visitLocation: values.visitLocation,
           // GPS coordinates if captured
           ...(location && {
@@ -314,7 +333,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
             <Form.Item
               name="studentId"
               label="Student"
-              rules={[{ required: true, message: 'Please select a student' }]}
+              rules={[{ required: isEdit, message: 'Please select a student' }]}
             >
               <Select
                 placeholder="Select student"
@@ -349,7 +368,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
             <Form.Item
               name="visitType"
               label="Visit Type"
-              rules={[{ required: true, message: 'Please select visit type' }]}
+              rules={[{ required: isEdit, message: 'Please select visit type' }]}
             >
               <Select
                 placeholder="Select visit type"
@@ -371,7 +390,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
               label="Location"
               rules={[
                 {
-                  required: true,
+                  required: isEdit,
                   message: 'Please enter location or capture GPS coordinates',
                 },
               ]}
@@ -477,6 +496,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
           name="observationsAboutStudent"
           label="Observations about the Student"
           extra="Please provide at least 100 words"
+          rules={[minWordsRule('Observations', isEdit)]}
         >
           <TextArea
             rows={4}
@@ -486,7 +506,11 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
           />
         </Form.Item>
 
-        <Form.Item name="feedbackSharedWithStudent" label="Feedback Shared with Student">
+        <Form.Item
+          name="feedbackSharedWithStudent"
+          label="Feedback Shared with Student"
+          rules={[minWordsRule('Feedback', isEdit)]}
+        >
           <TextArea
             rows={2}
             placeholder="Enter feedback shared with student..."

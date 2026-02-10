@@ -286,7 +286,7 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
                 lineHeight: 1.4,
               }}
             >
-              Made by
+              Made by {" "}
               <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>
                 Nikhil Kumar
               </span>
@@ -294,7 +294,7 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
               under the guidance of
               <br />
               <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>
-                Sukeerat Pal Singh Syan
+                SukeeratPal Singh Syan
               </span>
               <br />
               <span style={{ fontSize: 10 }}>

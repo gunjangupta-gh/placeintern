@@ -7,6 +7,23 @@ import { createVisitLog, updateVisitLog, fetchVisitLogById, fetchAssignedStudent
 import { fetchCompanies } from '../../../store/slices/companySlice';
 import dayjs from 'dayjs';
 
+const MIN_WORDS = 100;
+const countWords = (value = '') => value.trim().split(/\s+/).filter(Boolean).length;
+const minWordsRule = (label, required) => ({
+  validator: (_, value) => {
+    const trimmed = (value || '').trim();
+    if (!trimmed) {
+      return required
+        ? Promise.reject(new Error(`${label} is required (${MIN_WORDS} words).`))
+        : Promise.resolve();
+    }
+    const words = countWords(trimmed);
+    return words >= MIN_WORDS
+      ? Promise.resolve()
+      : Promise.reject(new Error(`${label} must be at least ${MIN_WORDS} words (${words}/${MIN_WORDS}).`));
+  },
+});
+
 const STATUS_OPTIONS = [
   { value: 'scheduled', label: 'Scheduled' },
   { value: 'completed', label: 'Completed' },
@@ -235,7 +252,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
               <Form.Item
                 name="visitDate"
                 label="Visit Date"
-                rules={[{ required: true, message: 'Please select visit date' }]}
+                rules={[{ required: isEdit, message: 'Please select visit date' }]}
               >
                 <DatePicker
                   style={{ width: '100%' }}
@@ -250,7 +267,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
               <Form.Item
                 name="status"
                 label="Status"
-                rules={[{ required: true, message: 'Please select status' }]}
+                rules={[{ required: isEdit, message: 'Please select status' }]}
               >
                 <Select placeholder="Select status" options={STATUS_OPTIONS} />
               </Form.Item>
@@ -262,7 +279,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
               <Form.Item
                 name="studentId"
                 label="Student"
-                rules={[{ required: true, message: 'Please select student' }]}
+                rules={[{ required: isEdit, message: 'Please select student' }]}
               >
                 <Select
                   placeholder="Select student"
@@ -283,7 +300,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
               <Form.Item
                 name="companyId"
                 label="Company"
-                rules={[{ required: true, message: 'Please select company' }]}
+                rules={[{ required: isEdit, message: 'Please select company' }]}
               >
                 <Select
                   placeholder="Select company"
@@ -334,8 +351,17 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
             name="purpose"
             label="Purpose of Visit"
             rules={[
-              { required: true, message: 'Please enter purpose of visit' },
-              { min: 10, message: 'Please provide at least 10 characters' }
+              { required: isEdit, message: 'Please enter purpose of visit' },
+              {
+                validator: (_, value) => {
+                  if (!value) {
+                    return Promise.resolve();
+                  }
+                  return value.length >= 10
+                    ? Promise.resolve()
+                    : Promise.reject(new Error('Please provide at least 10 characters'));
+                },
+              },
             ]}
           >
             <Input.TextArea
@@ -407,6 +433,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
             name="observationsAboutStudent"
             label="Observations about the Student"
             extra="Please provide at least 100 words"
+            rules={[minWordsRule('Observations', isEdit)]}
           >
             <Input.TextArea
               rows={4}
@@ -416,7 +443,11 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
             />
           </Form.Item>
 
-          <Form.Item name="feedbackSharedWithStudent" label="Feedback Shared with Student">
+          <Form.Item
+            name="feedbackSharedWithStudent"
+            label="Feedback Shared with Student"
+            rules={[minWordsRule('Feedback', isEdit)]}
+          >
             <Input.TextArea
               rows={2}
               placeholder="Enter feedback shared with student..."

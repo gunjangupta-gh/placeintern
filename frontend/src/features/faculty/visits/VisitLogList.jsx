@@ -14,6 +14,28 @@ dayjs.extend(relativeTime);
 const { RangePicker } = DatePicker;
 const { Title, Text, Paragraph } = Typography;
 
+const MIN_WORDS = 100;
+const countWords = (value = '') => value.trim().split(/\s+/).filter(Boolean).length;
+const hasValue = (value) => value !== null && value !== undefined && String(value).trim() !== '';
+const isVisitLogComplete = (log) => {
+  if (!log) return false;
+  const isPhysical = log.visitType === 'PHYSICAL';
+  const checks = [
+    hasValue(log.visitDate),
+    hasValue(log.visitType),
+    hasValue(log.status),
+    !isPhysical || hasValue(log.visitLocation),
+    hasValue(log.titleOfProjectWork),
+    hasValue(log.assistanceRequiredFromInstitute),
+    hasValue(log.responseFromOrganisation),
+    hasValue(log.remarksOfOrganisationSupervisor),
+    hasValue(log.significantChangeInPlan),
+    countWords(log.observationsAboutStudent || '') >= MIN_WORDS,
+    countWords(log.feedbackSharedWithStudent || '') >= MIN_WORDS,
+  ];
+  return checks.every(Boolean);
+};
+
 const STATUS_FILTERS = [
   { value: 'all', label: 'All Visits' },
   { value: 'DRAFT', label: 'Drafts' },
@@ -37,6 +59,7 @@ const VisitLogList = React.memo(() => {
   const [editingVisitLogId, setEditingVisitLogId] = useState(null);
   const [editingVisitData, setEditingVisitData] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
 
   const handleOpenModal = (visitLogId = null, visitData = null) => {
     setEditingVisitLogId(visitLogId);
@@ -111,6 +134,18 @@ const VisitLogList = React.memo(() => {
     }) || [];
   }, [visitLogsList, searchText, dateRange, statusFilter]);
 
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, current: 1 }));
+  }, [searchText, dateRange, statusFilter]);
+
+  useEffect(() => {
+    const total = filteredLogs.length;
+    const maxPage = Math.max(1, Math.ceil(total / pagination.pageSize));
+    if (pagination.current > maxPage) {
+      setPagination(prev => ({ ...prev, current: maxPage }));
+    }
+  }, [filteredLogs.length, pagination.current, pagination.pageSize]);
+
   const draftCount = useMemo(() => {
     return visitLogsList?.filter(log => log.status?.toUpperCase() === 'DRAFT').length || 0;
   }, [visitLogsList]);
@@ -158,10 +193,13 @@ const VisitLogList = React.memo(() => {
       key: 'status',
       width: 140,
       render: (status, record) => {
-        const colors = { DRAFT: 'orange', SCHEDULED: 'blue', IN_PROGRESS: 'processing', COMPLETED: 'green', CANCELLED: 'red' };
+        const isComplete = isVisitLogComplete(record);
+        const completionTag = isComplete
+          ? { label: 'Complete', color: 'green' }
+          : { label: 'Incomplete', color: 'volcano' };
         return (
           <Space>
-            <Tag color={colors[status?.toUpperCase()] || 'default'}>{status}</Tag>
+            <Tag color={completionTag.color}>{completionTag.label}</Tag>
             {record.visitPhotos?.length > 0 && <Tag color="purple">{record.visitPhotos.length} Photos</Tag>}
           </Space>
         );
@@ -256,7 +294,11 @@ const VisitLogList = React.memo(() => {
             rowKey="id"
             scroll={{ x: 1100 }}
             pagination={{
-              pageSize: 10,
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              onChange: (current, pageSize) => {
+                setPagination({ current, pageSize });
+              },
               showSizeChanger: true,
               showTotal: (total) => `Total ${total} visit logs`,
             }}

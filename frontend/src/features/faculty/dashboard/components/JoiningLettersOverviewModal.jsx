@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useDispatch } from 'react-redux';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { Modal, Table, Tag, Button, Space, Input, Typography, Tooltip } from 'antd';
 import { toast } from 'react-hot-toast';
 import {
@@ -12,7 +12,7 @@ import {
   BankOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { verifyJoiningLetter, rejectJoiningLetter, deleteJoiningLetter } from '../../store/facultySlice';
+import { verifyJoiningLetter, rejectJoiningLetter, deleteJoiningLetter, fetchJoiningLetters, selectJoiningLetters } from '../../store/facultySlice';
 import { openFileWithPresignedUrl } from '../../../../utils/imageUtils';
 import ProfileAvatar from '../../../../components/common/ProfileAvatar';
 
@@ -31,9 +31,18 @@ const getStatusConfig = (status) => {
 
 const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh }) => {
   const dispatch = useDispatch();
+  const joiningLetters = useSelector(selectJoiningLetters);
+  const { list: lettersList = [], total = 0, loading } = joiningLetters || {};
   const [actionModal, setActionModal] = useState({ visible: false, letter: null, action: null });
   const [remarks, setRemarks] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+
+  useEffect(() => {
+    if (visible) {
+      dispatch(fetchJoiningLetters({ page: pagination.current, limit: pagination.pageSize, forceRefresh: true }));
+    }
+  }, [visible, dispatch, pagination.current, pagination.pageSize]);
 
   const getStudentInfo = (letter) => {
     return letter.student || letter.application?.student || letter.studentData || null;
@@ -52,6 +61,7 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
       toast.success('Joining report verified');
       setActionModal({ visible: false, letter: null, action: null });
       setRemarks('');
+      dispatch(fetchJoiningLetters({ page: pagination.current, limit: pagination.pageSize, forceRefresh: true }));
       onRefresh?.();
     } catch (error) {
       toast.error(error?.message || 'Failed to verify');
@@ -71,6 +81,7 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
       toast.success('Joining report rejected');
       setActionModal({ visible: false, letter: null, action: null });
       setRemarks('');
+      dispatch(fetchJoiningLetters({ page: pagination.current, limit: pagination.pageSize, forceRefresh: true }));
       onRefresh?.();
     } catch (error) {
       toast.error(error?.message || 'Failed to reject');
@@ -89,6 +100,7 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
         try {
           await dispatch(deleteJoiningLetter(letter.id)).unwrap();
           toast.success('Deleted');
+          dispatch(fetchJoiningLetters({ page: pagination.current, limit: pagination.pageSize, forceRefresh: true }));
           onRefresh?.();
         } catch (error) {
           toast.error(error?.message || 'Failed to delete');
@@ -106,11 +118,12 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
   };
 
   const stats = useMemo(() => {
-    const pending = letters.filter(l => l.status === 'PENDING' || l.status === 'UPLOADED').length;
-    const verified = letters.filter(l => l.status === 'VERIFIED').length;
-    const rejected = letters.filter(l => l.status === 'REJECTED').length;
-    return { pending, verified, rejected, total: letters.length };
-  }, [letters]);
+    const source = lettersList.length > 0 ? lettersList : letters;
+    const pending = source.filter(l => l.status === 'PENDING' || l.status === 'UPLOADED').length;
+    const verified = source.filter(l => l.status === 'VERIFIED').length;
+    const rejected = source.filter(l => l.status === 'REJECTED').length;
+    return { pending, verified, rejected, total: source.length };
+  }, [lettersList, letters]);
 
   const columns = [
     {
@@ -207,9 +220,16 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
 
         <Table
           columns={columns}
-          dataSource={letters}
+          dataSource={lettersList.length > 0 ? lettersList : letters}
           rowKey="id"
-          pagination={{ pageSize: 10, showSizeChanger: false }}
+          loading={loading}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total,
+            showSizeChanger: true,
+            onChange: (current, pageSize) => setPagination({ current, pageSize }),
+          }}
           size="small"
           scroll={{ x: 700 }}
         />
