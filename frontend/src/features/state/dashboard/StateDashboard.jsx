@@ -119,7 +119,7 @@ const StateDashboard = () => {
       <div className="mb-6">
         <TopPerformers
           topPerformers={topPerformers}
-          // bottomPerformers={bottomPerformers}
+          bottomPerformers={bottomPerformers}
           loading={performersLoading}
         />
       </div>

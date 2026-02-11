@@ -127,7 +127,7 @@ const PerformanceCard = ({ title, icon, topPerformers, bottomPerformers, loading
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No data" className="!my-4" />
       )}
 
-      {/* <SectionHeader>Bottom 5 Performers</SectionHeader>
+      <SectionHeader>Bottom 5 Performers</SectionHeader>
       {bottomPerformers?.length > 0 ? (
         <div>
           {bottomPerformers.slice(0, 5).map((item, index) =>
@@ -136,7 +136,7 @@ const PerformanceCard = ({ title, icon, topPerformers, bottomPerformers, loading
         </div>
       ) : (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No data" className="!my-4" />
-      )} */}
+      )}
     </div>
   </Card>
 );
@@ -168,7 +168,7 @@ const TopPerformers = ({
         title="Monthly Reports Performance"
         icon={<FileTextOutlined className="text-green-500" />}
         topPerformers={sortedTopByReports}
-        // bottomPerformers={sortedBottomByReports}
+        bottomPerformers={sortedBottomByReports}
         loading={loading}
         renderRow={(item, rank, isBottom) => (
           <ReportsPerformanceRow
@@ -183,7 +183,7 @@ const TopPerformers = ({
         title="Faculty Visits Performance"
         icon={<EyeOutlined className="text-pink-500" />}
         topPerformers={sortedTopByVisits}
-        // bottomPerformers={sortedBottomByVisits}
+        bottomPerformers={sortedBottomByVisits}
         loading={loading}
         renderRow={(item, rank, isBottom) => (
           <VisitsPerformanceRow
