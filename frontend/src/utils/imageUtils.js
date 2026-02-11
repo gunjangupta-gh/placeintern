@@ -12,8 +12,8 @@ const getUploadsBaseUrl = () => {
   }
   
   // Use MinIO endpoint and bucket for both dev and production
-  const minioEndpoint = import.meta.env.VITE_MINIO_ENDPOINT || 'http://localhost:9000';
-  const minioBucket = import.meta.env.VITE_MINIO_BUCKET || 'cms-uploads';
+  const minioEndpoint = import.meta.env.VITE_MINIO_ENDPOINT || 'https://files.placeintern.com';
+  const minioBucket = import.meta.env.VITE_MINIO_BUCKET || 'placeintern-uploads';
   return `${minioEndpoint}/${minioBucket}`;
 };
 
