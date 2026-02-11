@@ -4,6 +4,7 @@ import { TrainingApplicationService } from './training-application.service';
 import { TrainingAttendanceService } from './training-attendance.service';
 import { LessonPlanService } from './lesson-plan.service';
 import { TrainingCertificateService } from './training-certificate.service';
+import { TrainingRecommendationService } from './training-recommendation.service';
 import { AuditModule } from '../../infrastructure/audit/audit.module';
 import { NotificationModule } from '../../infrastructure/notification/notification.module';
 
@@ -15,6 +16,7 @@ import { NotificationModule } from '../../infrastructure/notification/notificati
     TrainingAttendanceService,
     LessonPlanService,
     TrainingCertificateService,
+    TrainingRecommendationService,
   ],
   exports: [
     TrainingService,
@@ -22,6 +24,7 @@ import { NotificationModule } from '../../infrastructure/notification/notificati
     TrainingAttendanceService,
     LessonPlanService,
     TrainingCertificateService,
+    TrainingRecommendationService,
   ],
 })
 export class TrainingModule {}

@@ -1,20 +1,74 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Button, Card, Col, Input, Popconfirm, Row, Segmented, Space, Statistic, Table, Tooltip, message } from 'antd';
-import { FileTextOutlined, EyeOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
-import PageHeader from '../../../components/PageHeader';
-import ApplicationStatusBadge from '../../../components/training/ApplicationStatusBadge';
-import TrainingDateRange from '../../../components/training/TrainingDateRange';
-import TrainingEmptyState from '../../../components/training/TrainingEmptyState';
-import { fetchMyApplications, withdrawApplication } from '../store/facultyTrainingSlice';
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  Button,
+  Card,
+  Input,
+  Modal,
+  Popconfirm,
+  Space,
+  Table,
+  Tooltip,
+  Typography,
+  message,
+  Spin,
+  Alert,
+} from "antd";
+import {
+  EyeOutlined,
+  DeleteOutlined,
+  SearchOutlined,
+  CalendarOutlined,
+  CommentOutlined,
+  BookOutlined,
+  EnvironmentOutlined,
+  CheckCircleOutlined,
+  LoadingOutlined,
+} from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
+import ApplicationStatusBadge from "../../../components/training/ApplicationStatusBadge";
+import TrainingDateRange from "../../../components/training/TrainingDateRange";
+import TrainingEmptyState from "../../../components/training/TrainingEmptyState";
+import FeedbackFormModal from "../../../components/training/FeedbackFormModal";
+import LessonPlanModal from "../../../components/training/LessonPlanModal";
+import { TableRowSkeleton } from "../../../components/training/skeletons/TrainingSkeletons";
+import {
+  fetchMyApplications,
+  withdrawApplication,
+  fetchFeedbackForm,
+  submitFeedback,
+  createLessonPlan,
+  markSelfAttendance,
+} from "../store/facultyTrainingSlice";
+
+const { Text, Title } = Typography;
 
 const MyApplicationsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { applications } = useSelector((state) => state.facultyTraining);
-  const [statusFilter, setStatusFilter] = useState('ALL');
-  const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [searchText, setSearchText] = useState("");
+  const [feedbackModal, setFeedbackModal] = useState({
+    open: false,
+    training: null,
+  });
+  const [lessonPlanModal, setLessonPlanModal] = useState({
+    open: false,
+    training: null,
+  });
+  const [attendanceModal, setAttendanceModal] = useState({
+    open: false,
+    application: null,
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [locationState, setLocationState] = useState({
+    loading: false,
+    error: null,
+    data: null,
+  });
+
+  const { feedback } = useSelector((state) => state.facultyTraining);
 
   useEffect(() => {
     dispatch(fetchMyApplications());
@@ -23,27 +77,209 @@ const MyApplicationsPage = () => {
   const handleWithdraw = async (id) => {
     try {
       await dispatch(withdrawApplication(id)).unwrap();
-      message.success('Application withdrawn successfully');
+      message.success("Application withdrawn successfully");
     } catch (error) {
-      message.error(error || 'Failed to withdraw application');
+      message.error(error || "Failed to withdraw application");
     }
   };
 
-  const applicationStats = useMemo(() => {
-    const list = applications.list || [];
-    return {
-      total: list.length,
-      approved: list.filter((item) => item.status === 'APPROVED').length,
-      pending: list.filter((item) => ['PENDING', 'SUBMITTED'].includes(item.status)).length,
-      rejected: list.filter((item) => item.status === 'REJECTED').length,
-    };
-  }, [applications.list]);
+  const handleView = (trainingId) => {
+    if (trainingId) {
+      navigate(`/app/training/${trainingId}`);
+    }
+  };
+
+  const handleOpenFeedback = async (application) => {
+    const trainingId = application.trainingId || application.training?.id;
+    if (!trainingId) return;
+
+    // Fetch feedback form
+    await dispatch(fetchFeedbackForm(trainingId));
+    setFeedbackModal({
+      open: true,
+      training: application.training || {
+        id: trainingId,
+        title: application.trainingTitle,
+      },
+    });
+  };
+
+  const handleSubmitFeedback = async (payload) => {
+    try {
+      setSubmitting(true);
+      await dispatch(
+        submitFeedback({
+          trainingId: payload.trainingId,
+          data: payload,
+        }),
+      ).unwrap();
+      message.success("Feedback submitted successfully!");
+      setFeedbackModal({ open: false, training: null });
+      dispatch(fetchMyApplications()); // Refresh
+    } catch (error) {
+      message.error(error || "Failed to submit feedback");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleOpenLessonPlan = (application) => {
+    setLessonPlanModal({
+      open: true,
+      training: application.training || {
+        id: application.trainingId,
+        title: application.trainingTitle,
+      },
+    });
+  };
+
+  const handleSubmitLessonPlan = async (payload) => {
+    try {
+      setSubmitting(true);
+      await dispatch(createLessonPlan(payload)).unwrap();
+      message.success("Lesson plan submitted successfully!");
+      setLessonPlanModal({ open: false, training: null });
+      dispatch(fetchMyApplications()); // Refresh
+    } catch (error) {
+      message.error(error || "Failed to submit lesson plan");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Attendance handlers
+  const captureLocation = useCallback(async () => {
+    if (!navigator.geolocation) {
+      setLocationState({
+        loading: false,
+        error: "Geolocation is not supported by your browser",
+        data: null,
+      });
+      return;
+    }
+
+    setLocationState({ loading: true, error: null, data: null });
+
+    try {
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+      let locationAddress = "";
+
+      // Try reverse geocoding
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+          {
+            headers: {
+              "User-Agent": "PlaceIntern Training App",
+            },
+          }
+        );
+        const data = await response.json();
+        if (data.display_name) {
+          locationAddress = data.display_name;
+        }
+      } catch {
+        // Ignore geocoding errors
+      }
+
+      setLocationState({
+        loading: false,
+        error: null,
+        data: { latitude, longitude, locationAddress },
+      });
+    } catch (error) {
+      let errorMessage = "Failed to get your location";
+      if (error.code === 1) {
+        errorMessage = "Location access denied. Please enable location permissions.";
+      } else if (error.code === 2) {
+        errorMessage = "Unable to determine your location. Please try again.";
+      } else if (error.code === 3) {
+        errorMessage = "Location request timed out. Please try again.";
+      }
+      setLocationState({
+        loading: false,
+        error: errorMessage,
+        data: null,
+      });
+    }
+  }, []);
+
+  const handleOpenAttendance = useCallback(
+    (application) => {
+      setAttendanceModal({
+        open: true,
+        application,
+      });
+      setLocationState({ loading: false, error: null, data: null });
+      // Auto-capture location when modal opens
+      setTimeout(() => captureLocation(), 100);
+    },
+    [captureLocation]
+  );
+
+  const handleCloseAttendance = () => {
+    setAttendanceModal({ open: false, application: null });
+    setLocationState({ loading: false, error: null, data: null });
+  };
+
+  const handleMarkAttendance = async () => {
+    if (!attendanceModal.application || !locationState.data) {
+      message.error("Please capture your location first");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const trainingId =
+        attendanceModal.application.trainingId ||
+        attendanceModal.application.training?.id;
+
+      await dispatch(
+        markSelfAttendance({
+          trainingId,
+          latitude: locationState.data.latitude,
+          longitude: locationState.data.longitude,
+          locationAddress: locationState.data.locationAddress,
+        })
+      ).unwrap();
+
+      message.success("Attendance marked successfully!");
+      handleCloseAttendance();
+      dispatch(fetchMyApplications({ forceRefresh: true }));
+    } catch (error) {
+      message.error(error || "Failed to mark attendance");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Check if training is ongoing (today is between start and end date)
+  const isTrainingOngoing = (training) => {
+    if (!training?.startDate || !training?.endDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(training.startDate);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(training.endDate);
+    endDate.setHours(23, 59, 59, 999);
+    return today >= startDate && today <= endDate;
+  };
 
   const filteredApplications = useMemo(() => {
     let result = applications.list || [];
-    if (statusFilter !== 'ALL') {
-      if (statusFilter === 'PENDING') {
-        result = result.filter((item) => ['PENDING', 'SUBMITTED'].includes(item.status));
+    if (statusFilter !== "ALL") {
+      if (statusFilter === "PENDING") {
+        result = result.filter((item) =>
+          ["PENDING", "SUBMITTED"].includes(item.status),
+        );
       } else {
         result = result.filter((item) => item.status === statusFilter);
       }
@@ -51,7 +287,9 @@ const MyApplicationsPage = () => {
     if (searchText) {
       const search = searchText.toLowerCase();
       result = result.filter((item) =>
-        (item.training?.title || item.trainingTitle || '').toLowerCase().includes(search)
+        (item.training?.title || item.trainingTitle || "")
+          .toLowerCase()
+          .includes(search),
       );
     }
     return result;
@@ -59,60 +297,131 @@ const MyApplicationsPage = () => {
 
   const columns = [
     {
-      title: 'Training',
-      dataIndex: ['training', 'title'],
-      key: 'training',
+      title: "Training",
+      dataIndex: ["training", "title"],
+      key: "training",
       render: (_, record) => (
-        <div>
-          <div className="font-medium text-text-primary">
-            {record.training?.title || record.trainingTitle || 'Training'}
+        <div className="py-1">
+          <div className="font-medium text-sm text-slate-800">
+            {record.training?.title || record.trainingTitle || "Training"}
           </div>
           {record.training?.startDate && (
-            <TrainingDateRange
-              startDate={record.training.startDate}
-              endDate={record.training.endDate}
-              compact
-              showIcon={false}
-            />
+            <div className="text-xs text-slate-500 mt-0.5">
+              <TrainingDateRange
+                startDate={record.training.startDate}
+                endDate={record.training.endDate}
+                compact
+                showIcon={false}
+              />
+            </div>
           )}
         </div>
       ),
     },
     {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      width: 140,
-      render: (status) => <ApplicationStatusBadge status={status} />,
-    },
-    {
-      title: 'Applied On',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      width: 140,
-      render: (value) => (
-        value ? new Date(value).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        }) : '-'
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      width: 120,
+      render: (status) => (
+        <div className="flex justify-center">
+          <ApplicationStatusBadge status={status} />
+        </div>
       ),
     },
     {
-      title: 'Actions',
-      key: 'actions',
+      title: "Applied On",
+      dataIndex: "appliedAt",
+      key: "appliedAt",
       width: 120,
+      sorter: (a, b) => new Date(a.appliedAt || a.createdAt) - new Date(b.appliedAt || b.createdAt),
+      render: (_, record) => {
+        const value = record.appliedAt || record.createdAt;
+        return (
+          <Text className="text-xs">
+            {value
+              ? new Date(value).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })
+              : "-"}
+          </Text>
+        );
+      },
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      width: 150,
       render: (_, record) => (
-        <Space>
+        <Space size="small" onClick={(e) => e.stopPropagation()}>
           <Tooltip title="View Training">
             <Button
               type="text"
               size="small"
               icon={<EyeOutlined />}
-              onClick={() => navigate(`/app/training/${record.trainingId || record.training?.id}`)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleView(record.trainingId || record.training?.id);
+              }}
+              aria-label="View training details"
             />
           </Tooltip>
-          {['PENDING', 'SUBMITTED'].includes(record.status) && (
+          {record.status === "APPROVED" &&
+            isTrainingOngoing(record.training) &&
+            (record.hasMarkedAttendanceToday === true ? (
+              <Tooltip title="Attendance marked for today">
+                <CheckCircleOutlined className="text-green-500 mx-2" />
+              </Tooltip>
+            ) : (
+              <Tooltip title="Mark Attendance">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<CheckCircleOutlined />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenAttendance(record);
+                  }}
+                  aria-label="Mark attendance"
+                  className="text-green-600 hover:text-green-700"
+                />
+              </Tooltip>
+            ))}
+          {record.status === "APPROVED" &&
+            record.training?.endDate &&
+            new Date(record.training.endDate) < new Date() && (
+              <>
+                <Tooltip title="Submit Feedback">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<CommentOutlined />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenFeedback(record);
+                    }}
+                    aria-label="Submit feedback"
+                    className="text-blue-600 hover:text-blue-700"
+                  />
+                </Tooltip>
+                <Tooltip title="Submit Lesson Plan">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<BookOutlined />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenLessonPlan(record);
+                    }}
+                    aria-label="Submit lesson plan"
+                    className="text-green-600 hover:text-green-700"
+                  />
+                </Tooltip>
+              </>
+            )}
+          {["PENDING", "SUBMITTED"].includes(record.status) && (
             <Popconfirm
               title="Withdraw application?"
               description="Are you sure you want to withdraw this application?"
@@ -127,6 +436,8 @@ const MyApplicationsPage = () => {
                   size="small"
                   danger
                   icon={<DeleteOutlined />}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label="Withdraw application"
                 />
               </Tooltip>
             </Popconfirm>
@@ -136,65 +447,81 @@ const MyApplicationsPage = () => {
     },
   ];
 
+  const isLoading = applications.loading && !applications.list;
+
   return (
     <div className="p-6 training-ui">
-      <PageHeader
-        icon={FileTextOutlined}
-        title={<span className="training-heading">My Applications</span>}
-        description="Track your training applications and their approval status."
-      />
+      {/* Header Section */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Title level={4} className="!mb-0">
+            My Applications
+          </Title>
+        </div>
+        <Button
+          type="primary"
+          icon={<CalendarOutlined />}
+          onClick={() => navigate("/app/training/calendar")}
+        >
+          Browse Trainings
+        </Button>
+      </div>
 
-      <Row gutter={[16, 16]} className="mb-6">
-        <Col xs={12} lg={6}>
-          <Card className="rounded-2xl border-border shadow-none">
-            <Statistic title="Total" value={applicationStats.total} />
-          </Card>
-        </Col>
-        <Col xs={12} lg={6}>
-          <Card className="rounded-2xl border-border shadow-none">
-            <Statistic title="Approved" value={applicationStats.approved} />
-          </Card>
-        </Col>
-        <Col xs={12} lg={6}>
-          <Card className="rounded-2xl border-border shadow-none">
-            <Statistic title="Pending" value={applicationStats.pending} />
-          </Card>
-        </Col>
-        <Col xs={12} lg={6}>
-          <Card className="rounded-2xl border-border shadow-none">
-            <Statistic title="Rejected" value={applicationStats.rejected} />
-          </Card>
-        </Col>
-      </Row>
-
-      <Card className="rounded-2xl border-border shadow-none">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+      {/* Filters Section */}
+      <Card className="rounded-xl border-border shadow-none">
+        <div className="mb-4">
           <Input
-            placeholder="Search by training name"
-            prefix={<SearchOutlined className="text-text-secondary" />}
+            placeholder="Search by training name..."
+            prefix={<SearchOutlined className="text-slate-400" />}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            className="lg:w-80"
+            className="w-full"
             allowClear
-          />
-          <Segmented
-            value={statusFilter}
-            onChange={setStatusFilter}
-            options={[
-              { label: 'All', value: 'ALL' },
-              { label: 'Approved', value: 'APPROVED' },
-              { label: 'Pending', value: 'PENDING' },
-              { label: 'Rejected', value: 'REJECTED' },
-            ]}
+            aria-label="Search applications"
           />
         </div>
 
-        {filteredApplications.length === 0 && !applications.loading ? (
+        {/* Results info */}
+        {filteredApplications.length > 0 && (
+          <div className="mb-3 pb-3 border-b border-slate-200">
+            <Text className="text-xs text-slate-600">
+              Showing <Text strong>{filteredApplications.length}</Text> of{" "}
+              <Text strong>{applications.list?.length || 0}</Text> applications
+            </Text>
+          </div>
+        )}
+
+        {/* Content */}
+        {isLoading ? (
+          <TableRowSkeleton rows={5} columns={4} />
+        ) : filteredApplications.length === 0 ? (
           <TrainingEmptyState
-            type="applications"
-            message="No applications yet"
-            actionText="Browse Trainings"
-            onAction={() => navigate('/app/training/calendar')}
+            type={
+              searchText || statusFilter !== "ALL" ? "search" : "applications"
+            }
+            message={
+              searchText || statusFilter !== "ALL"
+                ? "No matching applications"
+                : "No applications yet"
+            }
+            description={
+              searchText || statusFilter !== "ALL"
+                ? "Try adjusting your search or filter criteria."
+                : "You haven't applied to any training sessions yet."
+            }
+            actionText={
+              statusFilter !== "ALL" || searchText
+                ? "Clear Filters"
+                : "Browse Trainings"
+            }
+            onAction={
+              statusFilter !== "ALL" || searchText
+                ? () => {
+                    setStatusFilter("ALL");
+                    setSearchText("");
+                  }
+                : () => navigate("/app/training/calendar")
+            }
           />
         ) : (
           <Table
@@ -203,14 +530,172 @@ const MyApplicationsPage = () => {
             columns={columns}
             dataSource={filteredApplications}
             loading={applications.loading}
+            size="small"
             pagination={{
               pageSize: 10,
               showSizeChanger: true,
-              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} applications`,
+              showTotal: (total, range) => (
+                <Text className="text-xs text-slate-600">
+                  {range[0]}-{range[1]} of {total}
+                </Text>
+              ),
+              size: "small",
             }}
+            onRow={(record) => ({
+              className: "cursor-pointer hover:bg-slate-50",
+              onClick: () =>
+                handleView(record.trainingId || record.training?.id),
+            })}
           />
         )}
       </Card>
+
+      {/* Feedback Modal */}
+      <FeedbackFormModal
+        open={feedbackModal.open}
+        onCancel={() => setFeedbackModal({ open: false, training: null })}
+        onSubmit={handleSubmitFeedback}
+        loading={submitting}
+        training={feedbackModal.training}
+        feedbackForm={feedback?.form}
+      />
+
+      {/* Lesson Plan Modal */}
+      <LessonPlanModal
+        open={lessonPlanModal.open}
+        onCancel={() => setLessonPlanModal({ open: false, training: null })}
+        onSubmit={handleSubmitLessonPlan}
+        loading={submitting}
+        training={lessonPlanModal.training}
+      />
+
+      {/* Mark Attendance Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <CheckCircleOutlined className="text-green-500" />
+            <span>Mark Attendance</span>
+          </div>
+        }
+        open={attendanceModal.open}
+        onCancel={handleCloseAttendance}
+        footer={[
+          <Button key="cancel" onClick={handleCloseAttendance}>
+            Cancel
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            onClick={handleMarkAttendance}
+            loading={submitting}
+            disabled={!locationState.data}
+            icon={<CheckCircleOutlined />}
+          >
+            Mark Attendance
+          </Button>,
+        ]}
+        destroyOnClose
+      >
+        <div className="space-y-4">
+          {/* Training Info */}
+          <div className="bg-slate-50 rounded-lg p-3">
+            <Text className="text-xs text-slate-500">Training</Text>
+            <div className="font-medium text-sm text-slate-800 mt-0.5">
+              {attendanceModal.application?.training?.title ||
+                attendanceModal.application?.trainingTitle ||
+                "Training"}
+            </div>
+            {attendanceModal.application?.training?.startDate && (
+              <div className="text-xs text-slate-500 mt-1">
+                <TrainingDateRange
+                  startDate={attendanceModal.application.training.startDate}
+                  endDate={attendanceModal.application.training.endDate}
+                  compact
+                  showIcon={false}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Location Capture */}
+          <div className="border border-slate-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <EnvironmentOutlined className="text-blue-500" />
+                <Text strong className="text-sm">
+                  Your Location
+                </Text>
+              </div>
+              <Button
+                size="small"
+                onClick={captureLocation}
+                loading={locationState.loading}
+                icon={<EnvironmentOutlined />}
+              >
+                {locationState.data ? "Refresh" : "Capture"}
+              </Button>
+            </div>
+
+            {locationState.loading && (
+              <div className="flex items-center justify-center py-4">
+                <Spin
+                  indicator={<LoadingOutlined spin />}
+                  tip="Capturing your location..."
+                />
+              </div>
+            )}
+
+            {locationState.error && (
+              <Alert
+                type="error"
+                message={locationState.error}
+                showIcon
+                className="mb-3"
+              />
+            )}
+
+            {locationState.data && (
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <Text className="text-slate-500">Latitude:</Text>
+                  <Text className="font-mono">
+                    {locationState.data.latitude.toFixed(6)}
+                  </Text>
+                </div>
+                <div className="flex justify-between">
+                  <Text className="text-slate-500">Longitude:</Text>
+                  <Text className="font-mono">
+                    {locationState.data.longitude.toFixed(6)}
+                  </Text>
+                </div>
+                {locationState.data.locationAddress && (
+                  <div className="pt-2 border-t border-slate-100">
+                    <Text className="text-slate-500">Address:</Text>
+                    <div className="text-slate-700 mt-1">
+                      {locationState.data.locationAddress}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!locationState.loading &&
+              !locationState.data &&
+              !locationState.error && (
+                <div className="text-center py-4 text-slate-400 text-xs">
+                  Click "Capture" to get your current location
+                </div>
+              )}
+          </div>
+
+          <Alert
+            type="info"
+            message="Your location will be recorded with your attendance for verification purposes."
+            showIcon
+            className="text-xs"
+          />
+        </div>
+      </Modal>
     </div>
   );
 };

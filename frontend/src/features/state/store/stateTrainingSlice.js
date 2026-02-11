@@ -693,6 +693,7 @@ const stateTrainingSlice = createSlice({
       })
       .addCase(fetchStateFeedbackStats.rejected, (state, action) => {
         state.feedbackStats.loading = false;
+        state.feedbackStats.data = null;
         state.feedbackStats.error = action.payload;
       })
 
@@ -716,8 +717,18 @@ const stateTrainingSlice = createSlice({
       .addCase(fetchStateTrainingUpcoming.fulfilled, (state, action) => {
         state.reports.upcoming = action.payload || [];
       })
+      .addCase(fetchStateAttendanceReport.pending, (state) => {
+        state.reports.loading = true;
+        state.reports.error = null;
+      })
       .addCase(fetchStateAttendanceReport.fulfilled, (state, action) => {
+        state.reports.loading = false;
         state.reports.attendance = action.payload;
+      })
+      .addCase(fetchStateAttendanceReport.rejected, (state, action) => {
+        state.reports.loading = false;
+        state.reports.attendance = null;
+        state.reports.error = action.payload;
       });
   },
 });

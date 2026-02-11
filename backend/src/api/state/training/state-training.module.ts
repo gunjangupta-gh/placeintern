@@ -2,16 +2,19 @@ import { Module } from '@nestjs/common';
 import { StateTrainingController } from './state-training.controller';
 import { StateFeedbackFormController } from './state-feedback-form.controller';
 import { StateTrainingReportsController } from './state-training-reports.controller';
+import { StateRecommendationController } from './state-recommendation.controller';
 import { TrainingModule } from '../../../domain/training/training.module';
 import { FeedbackModule } from '../../../domain/feedback/feedback.module';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 
 @Module({
   imports: [TrainingModule, FeedbackModule],
+  // IMPORTANT: Order matters! More specific routes (reports) must come before parameterized routes
   controllers: [
-    StateTrainingController,
+    StateTrainingReportsController, // /state/training/reports/* - must be first
     StateFeedbackFormController,
-    StateTrainingReportsController,
+    StateRecommendationController, // /state/training/recommendations/*
+    StateTrainingController, // /state/training/:id - parameterized routes last
   ],
   providers: [
     AuditService

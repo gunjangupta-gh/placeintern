@@ -75,6 +75,9 @@ export class TrainingAttendanceService {
           attendanceDate: dateOnly,
           markedAt: now,
           markedById: userId,
+          latitude: dto.latitude,
+          longitude: dto.longitude,
+          locationAddress: dto.locationAddress,
           ipAddress: dto.ipAddress,
           userAgent: dto.userAgent,
         },
@@ -469,6 +472,9 @@ export class TrainingAttendanceService {
   async markSelfAttendance(dto: MarkSelfAttendanceDto, userId: string) {
     return this.markAttendance(dto.trainingId, userId, {
       attendanceDate: dto.attendanceDate,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      locationAddress: dto.locationAddress,
     });
   }
 

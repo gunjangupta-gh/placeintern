@@ -60,6 +60,41 @@ export class TrainingApplicationService {
       });
 
       if (existing) {
+        // If application was withdrawn (isActive: false), reactivate it
+        if (!existing.isActive) {
+          const application = await this.prisma.trainingApplication.update({
+            where: { id: existing.id },
+            data: {
+              isActive: true,
+              relevanceToTeaching: dto.relevanceToTeaching,
+              expectedApplication: dto.expectedApplication,
+              status: TrainingApplicationStatus.SUBMITTED,
+              appliedAt: new Date(),
+              reviewedAt: null,
+              reviewedById: null,
+              reviewComments: null,
+            },
+            include: {
+              user: { select: { id: true, name: true, email: true, institutionId: true } },
+              training: { select: { id: true, title: true, startDate: true, endDate: true } },
+            },
+          });
+
+          await this.invalidateCache(userId, trainingId);
+
+          this.auditService.log({
+            action: AuditAction.TRAINING_APPLICATION_SUBMIT,
+            entityType: 'TrainingApplication',
+            entityId: application.id,
+            userId,
+            category: AuditCategory.APPLICATION_PROCESS,
+            severity: AuditSeverity.LOW,
+            description: `Re-applied for training "${training.title}"`,
+          }).catch(() => {});
+
+          return application;
+        }
+
         throw new BadRequestException('You have already applied for this training');
       }
 
@@ -169,8 +204,40 @@ export class TrainingApplicationService {
         this.prisma.trainingApplication.count({ where }),
       ]);
 
+      // Get today's attendance status for approved applications
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const approvedTrainingIds = applications
+        .filter(app => app.status === 'APPROVED')
+        .map(app => app.trainingId);
+
+      const todayAttendance = approvedTrainingIds.length > 0
+        ? await this.prisma.trainingAttendance.findMany({
+            where: {
+              userId,
+              trainingId: { in: approvedTrainingIds },
+              attendanceDate: {
+                gte: today,
+                lt: tomorrow,
+              },
+            },
+            select: { trainingId: true },
+          })
+        : [];
+
+      const attendanceMarkedToday = new Set(todayAttendance.map(a => a.trainingId));
+
+      // Add attendance status to each application
+      const applicationsWithAttendance = applications.map(app => ({
+        ...app,
+        hasMarkedAttendanceToday: attendanceMarkedToday.has(app.trainingId),
+      }));
+
       return {
-        data: applications,
+        data: applicationsWithAttendance,
         pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
       };
     } catch (error) {
@@ -500,8 +567,13 @@ export class TrainingApplicationService {
    * Get application status for a specific training (Faculty)
    */
   async getStatusForTraining(trainingId: string, userId: string) {
-    const application = await this.prisma.trainingApplication.findUnique({
-      where: { userId_trainingId: { userId, trainingId } },
+    // Use findFirst to filter by isActive (withdrawn applications have isActive: false)
+    const application = await this.prisma.trainingApplication.findFirst({
+      where: {
+        userId,
+        trainingId,
+        isActive: true,
+      },
       select: {
         id: true,
         status: true,

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsDateString, IsArray, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsArray, IsUUID, IsNumber } from 'class-validator';
 import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
 
 export class MarkAttendanceDto {
@@ -6,6 +6,21 @@ export class MarkAttendanceDto {
   @IsOptional()
   @IsDateString()
   attendanceDate?: string;
+
+  @ApiPropertyOptional({ description: 'Latitude of attendance location' })
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @ApiPropertyOptional({ description: 'Longitude of attendance location' })
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  @ApiPropertyOptional({ description: 'Address of attendance location' })
+  @IsOptional()
+  @IsString()
+  locationAddress?: string;
 
   @ApiPropertyOptional({ description: 'IP address' })
   @IsOptional()
@@ -56,4 +71,19 @@ export class MarkSelfAttendanceDto {
   @IsOptional()
   @IsDateString()
   attendanceDate?: string;
+
+  @ApiPropertyOptional({ description: 'Latitude of attendance location' })
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @ApiPropertyOptional({ description: 'Longitude of attendance location' })
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  @ApiPropertyOptional({ description: 'Address of attendance location' })
+  @IsOptional()
+  @IsString()
+  locationAddress?: string;
 }

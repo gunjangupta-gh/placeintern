@@ -36,6 +36,7 @@ import {
   CheckSquareOutlined,
   PlusOutlined,
   CalendarOutlined,
+  BulbOutlined,
 } from "@ant-design/icons";
 import React from "react";
 
@@ -333,12 +334,12 @@ export const menuConfig = {
         icon: <FileDoneOutlined />,
         path: "/app/training/lesson-plans",
       },
-      {
-        key: "principal-training-reports",
-        label: "Reports",
-        icon: <BarChartOutlined />,
-        path: "/app/training/reports",
-      },
+      // {
+      //   key: "principal-training-reports",
+      //   label: "Reports",
+      //   icon: <BarChartOutlined />,
+      //   path: "/app/training/reports",
+      // },
     ],
   },
 
@@ -433,11 +434,17 @@ export const menuConfig = {
         path: "/app/training/lesson-plans",
       },
       {
-        key: "faculty-training-certificates",
-        label: "Certificates",
-        icon: <SafetyCertificateOutlined />,
-        path: "/app/training/certificates",
+        key: "faculty-training-recommend",
+        label: "Recommend Training",
+        icon: <BulbOutlined />,
+        path: "/app/training/recommend",
       },
+      // {
+      //   key: "faculty-training-certificates",
+      //   label: "Certificates",
+      //   icon: <SafetyCertificateOutlined />,
+      //   path: "/app/training/certificates",
+      // },
     ],
   },
 

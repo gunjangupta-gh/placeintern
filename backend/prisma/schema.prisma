@@ -106,6 +106,8 @@ model User {
   reviewedLessonPlans     LessonPlan[]          @relation("LessonPlanReviewer")
   receivedCertificates    TrainingCertificate[] @relation("CertificateRecipient")
   issuedCertificates      TrainingCertificate[] @relation("CertificateIssuer")
+  trainingRecommendations TrainingRecommendation[] @relation("TrainingRecommender")
+  reviewedRecommendations TrainingRecommendation[] @relation("RecommendationReviewer")
 
   // Performance Indexes
   @@index([institutionId])
@@ -370,6 +372,7 @@ model Branch {
 
   // Training Module - Target disciplines for trainings
   trainings Training[] @relation("TrainingBranches")
+  trainingRecommendations TrainingRecommendation[] @relation("RecommendationBranches")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1626,6 +1629,8 @@ model Training {
   // Schedule
   startDate       DateTime
   endDate         DateTime
+  startTime         DateTime?
+  endTime           DateTime?
   duration        Int?      // Total duration in hours
   applicationDeadline DateTime
 
@@ -1642,11 +1647,15 @@ model Training {
   prerequisites   String?   @db.Text
   difficulty      TrainingDifficulty @default(INTERMEDIATE)
 
+  //cost
+  cost            Float?    // Cost of the training (if applicable)
+
   // Learning Outcomes (stored as JSON array)
   learningOutcomes Json?    // ["Outcome 1", "Outcome 2", ...]
 
   // Target Disciplines (linked to Branch)
   targetBranches  Branch[]  @relation("TrainingBranches")
+  designation      String?   // e.g., "For Computer Science Faculty"
 
   // Feedback Form (optional, global form assigned to this training)
   feedbackFormId  String?
@@ -1667,6 +1676,7 @@ model Training {
   lessonPlans         LessonPlan[]
   certificates        TrainingCertificate[]
   feedbackResponses   FeedbackResponse[]    @relation("TrainingFeedback")
+  sourceRecommendations TrainingRecommendation[] @relation("ImplementedRecommendation")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1739,10 +1749,12 @@ model TrainingAttendance {
   // For multi-day trainings
   attendanceDate DateTime @default(now())  // Which day of training
 
-  // location verification
+  // Location verification (captured when marking attendance)
+  latitude    Float?
+  longitude   Float?
+  locationAddress String?  // Reverse geocoded or user-provided address
   ipAddress   String?
   userAgent   String?
-  location       String?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -1912,6 +1924,79 @@ model TrainingCertificate {
   @@index([certificateNumber])
   @@index([issuedAt])
   @@map("training_certificates")
+}
+
+// Training Recommendation - Faculty suggestions for new trainings
+enum TrainingRecommendationStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  IMPLEMENTED
+}
+
+enum TrainingRecommendationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model TrainingRecommendation {
+  id          String   @id @default(uuid())
+
+  // Recommender (Faculty)
+  userId      String
+  user        User     @relation("TrainingRecommender", fields: [userId], references: [id])
+
+  // Recommendation Details
+  title              String
+  description        String   @db.Text
+  targetAudience     String?  // Who should attend (e.g., "CSE Faculty", "All Faculty")
+  suggestedDuration  Int?     // Suggested duration in hours
+  suggestedMode      TrainingDeliveryMode?
+  suggestedDifficulty TrainingDifficulty?
+
+  // Topics & Outcomes
+  topicsCovered      String?  @db.Text  // Main topics to be covered
+  learningOutcomes   String?  @db.Text  // Expected learning outcomes
+  relevanceReason    String?  @db.Text  // Why this training is needed
+
+  // Additional Info
+  suggestedTrainer   String?  // Name/org of suggested trainer if any
+  resourceLinks      String[] @default([])  // Reference links/resources
+  estimatedBudget    Float?   // Estimated cost if known
+
+  // Target Branches (optional)
+  targetBranches     Branch[] @relation("RecommendationBranches")
+
+  // Priority & Status
+  priority           TrainingRecommendationPriority @default(MEDIUM)
+  status             TrainingRecommendationStatus @default(PENDING)
+
+  // Review
+  reviewedById       String?
+  reviewedBy         User?    @relation("RecommendationReviewer", fields: [reviewedById], references: [id])
+  reviewedAt         DateTime?
+  reviewComments     String?  @db.Text
+  rejectionReason    String?  @db.Text
+
+  // If implemented, link to the actual training
+  implementedTrainingId String?
+  implementedTraining   Training? @relation("ImplementedRecommendation", fields: [implementedTrainingId], references: [id])
+
+  // Voting/Support (optional feature)
+  supportCount       Int      @default(0)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+  @@index([userId, status])
+  @@map("training_recommendations")
 }
 
 // =============================================

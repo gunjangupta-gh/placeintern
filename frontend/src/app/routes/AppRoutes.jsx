@@ -109,6 +109,7 @@ import FacultyMyApplicationsPage from '../../features/faculty/training/MyApplica
 import FacultyMyLessonPlansPage from '../../features/faculty/training/MyLessonPlansPage';
 import FacultyLessonPlanEditorPage from '../../features/faculty/training/LessonPlanEditorPage';
 import FacultyMyCertificatesPage from '../../features/faculty/training/MyCertificatesPage';
+import FacultyRecommendTrainingPage from '../../features/faculty/training/RecommendTrainingPage';
 
 // Student
 import StudentDashboard from '../../features/student/dashboard/StudentDashboard';
@@ -495,6 +496,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={ROLES.FACULTY}>
               <FacultyMyCertificatesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/recommend"
+          element={
+            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+              <FacultyRecommendTrainingPage />
             </ProtectedRoute>
           }
         />

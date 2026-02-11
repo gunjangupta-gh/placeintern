@@ -1,6 +1,7 @@
-import { IsString, IsOptional, IsEnum, IsArray, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsArray, IsUUID, IsBoolean } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TrainingApplicationStatus } from '../../../generated/prisma/client';
+import { Transform } from 'class-transformer';
 
 export class CreateApplicationDto {
   @ApiPropertyOptional({ description: 'How is this training relevant to your teaching?' })
@@ -85,4 +86,10 @@ export class ApplicationFilterDto {
   @ApiPropertyOptional({ description: 'Items per page' })
   @IsOptional()
   limit?: number = 20;
+
+  @ApiPropertyOptional({ description: 'Force refresh cache' })
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true' || value === true)
+  forceRefresh?: boolean;
 }

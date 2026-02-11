@@ -184,6 +184,34 @@ const trainingService = {
     const response = await API.get(`/faculty/training/certificates/training/${trainingId}`);
     return response.data;
   },
+
+  // Recommendations
+  async getMyRecommendations(params = {}) {
+    const queryParams = this.buildQueryParams(params);
+    const url = queryParams ? `/faculty/training/recommendations?${queryParams}` : '/faculty/training/recommendations';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  async getRecommendation(id) {
+    const response = await API.get(`/faculty/training/recommendations/${id}`);
+    return response.data;
+  },
+
+  async createRecommendation(data) {
+    const response = await API.post('/faculty/training/recommendations', data);
+    return response.data;
+  },
+
+  async updateRecommendation(id, data) {
+    const response = await API.patch(`/faculty/training/recommendations/${id}`, data);
+    return response.data;
+  },
+
+  async deleteRecommendation(id) {
+    const response = await API.delete(`/faculty/training/recommendations/${id}`);
+    return response.data;
+  },
 };
 
 export default trainingService;

@@ -62,6 +62,12 @@ const initialState = {
     loading: false,
     error: null,
   },
+  recommendations: {
+    list: [],
+    current: null,
+    loading: false,
+    error: null,
+  },
   lastFetched: {
     trainings: null,
     trainingsKey: null,
@@ -74,6 +80,7 @@ const initialState = {
     lessonPlans: null,
     lessonPlansKey: null,
     certificates: null,
+    recommendations: null,
   },
 };
 
@@ -517,6 +524,62 @@ export const fetchTrainingCertificate = createAsyncThunk(
   }
 );
 
+// Recommendations
+export const fetchMyRecommendations = createAsyncThunk(
+  'facultyTraining/fetchMyRecommendations',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.facultyTraining.lastFetched.recommendations;
+
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
+        return { cached: true };
+      }
+
+      const response = await trainingService.getMyRecommendations(params);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch recommendations');
+    }
+  }
+);
+
+export const createRecommendation = createAsyncThunk(
+  'facultyTraining/createRecommendation',
+  async (data, { rejectWithValue }) => {
+    try {
+      const response = await trainingService.createRecommendation(data);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create recommendation');
+    }
+  }
+);
+
+export const updateRecommendation = createAsyncThunk(
+  'facultyTraining/updateRecommendation',
+  async ({ id, data }, { rejectWithValue }) => {
+    try {
+      const response = await trainingService.updateRecommendation(id, data);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update recommendation');
+    }
+  }
+);
+
+export const deleteRecommendation = createAsyncThunk(
+  'facultyTraining/deleteRecommendation',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await trainingService.deleteRecommendation(id);
+      return { id, response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete recommendation');
+    }
+  }
+);
+
 const facultyTrainingSlice = createSlice({
   name: 'facultyTraining',
   initialState,
@@ -640,39 +703,55 @@ const facultyTrainingSlice = createSlice({
       })
       .addCase(applyForTraining.fulfilled, (state, action) => {
         state.applications.list = [action.payload, ...state.applications.list];
-        
-        // Optimistically update current training capacity if viewing details
-        if (state.currentTraining.data && state.currentTraining.data.id === action.payload.trainingId) {
-          if (state.currentTraining.data.capacity) {
-            // Note: Backend counts only APPROVED applications for capacity
-            // Application starts as SUBMITTED, so capacity won't decrease until approved
-            // But we mark that user has applied
-            if (state.currentTraining.data.userStatus) {
-              state.currentTraining.data.userStatus.hasApplied = true;
-              state.currentTraining.data.userStatus.application = action.payload;
-            }
+
+        const trainingId = action.payload.trainingId || action.payload.training?.id;
+
+        // Update application status for this training
+        if (trainingId) {
+          state.applicationStatus[trainingId] = {
+            hasApplied: true,
+            id: action.payload.id,
+            applicationId: action.payload.id,
+            status: action.payload.status,
+            appliedAt: action.payload.appliedAt,
+            createdAt: action.payload.createdAt || action.payload.appliedAt,
+          };
+        }
+
+        // Optimistically update current training if viewing details
+        if (state.currentTraining.data && state.currentTraining.data.id === trainingId) {
+          // Note: Backend counts only APPROVED applications for capacity
+          // Application starts as SUBMITTED, so capacity won't decrease until approved
+          // But we mark that user has applied
+          if (state.currentTraining.data.userStatus) {
+            state.currentTraining.data.userStatus.hasApplied = true;
+            state.currentTraining.data.userStatus.application = action.payload;
           }
         }
-        
-        // Invalidate training lists cache in case capacity has changed
+
+        // Invalidate training lists cache
         state.lastFetched.trainings = null;
         state.lastFetched.calendar = null;
         state.lastFetched.upcoming = null;
       })
       .addCase(withdrawApplication.fulfilled, (state, action) => {
+        // Find the app BEFORE filtering it out
+        const withdrawnApp = state.applications.list.find(app => app.id === action.payload.id);
+
+        // Remove from list
         state.applications.list = state.applications.list.filter((app) => app.id !== action.payload.id);
-        
-        // Optimistically update current training capacity if viewing details  
-        if (state.currentTraining.data) {
-          const withdrawnApp = state.applications.list.find(app => app.id === action.payload.id);
-          if (withdrawnApp && state.currentTraining.data.id === withdrawnApp.trainingId) {
+
+        // Optimistically update current training capacity if viewing details
+        if (state.currentTraining.data && withdrawnApp) {
+          const trainingId = withdrawnApp.trainingId || withdrawnApp.training?.id;
+          if (state.currentTraining.data.id === trainingId) {
             // If application was approved, increment available capacity
             if (withdrawnApp.status === 'APPROVED' && state.currentTraining.data.capacity) {
               state.currentTraining.data.capacity.approved = Math.max(0, (state.currentTraining.data.capacity.approved || 0) - 1);
               state.currentTraining.data.capacity.available = (state.currentTraining.data.capacity.available || 0) + 1;
               state.currentTraining.data.capacity.isFull = false;
             }
-            
+
             // Update user status
             if (state.currentTraining.data.userStatus) {
               state.currentTraining.data.userStatus.hasApplied = false;
@@ -680,7 +759,15 @@ const facultyTrainingSlice = createSlice({
             }
           }
         }
-        
+
+        // Clear application status for the training
+        if (withdrawnApp) {
+          const trainingId = withdrawnApp.trainingId || withdrawnApp.training?.id;
+          if (trainingId && state.applicationStatus[trainingId]) {
+            state.applicationStatus[trainingId] = { hasApplied: false };
+          }
+        }
+
         // Invalidate training lists cache in case capacity has changed
         state.lastFetched.trainings = null;
         state.lastFetched.calendar = null;
@@ -722,6 +809,16 @@ const facultyTrainingSlice = createSlice({
       })
       .addCase(fetchFeedbackStatus.fulfilled, (state, action) => {
         state.feedback.statusByTraining[action.payload.trainingId] = action.payload.data;
+      })
+      .addCase(submitFeedback.fulfilled, (state, action) => {
+        // Mark feedback as submitted immediately after successful submission
+        const trainingId = action.meta?.arg?.trainingId;
+        if (trainingId) {
+          state.feedback.statusByTraining[trainingId] = {
+            submitted: true,
+            hasSubmitted: true,
+          };
+        }
       })
       .addCase(fetchMyFeedbackResponses.fulfilled, (state, action) => {
         state.feedback.responses = action.payload || [];
@@ -794,6 +891,36 @@ const facultyTrainingSlice = createSlice({
       })
       .addCase(fetchCertificateById.fulfilled, (state, action) => {
         state.certificates.current = action.payload;
+      })
+
+      // Recommendations
+      .addCase(fetchMyRecommendations.pending, (state) => {
+        state.recommendations.loading = true;
+        state.recommendations.error = null;
+      })
+      .addCase(fetchMyRecommendations.fulfilled, (state, action) => {
+        state.recommendations.loading = false;
+        if (!action.payload?.cached) {
+          state.recommendations.list = action.payload?.data || action.payload || [];
+          state.lastFetched.recommendations = Date.now();
+        }
+      })
+      .addCase(fetchMyRecommendations.rejected, (state, action) => {
+        state.recommendations.loading = false;
+        state.recommendations.error = action.payload;
+      })
+      .addCase(createRecommendation.fulfilled, (state, action) => {
+        state.recommendations.list = [action.payload, ...state.recommendations.list];
+        state.lastFetched.recommendations = null; // Invalidate cache
+      })
+      .addCase(updateRecommendation.fulfilled, (state, action) => {
+        const index = state.recommendations.list.findIndex((r) => r.id === action.payload.id);
+        if (index !== -1) {
+          state.recommendations.list[index] = action.payload;
+        }
+      })
+      .addCase(deleteRecommendation.fulfilled, (state, action) => {
+        state.recommendations.list = state.recommendations.list.filter((r) => r.id !== action.payload.id);
       });
   },
 });

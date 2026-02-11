@@ -48,7 +48,24 @@ export class FacultyFeedbackController {
   @Get('training/:trainingId/status')
   @ApiOperation({ summary: 'Check if feedback is submitted for training' })
   async checkFeedbackStatus(@Param('trainingId') trainingId: string, @Req() req) {
-    return this.feedbackResponseService.hasSubmitted(trainingId, req.user.userId);
+    // Get training's feedback form first
+    const training = await this.feedbackFormService.getByTraining(trainingId);
+    
+    if (!training) {
+      return { submitted: false, hasSubmitted: false };
+    }
+    
+    // Check if user has submitted feedback for this training
+    const result = await this.feedbackResponseService.hasSubmitted(
+      req.user.userId,
+      training.id,
+      trainingId
+    );
+    
+    return { 
+      submitted: result.hasSubmitted, 
+      hasSubmitted: result.hasSubmitted 
+    };
   }
 
   @Get('my-responses')

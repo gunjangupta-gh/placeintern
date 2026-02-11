@@ -42,6 +42,19 @@ export class StateFeedbackFormController {
     return this.feedbackFormService.findAll(filters, true); // Include unpublished
   }
 
+  // IMPORTANT: Static routes must come BEFORE parameterized routes
+  @Get('stats')
+  @ApiOperation({ summary: 'Get feedback response statistics' })
+  async getStats(@Query('trainingId') trainingId?: string) {
+    return this.feedbackResponseService.getResponseStats(trainingId);
+  }
+
+  @Get('training/:trainingId/responses')
+  @ApiOperation({ summary: 'Get feedback responses for a training' })
+  async getTrainingResponses(@Param('trainingId') trainingId: string) {
+    return this.feedbackResponseService.getByTraining(trainingId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get feedback form details' })
   async getForm(@Param('id') id: string) {
@@ -95,17 +108,5 @@ export class StateFeedbackFormController {
     @Query('trainingId') trainingId?: string,
   ) {
     return this.feedbackResponseService.getAggregatedResults(formId, trainingId);
-  }
-
-  @Get('training/:trainingId/responses')
-  @ApiOperation({ summary: 'Get feedback responses for a training' })
-  async getTrainingResponses(@Param('trainingId') trainingId: string) {
-    return this.feedbackResponseService.getByTraining(trainingId);
-  }
-
-  @Get('stats')
-  @ApiOperation({ summary: 'Get feedback response statistics' })
-  async getStats(@Query('trainingId') trainingId?: string) {
-    return this.feedbackResponseService.getResponseStats(trainingId);
   }
 }

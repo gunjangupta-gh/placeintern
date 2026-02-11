@@ -16,3 +16,19 @@ export { default as BranchTags } from './BranchTags';
 
 // State Components
 export { default as TrainingEmptyState } from './TrainingEmptyState';
+
+// Enhanced UX Components
+export { default as TrainingGreeting } from './TrainingGreeting';
+export { default as TrainingStatCard } from './TrainingStatCard';
+export { default as TrainingBreadcrumb } from './TrainingBreadcrumb';
+export { default as CalendarLegend } from './CalendarLegend';
+export { default as DeadlineCountdown } from './DeadlineCountdown';
+export { default as ShareTraining } from './ShareTraining';
+export { default as ParticipantCount } from './ParticipantCount';
+export { default as CertificatePreviewModal } from './CertificatePreviewModal';
+
+// Charts
+export * from './TrainingCharts';
+
+// Skeleton Loaders
+export * from './skeletons';

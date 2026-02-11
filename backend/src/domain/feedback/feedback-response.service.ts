@@ -319,9 +319,21 @@ export class FeedbackResponseService {
     });
 
     const submittedTrainingIds = new Set(submittedFeedback.map((f) => f.trainingId).filter(Boolean));
+    const now = new Date();
 
     const pending = attendedTrainings
-      .filter((app) => app.training.feedbackForm && !submittedTrainingIds.has(app.trainingId))
+      .filter((app) => {
+        // Must have feedback form
+        if (!app.training.feedbackForm) return false;
+        
+        // Must not have submitted feedback yet
+        if (submittedTrainingIds.has(app.trainingId)) return false;
+        
+        // Training must have ended (completed)
+        if (app.training.endDate && new Date(app.training.endDate) > now) return false;
+        
+        return true;
+      })
       .map((app) => ({
         training: app.training,
         feedbackForm: app.training.feedbackForm,

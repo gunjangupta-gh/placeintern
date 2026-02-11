@@ -5,3 +5,4 @@ export * from './application.dto';
 export * from './attendance.dto';
 export * from './lesson-plan.dto';
 export * from './certificate.dto';
+export * from './recommendation.dto';

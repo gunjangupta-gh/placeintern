@@ -1,6 +1,32 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Alert, Avatar, Button, Card, Col, Descriptions, Divider, Form, Input, Modal, Popconfirm, Row, Skeleton, Space, Steps, Timeline, Typography, message } from 'antd';
+import React, { useEffect, useState, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  Alert,
+  Avatar,
+  Button,
+  Card,
+  Checkbox,
+  Col,
+  Descriptions,
+  Divider,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Popconfirm,
+  Radio,
+  Rate,
+  Result,
+  Row,
+  Select,
+  Space,
+  Steps,
+  Switch,
+  Timeline,
+  Tooltip,
+  Typography,
+  message,
+} from "antd";
 import {
   CalendarOutlined,
   UserOutlined,
@@ -13,34 +39,43 @@ import {
   ArrowLeftOutlined,
   InfoCircleOutlined,
   TeamOutlined,
-} from '@ant-design/icons';
-import { useNavigate, useParams } from 'react-router-dom';
-import PageHeader from '../../../components/PageHeader';
-import TrainingDateRange from '../../../components/training/TrainingDateRange';
-import DeliveryModeBadge from '../../../components/training/DeliveryModeBadge';
-import DifficultyBadge from '../../../components/training/DifficultyBadge';
-import BranchTags from '../../../components/training/BranchTags';
-import CapacityIndicator from '../../../components/training/CapacityIndicator';
-import ApplicationDeadline from '../../../components/training/ApplicationDeadline';
-import LearningOutcomesList from '../../../components/training/LearningOutcomesList';
-import ApplicationStatusBadge from '../../../components/training/ApplicationStatusBadge';
+  FileTextOutlined,
+} from "@ant-design/icons";
+import { useNavigate, useParams } from "react-router-dom";
+import TrainingDateRange from "../../../components/training/TrainingDateRange";
+import DeliveryModeBadge from "../../../components/training/DeliveryModeBadge";
+import DifficultyBadge from "../../../components/training/DifficultyBadge";
+import BranchTags from "../../../components/training/BranchTags";
+import LearningOutcomesList from "../../../components/training/LearningOutcomesList";
+import ApplicationStatusBadge from "../../../components/training/ApplicationStatusBadge";
+import TrainingBreadcrumb from "../../../components/training/TrainingBreadcrumb";
+import DeadlineCountdown from "../../../components/training/DeadlineCountdown";
+import { TrainingDetailsSkeleton } from "../../../components/training/skeletons/TrainingSkeletons";
 import {
   fetchTrainingDetails,
   checkEligibility,
   fetchApplicationStatus,
   applyForTraining,
   withdrawApplication,
-} from '../store/facultyTrainingSlice';
+  fetchUpcoming,
+  submitFeedback,
+  fetchFeedbackStatus,
+  fetchFeedbackForm,
+} from "../store/facultyTrainingSlice";
 
 const { Title, Text, Paragraph } = Typography;
 
-const InfoItem = ({ icon: Icon, label, children }) => (
+const InfoItem = ({ icon: Icon, label, children, tooltip }) => (
   <div className="flex items-start gap-3 py-2">
-    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 shrink-0">
-      <Icon className="text-blue-700" />
-    </div>
+    <Tooltip title={tooltip}>
+      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 shrink-0">
+        <Icon className="text-blue-700" />
+      </div>
+    </Tooltip>
     <div className="flex-1 min-w-0">
-      <Text type="secondary" className="text-xs block">{label}</Text>
+      <Text type="secondary" className="text-xs block">
+        {label}
+      </Text>
       <div className="mt-0.5">{children}</div>
     </div>
   </div>
@@ -50,31 +85,42 @@ const TrainingDetailsPage = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { currentTraining, applicationStatus } = useSelector((state) => state.facultyTraining);
+  const { currentTraining, applicationStatus, upcoming, feedback } = useSelector(
+    (state) => state.facultyTraining,
+  );
   const [applyOpen, setApplyOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [applicationSuccess, setApplicationSuccess] = useState(false);
+  const [feedbackSuccess, setFeedbackSuccess] = useState(false);
   const [form] = Form.useForm();
+  const [feedbackFormInstance] = Form.useForm();
 
   useEffect(() => {
     if (!id) return;
     dispatch(fetchTrainingDetails(id));
     dispatch(checkEligibility(id));
     dispatch(fetchApplicationStatus(id));
+    dispatch(fetchFeedbackStatus(id));
+    dispatch(fetchFeedbackForm(id));
+    dispatch(fetchUpcoming()); // For similar trainings
   }, [dispatch, id]);
 
   const training = currentTraining.data;
   const status = applicationStatus?.[id];
+  const feedbackStatus = feedback?.statusByTraining?.[id];
+  const feedbackFormData = feedback?.form;
   const isLoading = currentTraining.loading;
 
-  const capacityInfo = React.useMemo(() => {
-    if (training?.capacity && typeof training.capacity === 'object') {
+  const capacityInfo = useMemo(() => {
+    if (training?.capacity && typeof training.capacity === "object") {
       return {
         available: training.capacity.available ?? 0,
         total: training.capacity.total ?? 0,
       };
     }
     const availableRaw = training?.availableSeats;
-    if (availableRaw && typeof availableRaw === 'object') {
+    if (availableRaw && typeof availableRaw === "object") {
       return {
         available: availableRaw.available ?? 0,
         total: availableRaw.total ?? 0,
@@ -90,15 +136,16 @@ const TrainingDetailsPage = () => {
     try {
       setSubmitting(true);
       const values = await form.validateFields();
+
       await dispatch(applyForTraining({ trainingId: id, ...values })).unwrap();
-      message.success('Application submitted successfully!');
+      setApplicationSuccess(true);
       setApplyOpen(false);
       form.resetFields();
       // Refresh both application status and training details to update capacity
       dispatch(fetchApplicationStatus(id));
       dispatch(fetchTrainingDetails(id));
     } catch (error) {
-      message.error(error || 'Failed to submit application');
+      message.error(error || "Failed to submit application");
     } finally {
       setSubmitting(false);
     }
@@ -107,45 +154,144 @@ const TrainingDetailsPage = () => {
   const handleWithdraw = async () => {
     const applicationId = status?.applicationId || status?.id;
     if (!applicationId) {
-      message.warning('Application ID not found');
+      message.warning("Application ID not found");
       return;
     }
 
     try {
       await dispatch(withdrawApplication(applicationId)).unwrap();
-      message.success('Application withdrawn');
+      message.success("Application withdrawn");
       // Refresh both application status and training details to update capacity
       dispatch(fetchApplicationStatus(id));
       dispatch(fetchTrainingDetails(id));
     } catch (error) {
-      message.error(error || 'Failed to withdraw application');
+      message.error(error || "Failed to withdraw application");
     }
   };
+  const handleFeedbackSubmit = async () => {
+    try {
+      setSubmitting(true);
+      const values = await feedbackFormInstance.validateFields();
+      
+      // Format responses for backend
+      const responses = {};
+      feedbackFormData?.questions?.forEach((question) => {
+        if (values[question.id] !== undefined) {
+          responses[question.id] = values[question.id];
+        }
+      });
 
+      const payload = {
+        feedbackFormId: feedbackFormData.id,
+        trainingId: id,
+        responses,
+      };
+
+      await dispatch(submitFeedback({ trainingId: id, data: payload })).unwrap();
+      setFeedbackSuccess(true);
+      setFeedbackOpen(false);
+      feedbackFormInstance.resetFields();
+      message.success('Feedback submitted successfully!');
+      
+      // Refresh feedback status after a short delay to ensure backend has processed
+      setTimeout(() => {
+        dispatch(fetchFeedbackStatus(id));
+      }, 500);
+    } catch (error) {
+      message.error(error || 'Failed to submit feedback');
+    } finally {
+      setSubmitting(false);
+    }
+  };
   const getApplicationStepStatus = () => {
     if (!status?.status) return -1;
     switch (status.status) {
-      case 'PENDING':
-      case 'SUBMITTED':
+      case "PENDING":
+      case "SUBMITTED":
         return 0;
-      case 'APPROVED':
+      case "APPROVED":
         return 1;
-      case 'REJECTED':
-        return 'error';
+      case "REJECTED":
+        return "error";
       default:
         return 0;
     }
   };
 
   const canApply = !status?.status && capacityInfo.available > 0;
-  const canWithdraw = ['PENDING', 'SUBMITTED'].includes(status?.status);
-
+  const canWithdraw = ["PENDING", "SUBMITTED"].includes(status?.status);  
+  const isApproved = status?.status === 'APPROVED';
+  
+  // Check if training has ended
+  const trainingEnded = training?.endDate && new Date(training.endDate) < new Date();
+  
+  const hasPendingFeedback = isApproved && trainingEnded && feedbackFormData && (!feedbackStatus?.submitted && !feedbackStatus?.hasSubmitted);
+  
+  // Helper function to render different field types
+  const renderFormField = (question) => {
+    switch (question.type) {
+      case 'rating':
+        return <Rate count={question.options?.max || 5} />;
+      
+      case 'text':
+        return (
+          <Input.TextArea
+            rows={question.options?.rows || 4}
+            placeholder={question.options?.placeholder || 'Enter your response...'}
+            maxLength={question.options?.maxLength || 500}
+            showCount
+          />
+        );
+      
+      case 'multiChoice':
+        return (
+          <Radio.Group>
+            <Space direction="vertical">
+              {question.options?.choices?.map((choice, idx) => (
+                <Radio key={idx} value={choice}>
+                  {choice}
+                </Radio>
+              ))}
+            </Space>
+          </Radio.Group>
+        );
+      
+      case 'checkbox':
+        return (
+          <Checkbox.Group>
+            <Space direction="vertical">
+              {question.options?.choices?.map((choice, idx) => (
+                <Checkbox key={idx} value={choice}>
+                  {choice}
+                </Checkbox>
+              ))}
+            </Space>
+          </Checkbox.Group>
+        );
+      
+      case 'yesNo':
+        return (
+          <Radio.Group>
+            <Radio value={true}>Yes</Radio>
+            <Radio value={false}>No</Radio>
+          </Radio.Group>
+        );
+      
+      default:
+        return <Input placeholder="Enter your response..." />;
+    }
+  };
+  
+  // Auto-open feedback modal if there's pending feedback
+  useEffect(() => {
+    if (hasPendingFeedback && !feedbackSuccess) {
+      // Optional: Auto-open after a delay
+      // const timer = setTimeout(() => setFeedbackOpen(true), 1000);
+      // return () => clearTimeout(timer);
+    }
+  }, [hasPendingFeedback, feedbackSuccess]);
   if (isLoading) {
-    return (
-      <div className="p-6">
-        <Skeleton active paragraph={{ rows: 10 }} />
-      </div>
-    );
+    return <TrainingDetailsSkeleton />;
   }
 
   return (
@@ -161,15 +307,66 @@ const TrainingDetailsPage = () => {
         </Button>
       </div>
 
-      <Card className="rounded-2xl border-border shadow-none mb-6 bg-gradient-to-br from-slate-50 via-white to-blue-50">
+      {/* Success State */}
+      {applicationSuccess && (
+        <Alert
+          type="success"
+          showIcon
+          icon={<CheckCircleOutlined />}
+          className="!mb-4 rounded-xl"
+          message="Application Submitted Successfully!"
+          description="Your application has been submitted and is awaiting review. You'll receive a notification once it's processed."
+          closable
+          onClose={() => setApplicationSuccess(false)}
+        />
+      )}
+
+      {/* Feedback Success */}
+      {feedbackSuccess && (
+        <Alert
+          type="success"
+          showIcon
+          icon={<CheckCircleOutlined />}
+          className="mb-6 rounded-xl"
+          message="Feedback Submitted Successfully!"
+          description="Thank you for your feedback. It helps us improve future training programs."
+          closable
+          onClose={() => setFeedbackSuccess(false)}
+        />
+      )}
+
+      {/* Pending Feedback Alert */}
+      {hasPendingFeedback && (
+        <Alert
+          type="info"
+          showIcon
+          icon={<InfoCircleOutlined />}
+          className="!mb-4 rounded-xl"
+          message="Feedback Pending"
+          description="You have completed this training. Please share your feedback to help us improve."
+          action={
+            <Button size="small" type="primary" onClick={() => setFeedbackOpen(true)}>
+              Submit Feedback
+            </Button>
+          }
+          closable
+        />
+      )}
+
+      {/* Hero Card */}
+      <Card className="rounded-2xl border-border shadow-none !mb-6 bg-gradient-to-br from-slate-50 via-white to-blue-50">
         <Row gutter={[24, 16]} align="middle">
           <Col xs={24} lg={16}>
-            <Space className="mb-3">
+            <Space className="mb-3" wrap>
               <DeliveryModeBadge mode={training?.deliveryMode} />
               <DifficultyBadge level={training?.difficulty} />
             </Space>
-            <Title level={2} className="!mb-2 training-heading">{training?.title || 'Training'}</Title>
-            <Text type="secondary" className="text-base">{training?.providedBy || 'Training Provider'}</Text>
+            <Title level={2} className="!mb-2 training-heading">
+              {training?.title || "Training"}
+            </Title>
+            <Text type="secondary" className="text-base">
+              {training?.providedBy || "Training Provider"}
+            </Text>
           </Col>
           <Col xs={24} lg={8} className="lg:text-right">
             <Space direction="vertical" className="w-full lg:w-auto">
@@ -180,6 +377,7 @@ const TrainingDetailsPage = () => {
                   icon={<SendOutlined />}
                   onClick={() => setApplyOpen(true)}
                   block
+                  aria-label="Apply for this training"
                 >
                   Apply Now
                 </Button>
@@ -192,18 +390,41 @@ const TrainingDetailsPage = () => {
                   okText="Yes, Withdraw"
                   okButtonProps={{ danger: true }}
                 >
-                  <Button danger size="large" block>
+                  <Button
+                    danger
+                    size="large"
+                    block
+                    aria-label="Withdraw your application"
+                  >
                     Withdraw Application
                   </Button>
                 </Popconfirm>
               )}
-              {status?.status === 'APPROVED' && (
-                <Alert
-                  message="You're enrolled!"
-                  description="Your application has been approved."
-                  type="success"
-                  showIcon
-                />
+              {status?.status === "APPROVED" && (
+                <div className="!space-y-2">
+                  <Alert
+                    message="You're enrolled!"
+                    description={trainingEnded ? "Training completed" : "Your application has been approved."}
+                    type="success"
+                    showIcon
+                  />
+                  {hasPendingFeedback && (
+                    <Button
+                      type="default"
+                      size="large"
+                      icon={<FileTextOutlined />}
+                      onClick={() => setFeedbackOpen(true)}
+                      block
+                    >
+                      Submit Feedback
+                    </Button>
+                  )}
+                  {feedbackStatus?.submitted && trainingEnded && (
+                    <div className="text-center text-sm text-green-600">
+                      ✓ Feedback submitted
+                    </div>
+                  )}
+                </div>
               )}
             </Space>
           </Col>
@@ -212,44 +433,49 @@ const TrainingDetailsPage = () => {
 
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={16}>
-          <Card className="rounded-xl border-border shadow-none mb-4">
+          {/* About Section */}
+          <Card className="rounded-xl border-border shadow-none !mb-4">
             <Title level={4} className="flex items-center gap-2">
               <InfoCircleOutlined className="text-blue-700" />
               About This Training
             </Title>
             <Paragraph className="text-base text-text-secondary">
-              {training?.description || 'No description provided.'}
+              {training?.description || "No description provided."}
             </Paragraph>
 
             <Divider />
 
             <Row gutter={[24, 16]}>
               <Col xs={24} sm={12}>
-                <InfoItem icon={CalendarOutlined} label="Training Dates">
-                  <TrainingDateRange startDate={training?.startDate} endDate={training?.endDate} />
+                <InfoItem
+                  icon={CalendarOutlined}
+                  label="Training Dates"
+                  tooltip="When the training takes place"
+                >
+                  <TrainingDateRange
+                    startDate={training?.startDate}
+                    endDate={training?.endDate}
+                  />
                 </InfoItem>
               </Col>
               <Col xs={24} sm={12}>
-                <InfoItem icon={ClockCircleOutlined} label="Duration">
-                  <Text>{training?.duration ? `${training.duration} hours` : 'TBD'}</Text>
-                </InfoItem>
-              </Col>
-              <Col xs={24} sm={12}>
-                <InfoItem icon={TeamOutlined} label="Capacity">
-                  <CapacityIndicator available={capacityInfo.available} total={capacityInfo.total} compact />
-                </InfoItem>
-              </Col>
-              <Col xs={24} sm={12}>
-                <InfoItem icon={BookOutlined} label="Target Branches">
-                  <BranchTags branches={training?.targetBranches || training?.branches || []} />
+                <InfoItem
+                  icon={ClockCircleOutlined}
+                  label="Duration"
+                  tooltip="Total training hours"
+                >
+                  <Text>
+                    {training?.duration ? `${training.duration} hours` : "TBD"}
+                  </Text>
                 </InfoItem>
               </Col>
             </Row>
           </Card>
 
-          <Card className="rounded-xl border-border shadow-none mb-4">
+          {/* Learning Outcomes */}
+          <Card className="rounded-xl border-border shadow-none !mb-4">
             <Title level={4} className="flex items-center gap-2">
-              <CheckCircleOutlined className="text-success-700" />
+              <CheckCircleOutlined className="text-emerald-600" />
               Learning Outcomes
             </Title>
             <Paragraph type="secondary" className="mb-4">
@@ -258,43 +484,9 @@ const TrainingDetailsPage = () => {
             <LearningOutcomesList outcomes={training?.learningOutcomes || []} />
           </Card>
 
-          <Card className="rounded-xl border-border shadow-none mb-4">
-            <Title level={4} className="flex items-center gap-2">
-              <CalendarOutlined className="text-blue-700" />
-              Schedule Snapshot
-            </Title>
-            <Timeline
-              items={[
-                {
-                  color: 'blue',
-                  children: `Application deadline: ${training?.applicationDeadline ? new Date(training.applicationDeadline).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  }) : 'TBD'}`,
-                },
-                {
-                  color: 'green',
-                  children: `Training starts: ${training?.startDate ? new Date(training.startDate).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  }) : 'TBD'}`,
-                },
-                {
-                  color: 'gray',
-                  children: `Training ends: ${training?.endDate ? new Date(training.endDate).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  }) : 'TBD'}`,
-                },
-              ]}
-            />
-          </Card>
-
+          {/* Prerequisites */}
           {training?.prerequisites && (
-            <Card className="rounded-xl border-border shadow-none">
+            <Card className="rounded-xl border-border shadow-none !mb-4">
               <Title level={4}>Prerequisites</Title>
               <Paragraph className="text-text-secondary !mb-0">
                 {training.prerequisites}
@@ -304,50 +496,54 @@ const TrainingDetailsPage = () => {
         </Col>
 
         <Col xs={24} lg={8}>
-          <Card className="rounded-xl border-border shadow-none mb-4">
+          {/* Deadline Countdown */}
+          <div className="mb-4">
+            <DeadlineCountdown
+              deadline={training?.applicationDeadline}
+              label="Application closes in"
+              expiredLabel="Application deadline has passed"
+            />
+          </div>
+
+          {/* Application Status Card */}
+          <Card className="rounded-xl border-border shadow-none !mb-4">
             <Title level={4} className="flex items-center gap-2">
               <SendOutlined className="text-blue-700" />
               Application Status
             </Title>
 
-            <ApplicationDeadline deadline={training?.applicationDeadline} className="mb-4" />
-
             {status?.status ? (
-              <div className="mt-6">
+              <div className="mt-4">
                 <Steps
                   direction="vertical"
                   size="small"
                   current={getApplicationStepStatus()}
-                  status={status.status === 'REJECTED' ? 'error' : 'process'}
+                  status={status.status === "REJECTED" ? "error" : "process"}
                   items={[
                     {
-                      title: 'Applied',
+                      title: "Applied",
                       description: status.createdAt
                         ? `Submitted on ${new Date(status.createdAt).toLocaleDateString()}`
-                        : 'Application submitted',
+                        : "Application submitted",
                     },
                     {
-                      title: 'Review',
-                      description: status.status === 'APPROVED'
-                        ? 'Application approved'
-                        : status.status === 'REJECTED'
-                        ? 'Application rejected'
-                        : 'Pending review',
+                      title: "Review",
+                      description:
+                        status.status === "APPROVED"
+                          ? "Application approved"
+                          : status.status === "REJECTED"
+                            ? "Application rejected"
+                            : "Pending review",
                     },
                     {
-                      title: 'Enrolled',
-                      description: status.status === 'APPROVED' ? 'Ready to attend' : 'Awaiting approval',
+                      title: "Enrolled",
+                      description:
+                        status.status === "APPROVED"
+                          ? "Ready to attend"
+                          : "Awaiting approval",
                     },
                   ]}
                 />
-                {status.reviewComments && (
-                  <Alert
-                    className="mt-4"
-                    message="Review Comments"
-                    description={status.reviewComments}
-                    type={status.status === 'REJECTED' ? 'error' : 'info'}
-                  />
-                )}
               </div>
             ) : (
               <div className="text-center py-6">
@@ -366,10 +562,19 @@ const TrainingDetailsPage = () => {
                     Apply Now
                   </Button>
                 )}
+                {capacityInfo.available === 0 && !status?.status && (
+                  <Alert
+                    className="mt-4"
+                    message="Training Full"
+                    description="This training has reached its capacity."
+                    type="warning"
+                  />
+                )}
               </div>
             )}
           </Card>
 
+          {/* Trainer & Venue Card */}
           <Card className="rounded-xl border-border shadow-none">
             <Title level={4} className="flex items-center gap-2">
               <UserOutlined className="text-blue-700" />
@@ -379,21 +584,44 @@ const TrainingDetailsPage = () => {
             <div className="space-y-4">
               {training?.trainerName && (
                 <div className="flex items-center gap-3">
-                  <Avatar size={40} icon={<UserOutlined />} className="bg-blue-100 text-blue-700" />
+                  <Avatar
+                    size={40}
+                    icon={<UserOutlined />}
+                    className="bg-blue-100 text-blue-700"
+                  />
                   <div>
                     <Text strong>{training.trainerName}</Text>
-                    <Text type="secondary" className="text-xs block">Trainer</Text>
+                    <Text type="secondary" className="text-xs block">
+                      Trainer
+                    </Text>
                   </div>
                 </div>
               )}
 
               <Descriptions column={1} size="small">
-                <Descriptions.Item label={<span className="flex items-center gap-1"><EnvironmentOutlined /> Venue</span>}>
-                  {training?.venue || 'TBD'}
+                <Descriptions.Item
+                  label={
+                    <span className="flex items-center gap-1">
+                      <EnvironmentOutlined /> Venue
+                    </span>
+                  }
+                >
+                  {training?.venue || "TBD"}
                 </Descriptions.Item>
                 {training?.meetingLink && (
-                  <Descriptions.Item label={<span className="flex items-center gap-1"><LinkOutlined /> Meeting Link</span>}>
-                    <a href={training.meetingLink} target="_blank" rel="noopener noreferrer" className="text-primary">
+                  <Descriptions.Item
+                    label={
+                      <span className="flex items-center gap-1">
+                        <LinkOutlined /> Meeting Link
+                      </span>
+                    }
+                  >
+                    <a
+                      href={training.meetingLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary"
+                    >
                       Join Online
                     </a>
                   </Descriptions.Item>
@@ -404,6 +632,7 @@ const TrainingDetailsPage = () => {
         </Col>
       </Row>
 
+      {/* Application Modal */}
       <Modal
         title={
           <div className="flex items-center gap-2">
@@ -422,7 +651,10 @@ const TrainingDetailsPage = () => {
           <Alert
             message={training?.title}
             description={
-              <TrainingDateRange startDate={training?.startDate} endDate={training?.endDate} />
+              <TrainingDateRange
+                startDate={training?.startDate}
+                endDate={training?.endDate}
+              />
             }
             type="info"
             className="mb-4"
@@ -432,7 +664,9 @@ const TrainingDetailsPage = () => {
             <Form.Item
               name="relevanceToTeaching"
               label="How is this training relevant to your teaching?"
-              rules={[{ required: true, message: 'Please explain the relevance' }]}
+              rules={[
+                { required: true, message: "Please explain the relevance" },
+              ]}
             >
               <Input.TextArea
                 rows={4}
@@ -444,7 +678,12 @@ const TrainingDetailsPage = () => {
             <Form.Item
               name="expectedApplication"
               label="How do you plan to apply this learning?"
-              rules={[{ required: true, message: 'Please describe your application plan' }]}
+              rules={[
+                {
+                  required: true,
+                  message: "Please describe your application plan",
+                },
+              ]}
             >
               <Input.TextArea
                 rows={4}
@@ -454,6 +693,73 @@ const TrainingDetailsPage = () => {
               />
             </Form.Item>
           </Form>
+
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <Text className="text-xs text-blue-700">
+              <strong>Note:</strong> Your application will be reviewed by the
+              training administrator. You'll receive a notification once it's
+              processed.
+            </Text>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Feedback Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <FileTextOutlined className="text-blue-700" />
+            {feedbackFormData?.title || "Submit Training Feedback"}
+          </div>
+        }
+        open={feedbackOpen}
+        onCancel={() => setFeedbackOpen(false)}
+        onOk={handleFeedbackSubmit}
+        okText="Submit Feedback"
+        confirmLoading={submitting}
+        width={600}
+      >
+        <div className="py-2">
+          {feedbackFormData?.description && (
+            <Alert
+              message={feedbackFormData.description}
+              type="info"
+              className="mb-4"
+            />
+          )}
+
+          {!feedbackFormData ? (
+            <Alert
+              message="No feedback form available"
+              description="This training does not have a feedback form configured."
+              type="warning"
+            />
+          ) : (
+            <Form layout="vertical" form={feedbackFormInstance}>
+              {feedbackFormData.questions?.map((question) => (
+                <Form.Item
+                  key={question.id}
+                  name={question.id}
+                  label={question.question}
+                  rules={[
+                    {
+                      required: question.required,
+                      message: `Please provide an answer for: ${question.question}`,
+                    },
+                  ]}
+                >
+                  {renderFormField(question)}
+                </Form.Item>
+              ))}
+            </Form>
+          )}
+
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <Text className="text-xs text-blue-700">
+              <strong>Note:</strong> Your honest feedback helps us improve the
+              quality of our training programs.
+            </Text>
+          </div>
         </div>
       </Modal>
     </div>

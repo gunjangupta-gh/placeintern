@@ -550,8 +550,9 @@ export class TrainingService {
 
       if (userId) {
         [userApplication, userAttendance, userFeedback, userLessonPlan, userCertificate] = await Promise.all([
-          this.prisma.trainingApplication.findUnique({
-            where: { userId_trainingId: { userId, trainingId: id } },
+          // Use findFirst to filter by isActive (withdrawn applications have isActive: false)
+          this.prisma.trainingApplication.findFirst({
+            where: { userId, trainingId: id, isActive: true },
           }),
           this.prisma.trainingAttendance.findMany({
             where: { userId, trainingId: id },

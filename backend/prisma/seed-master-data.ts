@@ -121,19 +121,20 @@ async function main() {
   // 4. Update Students with Global Branches
   console.log('\n👥 Updating Students with Global Branches...');
 
-  // Get all students
+  // Get all students with their user relation (branchName is on User, not Student)
   const students = await prisma.student.findMany({
-    select: { id: true, branchName: true, branchId: true },
+    select: { id: true, branchId: true, user: { select: { branchName: true } } },
   });
 
   let updatedCount = 0;
   for (const student of students) {
-    // Try to match by branchName first
+    // Try to match by user's branchName first
     let matchedBranchId: string | null = null;
+    const branchName = student.user?.branchName;
 
-    if (student.branchName) {
+    if (branchName) {
       // Extract short name from branchName
-      const branchNameUpper = student.branchName.toUpperCase();
+      const branchNameUpper = branchName.toUpperCase();
 
       if (branchNameUpper.includes('COMPUTER') || branchNameUpper.includes('CSE')) {
         matchedBranchId = branchMap['CSE'];

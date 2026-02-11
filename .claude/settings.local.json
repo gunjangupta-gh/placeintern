@@ -5,7 +5,9 @@
       "Bash(npx prisma:*)",
       "Bash(tree:*)",
       "Bash(npx tsc:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(npx ts-node:*)"
     ]
   }
 }

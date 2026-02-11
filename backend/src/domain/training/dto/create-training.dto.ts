@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsDateString, IsInt, IsEnum, IsArray, IsBoolean, Min, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsInt, IsEnum, IsArray, IsBoolean, Min, IsUUID, IsNumber } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TrainingDeliveryMode, TrainingDifficulty } from '../../../generated/prisma/client';
 
@@ -45,6 +45,27 @@ export class CreateTrainingDto {
   @IsInt()
   @Min(1)
   duration?: number;
+
+  @ApiPropertyOptional({ description: 'Training start time' })
+  @IsOptional()
+  @IsDateString()
+  startTime?: string;
+
+  @ApiPropertyOptional({ description: 'Training end time' })
+  @IsOptional()
+  @IsDateString()
+  endTime?: string;
+
+  @ApiPropertyOptional({ description: 'Training cost (if applicable)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  cost?: number;
+
+  @ApiPropertyOptional({ description: 'Target designation (e.g., For Computer Science Faculty)' })
+  @IsOptional()
+  @IsString()
+  designation?: string;
 
   @ApiProperty({ description: 'Application deadline' })
   @IsDateString()

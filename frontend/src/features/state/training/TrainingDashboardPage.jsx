@@ -12,13 +12,18 @@ import {
   CheckCircleOutlined,
   SettingOutlined,
   BarChartOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  BookOutlined,
 } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import PageHeader from '../../../components/PageHeader';
+import TrainingGreeting from '../../../components/training/TrainingGreeting';
 import TrainingDateRange from '../../../components/training/TrainingDateRange';
 import DeliveryModeBadge from '../../../components/training/DeliveryModeBadge';
 import TrainingStatusBadge from '../../../components/training/TrainingStatusBadge';
 import TrainingEmptyState from '../../../components/training/TrainingEmptyState';
+import { TrainingStatSkeleton, DashboardSkeleton } from '../../../components/training/skeletons/TrainingSkeletons';
 import { fetchStateTrainingDashboard, fetchStateTrainingUpcoming } from '../store/stateTrainingSlice';
 
 const { Title, Text } = Typography;
@@ -30,18 +35,33 @@ const STAT_TONES = {
   secondary: { icon: 'bg-slate-100 text-slate-700', card: 'bg-gradient-to-br from-slate-50 via-white to-blue-50' },
 };
 
-const StatCard = ({ icon: Icon, title, value, subtitle, tone, onClick }) => {
+const StatCard = ({ icon: Icon, title, value, subtitle, tone, trend, onClick }) => {
   const styles = STAT_TONES[tone] || STAT_TONES.primary;
+  const hasTrend = trend !== undefined && trend !== null;
+  const isPositiveTrend = hasTrend && trend >= 0;
+
   return (
     <Card
       className={`rounded-2xl border-border shadow-none cursor-pointer hover:shadow-soft transition-shadow h-full ${styles.card}`}
       onClick={onClick}
       styles={{ body: { padding: '16px' } }}
+      role="button"
+      tabIndex={0}
+      aria-label={`${title}: ${value}. ${subtitle || ''}${hasTrend ? ` Trend: ${isPositiveTrend ? 'up' : 'down'} ${Math.abs(trend)}%` : ''}`}
+      onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
     >
       <div className="flex items-start justify-between">
         <div>
           <Text className="text-text-secondary text-xs block mb-1">{title}</Text>
-          <Title level={4} className="!mb-0 !mt-0" style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text-primary)' }}>{value}</Title>
+          <div className="flex items-baseline gap-2">
+            <Title level={4} className="!mb-0 !mt-0" style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text-primary)' }}>{value}</Title>
+            {hasTrend && (
+              <span className={`flex items-center text-xs font-medium ${isPositiveTrend ? 'text-emerald-600' : 'text-red-600'}`}>
+                {isPositiveTrend ? <ArrowUpOutlined className="mr-0.5" /> : <ArrowDownOutlined className="mr-0.5" />}
+                {Math.abs(trend)}%
+              </span>
+            )}
+          </div>
           {subtitle && <Text type="secondary" className="text-xs">{subtitle}</Text>}
         </div>
         <div className={`flex items-center justify-center w-10 h-10 rounded-lg ${styles.icon}`}>
@@ -59,6 +79,7 @@ const QuickAction = ({ icon: Icon, title, onClick }) => (
     onClick={onClick}
     className="flex items-center gap-2 h-auto py-3 px-4"
     block
+    aria-label={title}
   >
     <span className="flex-1 text-left">{title}</span>
     <RightOutlined className="text-xs text-text-secondary" />
@@ -69,12 +90,14 @@ const TrainingDashboardPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { reports } = useSelector((state) => state.stateTraining);
+  const { user } = useSelector((state) => state.auth);
 
   useEffect(() => {
     dispatch(fetchStateTrainingDashboard());
     dispatch(fetchStateTrainingUpcoming());
   }, [dispatch]);
 
+  const isLoading = reports.loading && !reports.dashboard;
   const dashboard = reports.dashboard || {};
 
   const stats = [
@@ -84,6 +107,7 @@ const TrainingDashboardPage = () => {
       subtitle: `${dashboard.publishedTrainings || 0} published`,
       icon: CalendarOutlined,
       tone: 'primary',
+      trend: dashboard.trainingsTrend,
       onClick: () => navigate('/app/training/manage'),
     },
     {
@@ -92,6 +116,7 @@ const TrainingDashboardPage = () => {
       subtitle: `${dashboard.pendingApplications || 0} pending`,
       icon: FileTextOutlined,
       tone: 'warning',
+      trend: dashboard.applicationsTrend,
       onClick: () => navigate('/app/training/manage'),
     },
     {
@@ -100,6 +125,7 @@ const TrainingDashboardPage = () => {
       subtitle: 'Enrolled faculty',
       icon: TeamOutlined,
       tone: 'success',
+      trend: dashboard.participantsTrend,
       onClick: () => navigate('/app/training/reports'),
     },
     {
@@ -108,6 +134,7 @@ const TrainingDashboardPage = () => {
       subtitle: 'Issued to date',
       icon: SafetyCertificateOutlined,
       tone: 'secondary',
+      trend: dashboard.certificatesTrend,
       onClick: () => navigate('/app/training/reports'),
     },
   ];
@@ -119,9 +146,13 @@ const TrainingDashboardPage = () => {
     { icon: BarChartOutlined, title: 'View Reports', onClick: () => navigate('/app/training/reports') },
   ];
 
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
   return (
-    <div className="p-6 training-ui">
-      <PageHeader
+    <div className="p-6 training-ui" role="main" aria-label="Training Dashboard">
+      {/* <PageHeader
         icon={DashboardOutlined}
         title={<span className="training-heading">Training Dashboard</span>}
         description="Statewide overview of faculty training programs and participation."
@@ -131,31 +162,30 @@ const TrainingDashboardPage = () => {
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => navigate('/app/training/create')}
+            aria-label="Create new training"
           >
             Create Training
           </Button>,
         ]}
-      />
+      /> */}
 
       <Card className="rounded-2xl border-border shadow-none bg-gradient-to-br from-blue-50 via-white to-amber-50 mb-6">
         <Row gutter={[16, 16]} align="middle">
           <Col xs={24} lg={16}>
-            <Title level={3} className="!mb-2 training-heading">
-              Statewide training pulse.
-            </Title>
-            <Text type="secondary" className="text-base">
-              Monitor participation, applications, and certifications at a glance.
-            </Text>
+            <TrainingGreeting
+              userName={user?.name}
+              subtitle="Monitor participation, applications, and certifications at a glance."
+            />
           </Col>
           <Col xs={24} lg={8} className="lg:text-right">
-            <Button type="default" onClick={() => navigate('/app/training/manage')}>
+            <Button type="default" onClick={() => navigate('/app/training/manage')} aria-label="Go to manage trainings">
               Manage Trainings
             </Button>
           </Col>
         </Row>
       </Card>
 
-      <Row gutter={[16, 16]} className="mb-6">
+      <Row gutter={[16, 16]} className="mb-6" role="region" aria-label="Training statistics">
         {stats.map((stat) => (
           <Col xs={24} sm={12} lg={6} key={stat.title}>
             <StatCard {...stat} />
@@ -174,7 +204,7 @@ const TrainingDashboardPage = () => {
               </div>
             }
             extra={
-              <Link to="/app/training/manage" className="text-primary flex items-center gap-1">
+              <Link to="/app/training/manage" className="text-primary flex items-center gap-1" aria-label="View all trainings">
                 View All <RightOutlined className="text-xs" />
               </Link>
             }
@@ -191,6 +221,7 @@ const TrainingDashboardPage = () => {
                         type="link"
                         size="small"
                         onClick={() => navigate(`/app/training/${training.id}`)}
+                        aria-label={`View ${training.title}`}
                       >
                         View
                       </Button>,
@@ -224,6 +255,7 @@ const TrainingDashboardPage = () => {
               />
             ) : (
               <TrainingEmptyState
+                type="calendar"
                 message="No upcoming trainings"
                 description="Create your first training to get started."
                 actionText="Create Training"
@@ -243,7 +275,7 @@ const TrainingDashboardPage = () => {
               </div>
             }
           >
-            <Space direction="vertical" className="w-full" size="middle">
+            <Space direction="vertical" className="w-full" size="middle" role="navigation" aria-label="Quick actions">
               {quickActions.map((action) => (
                 <QuickAction key={action.title} {...action} />
               ))}
@@ -256,6 +288,8 @@ const TrainingDashboardPage = () => {
         <Card
           className="rounded-xl border-border shadow-none mt-6"
           title="Recent Activity"
+          role="region"
+          aria-label="Recent activity"
         >
           <List
             dataSource={dashboard.recentActivity.slice(0, 5)}
@@ -270,6 +304,27 @@ const TrainingDashboardPage = () => {
           />
         </Card>
       )}
+
+      {/* Quick Links */}
+      {/* <Card className="rounded-xl border-border shadow-none mt-6" role="navigation" aria-label="Quick links">
+        <div className="flex flex-wrap gap-3">
+          <Button onClick={() => navigate('/app/training/create')} aria-label="Create new training">
+            <PlusOutlined /> Create Training
+          </Button>
+          <Button onClick={() => navigate('/app/training/manage')} aria-label="Manage trainings">
+            <SettingOutlined /> Manage Trainings
+          </Button>
+          <Button onClick={() => navigate('/app/training/feedback-forms')} aria-label="Manage feedback forms">
+            <FileTextOutlined /> Feedback Forms
+          </Button>
+          <Button onClick={() => navigate('/app/training/lesson-plans')} aria-label="Review lesson plans">
+            <BookOutlined /> Lesson Plans
+          </Button>
+          <Button onClick={() => navigate('/app/training/reports')} aria-label="View reports">
+            <BarChartOutlined /> Reports
+          </Button>
+        </div>
+      </Card> */}
     </div>
   );
 };
