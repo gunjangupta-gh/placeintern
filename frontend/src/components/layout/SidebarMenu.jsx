@@ -270,7 +270,7 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
         )}
 
         {/* Built by Section */}
-        {!collapsed && (
+        {/* {!collapsed && (
           <div
             style={{
               marginTop: 12,
@@ -302,7 +302,7 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
               </span>
             </div>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );
