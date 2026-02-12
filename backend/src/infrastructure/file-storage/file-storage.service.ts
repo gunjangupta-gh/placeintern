@@ -61,12 +61,10 @@ export class FileStorageService implements OnModuleInit {
   private readonly s3Client: S3Client;
   private readonly bucket: string;
   private readonly endpoint: string;
-  private readonly publicEndpoint: string; // Public-facing endpoint for presigned URLs
   private isConnected = false;
 
   constructor(private configService: ConfigService) {
-    this.endpoint = this.configService.get<string>('MINIO_ENDPOINT', 'http://localhost:9000');
-    this.publicEndpoint = this.configService.get<string>('MINIO_PUBLIC_ENDPOINT', this.endpoint);
+    this.endpoint = this.configService.get<string>('MINIO_ENDPOINT', 'https://files.placeintern.com');
     this.bucket = this.configService.get<string>('MINIO_BUCKET', 'cms-uploads');
 
     // SECURITY: Require explicit credentials - no default fallbacks
@@ -651,13 +649,7 @@ export class FileStorageService implements OnModuleInit {
     // Cap expiry time at maximum allowed value
     const cappedExpiry = Math.min(expiresIn, this.MAX_PRESIGNED_EXPIRY);
     const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
-    const presignedUrl = await getSignedUrl(this.s3Client, command, { expiresIn: cappedExpiry });
-    
-    // Replace internal endpoint with public endpoint for client access
-    if (this.publicEndpoint !== this.endpoint) {
-      return presignedUrl.replace(this.endpoint, this.publicEndpoint);
-    }
-    return presignedUrl;
+    return getSignedUrl(this.s3Client, command, { expiresIn: cappedExpiry });
   }
 
   /**
@@ -672,13 +664,7 @@ export class FileStorageService implements OnModuleInit {
       Key: key,
       ContentType: contentType,
     });
-    const presignedUrl = await getSignedUrl(this.s3Client, command, { expiresIn: cappedExpiry });
-    
-    // Replace internal endpoint with public endpoint for client access
-    if (this.publicEndpoint !== this.endpoint) {
-      return presignedUrl.replace(this.endpoint, this.publicEndpoint);
-    }
-    return presignedUrl;
+    return getSignedUrl(this.s3Client, command, { expiresIn: cappedExpiry });
   }
 
   /**
