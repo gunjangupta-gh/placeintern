@@ -39,11 +39,8 @@ export class StateDashboardService {
     const targetMonth = params?.month ?? now.getMonth() + 1;
     const targetYear = params?.year ?? now.getFullYear();
 
-    // Include month/year in cache key for filtered requests done
-    const cacheKey =
-      params?.month && params?.year
-        ? `state:dashboard:stats:${targetMonth}-${targetYear}`
-        : "state:dashboard:stats";
+    // This prevents stale cache when no filter is passed vs explicit same-month filter
+    const cacheKey = `state:dashboard:stats:${targetMonth}-${targetYear}`;
 
     return this.cache.getOrSet(
       cacheKey,
@@ -1155,10 +1152,8 @@ export class StateDashboardService {
     const targetMonth = params?.month ?? now.getMonth() + 1;
     const targetYear = params?.year ?? now.getFullYear();
 
-    const cacheKey =
-      params?.month && params?.year
-        ? `state:dashboard:visits-by-type:${targetMonth}-${targetYear}`
-        : "state:dashboard:visits-by-type";
+   // Always use month-specific cache key to stay consistent with dashboard stats
+    const cacheKey = `state:dashboard:visits-by-type:${targetMonth}-${targetYear}`;
 
     return this.cache.getOrSet(
       cacheKey,
@@ -1253,11 +1248,8 @@ export class StateDashboardService {
     const targetMonth = params?.month ?? now.getMonth() + 1;
     const targetYear = params?.year ?? now.getFullYear();
 
-    // Include month/year in cache key for filtered requests
-    const cacheKey =
-      params?.month && params?.year
-        ? `state:dashboard:college-breakdown:${type}:${targetMonth}-${targetYear}`
-        : `state:dashboard:college-breakdown:${type}`;
+    // Always use month-specific cache key to stay consistent with dashboard stats
+    const cacheKey = `state:dashboard:college-breakdown:${type}:${targetMonth}-${targetYear}`;
 
     return this.cache.getOrSet(
       cacheKey,

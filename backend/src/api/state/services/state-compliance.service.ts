@@ -241,11 +241,11 @@ export class StateComplianceService {
       },
     });
 
-    // Get actual completed/scheduled visits for this month
+   // Get actual completed visits for this month (only COMPLETED, consistent with dashboard)
     const completedVisits = await this.prisma.facultyVisitLog.count({
       where: {
         isDeleted: false,
-        status: { in: ['SCHEDULED', 'COMPLETED', 'IN_PROGRESS'] },
+        status: { in: [ 'COMPLETED'] },
         applicationId: { in: qualifyingInternshipIds.length > 0 ? qualifyingInternshipIds : ['none'] },
         OR: [
           { visitMonth: month, visitYear: year },
@@ -431,13 +431,13 @@ export class StateComplianceService {
             : 'not_submitted';
 
           // Check visit status
-          // Count visits that are SCHEDULED, COMPLETED, or IN_PROGRESS (consistent with dashboard counting)
-          const visit = internship.facultyVisitLogs.find(v => ['SCHEDULED', 'COMPLETED', 'IN_PROGRESS'].includes(v.status));
+        // Check visit status (only COMPLETED visits, consistent with dashboard)
+          const visit = internship.facultyVisitLogs.find(v => v.status === 'COMPLETED');
           const visitStatus = visit ? 'completed' : 'pending';
 
           // Count visit types from all qualifying visits
           for (const v of internship.facultyVisitLogs) {
-            if (['SCHEDULED', 'COMPLETED', 'IN_PROGRESS'].includes(v.status) && v.visitType) {
+         if (v.status === 'COMPLETED' && v.visitType) {
               if (v.visitType in visitTypeCounts) {
                 visitTypeCounts[v.visitType]++;
               }

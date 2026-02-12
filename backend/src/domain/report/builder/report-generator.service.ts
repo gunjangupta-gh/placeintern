@@ -698,7 +698,7 @@ export class ReportGeneratorService {
     filters: any,
     pagination?: ReportPaginationOptions,
   ): Promise<any[]> {
-    const where: Record<string, unknown> = { isDeleted: false };
+    const where: Record<string, unknown> = { isDeleted: false, status: 'COMPLETED' };
     const { take, skip } = this.getPaginationParams(pagination);
 
     // Build student filter with active checks
@@ -2077,7 +2077,13 @@ export class ReportGeneratorService {
               include: {
                 internshipApplications: {
                   where: { isActive: true },
-                  select: { id: true, completedVisitsCount: true },
+                  select: {
+                    id: true,
+                    facultyVisitLogs: {
+                      where: { isDeleted: false, status: 'COMPLETED' },
+                      select: { id: true },
+                    },
+                  },
                 },
               },
             },
@@ -2115,7 +2121,7 @@ export class ReportGeneratorService {
       mentor.mentorAssignments.forEach((assignment) => {
         assignment.student.internshipApplications.forEach((app) => {
           activeInternships++;
-          visitsCompleted += app.completedVisitsCount;
+          visitsCompleted += app.facultyVisitLogs.length;
         });
       });
 
@@ -2192,9 +2198,9 @@ export class ReportGeneratorService {
                 companyName: true,
                 internshipPhase: true,
                 status: true,
-                completedVisitsCount: true,
                 submittedReportsCount: true,
                 facultyVisitLogs: {
+                  where: { isDeleted: false, status: 'COMPLETED' },
                   select: { visitDate: true },
                   orderBy: { visitDate: 'desc' },
                   take: 1,
@@ -2518,12 +2524,10 @@ export class ReportGeneratorService {
             startDate: true,
             joiningDate: true,
             totalExpectedVisits: true,
-            completedVisitsCount: true,
             facultyVisitLogs: {
               where: { isDeleted: false, status: 'COMPLETED' },
               select: { visitDate: true, visitType: true, status: true },
               orderBy: { visitDate: 'desc' as const },
-              take: 1,
             },
           },
         },
@@ -2565,7 +2569,7 @@ export class ReportGeneratorService {
         for (const app of student.internshipApplications) {
           const startDate = app.startDate ?? app.joiningDate;
           const requiredVisits = app.totalExpectedVisits;
-          const completedVisits = app.completedVisitsCount;
+          const completedVisits = app.facultyVisitLogs.length;
           const pendingVisits = Math.max(0, requiredVisits - completedVisits);
           const compliancePercent = requiredVisits > 0
             ? Math.round((completedVisits / requiredVisits) * 100)
@@ -3172,7 +3176,7 @@ export class ReportGeneratorService {
     }
 
     // Build date filter for visits based on month/year
-    const visitLogsWhere: Record<string, unknown> = {};
+   const visitLogsWhere: Record<string, unknown> = { isDeleted: false, status: 'COMPLETED' };
     if (filters?.month && filters?.year) {
       const filterMonth = Number(filters.month);
       const filterYear = Number(filters.year);
@@ -3208,9 +3212,8 @@ export class ReportGeneratorService {
                     id: true,
                     companyName: true,
                     totalExpectedVisits: true,
-                    completedVisitsCount: true,
                     facultyVisitLogs: {
-                      where: Object.keys(visitLogsWhere).length > 0 ? visitLogsWhere : undefined,
+                      where: visitLogsWhere,
                       select: { visitDate: true },
                       orderBy: { visitDate: 'desc' },
                     },
@@ -3247,10 +3250,10 @@ export class ReportGeneratorService {
 
         assignment.student.internshipApplications.forEach((app) => {
           // When filtering by month/year, calculate visits due based on filtered visits
-          const visitsInPeriod = app.facultyVisitLogs.length;
+          const completedVisits = app.facultyVisitLogs.length;
           const visitsDue = filters?.month && filters?.year
-            ? (visitsInPeriod === 0 ? 1 : 0) // If no visit in the period, 1 visit is due
-            : app.totalExpectedVisits - app.completedVisitsCount;
+            ? (completedVisits === 0 ? 1 : 0) // If no visit in the period, 1 visit is due
+            : app.totalExpectedVisits - completedVisits;
 
           if (visitsDue > 0) {
             const lastVisit = app.facultyVisitLogs[0]?.visitDate ?? null;

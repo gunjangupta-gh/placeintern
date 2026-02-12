@@ -136,6 +136,7 @@ export class PrincipalService {
           this.prisma.facultyVisitLog.count({
             where: {
               isDeleted: false,
+              status: 'COMPLETED',
               application: {
                 student: { institutionId, user: { active: true } },
                 isSelfIdentified: true,
@@ -673,10 +674,10 @@ export class PrincipalService {
       .map((s) => s.internshipApplications[0]?.id)
       .filter(Boolean) as string[];
 
-    // Fetch faculty visits for all applications in a single query
+ // Fetch COMPLETED faculty visits for all applications in a single query
     const facultyVisits = applicationIds.length > 0
       ? await this.prisma.facultyVisitLog.findMany({
-          where: { applicationId: { in: applicationIds }, isDeleted: false },
+          where: { applicationId: { in: applicationIds }, isDeleted: false, status: 'COMPLETED' },
           select: {
             applicationId: true,
             visitDate: true,
@@ -4740,6 +4741,7 @@ export class PrincipalService {
         this.prisma.facultyVisitLog.count({
           where: {
             isDeleted: false,
+            status: 'COMPLETED',
             application: {
               student: { institutionId },
               isSelfIdentified: true,

@@ -63,10 +63,10 @@ export class StateReportsService {
       this.prisma.internshipApplication.count({ where: { ...dateFilter, status: ApplicationStatus.APPROVED } }),
       this.prisma.internshipApplication.count({ where: { ...dateFilter, status: ApplicationStatus.COMPLETED } }),
       this.prisma.facultyVisitLog.count({
-        where: { isDeleted: false, application: { student: { institutionId, user: { active: true } } } },
+        where: { isDeleted: false, status: 'COMPLETED', application: { student: { institutionId, user: { active: true } } } },
       }),
       this.prisma.monthlyReport.count({
-        where: { isDeleted: false, student: { institutionId, user: { active: true } } },
+        where: { isDeleted: false, status: { in: ['SUBMITTED', 'UNDER_REVIEW', 'APPROVED'] }, student: { institutionId, user: { active: true } } },
       }),
     ]);
 
@@ -269,6 +269,7 @@ export class StateReportsService {
 
     const where: Prisma.FacultyVisitLogWhereInput = {
       isDeleted: false,
+      status: 'COMPLETED',
       ...(institutionId ? { application: { student: { institutionId, user: { active: true } } } } : {}),
       ...(facultyId ? { facultyId } : {}),
       ...((fromDate || toDate)
@@ -587,12 +588,15 @@ export class StateReportsService {
           this.prisma.facultyVisitLog.count({
             where: {
               isDeleted: false,
+              status: 'COMPLETED',
               visitDate: { gte: startDate, lte: endDate },
               application: { student: studentFilter },
             },
           }),
           this.prisma.monthlyReport.count({
             where: {
+              isDeleted: false,
+              status: { in: ['SUBMITTED', 'UNDER_REVIEW', 'APPROVED'] },
               student: studentFilter,
               reportMonth: targetMonth,
               reportYear: targetYear,
