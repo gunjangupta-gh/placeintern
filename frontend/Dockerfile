@@ -17,8 +17,8 @@ COPY . .
 ARG VITE_API_BASE_URL=http://localhost:8000/api
 ARG VITE_APP_NAME="PlaceIntern Portal"
 ARG VITE_APP_ENV=production
-ARG VITE_MINIO_ENDPOINT=http://minio:9000
-ARG VITE_MINIO_BUCKET=cms-uploads
+ARG VITE_MINIO_ENDPOINT=https://files.placeintern.com
+ARG VITE_MINIO_BUCKET=placeintern-uploads
 
 # Set environment variables for build
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL

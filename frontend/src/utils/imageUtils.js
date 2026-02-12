@@ -6,14 +6,9 @@ import API from '../services/api';
 
 // Determine the base URL for uploads based on environment
 const getUploadsBaseUrl = () => {
-  // Use environment variable if available
-  if (import.meta.env.VITE_UPLOADS_URL) {
-    return import.meta.env.VITE_UPLOADS_URL;
-  }
-  
-  // Use MinIO endpoint and bucket for both dev and production
-  const minioEndpoint = 'https://files.placeintern.com';
-  const minioBucket = 'placeintern-uploads';
+  // Use environment variables for MinIO endpoint and bucket
+  const minioEndpoint = import.meta.env.VITE_MINIO_ENDPOINT || 'https://files.placeintern.com';
+  const minioBucket = import.meta.env.VITE_MINIO_BUCKET || 'placeintern-uploads';
   return `${minioEndpoint}/${minioBucket}`;
 };
 

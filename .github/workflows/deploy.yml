@@ -127,9 +127,11 @@ jobs:
     - name: Build application
       run: npm run build
       env:
-        VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://api.sukeerat.com' }}
+        VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://api.placeintern.com/api' }}
         VITE_APP_NAME: ${{ vars.VITE_APP_NAME || 'PlaceIntern Portal' }}
         VITE_APP_ENV: production
+        VITE_MINIO_ENDPOINT: ${{ vars.VITE_MINIO_ENDPOINT || 'https://files.placeintern.com' }}
+        VITE_MINIO_BUCKET: ${{ vars.VITE_MINIO_BUCKET || 'placeintern-uploads' }}
 
     - name: Build successful
       run: echo "Frontend build completed successfully!"
@@ -284,7 +286,12 @@ jobs:
           echo "Installing dependencies..."
           npm ci
 
-          echo "Building application..."
+          echo "Building application with production environment variables..."
+          VITE_API_BASE_URL=https://api.placeintern.com/api \
+          VITE_APP_NAME="PlaceIntern Portal" \
+          VITE_APP_ENV=production \
+          VITE_MINIO_ENDPOINT=https://files.placeintern.com \
+          VITE_MINIO_BUCKET=placeintern-uploads \
           npm run build
 
           echo "Reloading PM2 process..."

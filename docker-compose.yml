@@ -15,6 +15,8 @@ services:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api}
         VITE_APP_NAME: ${VITE_APP_NAME:-PlaceIntern Portal}
         VITE_APP_ENV: ${VITE_APP_ENV:-production}
+        VITE_MINIO_ENDPOINT: ${VITE_MINIO_ENDPOINT:-https://files.placeintern.com}
+        VITE_MINIO_BUCKET: ${VITE_MINIO_BUCKET:-placeintern-uploads}
     image: cms-frontend:latest
     container_name: cms-frontend
     ports:
