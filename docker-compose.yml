@@ -80,6 +80,7 @@ services:
       - UPLOAD_PATH=/app/uploads
       # MinIO/S3 Configuration (FileStorageService expects MINIO_* variables)
       - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
+      - MINIO_PUBLIC_ENDPOINT=${MINIO_PUBLIC_ENDPOINT:-https://files.placeintern.com}
       - MINIO_BUCKET=${MINIO_BUCKET:-cms-uploads}
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}

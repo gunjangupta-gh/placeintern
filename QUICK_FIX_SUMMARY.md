@@ -1,51 +1,63 @@
-# Quick Fix Summary - MinIO Configuration
+# Complete MinIO Configuration Fix
 
 ## ✅ What Was Fixed
 
+### Frontend Fixes
 1. **imageUtils.js** - Now uses `VITE_MINIO_ENDPOINT` and `VITE_MINIO_BUCKET` instead of non-existent `VITE_UPLOADS_URL`
-
 2. **docker-compose.yml** - Added MinIO build args to frontend service
+3. **frontend/.env.example** - Added production value examples
+4. **.github/workflows/ci-cd.yml** - Added MinIO build args to Docker-based CI/CD
+5. **.github/workflows/deploy.yml** - Added MinIO env vars to VPS deployment workflow (PM2)
 
-3. **.env (root)** - Updated with correct production values for placeintern.com
+### Backend Fixes (⚠️ Main Issue!)
+6. **file-storage.service.ts** - Added `MINIO_PUBLIC_ENDPOINT` support for generating correct presigned URLs
+7. **backend/.env.example** - Added MINIO_PUBLIC_ENDPOINT configuration
+8. **.env (root)** - Added MINIO_PUBLIC_ENDPOINT=https://files.placeintern.com
+9. **docker-compose files** - Added MINIO_PUBLIC_ENDPOINT env var to backend services
 
-4. **frontend/.env.example** - Added production value examples
+## 🚀 Deploy Both Frontend & Backend
 
-5. **.github/workflows/ci-cd.yml** - Added MinIO build args to Docker-based CI/CD
+### ✅ Step 1: Update Server Environment
 
-6. **.github/workflows/deploy.yml** - Added MinIO env vars to VPS deployment workflow (PM2)
+**SSH to your server and update backend .env:**
+```bash
+ssh your-vps
+cd /root/placeintern/placeintern/backend
+nano .env
+```
 
-## 🚀 Next Steps - Using Your VPS Deployment
+**Add this line:**
+```bash
+MINIO_PUBLIC_ENDPOINT=https://files.placeintern.com
+```
 
-### ✅ Method 1: Auto Deploy via GitHub Actions (Recommended)
-
-Your **deploy.yml** will do everything automatically:
+### ✅ Step 2: Deploy via GitHub Actions (Auto)
 
 ```bash
 git add .
-git commit -m "Fix MinIO endpoint configuration"
+git commit -m "Fix MinIO configuration for frontend and backend"
 git push origin main
 
-# GitHub Actions automatically:
+# GitHub Actions automatically deploys:
 # ✅ Pulls code on VPS
-# ✅ Builds with correct env vars  
-# ✅ Reloads PM2
-# ✅ Health checks
+# ✅ Builds frontend with correct env vars
+# ✅ Rebuilds backend with new code
+# ✅ Reloads both PM2 processes
 ```
 
-### Method 2: Manual VPS Deployment
+### ✅ Step 3: Verify
+
+After deployment (2-3 minutes):
+
+1. **Open your app** (Ctrl+Shift+R to force refresh)
+2. **Check image URLs** - Should show `https://files.placeintern.com`
+3. **Test file downloads** - Presigned URLs should work
 
 ```bash
-# SSH to your server
+# Check logs on server:
 ssh your-vps
-
-cd /root/placeintern/placeintern/frontend
-
-# Build with env vars
-VITE_MINIO_ENDPOINT=https://files.placeintern.com \
-VITE_MINIO_BUCKET=placeintern-uploads \
-npm run build
-
-pm2 reload frontend
+pm2 logs backend --lines 50
+pm2 logs frontend --lines 50
 ```
 
 ```bash
