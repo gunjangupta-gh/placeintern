@@ -384,25 +384,11 @@ const Grievances = () => {
   // Base table columns
   const baseColumns = [
     {
-      title: 'ID',
-      key: 'id',
-      width: 100,
-      render: (_, record) => (
-        <div>
-          <Text className="font-mono font-bold text-primary text-xs">
-            {record.id?.slice(-8).toUpperCase()}
-          </Text>
-          <div className="text-[10px] text-text-tertiary">
-            {dayjs(record.createdAt).format('DD MMM')}
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: 'Title',
+      title: 'Subject',
       dataIndex: 'title',
       key: 'title',
       ellipsis: true,
+      width: 250,
       render: (text, record) => (
         <div className="flex items-start gap-2">
           <div className="w-8 h-8 rounded-lg bg-background-tertiary flex items-center justify-center shrink-0">
@@ -419,45 +405,48 @@ const Grievances = () => {
         </div>
       ),
     },
-    // Institution column - only for STATE_DIRECTORATE
+    // Institution column - only for STATE_DIRECTORATE (without code)
     ...(isState ? [{
       title: 'Institution',
       key: 'institution',
-      width: 150,
+      width: 180,
+      responsive: ['lg'],
+      ellipsis: true,
       render: (_, record) => (
-        <div>
+        <Tooltip title={record.student?.Institution?.name || 'Unknown Institution'}>
           <Text className="block text-xs font-medium text-text-primary truncate">
             {record.student?.Institution?.name || 'Unknown Institution'}
           </Text>
-          <Text className="text-[10px] text-text-tertiary">
-            {record.student?.Institution?.code || ''}
-          </Text>
-        </div>
+        </Tooltip>
       ),
     }] : []),
     {
-      title: 'Submitted By',
-      key: 'submittedBy',
-      width: 160,
-      render: (_, record) => (
-        <div className="flex items-center gap-2">
-          <ProfileAvatar size="small" profileImage={record.student?.profileImage || record.student?.user?.profileImage} className="bg-primary/10 text-primary" />
-          <div>
-            <Text className="block text-sm font-medium text-text-primary">
-              {record.student?.user?.name || 'Unknown'}
-            </Text>
-            <Text className="text-[10px] text-text-tertiary uppercase">
-              Student
-            </Text>
+      title: 'Faculty Mentor',
+      key: 'assignedTo',
+      width: 180,
+      render: (_, record) => {
+        const mentorName = record.assignedTo?.name || 
+                          record.student?.mentorAssignments?.[0]?.mentor?.name ||
+                          record.mentor?.name;
+        
+        if (!mentorName) {
+          return <Tag color="warning" className="text-xs">Not Assigned</Tag>;
+        }
+        
+        return (
+          <div className="flex items-center gap-1">
+            <ProfileAvatar size="small" profileImage={record.assignedTo?.profileImage} />
+            <Text className="text-xs">{mentorName}</Text>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
-      title: 'Severity',
+      title: 'Priority',
       dataIndex: 'severity',
       key: 'severity',
-      width: 90,
+      width: 100,
+      responsive: ['lg'],
       render: (severity) => {
         const config = getPriorityConfig(severity || 'MEDIUM');
         return <Tag color={config.color} className="rounded-full px-2">{config.text}</Tag>;
@@ -467,7 +456,7 @@ const Grievances = () => {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      width: 120,
+      width: 130,
       render: (status) => {
         const config = getStatusConfig(status || 'PENDING');
         return (
@@ -478,45 +467,10 @@ const Grievances = () => {
       },
     },
     {
-      title: 'Escalation',
-      dataIndex: 'escalationLevel',
-      key: 'escalationLevel',
-      width: 130,
-      render: (level) => {
-        if (!level) {
-          return (
-            <Tag color="default" className="rounded-full px-2">
-              <ClockCircleOutlined /> Not Set
-            </Tag>
-          );
-        }
-        const levelInfo = ESCALATION_LEVELS[level] || {};
-        return (
-          <Tooltip title={`Level ${levelInfo.level || 1}`}>
-            <Tag color={levelInfo.color || 'blue'} className="rounded-full px-2">
-              {levelInfo.icon} {levelInfo.label || level}
-            </Tag>
-          </Tooltip>
-        );
-      },
-    },
-    {
-      title: 'Assigned To',
-      key: 'assignedTo',
-      width: 140,
-      render: (_, record) => record.assignedTo ? (
-        <div className="flex items-center gap-1">
-          <ProfileAvatar size="small" profileImage={record.assignedTo.profileImage} />
-          <Text className="text-xs">{record.assignedTo.name}</Text>
-        </div>
-      ) : (
-        <Tag color="warning" className="text-xs">Unassigned</Tag>
-      ),
-    },
-    {
-      title: 'Age',
+      title: 'Created',
       key: 'age',
-      width: 80,
+      width: 100,
+      responsive: ['sm'],
       render: (_, record) => (
         <Tooltip title={dayjs(record.createdAt).format('DD MMM YYYY HH:mm')}>
           <Text className="text-xs text-text-secondary">
@@ -528,7 +482,7 @@ const Grievances = () => {
     {
       title: 'Actions',
       key: 'actions',
-      width: 150,
+      width: 100,
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
@@ -757,7 +711,7 @@ const Grievances = () => {
           dataSource={filteredGrievances}
           rowKey="id"
           loading={loading}
-          scroll={{ x: isState ? 1400 : 1200 }}
+          scroll={{ x: 900 }}
           pagination={{
             current: pagination.current,
             pageSize: pagination.pageSize,
@@ -765,6 +719,7 @@ const Grievances = () => {
             showSizeChanger: true,
             showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} grievances`,
             onChange: (page, pageSize) => setPagination({ ...pagination, current: page, pageSize }),
+            responsive: true,
           }}
           locale={{
             emptyText: <Empty description="No grievances found" image={Empty.PRESENTED_IMAGE_SIMPLE} />,

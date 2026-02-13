@@ -722,9 +722,7 @@ const ReportBuilder = () => {
               <Space>
                 <FilterOutlined style={{ color: '#1890ff' }} />
                 <span style={{ fontWeight: 600 }}>Filters</span>
-                {availableFilters.some((f) => f.required) && (
-                  <Tag color="red" style={{ fontSize: 11 }}>Required</Tag>
-                )}
+                <Text type="secondary" style={{ fontSize: 11, fontWeight: 400 }}>(Optional - Select to filter data)</Text>
               </Space>
             }
             style={{ border: '1px solid #d9d9d9', borderRadius: 8 }}

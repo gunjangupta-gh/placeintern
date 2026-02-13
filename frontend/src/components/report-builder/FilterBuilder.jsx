@@ -494,15 +494,9 @@ const FilterBuilder = ({
                       <InfoCircleOutlined className="text-gray-400 cursor-help" />
                     </Tooltip>
                   )}
-                  {filter.required && (
-                    <Text type="danger" className="text-xs">*</Text>
-                  )}
                 </Space>
               }
               className={compact ? "mb-2" : "mb-4"}
-              validateStatus={
-                filter.required && !values[filter.id] ? "warning" : ""
-              }
             >
               {renderFilterInput(filter)}
             </Form.Item>

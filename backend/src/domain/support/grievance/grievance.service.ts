@@ -90,7 +90,16 @@ export class GrievanceService {
       student: {
         include: {
           user: true,
-          Institution: true
+          Institution: true,
+          mentorAssignments: {
+            where: {
+              isActive: true
+            },
+            include: {
+              mentor: true
+            },
+            take: 1
+          }
         }
       },
       assignedTo: true,
@@ -104,7 +113,16 @@ export class GrievanceService {
       student: {
         include: {
           user: true,
-          Institution: true
+          Institution: true,
+          mentorAssignments: {
+            where: {
+              isActive: true
+            },
+            include: {
+              mentor: true
+            },
+            take: 1
+          }
         }
       },
       assignedTo: true,

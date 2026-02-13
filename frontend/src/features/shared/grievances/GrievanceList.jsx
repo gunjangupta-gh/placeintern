@@ -290,58 +290,55 @@ const GrievanceList = () => {
 
   const columns = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 100,
-      render: (id) => <Text code>{id.slice(0, 8)}</Text>,
-    },
-    {
       title: 'Subject',
       dataIndex: 'title',
       key: 'title',
-      width: 200,
-      render: (text) => <Text strong>{text}</Text>,
+      ellipsis: true,
+      width: 250,
+      render: (text) => (
+        <Tooltip title={text}>
+          <Text strong>{text}</Text>
+        </Tooltip>
+      ),
     },
     {
       title: 'Category',
       dataIndex: 'category',
       key: 'category',
       width: 120,
+      responsive: ['md'],
       render: (category) => {
         const config = getCategoryConfig(category);
         return <Tag color={config.color}>{config.label}</Tag>;
       },
     },
     {
-      title: 'Student',
-      dataIndex: ['student', 'user', 'name'],
-      key: 'student',
-      width: 150,
-      render: (name, record) => (
-        <Space>
-          <UserOutlined />
-          <Text>{name || record.student?.user?.name || record.student?.name || 'N/A'}</Text>
-        </Space>
-      ),
-    },
-    {
-      title: 'Institution',
-      dataIndex: ['student', 'Institution', 'name'],
-      key: 'institution',
-      width: 150,
-      render: (name, record) => (
-        <Space>
-          <BankOutlined />
-          <Text>{name || record.student?.Institution?.name || 'N/A'}</Text>
-        </Space>
-      ),
+      title: 'Faculty Mentor',
+      dataIndex: 'assignedTo',
+      key: 'assignedTo',
+      width: 180,
+      render: (assignedTo, record) => {
+        // Try multiple paths to get the faculty mentor name
+        const mentorName = assignedTo?.name || 
+                          record.student?.mentorAssignments?.[0]?.mentor?.name ||
+                          record.mentor?.name;
+        
+        if (!mentorName) return <Text type="secondary">Not Assigned</Text>;
+        
+        return (
+          <Space>
+            <UserOutlined />
+            <Text>{mentorName}</Text>
+          </Space>
+        );
+      },
     },
     {
       title: 'Priority',
       dataIndex: 'severity',
       key: 'severity',
       width: 100,
+      responsive: ['lg'],
       render: (severity) => {
         const config = getPriorityConfig(severity);
         return <Tag color={config.color}>{config.label}</Tag>;
@@ -363,40 +360,11 @@ const GrievanceList = () => {
       },
     },
     {
-      title: 'Escalation Level',
-      dataIndex: 'escalationLevel',
-      key: 'escalationLevel',
-      width: 150,
-      render: (level) => {
-        if (!level) return <Tag>Not Assigned</Tag>;
-        const config = ESCALATION_LEVELS[level];
-        return (
-          <Tag color={config?.color} icon={config?.icon}>
-            {config?.label || level}
-          </Tag>
-        );
-      },
-    },
-    {
-      title: 'Assigned To',
-      dataIndex: 'assignedTo',
-      key: 'assignedTo',
-      width: 150,
-      render: (assignedTo) => {
-        if (!assignedTo) return <Text type="secondary">Unassigned</Text>;
-        return (
-          <Space>
-            <UserOutlined />
-            <Text>{assignedTo.name}</Text>
-          </Space>
-        );
-      },
-    },
-    {
       title: 'Created',
       dataIndex: 'submittedDate',
       key: 'submittedDate',
       width: 120,
+      responsive: ['sm'],
       render: (date, record) => {
         const displayDate = date || record.createdAt;
         return displayDate ? dayjs(displayDate).format('MMM DD, YYYY') : 'N/A';
@@ -406,18 +374,16 @@ const GrievanceList = () => {
       title: 'Actions',
       key: 'actions',
       fixed: 'right',
-      width: 150,
+      width: 100,
       render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => handleViewDetail(record)}
-          >
-            View
-          </Button>
-        </Space>
+        <Button
+          type="link"
+          size="small"
+          icon={<EyeOutlined />}
+          onClick={() => handleViewDetail(record)}
+        >
+          View
+        </Button>
       ),
     },
   ];
@@ -492,8 +458,8 @@ const GrievanceList = () => {
 
         {/* Filters */}
         <Card title={<Space><FilterOutlined /><span>Filters</span></Space>} size="small">
-          <Row gutter={16}>
-            <Col xs={24} sm={12} md={6}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} lg={6}>
               <Select
                 placeholder="Filter by Status"
                 style={{ width: '100%' }}
@@ -508,7 +474,7 @@ const GrievanceList = () => {
                 ))}
               </Select>
             </Col>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={24} sm={12} lg={6}>
               <Select
                 placeholder="Filter by Category"
                 style={{ width: '100%' }}
@@ -523,7 +489,7 @@ const GrievanceList = () => {
                 ))}
               </Select>
             </Col>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={24} sm={12} lg={6}>
               <Select
                 placeholder="Filter by Priority"
                 style={{ width: '100%' }}
@@ -538,7 +504,7 @@ const GrievanceList = () => {
                 ))}
               </Select>
             </Col>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={24} sm={12} lg={6}>
               <RangePicker
                 style={{ width: '100%' }}
                 value={filters.dateRange}
@@ -555,11 +521,12 @@ const GrievanceList = () => {
             columns={columns}
             rowKey="id"
             loading={loading}
-            scroll={{ x: 1200 }}
+            scroll={{ x: 800 }}
             pagination={{
               pageSize: 10,
               showSizeChanger: true,
               showTotal: (total) => `Total ${total} grievances`,
+              responsive: true,
             }}
             locale={{
               emptyText: (
