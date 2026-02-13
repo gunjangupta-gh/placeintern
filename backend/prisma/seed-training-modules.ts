@@ -1020,7 +1020,7 @@ async function main() {
                 attendanceDate,
                 ipAddress: `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
                 userAgent: 'PlaceIntern/1.0 TrainingSeed',
-                location: seed.city ?? 'Virtual',
+                locationAddress: seed.city ?? 'Virtual',
               },
             });
             counts.attendance.created++;
