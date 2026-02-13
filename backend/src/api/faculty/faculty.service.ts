@@ -995,6 +995,30 @@ export class FacultyService {
       }
     }
 
+    // Check if faculty has already logged a visit for this application on the same day
+    const visitDateStart = new Date(visitDateToUse);
+    visitDateStart.setHours(0, 0, 0, 0);
+    const visitDateEnd = new Date(visitDateToUse);
+    visitDateEnd.setHours(23, 59, 59, 999);
+
+    const existingVisitOnSameDay = await this.prisma.facultyVisitLog.findFirst({
+      where: {
+        applicationId: application.id,
+        facultyId,
+        isDeleted: false,
+        visitDate: {
+          gte: visitDateStart,
+          lte: visitDateEnd,
+        },
+      },
+    });
+
+    if (existingVisitOnSameDay) {
+      throw new BadRequestException(
+        `You have already logged a visit for this student on ${visitDateToUse.toISOString().split('T')[0]}. Only one visit per student per day is allowed.`
+      );
+    }
+
     // Count existing visits for this application
     const visitCount = await this.prisma.facultyVisitLog.count({
       where: { applicationId: application.id, isDeleted: false },

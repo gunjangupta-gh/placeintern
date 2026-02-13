@@ -86,9 +86,16 @@ const VisitLogsCard = ({ visitLogs = [], loading, onCreateNew, onViewAll }) => {
                     }}
                   />
                   <div>
-                    <Text className="text-sm font-medium block">
-                      {visit.application?.student?.user?.name || visit.application?.student?.name || visit.studentName || 'Student'}
-                    </Text>
+                    <div className="flex items-center gap-2">
+                      <Text className="text-sm font-medium">
+                        {visit.application?.student?.user?.name || visit.application?.student?.name || visit.studentName || 'Student'}
+                      </Text>
+                      {visit.visitNumber && (
+                        <Tag color="default" className="!text-xs !py-0 !px-1 !leading-5">
+                          Visit #{visit.visitNumber}
+                        </Tag>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 text-xs" style={{ color: token.colorTextSecondary }}>
                       <EnvironmentOutlined />
                       <span>{visit.visitLocation || visit.application?.internship?.industry?.companyName || 'Location'}</span>

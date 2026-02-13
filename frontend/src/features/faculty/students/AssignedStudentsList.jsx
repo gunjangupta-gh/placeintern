@@ -707,16 +707,22 @@ const AssignedStudentsList = () => {
                   <Card size="small" style={{ borderRadius: token.borderRadiusLG, marginBottom: 8, border: `1px solid ${token.colorBorderSecondary}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div>
-                        <Text strong>
-                          {dayjs(visit.visitDate).format('DD MMM YYYY, hh:mm A')}
-                        </Text>
-                        <Tag
-                          color={visit.visitType === 'PHYSICAL' ? 'green' : visit.visitType === 'VIRTUAL' ? 'blue' : 'orange'}
-                          bordered={false}
-                          style={{ marginLeft: 8 }}
-                        >
-                          {visit.visitType || 'PHYSICAL'}
-                        </Tag>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <Text strong>
+                            {dayjs(visit.visitDate).format('DD MMM YYYY, hh:mm A')}
+                          </Text>
+                          {visit.visitNumber && (
+                            <Tag color="default" bordered={false} style={{ fontSize: 11 }}>
+                              Visit #{visit.visitNumber}
+                            </Tag>
+                          )}
+                          <Tag
+                            color={visit.visitType === 'PHYSICAL' ? 'green' : visit.visitType === 'VIRTUAL' ? 'blue' : 'orange'}
+                            bordered={false}
+                          >
+                            {visit.visitType || 'PHYSICAL'}
+                          </Tag>
+                        </div>
                       </div>
                       <Tag color={visit.status === 'COMPLETED' ? 'success' : 'processing'} bordered={false}>
                         {visit.status || 'Logged'}

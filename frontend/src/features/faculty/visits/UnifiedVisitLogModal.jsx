@@ -74,7 +74,7 @@ const UnifiedVisitLogModal = ({
   existingData = null,
 }) => {
   const dispatch = useDispatch();
-  const { loading: visitLogsLoading } = useSelector(selectVisitLogs);
+  const { loading: visitLogsLoading, list: visitLogs = [] } = useSelector(selectVisitLogs);
 
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
@@ -260,6 +260,26 @@ const UnifiedVisitLogModal = ({
     try {
       const values = await form.validateFields();
       if (!isEdit && !selectedApplicationId) { toast.error('No active internship found'); return; }
+
+      // Check if a visit has already been logged on the selected date for this application (only for new visits)
+      if (!isEdit && selectedApplicationId) {
+        const selectedDate = values.visitDate ? values.visitDate.toDate() : new Date();
+        selectedDate.setHours(0, 0, 0, 0);
+        const selectedDateEnd = new Date(selectedDate);
+        selectedDateEnd.setHours(23, 59, 59, 999);
+
+        const existingVisitOnDate = visitLogs.find((visit) => {
+          if (visit.applicationId !== selectedApplicationId) return false;
+          const visitDate = new Date(visit.visitDate);
+          return visitDate >= selectedDate && visitDate <= selectedDateEnd;
+        });
+
+        if (existingVisitOnDate) {
+          toast.error('You have already logged a visit for this student on this date. Only one visit per student per day is allowed.');
+          return;
+        }
+      }
+
       setSubmitting(true);
       const { photoUrls, signedDocUrl } = await uploadFiles();
       const visitTypeValue = (values.visitType || '').toUpperCase();

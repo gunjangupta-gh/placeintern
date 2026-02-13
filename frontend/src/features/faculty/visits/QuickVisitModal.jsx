@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   Modal,
   Form,
@@ -23,7 +23,7 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons';
 import PropTypes from 'prop-types';
-import { createVisitLog, uploadVisitDocument } from '../store/facultySlice';
+import { createVisitLog, uploadVisitDocument, fetchVisitLogs } from '../store/facultySlice';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -52,6 +52,7 @@ const IMG_WINDOW_STYLE = { width: '100%' };
 
 const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, loading }) => {
   const dispatch = useDispatch();
+  const visitLogs = useSelector((state) => state.faculty.visitLogs.list || []);
   const [form] = Form.useForm();
   const isEdit = false;
   const [visitType, setVisitType] = useState(null);
@@ -216,6 +217,23 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
       // Validate applicationId is available
       if (!selectedApplicationId) {
         toast.error('No active internship application found for this student. Cannot log visit.');
+        return;
+      }
+
+      // Check if a visit has already been logged today for this application
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const existingVisitToday = visitLogs.find((visit) => {
+        if (visit.applicationId !== selectedApplicationId) return false;
+        const visitDate = new Date(visit.visitDate);
+        return visitDate >= today && visitDate <= todayEnd;
+      });
+
+      if (existingVisitToday) {
+        toast.error('You have already logged a visit for this student today. Only one visit per student per day is allowed.');
         return;
       }
 

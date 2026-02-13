@@ -166,6 +166,30 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
   const onFinish = async (values) => {
     setLoading(true);
     try {
+      // Check if a visit has already been logged on the selected date for this student (only for new visits)
+      if (!isEdit && values.studentId && values.visitDate) {
+        const selectedDate = values.visitDate.toDate();
+        selectedDate.setHours(0, 0, 0, 0);
+        const selectedDateEnd = new Date(selectedDate);
+        selectedDateEnd.setHours(23, 59, 59, 999);
+
+        const visitLogsList = visitLogs?.list || [];
+        const existingVisitOnDate = visitLogsList.find((visit) => {
+          // Check if the visit belongs to the selected student
+          const visitStudentId = visit.application?.student?.id || visit.application?.studentId;
+          if (visitStudentId !== values.studentId) return false;
+          
+          const visitDate = new Date(visit.visitDate);
+          return visitDate >= selectedDate && visitDate <= selectedDateEnd;
+        });
+
+        if (existingVisitOnDate) {
+          toast.error('You have already logged a visit for this student on this date. Only one visit per student per day is allowed.');
+          setLoading(false);
+          return;
+        }
+      }
+
       const formData = new FormData();
 
       Object.keys(values).forEach(key => {
