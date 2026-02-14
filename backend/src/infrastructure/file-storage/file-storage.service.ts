@@ -65,7 +65,7 @@ export class FileStorageService implements OnModuleInit {
 
   constructor(private configService: ConfigService) {
     this.endpoint = this.configService.get<string>('MINIO_ENDPOINT', 'https://files.placeintern.com');
-    this.bucket = this.configService.get<string>('MINIO_BUCKET', 'cms-uploads');
+    this.bucket = this.configService.get<string>('MINIO_BUCKET', 'placeintern-uploads');
 
     // SECURITY: Require explicit credentials - no default fallbacks
     const accessKeyId = this.configService.get<string>('MINIO_ROOT_USER');

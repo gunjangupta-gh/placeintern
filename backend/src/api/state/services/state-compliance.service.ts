@@ -970,21 +970,19 @@ export class StateComplianceService {
         ]);
 
         // Helper function to get download URL for a file
-        // If stored as full URL (from MinIO upload), return it directly
-        // If stored as a raw key, generate a presigned URL
+        // Always generates a presigned URL for security (MinIO buckets are private)
         const getPresignedUrlSafe = async (fileKey: string | null, fileId: string, fileType: string): Promise<{ url: string | null; error: string | null }> => {
           if (!fileKey) {
             return { url: null, error: 'No file key' };
           }
           try {
-            // If already a full URL, return it directly (publicly accessible MinIO URL)
-            const trimmed = fileKey.trim();
-            if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-              return { url: trimmed, error: null };
-            }
-            // Raw key - generate presigned URL
-            const url = await this.fileStorage.getSignedUrl(trimmed, PRESIGNED_URL_EXPIRY);
-            return { url, error: null };
+            // Normalize the key (extract from full URL if needed)
+            const extractedKey = this.normalizeFileKey(fileKey);
+            
+            // Generate presigned URL from the key
+            const presignedUrl = await this.fileStorage.getSignedUrl(extractedKey, PRESIGNED_URL_EXPIRY);
+            
+            return { url: presignedUrl, error: null };
           } catch (error) {
             this.logger.warn(`Failed to get presigned URL for ${fileType} ${fileId}: ${error.message}`);
             return { url: null, error: error.message || 'Failed to generate download URL' };
@@ -1390,15 +1388,13 @@ export class StateComplianceService {
         return { downloadUrl: null, error: 'File not found', expiresIn: 0 };
       }
 
-      // If already a full URL, return it directly (publicly accessible MinIO URL)
-      const trimmedKey = fileKey.trim();
-      if (trimmedKey.startsWith('http://') || trimmedKey.startsWith('https://')) {
-        return { downloadUrl: trimmedKey, error: null, expiresIn: PRESIGNED_URL_EXPIRY };
-      }
+      // Normalize the key (extract from full URL if needed)
+      const extractedKey = this.normalizeFileKey(fileKey);
 
-      // Raw key - generate presigned URL
-      const url = await this.fileStorage.getSignedUrl(trimmedKey, PRESIGNED_URL_EXPIRY);
-      return { downloadUrl: url, error: null, expiresIn: PRESIGNED_URL_EXPIRY };
+      // Generate presigned URL from the key
+      const presignedUrl = await this.fileStorage.getSignedUrl(extractedKey, PRESIGNED_URL_EXPIRY);
+      
+      return { downloadUrl: presignedUrl, error: null, expiresIn: PRESIGNED_URL_EXPIRY };
     } catch (error) {
       this.logger.error(`Failed to generate presigned URL for ${fileType} ${fileId}: ${error.message}`);
       return { downloadUrl: null, error: error.message || 'Failed to generate URL', expiresIn: 0 };
