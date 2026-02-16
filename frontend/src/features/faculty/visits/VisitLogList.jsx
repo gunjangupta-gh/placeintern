@@ -74,14 +74,14 @@ const VisitLogList = React.memo(() => {
   };
 
   const handleModalSuccess = () => {
-    dispatch(fetchVisitLogs({ forceRefresh: true }));
+    dispatch(fetchVisitLogs({ page: 1, limit: 1000, forceRefresh: true }));
     handleCloseModal();
   };
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await dispatch(fetchVisitLogs({ forceRefresh: true })).unwrap();
+      await dispatch(fetchVisitLogs({ page: 1, limit: 1000, forceRefresh: true })).unwrap();
       toast.success('Data refreshed successfully');
     } catch (error) {
       toast.error('Failed to refresh data');
@@ -91,7 +91,7 @@ const VisitLogList = React.memo(() => {
   }, [dispatch]);
 
   useEffect(() => {
-    dispatch(fetchVisitLogs());
+    dispatch(fetchVisitLogs({ page: 1, limit: 1000 }));
     dispatch(fetchAssignedStudents());
   }, [dispatch]);
 

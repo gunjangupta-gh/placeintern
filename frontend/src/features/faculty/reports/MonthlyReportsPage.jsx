@@ -83,6 +83,7 @@ const MonthlyReportsPage = () => {
 
   const [searchText, setSearchText] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [detailDrawer, setDetailDrawer] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
@@ -127,14 +128,14 @@ const MonthlyReportsPage = () => {
   }, [students]);
 
   useEffect(() => {
-    dispatch(fetchMonthlyReports());
+    dispatch(fetchMonthlyReports({ page: 1, limit: 1000 }));
     dispatch(fetchAssignedStudents({ limit: 100 }));
   }, [dispatch]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await dispatch(fetchMonthlyReports({ forceRefresh: true })).unwrap();
+      await dispatch(fetchMonthlyReports({ page: 1, limit: 1000, forceRefresh: true })).unwrap();
       toast.success('Data refreshed successfully');
     } catch (error) {
       toast.error('Failed to refresh data');
@@ -180,7 +181,7 @@ const MonthlyReportsPage = () => {
     try {
       await dispatch(deleteMonthlyReport(reportId)).unwrap();
       toast.success('Report deleted successfully');
-      dispatch(fetchMonthlyReports({ forceRefresh: true }));
+      dispatch(fetchMonthlyReports({ page: 1, limit: 1000, forceRefresh: true }));
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete report';
       toast.error(errorMessage);
@@ -258,7 +259,7 @@ const MonthlyReportsPage = () => {
 
       toast.success('Report uploaded successfully!');
       handleCloseModal();
-      dispatch(fetchMonthlyReports({ forceRefresh: true }));
+      dispatch(fetchMonthlyReports({ page: 1, limit: 1000, forceRefresh: true }));
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Upload failed';
       toast.error(errorMessage);
@@ -292,6 +293,19 @@ const MonthlyReportsPage = () => {
   const submittedCount = (reports || []).filter(r => r.status === 'SUBMITTED' || r.status === 'UNDER_REVIEW').length;
   const approvedCount = (reports || []).filter(r => r.status === 'APPROVED').length;
   const draftCount = (reports || []).filter(r => r.status === 'DRAFT').length;
+  const filteredReports = useMemo(() => getFilteredReports(), [reports, activeTab, searchText]);
+
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, current: 1 }));
+  }, [searchText, activeTab]);
+
+  useEffect(() => {
+    const totalFiltered = filteredReports.length;
+    const maxPage = Math.max(1, Math.ceil(totalFiltered / pagination.pageSize));
+    if (pagination.current > maxPage) {
+      setPagination(prev => ({ ...prev, current: maxPage }));
+    }
+  }, [filteredReports.length, pagination.current, pagination.pageSize]);
 
   const columns = [
     {
@@ -546,12 +560,15 @@ const MonthlyReportsPage = () => {
 
           <Table
             columns={columns}
-            dataSource={getFilteredReports()}
+            dataSource={filteredReports}
             loading={loading}
             rowKey="id"
             scroll={{ x: 'max-content' }}
             pagination={{
-              pageSize: 10,
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: filteredReports.length,
+              onChange: (current, pageSize) => setPagination({ current, pageSize }),
               showSizeChanger: true,
               showTotal: (total) => `Total ${total} reports`,
               className: 'px-4 py-3',

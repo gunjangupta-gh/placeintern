@@ -116,27 +116,31 @@ const PerformanceCard = ({ title, icon, topPerformers, bottomPerformers, loading
     </div>
 
     <div className="p-4">
-      <SectionHeader>Top 5 Performers</SectionHeader>
-      {topPerformers?.length > 0 ? (
-        <div>
-          {topPerformers.slice(0, 5).map((item, index) =>
-            renderRow(item, index + 1, false)
-          )}
-        </div>
-      ) : (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No data" className="!my-4" />
-      )}
+      <div className="bg-green-50 rounded-lg p-3 mb-3">
+        <SectionHeader>Top 5 Performers</SectionHeader>
+        {topPerformers?.length > 0 ? (
+          <div>
+            {topPerformers.slice(0, 5).map((item, index) =>
+              renderRow(item, index + 1, false)
+            )}
+          </div>
+        ) : (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No data" className="!my-4" />
+        )}
+      </div>
 
-      <SectionHeader>Bottom 5 Performers</SectionHeader>
-      {bottomPerformers?.length > 0 ? (
-        <div>
-          {bottomPerformers.slice(0, 5).map((item, index) =>
-            renderRow(item, index + 1, true)
-          )}
-        </div>
-      ) : (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No data" className="!my-4" />
-      )}
+      <div className="bg-red-50 rounded-lg p-3">
+        <SectionHeader>Bottom 5 Performers</SectionHeader>
+        {bottomPerformers?.length > 0 ? (
+          <div>
+            {bottomPerformers.slice(0, 5).map((item, index) =>
+              renderRow(item, index + 1, true)
+            )}
+          </div>
+        ) : (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No data" className="!my-4" />
+        )}
+      </div>
     </div>
   </Card>
 );

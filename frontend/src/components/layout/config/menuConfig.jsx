@@ -115,12 +115,6 @@ export const menuConfig = {
         icon: <ShopOutlined />,
         path: "/app/companies-overview",
       },
-      {
-        key: "student-grievances",
-        label: "Grievances",
-        icon: <AlertOutlined />,
-        path: "/app/grievances",
-      },
     ],
   },
   STATE_BULK: {
@@ -552,6 +546,12 @@ export const menuConfig = {
     title: "Support Management",
     icon: <CustomerServiceOutlined />,
     items: [
+      {
+        key: "state-grievances",
+        label: "Grievances",
+        icon: <AlertOutlined />,
+        path: "/app/grievances",
+      },
       {
         key: "support-dashboard",
         label: "Support Dashboard",
