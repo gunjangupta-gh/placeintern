@@ -6,6 +6,7 @@ import { FacultyLessonPlanController } from './faculty-lesson-plan.controller';
 import { FacultyFeedbackController } from './faculty-feedback.controller';
 import { FacultyCertificateController } from './faculty-certificate.controller';
 import { FacultyRecommendationController } from './faculty-recommendation.controller';
+import { FacultyTestController } from './faculty-test.controller';
 import { TrainingModule } from '../../../domain/training/training.module';
 import { FeedbackModule } from '../../../domain/feedback/feedback.module';
 
@@ -18,6 +19,7 @@ import { FeedbackModule } from '../../../domain/feedback/feedback.module';
     FacultyFeedbackController,
     FacultyCertificateController,
     FacultyRecommendationController,
+    FacultyTestController,
     FacultyTrainingController,
   ],
 })

@@ -1,121 +1,181 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Badge, Button, Calendar, Card, Col, Input, Row, Table, Tag, Tooltip, Typography } from 'antd';
-import { PlusOutlined, SettingOutlined, CalendarOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
-import dayjs from 'dayjs';
-import PageHeader from '../../../components/PageHeader';
-import TrainingGreeting from '../../../components/training/TrainingGreeting';
-import TrainingDateRange from '../../../components/training/TrainingDateRange';
-import DeliveryModeBadge from '../../../components/training/DeliveryModeBadge';
-import TrainingEmptyState from '../../../components/training/TrainingEmptyState';
-import { TrainingStatSkeleton, CalendarSkeleton, SelectedDaySkeleton, TableRowSkeleton } from '../../../components/training/skeletons/TrainingSkeletons';
+import React, { useEffect, useMemo, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  Button,
+  Card,
+  Input,
+  Modal,
+  Progress,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+  Descriptions,
+  Statistic,
+  Row,
+  Col,
+  Segmented,
+  Calendar,
+  Form,
+  message,
+} from "antd";
+import {
+  PlusOutlined,
+  EditOutlined,
+  EyeOutlined,
+  TeamOutlined,
+  FileTextOutlined,
+  SafetyCertificateOutlined,
+  SearchOutlined,
+  CalendarOutlined,
+  UnorderedListOutlined,
+  BankOutlined,
+  CheckOutlined,
+  CheckCircleFilled,
+  CloseCircleOutlined,
+} from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
+import dayjs from "dayjs";
+import TrainingDateRange from "../../../components/training/TrainingDateRange";
+import DeliveryModeBadge from "../../../components/training/DeliveryModeBadge";
+import TrainingEmptyState from "../../../components/training/TrainingEmptyState";
+import TrainingForm from "./components/training/TrainingForm";
 import {
   fetchStateTrainings,
-} from '../store/stateTrainingSlice';
+  fetchStateTrainingAttendance,
+  fetchStateFeedbackForms,
+  createStateTraining,
+  updateStateTraining,
+} from "../store/stateTrainingSlice";
 
 const { Text } = Typography;
-
-const STAT_TONES = {
-  primary: { icon: 'bg-blue-100 text-blue-700', card: 'bg-gradient-to-br from-blue-50 via-white to-slate-50' },
-  success: { icon: 'bg-emerald-100 text-emerald-700', card: 'bg-gradient-to-br from-emerald-50 via-white to-slate-50' },
-  warning: { icon: 'bg-amber-100 text-amber-700', card: 'bg-gradient-to-br from-amber-50 via-white to-slate-50' },
-  secondary: { icon: 'bg-slate-100 text-slate-700', card: 'bg-gradient-to-br from-slate-50 via-white to-blue-50' },
-};
-
-const StatCard = ({ icon: Icon, title, value, subtitle, tone, trend, onClick }) => {
-  const styles = STAT_TONES[tone] || STAT_TONES.primary;
-  const hasTrend = trend !== undefined && trend !== null;
-  const isPositiveTrend = hasTrend && trend >= 0;
-
-  return (
-    <Card
-      className={`rounded-2xl border-border shadow-none cursor-pointer hover:shadow-soft transition-shadow h-full ${styles.card}`}
-      onClick={onClick}
-      styles={{ body: { padding: '16px' } }}
-      role="button"
-      tabIndex={0}
-      aria-label={`${title}: ${value}. ${subtitle || ''}${hasTrend ? ` Trend: ${isPositiveTrend ? 'up' : 'down'} ${Math.abs(trend)}%` : ''}`}
-      onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
-    >
-      <div className="flex items-start justify-between">
-        <div>
-          <Text className="text-text-secondary text-xs block mb-1">{title}</Text>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-text-primary">{value}</span>
-            {hasTrend && (
-              <span className={`flex items-center text-xs font-medium ${isPositiveTrend ? 'text-emerald-600' : 'text-red-600'}`}>
-                {isPositiveTrend ? <ArrowUpOutlined className="mr-0.5" /> : <ArrowDownOutlined className="mr-0.5" />}
-                {Math.abs(trend)}%
-              </span>
-            )}
-          </div>
-          {subtitle && <Text type="secondary" className="text-xs">{subtitle}</Text>}
-        </div>
-        {Icon && (
-          <div className={`flex items-center justify-center w-10 h-10 rounded-lg ${styles.icon}`}>
-            <Icon className="text-lg" />
-          </div>
-        )}
-      </div>
-    </Card>
-  );
-};
 
 const TrainingManagementPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { trainings } = useSelector((state) => state.stateTraining);
-  const { user } = useSelector((state) => state.auth);
-  const [searchText, setSearchText] = useState('');
+  const { trainings, feedbackForms, attendance } = useSelector(
+    (state) => state.stateTraining,
+  );
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [viewMode, setViewMode] = useState("LIST"); // LIST or CALENDAR
   const [selectedDate, setSelectedDate] = useState(dayjs());
+  const [statsModalOpen, setStatsModalOpen] = useState(false);
+  const [selectedTraining, setSelectedTraining] = useState(null);
+
+  // Form modal states
+  const [formModalOpen, setFormModalOpen] = useState(false);
+  const [formMode, setFormMode] = useState("create"); // 'create' or 'edit'
+  const [editingTraining, setEditingTraining] = useState(null);
+  const [form] = Form.useForm();
+  const [formLoading, setFormLoading] = useState(false);
+  const [formStep, setFormStep] = useState(0);
 
   useEffect(() => {
     dispatch(fetchStateTrainings());
+    dispatch(fetchStateFeedbackForms());
   }, [dispatch]);
 
-  const isLoading = trainings.loading && !trainings.list;
+  const handleOpenCreateModal = () => {
+    setFormMode("create");
+    setEditingTraining(null);
+    form.resetFields();
+    setFormStep(0);
+    setFormModalOpen(true);
+  };
 
-  const columns = [
-    {
-      title: 'Title',
-      dataIndex: 'title',
-      key: 'title',
-      render: (text, record) => (
-        <Button type="link" onClick={() => navigate(`/app/training/${record.id}`)} aria-label={`View training: ${text}`}>
-          {text}
-        </Button>
-      ),
-    },
-    {
-      title: 'Dates',
-      key: 'dates',
-      render: (_, record) => (
-        <TrainingDateRange startDate={record.startDate} endDate={record.endDate} />
-      ),
-    },
-    {
-      title: 'Mode',
-      dataIndex: 'deliveryMode',
-      key: 'deliveryMode',
-      render: (mode) => <DeliveryModeBadge mode={mode} />,
-    },
-    {
-      title: 'Published',
-      dataIndex: 'isPublished',
-      key: 'isPublished',
-      render: (value) => (value ? <Tag color="green">Yes</Tag> : <Tag>No</Tag>),
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      render: (_, record) => (
-        <Button size="small" onClick={() => navigate(`/app/training/${record.id}/edit`)} aria-label={`Edit ${record.title}`}>
-          Edit
-        </Button>
-      ),
-    },
-  ];
+  const handleOpenEditModal = (training) => {
+    setFormMode("edit");
+    setEditingTraining(training);
+    setFormStep(0);
+
+    // Populate form with training data
+    form.setFieldsValue({
+      title: training.title,
+      description: training.description,
+      providedBy: training.providedBy,
+      trainerName: training.trainerName,
+      startDate: training.startDate ? dayjs(training.startDate) : null,
+      endDate: training.endDate ? dayjs(training.endDate) : null,
+      startTime: training.startTime ? dayjs(training.startTime) : null,
+      endTime: training.endTime ? dayjs(training.endTime) : null,
+      applicationDeadline: training.applicationDeadline
+        ? dayjs(training.applicationDeadline)
+        : null,
+      duration: training.duration,
+      cost: training.cost,
+      deliveryMode: training.deliveryMode,
+      difficulty: training.difficulty,
+      designation: training.designation,
+      venue: training.venue,
+      meetingLink: training.meetingLink,
+      capacity: training.capacity,
+      targetBranchIds: training.targetBranches?.map((b) => b.id) || [],
+      prerequisites: training.prerequisites,
+      learningOutcomes: training.learningOutcomes,
+      feedbackFormId: training.feedbackFormId,
+      publish: training.isPublished,
+    });
+
+    setFormModalOpen(true);
+  };
+
+  const handleCloseFormModal = () => {
+    setFormModalOpen(false);
+    setEditingTraining(null);
+    form.resetFields();
+    setFormStep(0);
+  };
+
+  const handleFormSubmit = async (values) => {
+    setFormLoading(true);
+    try {
+      if (formMode === "create") {
+        await dispatch(createStateTraining(values)).unwrap();
+        message.success("Training created successfully!");
+      } else {
+        await dispatch(
+          updateStateTraining({ id: editingTraining.id, data: values }),
+        ).unwrap();
+        message.success("Training updated successfully!");
+      }
+      handleCloseFormModal();
+      dispatch(fetchStateTrainings());
+    } catch (error) {
+      message.error(error || `Failed to ${formMode} training`);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleViewAttendance = async (training) => {
+    setSelectedTraining(training);
+    await dispatch(fetchStateTrainingAttendance({ trainingId: training.id }));
+    setStatsModalOpen(true);
+  };
+
+  const filteredTrainings = useMemo(() => {
+    let result = trainings.list || [];
+
+    // Filter by status
+    if (statusFilter === "PUBLISHED") {
+      result = result.filter((t) => t.isPublished);
+    } else if (statusFilter === "DRAFT") {
+      result = result.filter((t) => !t.isPublished);
+    }
+
+    // Filter by search
+    if (searchText) {
+      const search = searchText.toLowerCase();
+      result = result.filter(
+        (item) =>
+          (item.title || "").toLowerCase().includes(search) ||
+          (item.providedBy || "").toLowerCase().includes(search),
+      );
+    }
+    return result;
+  }, [trainings.list, searchText, statusFilter]);
 
   const stats = useMemo(() => {
     const list = trainings.list || [];
@@ -126,16 +186,131 @@ const TrainingManagementPage = () => {
     };
   }, [trainings.list]);
 
-  const filteredTrainings = useMemo(() => {
-    if (!searchText) return trainings.list || [];
-    const search = searchText.toLowerCase();
-    return (trainings.list || []).filter((item) =>
-      (item.title || '').toLowerCase().includes(search) ||
-      (item.providedBy || '').toLowerCase().includes(search)
-    );
-  }, [trainings.list, searchText]);
+  const columns = [
+    {
+      title: "Training",
+      dataIndex: "title",
+      key: "title",
+      render: (text, record) => (
+        <div className="py-1">
+          <div className="font-medium text-sm text-slate-800">{text}</div>
+          <Text type="secondary" className="text-xs">
+            {record.providedBy || "Training Provider"}
+          </Text>
+        </div>
+      ),
+    },
+    {
+      title: "Dates",
+      key: "dates",
+      width: 200,
+      render: (_, record) => (
+        <TrainingDateRange
+          startDate={record.startDate}
+          endDate={record.endDate}
+          compact
+        />
+      ),
+    },
+    {
+      title: "Mode",
+      dataIndex: "deliveryMode",
+      key: "deliveryMode",
+      width: 100,
+      render: (mode) => <DeliveryModeBadge mode={mode} />,
+    },
+    {
+      title: "Status",
+      dataIndex: "isPublished",
+      key: "isPublished",
+      width: 100,
+      render: (value) => (
+        <Tag color={value ? "green" : "orange"} className="text-xs">
+          {value ? "Published" : "Draft"}
+        </Tag>
+      ),
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      width: 180,
+      render: (_, record) => (
+        <Space size="small">
+          <Tooltip title="View Details">
+            <Button
+              type="text"
+              size="small"
+              icon={<FileTextOutlined />}
+              onClick={() => navigate(`/app/training/${record.id}`)}
+            />
+          </Tooltip>
+          <Tooltip title="View Attendance">
+            <Button
+              type="text"
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => handleViewAttendance(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Edit">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => handleOpenEditModal(record)}
+            />
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ];
 
-  const searchResultCount = searchText ? filteredTrainings.length : null;
+  const attendanceData = useMemo(() => {
+    if (!selectedTraining || !attendance.list) {
+      return null;
+    }
+    return attendance.list;
+  }, [selectedTraining, attendance.list]);
+
+  // Generate date columns for attendance table
+  const trainingDates = useMemo(() => {
+    if (!selectedTraining) return [];
+    const dates = [];
+    const start = dayjs(selectedTraining.startDate);
+    const end = dayjs(selectedTraining.endDate);
+    let current = start;
+
+    while (current.isSameOrBefore(end, "day")) {
+      dates.push(current.toDate());
+      current = current.add(1, "day");
+    }
+    return dates;
+  }, [selectedTraining]);
+
+  // Transform attendance data for table with date checkmarks
+  const attendanceTableData = useMemo(() => {
+    if (!attendanceData?.attendanceByUser || !attendanceData?.records)
+      return [];
+
+    return attendanceData.attendanceByUser.map((userData) => {
+      const userAttendanceRecords = attendanceData.records.filter(
+        (record) => record.userId === userData.user.id,
+      );
+
+      // Create a map of attended dates
+      const attendedDates = new Set(
+        userAttendanceRecords.map((record) =>
+          dayjs(record.attendanceDate).format("YYYY-MM-DD"),
+        ),
+      );
+
+      return {
+        ...userData,
+        attendedDates,
+        institution: userAttendanceRecords[0]?.user?.Institution,
+      };
+    });
+  }, [attendanceData]);
 
   const getTrainingsForDate = (dateValue) => {
     if (!filteredTrainings.length) return [];
@@ -143,127 +318,228 @@ const TrainingManagementPage = () => {
       const start = dayjs(training.startDate);
       const end = dayjs(training.endDate);
       return (
-        dateValue.isSame(start, 'day') ||
-        dateValue.isSame(end, 'day') ||
-        (dateValue.isAfter(start, 'day') && dateValue.isBefore(end, 'day'))
+        dateValue.isSame(start, "day") ||
+        dateValue.isSame(end, "day") ||
+        (dateValue.isAfter(start, "day") && dateValue.isBefore(end, "day"))
       );
     });
   };
 
   const selectedDayTrainings = useMemo(
     () => getTrainingsForDate(selectedDate),
-    [selectedDate, filteredTrainings]
+    [selectedDate, filteredTrainings],
   );
 
   return (
-    <div className="p-6 training-ui" role="main" aria-label="Training Management">
-      <PageHeader
-        icon={SettingOutlined}
-        title={<span className="training-heading">Training Management</span>}
-        description="Create and manage trainings for the state."
-        actions={[
-          <Button
-            key="create"
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => navigate('/app/training/create')}
-            aria-label="Create new training"
-          >
-            Create Training
-          </Button>,
-        ]}
-      />
+    <div className="p-6 training-ui">
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 mb-1">
+            Training Management
+          </h1>
+          <Text type="secondary" className="text-sm">
+            Manage and monitor all training programs
+          </Text>
+        </div>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          size="large"
+          onClick={handleOpenCreateModal}
+        >
+          Create Training
+        </Button>
+      </div>
 
-      <Row gutter={[16, 16]} className="mb-6" role="region" aria-label="Training statistics">
-        {isLoading ? (
-          <>
-            <Col xs={12} lg={6}><TrainingStatSkeleton /></Col>
-            <Col xs={12} lg={6}><TrainingStatSkeleton /></Col>
-            <Col xs={12} lg={6}><TrainingStatSkeleton /></Col>
-          </>
-        ) : (
-          <>
-            <Col xs={12} lg={6}>
-              <StatCard
-                icon={CalendarOutlined}
-                title="Total"
-                value={stats.total}
-                tone="primary"
-                onClick={() => setSearchText('')}
-              />
-            </Col>
-            <Col xs={12} lg={6}>
-              <StatCard
-                title="Published"
-                value={stats.published}
-                tone="success"
-              />
-            </Col>
-            <Col xs={12} lg={6}>
-              <StatCard
-                title="Drafts"
-                value={stats.draft}
-                tone="warning"
-              />
-            </Col>
-          </>
-        )}
-      </Row>
 
-      <Row gutter={[16, 16]} className="mb-6">
-        <Col xs={24} lg={16}>
-          {isLoading ? (
-            <CalendarSkeleton />
+      {/* Filters */}
+      <Card className="rounded-xl border-border shadow-none !mb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <Input
+            placeholder="Search trainings..."
+            prefix={<SearchOutlined />}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="lg:w-80"
+            allowClear
+          />
+          <Space>
+            <Segmented
+              options={[
+                { label: "All", value: "ALL" },
+                { label: "Published", value: "PUBLISHED" },
+                { label: "Drafts", value: "DRAFT" },
+              ]}
+              value={statusFilter}
+              onChange={setStatusFilter}
+            />
+            <Segmented
+              options={[
+                {
+                  label: "List",
+                  value: "LIST",
+                  icon: <UnorderedListOutlined />,
+                },
+                {
+                  label: "Calendar",
+                  value: "CALENDAR",
+                  icon: <CalendarOutlined />,
+                },
+              ]}
+              value={viewMode}
+              onChange={setViewMode}
+            />
+          </Space>
+        </div>
+      </Card>
+
+      {/* Table/Calendar View */}
+      {viewMode === "LIST" ? (
+        <Card className="rounded-xl border-border shadow-none">
+          {filteredTrainings.length > 0 ? (
+            <Table
+              rowKey="id"
+              columns={columns}
+              dataSource={filteredTrainings}
+              loading={trainings.loading}
+              pagination={{ pageSize: 10, showSizeChanger: true }}
+              size="small"
+            />
           ) : (
-            <Card className="rounded-2xl border-slate-200/80 shadow-lg shadow-blue-100/50 overflow-hidden backdrop-blur-sm">
+            <TrainingEmptyState
+              type={searchText ? "search" : "calendar"}
+              message={searchText ? "No trainings found" : "No trainings yet"}
+              description={
+                searchText
+                  ? "Try adjusting your search terms."
+                  : "Create your first training to get started."
+              }
+              actionText={searchText ? "Clear Search" : "Create Training"}
+              onAction={() =>
+                searchText ? setSearchText("") : handleOpenCreateModal()
+              }
+            />
+          )}
+        </Card>
+      ) : (
+        <Row gutter={[16, 16]}>
+          <Col xs={24} lg={16}>
+            <Card className="rounded-xl border-border shadow-none">
+              <style>{`
+                .training-calendar .ant-picker-calendar-date {
+                  margin: 2px;
+                }
+                .training-calendar .ant-picker-cell {
+                  padding: 2px;
+                }
+              `}</style>
               <Calendar
                 className="training-calendar"
                 value={selectedDate}
                 onSelect={setSelectedDate}
-                aria-label="Training calendar"
                 fullCellRender={(dateValue, info) => {
-                  if (info.type !== 'date') return info.originNode;
+                  // Handle month view
+                  if (info.type === "month") {
+                    const monthTrainings = filteredTrainings.filter(
+                      (training) => {
+                        const start = dayjs(training.startDate);
+                        const end = dayjs(training.endDate);
+                        return (
+                          dateValue.isSame(start, "month") ||
+                          dateValue.isSame(end, "month") ||
+                          (dateValue.isAfter(start, "month") &&
+                            dateValue.isBefore(end, "month"))
+                        );
+                      },
+                    );
+                    return (
+                      <div className="h-full flex flex-col items-center justify-center p-2 rounded-lg hover:bg-slate-50">
+                        <div className="text-sm font-medium text-slate-700">
+                          {dateValue.format("MMM")}
+                        </div>
+                        {monthTrainings.length > 0 && (
+                          <div className="text-[10px] text-blue-600 font-medium mt-1">
+                            {monthTrainings.length} training
+                            {monthTrainings.length !== 1 ? "s" : ""}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // Handle year view
+                  if (info.type === "year") {
+                    const yearTrainings = filteredTrainings.filter(
+                      (training) => {
+                        const start = dayjs(training.startDate);
+                        const end = dayjs(training.endDate);
+                        return (
+                          dateValue.isSame(start, "year") ||
+                          dateValue.isSame(end, "year") ||
+                          (dateValue.isAfter(start, "year") &&
+                            dateValue.isBefore(end, "year"))
+                        );
+                      },
+                    );
+                    return (
+                      <div className="h-full flex flex-col items-center justify-center p-2 rounded-lg hover:bg-slate-50">
+                        <div className="text-sm font-medium text-slate-700">
+                          {dateValue.format("YYYY")}
+                        </div>
+                        {yearTrainings.length > 0 && (
+                          <div className="text-[10px] text-blue-600 font-medium mt-1">
+                            {yearTrainings.length} training
+                            {yearTrainings.length !== 1 ? "s" : ""}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // Handle date (day) view
                   const dayTrainings = getTrainingsForDate(dateValue);
-                  const isSelected = dateValue.isSame(selectedDate, 'day');
+                  const isSelected = dateValue.isSame(selectedDate, "day");
+                  const isToday = dateValue.isSame(dayjs(), "day");
                   const hasTrainings = dayTrainings.length > 0;
+
                   return (
                     <div
                       className={
-                        `h-full rounded-xl p-2 border transition-all duration-300 ` +
+                        `h-full rounded-lg p-1.5 border transition-all ` +
                         (isSelected
-                          ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-300 shadow-md ring-2 ring-blue-200/50'
-                          : hasTrainings
-                          ? 'border-slate-200 hover:border-blue-200 hover:shadow-sm'
-                          : 'border-transparent hover:border-slate-200')
+                          ? "bg-blue-50 border-blue-400"
+                          : isToday
+                            ? "border-blue-500 border-2"
+                            : hasTrainings
+                              ? "border-slate-200 hover:border-blue-300"
+                              : "border-transparent hover:border-slate-200")
                       }
                       role="button"
-                      aria-label={`${dateValue.format('MMMM D, YYYY')}${hasTrainings ? `, ${dayTrainings.length} training${dayTrainings.length > 1 ? 's' : ''}` : ''}`}
+                      tabIndex={0}
                     >
-                      <div className={
-                        `text-xs font-bold mb-1.5 transition-colors ` +
-                        (isSelected ? 'text-blue-700' : 'text-text-primary')
-                      }>
+                      <div
+                        className={`text-xs font-semibold mb-1 ${
+                          isSelected
+                            ? "text-blue-700"
+                            : isToday
+                              ? "text-blue-600"
+                              : "text-slate-700"
+                        }`}
+                      >
                         {dateValue.date()}
                       </div>
-                      <div className="space-y-1">
+                      <div className="space-y-0.5">
                         {dayTrainings.slice(0, 2).map((training) => (
-                          <Tooltip
+                          <div
                             key={training.id}
-                            title={training.title}
-                            placement="topLeft"
+                            className="text-[10px] text-slate-600 truncate"
                           >
-                            <Badge
-                              color={training.isPublished ? 'green' : 'orange'}
-                              text={
-                                <span className="text-[10px] font-medium text-text-secondary line-clamp-1">
-                                  {training.title}
-                                </span>
-                              }
-                            />
-                          </Tooltip>
+                            • {training.title}
+                          </div>
                         ))}
                         {dayTrainings.length > 2 && (
-                          <div className="text-[10px] font-semibold text-blue-600 bg-blue-50 rounded px-2 py-0.5 inline-block">
+                          <div className="text-[9px] text-blue-600 font-medium">
                             +{dayTrainings.length - 2} more
                           </div>
                         )}
@@ -273,52 +549,64 @@ const TrainingManagementPage = () => {
                 }}
               />
             </Card>
-          )}
-        </Col>
-        <Col xs={24} lg={8}>
-          {isLoading ? (
-            <SelectedDaySkeleton />
-          ) : (
-            <Card className="rounded-2xl border-border shadow-md bg-gradient-to-br from-white to-slate-50/30">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
+          </Col>
+          <Col xs={24} lg={8}>
+            <Card className="rounded-xl border-border shadow-none sticky ">
+              <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-200">
                 <div>
-                  <Text className="text-xs font-semibold text-text-tertiary uppercase tracking-wide">Selected Day</Text>
-                  <Text className="font-bold text-lg block mt-0.5 bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-                    {selectedDate.format('DD MMM, YYYY')}
+                  <Text className="text-xs text-slate-500 block mb-0.5">
+                    {selectedDate.isSame(dayjs(), "day")
+                      ? "Today"
+                      : "Selected Day"}
+                  </Text>
+                  <Text className="font-semibold text-base text-slate-800">
+                    {selectedDate.format("DD MMM, YYYY")}
                   </Text>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold shadow-lg">
-                  {selectedDate.format('DD')}
+                <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                  {selectedDate.format("DD")}
                 </div>
               </div>
-              {selectedDayTrainings.length ? (
-                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1" role="list" aria-label="Trainings on selected date">
-                  {selectedDayTrainings.map((training, index) => (
+              {selectedDayTrainings.length > 0 ? (
+                <div className="!space-y-2 max-h-[500px] overflow-y-auto">
+                  {selectedDayTrainings.map((training) => (
                     <Card
                       key={training.id}
-                      className="rounded-xl border-slate-200 hover:border-blue-300 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:-translate-y-1 bg-white"
-                      style={{
-                        body: { padding: '14px' },
-                        animation: 'card-slide-up 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-                        animationDelay: `${index * 0.1}s`,
-                        opacity: 0
-                      }}
+                      className="rounded-lg border-slate-200 hover:border-blue-400 cursor-pointer transition-all"
+                      styles={{ body: { padding: "12px" } }}
                       onClick={() => navigate(`/app/training/${training.id}`)}
-                      role="listitem"
-                      aria-label={`Training: ${training.title}`}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <Text className="font-semibold text-sm block mb-1 text-text-primary leading-tight">{training.title}</Text>
-                          <Text type="secondary" className="text-xs flex items-center gap-1">
-                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                            {training.providedBy || 'Training Provider'}
-                          </Text>
-                        </div>
-                        <DeliveryModeBadge mode={training.deliveryMode} showIcon={false} />
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <Text className="font-medium text-sm text-slate-800 flex-1">
+                          {training.title}
+                        </Text>
+                        <DeliveryModeBadge
+                          mode={training.deliveryMode}
+                          showIcon={false}
+                        />
                       </div>
-                      <div className="mt-3 pt-3 border-t border-slate-100">
-                        <TrainingDateRange startDate={training.startDate} endDate={training.endDate} compact />
+                      <Text type="secondary" className="text-xs block mb-2">
+                        {training.providedBy || "Training Provider"}
+                      </Text>
+                      <div className="pt-2 border-t border-slate-100">
+                        <TrainingDateRange
+                          startDate={training.startDate}
+                          endDate={training.endDate}
+                          compact
+                        />
+                      </div>
+                      <div className="mt-2 flex items-center justify-between">
+                        <Tag
+                          color={training.isPublished ? "green" : "orange"}
+                          className="text-xs m-0"
+                        >
+                          {training.isPublished ? "Published" : "Draft"}
+                        </Tag>
+                        {training.capacity && (
+                          <Text type="secondary" className="text-xs">
+                            {training.capacity} seats
+                          </Text>
+                        )}
                       </div>
                     </Card>
                   ))}
@@ -332,50 +620,342 @@ const TrainingManagementPage = () => {
                 />
               )}
             </Card>
-          )}
-        </Col>
-      </Row>
+          </Col>
+        </Row>
+      )}
 
-      <Card className="rounded-2xl border-border shadow-none">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-3">
-            <Input
-              placeholder="Search trainings"
-              value={searchText}
-              onChange={(event) => setSearchText(event.target.value)}
-              className="lg:w-80"
-              allowClear
-              aria-label="Search trainings"
+      {/* Create/Edit Training Modal */}
+      <Modal
+        open={formModalOpen}
+        onCancel={handleCloseFormModal}
+        footer={null}
+        width={800}
+        centered
+        destroyOnClose
+        closable={false}
+        styles={{
+          body: { padding: 0 },
+          content: { borderRadius: 12 },
+        }}
+      >
+        <div className="bg-white px-5 py-3 border-b border-slate-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-slate-800 mb-0.5 truncate">
+                  {formMode === "create"
+                    ? "Create New Training"
+                    : "Edit Training"}
+                </h3>
+                <Text className="text-xs text-slate-600 block truncate">
+                  {formMode === "create"
+                    ? "Configure training details"
+                    : "Update training configuration"}
+                </Text>
+              </div>
+            </div>
+            <Button
+              type="text"
+              size="small"
+              icon={
+                <span className="text-xl text-slate-400 hover:text-slate-600">
+                  ×
+                </span>
+              }
+              onClick={handleCloseFormModal}
+              className="hover:bg-slate-100 shrink-0"
             />
-            {searchResultCount !== null && (
-              <Text type="secondary" className="text-sm" aria-live="polite">
-                {searchResultCount} result{searchResultCount !== 1 ? 's' : ''} found
-              </Text>
-            )}
           </div>
         </div>
-        {isLoading ? (
-          <TableRowSkeleton rows={5} columns={5} />
-        ) : filteredTrainings.length > 0 ? (
-          <Table
-            className="custom-table"
-            rowKey="id"
-            columns={columns}
-            dataSource={filteredTrainings}
-            loading={trainings.loading}
-            pagination={{ pageSize: 10 }}
-            aria-label="Trainings table"
+        <div className="p-4 max-h-[65vh] overflow-y-auto">
+          <TrainingForm
+            form={form}
+            onSubmit={handleFormSubmit}
+            loading={formLoading}
+            submitText={
+              formMode === "create" ? "Create Training" : "Update Training"
+            }
+            feedbackForms={feedbackForms?.list || []}
+            onCancel={handleCloseFormModal}
+            currentStep={formStep}
+            onStepChange={setFormStep}
           />
-        ) : (
-          <TrainingEmptyState
-            type={searchText ? 'search' : 'calendar'}
-            message={searchText ? 'No trainings found' : 'No trainings yet'}
-            description={searchText ? 'Try adjusting your search terms.' : 'Create your first training to get started.'}
-            actionText={searchText ? 'Clear Search' : 'Create Training'}
-            onAction={() => searchText ? setSearchText('') : navigate('/app/training/create')}
-          />
+        </div>
+      </Modal>
+
+      {/* Attendance Modal */}
+      <Modal
+        open={statsModalOpen}
+        onCancel={() => setStatsModalOpen(false)}
+        footer={null}
+        width={900}
+        centered
+        closable={false}
+        styles={{
+          body: { padding: 0 },
+          content: { borderRadius: 12 },
+        }}
+      >
+        {selectedTraining && attendanceData && (
+          <>
+            {/* Header */}
+            <div className="bg-white px-5 py-3 border-b border-slate-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-bold text-slate-800 mb-1 truncate">
+                      {selectedTraining.title}
+                    </h3>
+                    <div className="flex items-center gap-2.5 text-xs text-slate-600">
+                      <span className="flex items-center gap-1">
+                        <TrainingDateRange
+                          startDate={selectedTraining.startDate}
+                          endDate={selectedTraining.endDate}
+                          compact
+                        />
+                      </span>
+                      {attendanceData.training && (
+                        <>
+                          <span>•</span>
+                          <span>
+                            <strong className="text-slate-800">
+                              {attendanceData.training.trainingDays}
+                            </strong>{" "}
+                            days
+                          </span>
+                          <span>•</span>
+                          <span>
+                            <strong className="text-slate-800">
+                              {attendanceData.summary.totalApproved}
+                            </strong>{" "}
+                            enrolled
+                          </span>
+                          <span>•</span>
+                          <span>
+                            <strong className="text-slate-800">
+                              {attendanceData.summary.uniqueAttendees}
+                            </strong>{" "}
+                            attended
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={
+                    <span className="text-xl text-slate-400 hover:text-slate-600">
+                      &times;
+                    </span>
+                  }
+                  onClick={() => setStatsModalOpen(false)}
+                  className="hover:bg-slate-100 flex-shrink-0"
+                />
+              </div>
+            </div>
+
+            {/* Attendance Table */}
+            <div className="p-3">
+              <style>{`
+                .attendance-table-wrapper {
+                  max-height: 65vh;
+                  overflow: auto;
+                  border: 1px solid #e2e8f0;
+                  border-radius: 6px;
+                }
+                .attendance-table {
+                  width: 100%;
+                  border-collapse: separate;
+                  border-spacing: 0;
+                }
+                .attendance-table thead th {
+                  position: sticky;
+                  top: 0;
+                  background: white;
+                  z-index: 10;
+                  padding: 8px 6px;
+                  border-bottom: 2px solid #e2e8f0;
+                  font-weight: 600;
+                  font-size: 11px;
+                  color: #334155;
+                  text-align: left;
+                  white-space: nowrap;
+                }
+                .attendance-table thead th.faculty-col {
+                  position: sticky;
+                  left: 0;
+                  z-index: 20;
+                  min-width: 150px;
+                  background: white;
+                  border-right: 2px solid #e2e8f0;
+                }
+                .attendance-table thead th.institution-col {
+                  position: sticky;
+                  left: 150px;
+                  z-index: 20;
+                  min-width: 140px;
+                  background: white;
+                  border-right: 2px solid #e2e8f0;
+                }
+                .attendance-table thead th.date-col {
+                  text-align: center;
+                  min-width: 60px;
+                  padding: 5px;
+                }
+                .attendance-table tbody td {
+                  padding: 8px 6px;
+                  border-bottom: 1px solid #f1f5f9;
+                  font-size: 12px;
+                  color: #475569;
+                }
+                .attendance-table tbody td.faculty-col {
+                  position: sticky;
+                  left: 0;
+                  background: white;
+                  z-index: 5;
+                  border-right: 2px solid #e2e8f0;
+                }
+                .attendance-table tbody td.institution-col {
+                  position: sticky;
+                  left: 150px;
+                  background: white;
+                  z-index: 5;
+                  border-right: 2px solid #e2e8f0;
+                }
+                .attendance-table tbody td.date-col {
+                  text-align: center;
+                  padding: 5px;
+                }
+                .attendance-table tbody tr:hover td {
+                  background-color: #f8fafc;
+                }
+                .attendance-table tbody tr:hover td.faculty-col,
+                .attendance-table tbody tr:hover td.institution-col {
+                  background-color: #f8fafc;
+                }
+                .date-header {
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  gap: 0.5px;
+                }
+                .date-day {
+                  font-size: 14px;
+                  font-weight: 700;
+                  color: #1e293b;
+                  line-height: 1;
+                }
+                .date-month {
+                  font-size: 9px;
+                  font-weight: 500;
+                  color: #64748b;
+                  text-transform: uppercase;
+                  line-height: 1;
+                }
+              `}</style>
+
+              {attendanceTableData && attendanceTableData.length > 0 ? (
+                <div className="attendance-table-wrapper">
+                  <table className="attendance-table">
+                    <thead>
+                      <tr>
+                        <th className="faculty-col">Faculty</th>
+                        <th className="institution-col">Institution</th>
+                        {trainingDates.map((date, idx) => (
+                          <th key={idx} className="date-col">
+                            <div className="date-header">
+                              <span className="date-day">
+                                {dayjs(date).format("DD")}
+                              </span>
+                              <span className="date-month">
+                                {dayjs(date).format("MMM")}
+                              </span>
+                            </div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {attendanceTableData.map((record, idx) => (
+                        <tr key={idx}>
+                          <td className="faculty-col">
+                            <div>
+                              <div className="font-medium text-slate-800 text-xs">
+                                {record.user.name}
+                              </div>
+                              <div className="text-[10px] text-slate-500 mt-0.5">
+                                {record.user.email}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="institution-col">
+                            <div
+                              className="font-medium text-slate-700 text-xs truncate"
+                              title={record.institution?.name}
+                            >
+                              {record.institution?.shortName ||
+                                record.institution?.name ||
+                                "N/A"}
+                            </div>
+                          </td>
+                          {trainingDates.map((date, dateIdx) => {
+                            const dateStr = dayjs(date).format("YYYY-MM-DD");
+                            const isPresent = record.attendedDates.has(dateStr);
+                            return (
+                              <td key={dateIdx} className="date-col">
+                                {isPresent ? (
+                                  <CheckCircleFilled className="text-base text-green-500" />
+                                ) : (
+                                  <CloseCircleOutlined className="text-base text-slate-300" />
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="text-slate-300 mb-2">
+                    <TeamOutlined style={{ fontSize: 48 }} />
+                  </div>
+                  <Text className="text-slate-500">
+                    No attendance records found
+                  </Text>
+                </div>
+              )}
+
+              {/* Legend */}
+              {attendanceTableData && attendanceTableData.length > 0 && (
+                <div className="mt-2.5 pt-2.5 border-t border-slate-200 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                      <CheckCircleFilled className="text-sm text-green-500" />
+                      <span className="text-slate-600">Present</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <CloseCircleOutlined className="text-sm text-slate-300" />
+                      <span className="text-slate-600">Absent</span>
+                    </div>
+                  </div>
+                  <span className="text-slate-500">
+                    Scroll to view all dates
+                  </span>
+                </div>
+              )}
+            </div>
+          </>
         )}
-      </Card>
+        {!attendanceData && selectedTraining && (
+          <div className="p-12 text-center">
+            <Text type="secondary">Loading attendance data...</Text>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

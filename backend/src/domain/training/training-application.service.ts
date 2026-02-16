@@ -26,6 +26,13 @@ export class TrainingApplicationService {
       // Check if training exists and is published
       const training = await this.prisma.training.findUnique({
         where: { id: trainingId },
+        include: {
+          targetBranches: {
+            select: {
+              id: true,
+            },
+          },
+        },
       });
 
       if (!training) {
@@ -38,6 +45,19 @@ export class TrainingApplicationService {
 
       if (!training.isActive) {
         throw new BadRequestException('Training is no longer active');
+      }
+
+      // Enforce target branch eligibility
+      if (training.targetBranches?.length > 0) {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { branchId: true },
+        });
+
+        const isBranchAllowed = !!user?.branchId && training.targetBranches.some((branch) => branch.id === user.branchId);
+        if (!isBranchAllowed) {
+          throw new ForbiddenException('This training is not available for your branch');
+        }
       }
 
       // Check deadline
@@ -249,7 +269,7 @@ export class TrainingApplicationService {
   /**
    * Review application (Principal/State)
    */
-  async review(applicationId: string, dto: ReviewApplicationDto, reviewerId: string) {
+  async review(applicationId: string, dto: ReviewApplicationDto, reviewerId: string, institutionId?: string) {
     try {
       const application = await this.prisma.trainingApplication.findUnique({
         where: { id: applicationId },
@@ -261,6 +281,10 @@ export class TrainingApplicationService {
 
       if (!application) {
         throw new NotFoundException('Application not found');
+      }
+
+      if (institutionId && application.user.institutionId !== institutionId) {
+        throw new ForbiddenException('You can only review applications from your institution');
       }
 
       // Check capacity if approving
@@ -472,7 +496,7 @@ export class TrainingApplicationService {
   /**
    * Get application details
    */
-  async getById(id: string) {
+  async getById(id: string, institutionId?: string) {
     const application = await this.prisma.trainingApplication.findUnique({
       where: { id },
       include: {
@@ -505,6 +529,10 @@ export class TrainingApplicationService {
 
     if (!application) {
       throw new NotFoundException('Application not found');
+    }
+
+    if (institutionId && application.user.Institution?.id !== institutionId) {
+      throw new ForbiddenException('You do not have access to this application');
     }
 
     return application;
@@ -597,7 +625,7 @@ export class TrainingApplicationService {
    * Get applications by training and institution (Principal)
    */
   async getByTrainingAndInstitution(trainingId: string, institutionId: string, filters: ApplicationFilterDto) {
-    return this.getByTraining(trainingId, { ...filters, institutionId });
+    return this.getByTraining(trainingId, filters, institutionId);
   }
 
   /**

@@ -212,6 +212,112 @@ const trainingAdminService = {
     return response.data;
   },
 
+  // Pre-Test Forms
+  async createPreTestForm(data) {
+    const response = await API.post('/state/test-forms/pre-test', data);
+    return response.data;
+  },
+
+  async getPreTestForms(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams ? `/state/test-forms/pre-test?${queryParams}` : '/state/test-forms/pre-test';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  async getPreTestForm(id) {
+    const response = await API.get(`/state/test-forms/pre-test/${id}`);
+    return response.data;
+  },
+
+  async updatePreTestForm(id, data) {
+    const response = await API.patch(`/state/test-forms/pre-test/${id}`, data);
+    return response.data;
+  },
+
+  async deletePreTestForm(id) {
+    const response = await API.delete(`/state/test-forms/pre-test/${id}`);
+    return response.data;
+  },
+
+  async publishPreTestForm(id) {
+    const response = await API.post(`/state/test-forms/pre-test/${id}/publish`);
+    return response.data;
+  },
+
+  async duplicatePreTestForm(id, title) {
+    const response = await API.post(`/state/test-forms/pre-test/${id}/duplicate`, { title });
+    return response.data;
+  },
+
+  async assignPreTestForm(formId, trainingId) {
+    const response = await API.post(`/state/test-forms/pre-test/${formId}/assign/${trainingId}`);
+    return response.data;
+  },
+
+  async getPreTestFormResponses(formId) {
+    const response = await API.get(`/state/test-forms/pre-test/${formId}/responses`);
+    return response.data;
+  },
+
+  async getPreTestResponses(trainingId) {
+    const response = await API.get(`/state/test-forms/pre-test/training/${trainingId}/responses`);
+    return response.data;
+  },
+
+  // Post-Test Forms
+  async createPostTestForm(data) {
+    const response = await API.post('/state/test-forms/post-test', data);
+    return response.data;
+  },
+
+  async getPostTestForms(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams ? `/state/test-forms/post-test?${queryParams}` : '/state/test-forms/post-test';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  async getPostTestForm(id) {
+    const response = await API.get(`/state/test-forms/post-test/${id}`);
+    return response.data;
+  },
+
+  async updatePostTestForm(id, data) {
+    const response = await API.patch(`/state/test-forms/post-test/${id}`, data);
+    return response.data;
+  },
+
+  async deletePostTestForm(id) {
+    const response = await API.delete(`/state/test-forms/post-test/${id}`);
+    return response.data;
+  },
+
+  async publishPostTestForm(id) {
+    const response = await API.post(`/state/test-forms/post-test/${id}/publish`);
+    return response.data;
+  },
+
+  async duplicatePostTestForm(id, title) {
+    const response = await API.post(`/state/test-forms/post-test/${id}/duplicate`, { title });
+    return response.data;
+  },
+
+  async assignPostTestForm(formId, trainingId) {
+    const response = await API.post(`/state/test-forms/post-test/${formId}/assign/${trainingId}`);
+    return response.data;
+  },
+
+  async getPostTestFormResponses(formId) {
+    const response = await API.get(`/state/test-forms/post-test/${formId}/responses`);
+    return response.data;
+  },
+
+  async getPostTestResponses(trainingId) {
+    const response = await API.get(`/state/test-forms/post-test/training/${trainingId}/responses`);
+    return response.data;
+  },
+
   // Reports (State)
   async getDashboard() {
     const response = await API.get('/state/training/reports/dashboard');

@@ -77,6 +77,13 @@ const LessonPlanReviewPage = () => {
   const reviewedPlans = allPlans.filter(
     (lp) => ['APPROVED', 'REJECTED', 'REVISION_REQUESTED'].includes(lp.status)
   );
+  const totalLessonPlans = lessonPlans.pagination?.total ?? lessonPlans.list?.length ?? 0;
+
+  useEffect(() => {
+    if (!lessonPlans.loading && pendingPlans.length === 0 && reviewedPlans.length > 0 && activeTab === 'pending') {
+      setActiveTab('reviewed');
+    }
+  }, [lessonPlans.loading, pendingPlans.length, reviewedPlans.length, activeTab]);
 
   const columns = [
     {
@@ -246,7 +253,7 @@ const LessonPlanReviewPage = () => {
           <div className="mb-3 pb-3 border-b border-slate-200">
             <Text className="text-xs text-slate-600">
               Showing <Text strong>{activeTab === 'pending' ? pendingPlans.length : reviewedPlans.length}</Text> of{" "}
-              <Text strong>{lessonPlans.list?.length || 0}</Text> lesson plans
+              <Text strong>{totalLessonPlans}</Text> lesson plans
             </Text>
           </div>
         )}

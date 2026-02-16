@@ -109,6 +109,12 @@ model User {
   trainingRecommendations TrainingRecommendation[] @relation("TrainingRecommender")
   reviewedRecommendations TrainingRecommendation[] @relation("RecommendationReviewer")
 
+  // Pre-test & Post-test Relations
+  createdPreTestForms     PreTestForm[]         @relation("PreTestFormCreator")
+  createdPostTestForms    PostTestForm[]        @relation("PostTestFormCreator")
+  preTestResponses        PreTestResponse[]     @relation("PreTestRespondent")
+  postTestResponses       PostTestResponse[]    @relation("PostTestRespondent")
+
   // Performance Indexes
   @@index([institutionId])
   @@index([role])
@@ -1661,6 +1667,14 @@ model Training {
   feedbackFormId  String?
   feedbackForm    FeedbackForm? @relation(fields: [feedbackFormId], references: [id])
 
+  // Pre-test Form (optional, for prerequisites assessment before training)
+  preTestFormId   String?
+  preTestForm     PreTestForm? @relation(fields: [preTestFormId], references: [id])
+
+  // Post-test Form (optional, for learning assessment after training)
+  postTestFormId  String?
+  postTestForm    PostTestForm? @relation(fields: [postTestFormId], references: [id])
+
   // Status
   isActive        Boolean   @default(true)
   isPublished     Boolean   @default(false)
@@ -1676,6 +1690,8 @@ model Training {
   lessonPlans         LessonPlan[]
   certificates        TrainingCertificate[]
   feedbackResponses   FeedbackResponse[]    @relation("TrainingFeedback")
+  preTestResponses    PreTestResponse[]     @relation("TrainingPreTest")
+  postTestResponses   PostTestResponse[]    @relation("TrainingPostTest")
   sourceRecommendations TrainingRecommendation[] @relation("ImplementedRecommendation")
 
   createdAt DateTime @default(now())
@@ -1997,6 +2013,163 @@ model TrainingRecommendation {
   @@index([createdAt])
   @@index([userId, status])
   @@map("training_recommendations")
+}
+
+// =============================================
+// PRE-TEST & POST-TEST FORMS
+// =============================================
+
+enum TestFormPurpose {
+  PRE_TEST
+  POST_TEST
+  ASSESSMENT
+  QUIZ
+}
+
+// Pre-Test Form - Prerequisites assessment before training
+model PreTestForm {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+
+  // Questions stored as JSON array (same format as FeedbackForm)
+  // Example: [{ "id": "q1", "type": "multiChoice", "question": "What is your experience level?", "required": true, "options": {"choices": ["Beginner", "Intermediate", "Advanced"]} }]
+  questions   Json
+
+  // Purpose/Category
+  purpose     TestFormPurpose @default(PRE_TEST)
+
+  // Passing criteria (optional)
+  passingScore Float?  // Minimum percentage to pass (e.g., 70.0)
+
+  // Status
+  isActive    Boolean  @default(true)
+  isPublished Boolean  @default(false)
+
+  // Creator
+  createdById String
+  createdBy   User     @relation("PreTestFormCreator", fields: [createdById], references: [id])
+
+  // Relations
+  trainings   Training[]
+  responses   PreTestResponse[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([purpose])
+  @@index([isActive, isPublished])
+  @@index([createdById])
+  @@map("pre_test_forms")
+}
+
+// Post-Test Form - Learning assessment after training
+model PostTestForm {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+
+  // Questions stored as JSON array (same format as FeedbackForm)
+  questions   Json
+
+  // Purpose/Category
+  purpose     TestFormPurpose @default(POST_TEST)
+
+  // Passing criteria (optional)
+  passingScore Float?  // Minimum percentage to pass (e.g., 70.0)
+
+  // Status
+  isActive    Boolean  @default(true)
+  isPublished Boolean  @default(false)
+
+  // Creator
+  createdById String
+  createdBy   User     @relation("PostTestFormCreator", fields: [createdById], references: [id])
+
+  // Relations
+  trainings   Training[]
+  responses   PostTestResponse[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([purpose])
+  @@index([isActive, isPublished])
+  @@index([createdById])
+  @@map("post_test_forms")
+}
+
+// Pre-Test Response - Faculty's pre-test submission
+model PreTestResponse {
+  id          String   @id @default(uuid())
+
+  // Respondent
+  userId      String
+  user        User     @relation("PreTestRespondent", fields: [userId], references: [id])
+
+  // Form
+  preTestFormId String
+  preTestForm   PreTestForm @relation(fields: [preTestFormId], references: [id])
+
+  // Training Link
+  trainingId  String
+  training    Training @relation("TrainingPreTest", fields: [trainingId], references: [id], onDelete: Cascade)
+
+  // Responses stored as JSON
+  // Example: { "q1": "Intermediate", "q2": true, "q3": ["option1", "option2"] }
+  responses   Json
+
+  // Scoring (if applicable)
+  score       Float?   // Percentage score (0-100)
+  passed      Boolean? // Whether user passed based on passingScore
+
+  submittedAt DateTime @default(now())
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, preTestFormId, trainingId])  // One response per form per training
+  @@index([userId])
+  @@index([preTestFormId])
+  @@index([trainingId])
+  @@index([submittedAt])
+  @@map("pre_test_responses")
+}
+
+// Post-Test Response - Faculty's post-test submission
+model PostTestResponse {
+  id          String   @id @default(uuid())
+
+  // Respondent
+  userId      String
+  user        User     @relation("PostTestRespondent", fields: [userId], references: [id])
+
+  // Form
+  postTestFormId String
+  postTestForm   PostTestForm @relation(fields: [postTestFormId], references: [id])
+
+  // Training Link
+  trainingId  String
+  training    Training @relation("TrainingPostTest", fields: [trainingId], references: [id], onDelete: Cascade)
+
+  // Responses stored as JSON
+  responses   Json
+
+  // Scoring (if applicable)
+  score       Float?   // Percentage score (0-100)
+  passed      Boolean? // Whether user passed based on passingScore
+
+  submittedAt DateTime @default(now())
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, postTestFormId, trainingId])  // One response per form per training
+  @@index([userId])
+  @@index([postTestFormId])
+  @@index([trainingId])
+  @@index([submittedAt])
+  @@map("post_test_responses")
 }
 
 // =============================================

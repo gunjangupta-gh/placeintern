@@ -3,3 +3,4 @@ export * from './principal-training.controller';
 export * from './principal-application.controller';
 export * from './principal-lesson-plan.controller';
 export * from './principal-reports.controller';
+export * from './principal-recommendation.controller';

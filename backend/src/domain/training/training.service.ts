@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
@@ -46,6 +46,8 @@ export class TrainingService {
           difficulty: dto.difficulty,
           learningOutcomes: dto.learningOutcomes || [],
           feedbackFormId: dto.feedbackFormId,
+          preTestFormId: dto.preTestFormId,
+          postTestFormId: dto.postTestFormId,
           createdById: userId,
           isPublished: dto.publish || false,
           publishedAt: dto.publish ? new Date() : null,
@@ -56,6 +58,8 @@ export class TrainingService {
         include: {
           targetBranches: true,
           feedbackForm: true,
+          preTestForm: true,
+          postTestForm: true,
           createdBy: { select: { id: true, name: true, email: true } },
         },
       });
@@ -122,6 +126,8 @@ export class TrainingService {
           difficulty: dto.difficulty,
           learningOutcomes: dto.learningOutcomes,
           feedbackFormId: dto.feedbackFormId,
+          preTestFormId: dto.preTestFormId,
+          postTestFormId: dto.postTestFormId,
           targetBranches: dto.targetBranchIds
             ? {
                 set: [], // Clear existing
@@ -132,6 +138,8 @@ export class TrainingService {
         include: {
           targetBranches: true,
           feedbackForm: true,
+          preTestForm: true,
+          postTestForm: true,
           createdBy: { select: { id: true, name: true, email: true } },
         },
       });
@@ -282,9 +290,11 @@ export class TrainingService {
   /**
    * Get all trainings with filters (State - all, others - published only)
    */
-  async findAll(filters: TrainingFilterDto, includeUnpublished = false) {
+  async findAll(filters: TrainingFilterDto, includeUnpublished = false, userId?: string, institutionId?: string) {
     try {
       const { page = 1, limit = 20, search, year, month, deliveryMode, difficulty, branchIds, isPublished, isActive, startDateFrom, startDateTo } = filters;
+      const userBranchId = userId ? await this.getUserBranchId(userId) : null;
+      const effectiveBranchIds = this.getEffectiveBranchIds(branchIds, userBranchId);
 
       const where: Prisma.TrainingWhereInput = {
         ...(includeUnpublished ? {} : { isPublished: true }),
@@ -292,7 +302,21 @@ export class TrainingService {
         ...(isActive !== undefined ? { isActive } : {}),
         ...(deliveryMode ? { deliveryMode } : {}),
         ...(difficulty ? { difficulty } : {}),
-        ...(branchIds?.length ? { targetBranches: { some: { id: { in: branchIds } } } } : {}),
+        ...(institutionId
+          ? {
+              applications: {
+                some: {
+                  isActive: true,
+                  user: { institutionId },
+                },
+              },
+            }
+          : {}),
+        ...(effectiveBranchIds
+          ? effectiveBranchIds.length > 0
+            ? { targetBranches: { some: { id: { in: effectiveBranchIds } } } }
+            : { id: '__no_training_match__' }
+          : {}),
         ...(search
           ? {
               OR: [
@@ -343,6 +367,8 @@ export class TrainingService {
           include: {
             targetBranches: { select: { id: true, name: true, shortName: true } },
             feedbackForm: { select: { id: true, title: true } },
+            preTestForm: { select: { id: true, title: true } },
+            postTestForm: { select: { id: true, title: true } },
             createdBy: { select: { id: true, name: true } },
             _count: { select: { applications: true, attendances: true, certificates: true } },
           },
@@ -389,11 +415,13 @@ export class TrainingService {
   /**
    * Get training calendar
    */
-  async getCalendar(filters: CalendarFilterDto) {
+  async getCalendar(filters: CalendarFilterDto, userId?: string, institutionId?: string) {
     try {
       const { year = new Date().getFullYear(), month, branchIds, deliveryMode } = filters;
+      const userBranchId = userId ? await this.getUserBranchId(userId) : null;
+      const effectiveBranchIds = this.getEffectiveBranchIds(branchIds, userBranchId);
 
-      const cacheKey = `training:calendar:${year}:${month || 'all'}:${branchIds?.join(',') || 'all'}:${deliveryMode || 'all'}`;
+      const cacheKey = `training:calendar:${year}:${month || 'all'}:${effectiveBranchIds?.join(',') || 'all'}:${deliveryMode || 'all'}`;
 
       return await this.cache.getOrSet(
         cacheKey,
@@ -412,12 +440,26 @@ export class TrainingService {
           const where: Prisma.TrainingWhereInput = {
             isPublished: true,
             isActive: true,
+            ...(institutionId
+              ? {
+                  applications: {
+                    some: {
+                      isActive: true,
+                      user: { institutionId },
+                    },
+                  },
+                }
+              : {}),
             OR: [
               { startDate: { gte: startDate, lte: endDate } },
               { endDate: { gte: startDate, lte: endDate } },
               { AND: [{ startDate: { lte: startDate } }, { endDate: { gte: endDate } }] },
             ],
-            ...(branchIds?.length ? { targetBranches: { some: { id: { in: branchIds } } } } : {}),
+            ...(effectiveBranchIds
+              ? effectiveBranchIds.length > 0
+                ? { targetBranches: { some: { id: { in: effectiveBranchIds } } } }
+                : { id: '__no_training_match__' }
+              : {}),
             ...(deliveryMode ? { deliveryMode } : {}),
           };
 
@@ -465,16 +507,32 @@ export class TrainingService {
   /**
    * Get upcoming trainings
    */
-  async getUpcoming(limit = 5, branchIds?: string[]) {
+  async getUpcoming(limit = 5, branchIds?: string[], userId?: string, institutionId?: string) {
     try {
       const now = new Date();
+      const userBranchId = userId ? await this.getUserBranchId(userId) : null;
+      const effectiveBranchIds = this.getEffectiveBranchIds(branchIds, userBranchId);
 
       const trainings = await this.prisma.training.findMany({
         where: {
           isPublished: true,
           isActive: true,
           applicationDeadline: { gte: now },
-          ...(branchIds?.length ? { targetBranches: { some: { id: { in: branchIds } } } } : {}),
+          ...(institutionId
+            ? {
+                applications: {
+                  some: {
+                    isActive: true,
+                    user: { institutionId },
+                  },
+                },
+              }
+            : {}),
+          ...(effectiveBranchIds
+            ? effectiveBranchIds.length > 0
+              ? { targetBranches: { some: { id: { in: effectiveBranchIds } } } }
+              : { id: '__no_training_match__' }
+            : {}),
         },
         include: {
           targetBranches: { select: { id: true, name: true, shortName: true } },
@@ -512,13 +570,15 @@ export class TrainingService {
   /**
    * Get training by ID
    */
-  async findOne(id: string, userId?: string) {
+  async findOne(id: string, userId?: string, institutionId?: string) {
     try {
       const training = await this.prisma.training.findUnique({
         where: { id },
         include: {
           targetBranches: { select: { id: true, name: true, shortName: true, code: true } },
           feedbackForm: true,
+          preTestForm: true,
+          postTestForm: true,
           createdBy: { select: { id: true, name: true, email: true } },
           _count: {
             select: {
@@ -527,6 +587,8 @@ export class TrainingService {
               lessonPlans: true,
               certificates: true,
               feedbackResponses: true,
+              preTestResponses: true,
+              postTestResponses: true,
             },
           },
         },
@@ -534,6 +596,28 @@ export class TrainingService {
 
       if (!training) {
         throw new NotFoundException('Training not found');
+      }
+
+      if (institutionId) {
+        const institutionApplicationCount = await this.prisma.trainingApplication.count({
+          where: {
+            trainingId: id,
+            isActive: true,
+            user: { institutionId },
+          },
+        });
+
+        if (institutionApplicationCount === 0) {
+          throw new NotFoundException('Training not found');
+        }
+      }
+
+      if (userId && training.targetBranches?.length > 0) {
+        const userBranchId = await this.getUserBranchId(userId);
+        const isBranchAllowed = !!userBranchId && training.targetBranches.some((branch) => branch.id === userBranchId);
+        if (!isBranchAllowed) {
+          throw new ForbiddenException('This training is not available for your branch');
+        }
       }
 
       // Get capacity info
@@ -598,7 +682,7 @@ export class TrainingService {
   /**
    * Get training statistics (State)
    */
-  async getTrainingStats(trainingId: string) {
+  async getTrainingStats(trainingId: string, institutionId?: string) {
     try {
       const training = await this.prisma.training.findUnique({
         where: { id: trainingId },
@@ -607,6 +691,22 @@ export class TrainingService {
       if (!training) {
         throw new NotFoundException('Training not found');
       }
+
+      if (institutionId) {
+        const institutionApplicationCount = await this.prisma.trainingApplication.count({
+          where: {
+            trainingId,
+            isActive: true,
+            user: { institutionId },
+          },
+        });
+
+        if (institutionApplicationCount === 0) {
+          throw new NotFoundException('Training not found');
+        }
+      }
+
+      const scopedUserFilter = institutionId ? { user: { institutionId } } : {};
 
       const [
         totalApplications,
@@ -620,16 +720,24 @@ export class TrainingService {
         approvedLessonPlans,
         certificateCount,
       ] = await Promise.all([
-        this.prisma.trainingApplication.count({ where: { trainingId } }),
-        this.prisma.trainingApplication.count({ where: { trainingId, status: 'APPROVED' } }),
-        this.prisma.trainingApplication.count({ where: { trainingId, status: { in: ['SUBMITTED', 'PENDING'] } } }),
-        this.prisma.trainingApplication.count({ where: { trainingId, status: 'REJECTED' } }),
-        this.prisma.trainingAttendance.count({ where: { trainingId } }),
-        this.prisma.trainingAttendance.groupBy({ by: ['userId'], where: { trainingId } }).then((r) => r.length),
-        this.prisma.feedbackResponse.count({ where: { trainingId } }),
-        this.prisma.lessonPlan.count({ where: { trainingId } }),
-        this.prisma.lessonPlan.count({ where: { trainingId, status: 'APPROVED' } }),
-        this.prisma.trainingCertificate.count({ where: { trainingId } }),
+        this.prisma.trainingApplication.count({ where: { trainingId, ...scopedUserFilter } }),
+        this.prisma.trainingApplication.count({ where: { trainingId, status: 'APPROVED', ...scopedUserFilter } }),
+        this.prisma.trainingApplication.count({
+          where: { trainingId, status: { in: ['SUBMITTED', 'PENDING'] }, ...scopedUserFilter },
+        }),
+        this.prisma.trainingApplication.count({ where: { trainingId, status: 'REJECTED', ...scopedUserFilter } }),
+        this.prisma.trainingAttendance.count({ where: { trainingId, ...scopedUserFilter } }),
+        this.prisma.trainingAttendance
+          .findMany({
+            where: { trainingId, ...scopedUserFilter },
+            select: { userId: true },
+            distinct: ['userId'],
+          })
+          .then((rows) => rows.length),
+        this.prisma.feedbackResponse.count({ where: { trainingId, ...scopedUserFilter } }),
+        this.prisma.lessonPlan.count({ where: { trainingId, ...scopedUserFilter } }),
+        this.prisma.lessonPlan.count({ where: { trainingId, status: 'APPROVED', ...scopedUserFilter } }),
+        this.prisma.trainingCertificate.count({ where: { trainingId, ...scopedUserFilter } }),
       ]);
 
       // Calculate training days
@@ -799,6 +907,13 @@ export class TrainingService {
       return { eligible: false, reason: 'User not found' };
     }
 
+    if (training.targetBranches?.length > 0) {
+      const isBranchAllowed = !!user.branchId && training.targetBranches.some((branch) => branch.id === user.branchId);
+      if (!isBranchAllowed) {
+        return { eligible: false, reason: 'This training is not available for your branch' };
+      }
+    }
+
     // Check deadline
     if (training.applicationDeadline && new Date(training.applicationDeadline) < new Date()) {
       return { eligible: false, reason: 'Application deadline has passed' };
@@ -891,5 +1006,25 @@ export class TrainingService {
       byStatus: groupedByStatus,
       applications: applications.slice(0, 50),
     };
+  }
+
+  private async getUserBranchId(userId: string): Promise<string | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { branchId: true },
+    });
+    return user?.branchId || null;
+  }
+
+  private getEffectiveBranchIds(requestedBranchIds?: string[], userBranchId?: string | null): string[] | undefined {
+    if (!userBranchId) {
+      return requestedBranchIds?.length ? requestedBranchIds : undefined;
+    }
+
+    if (!requestedBranchIds?.length) {
+      return [userBranchId];
+    }
+
+    return requestedBranchIds.includes(userBranchId) ? [userBranchId] : [];
   }
 }

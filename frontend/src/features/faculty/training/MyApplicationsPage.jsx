@@ -11,8 +11,6 @@ import {
   Tooltip,
   Typography,
   message,
-  Spin,
-  Alert,
 } from "antd";
 import {
   EyeOutlined,
@@ -21,9 +19,7 @@ import {
   CalendarOutlined,
   CommentOutlined,
   BookOutlined,
-  EnvironmentOutlined,
   CheckCircleOutlined,
-  LoadingOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import ApplicationStatusBadge from "../../../components/training/ApplicationStatusBadge";
@@ -454,7 +450,7 @@ const MyApplicationsPage = () => {
       {/* Header Section */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Title level={4} className="!mb-0">
+          <Title level={4} className="mb-0!">
             My Applications
           </Title>
         </div>
@@ -588,7 +584,6 @@ const MyApplicationsPage = () => {
             type="primary"
             onClick={handleMarkAttendance}
             loading={submitting}
-            disabled={!locationState.data}
             icon={<CheckCircleOutlined />}
           >
             Mark Attendance
@@ -617,83 +612,9 @@ const MyApplicationsPage = () => {
             )}
           </div>
 
-          {/* Location Capture */}
-          <div className="border border-slate-200 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <EnvironmentOutlined className="text-blue-500" />
-                <Text strong className="text-sm">
-                  Your Location
-                </Text>
-              </div>
-              <Button
-                size="small"
-                onClick={captureLocation}
-                loading={locationState.loading}
-                icon={<EnvironmentOutlined />}
-              >
-                {locationState.data ? "Refresh" : "Capture"}
-              </Button>
-            </div>
-
-            {locationState.loading && (
-              <div className="flex items-center justify-center py-4">
-                <Spin
-                  indicator={<LoadingOutlined spin />}
-                  tip="Capturing your location..."
-                />
-              </div>
-            )}
-
-            {locationState.error && (
-              <Alert
-                type="error"
-                message={locationState.error}
-                showIcon
-                className="mb-3"
-              />
-            )}
-
-            {locationState.data && (
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <Text className="text-slate-500">Latitude:</Text>
-                  <Text className="font-mono">
-                    {locationState.data.latitude.toFixed(6)}
-                  </Text>
-                </div>
-                <div className="flex justify-between">
-                  <Text className="text-slate-500">Longitude:</Text>
-                  <Text className="font-mono">
-                    {locationState.data.longitude.toFixed(6)}
-                  </Text>
-                </div>
-                {locationState.data.locationAddress && (
-                  <div className="pt-2 border-t border-slate-100">
-                    <Text className="text-slate-500">Address:</Text>
-                    <div className="text-slate-700 mt-1">
-                      {locationState.data.locationAddress}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {!locationState.loading &&
-              !locationState.data &&
-              !locationState.error && (
-                <div className="text-center py-4 text-slate-400 text-xs">
-                  Click "Capture" to get your current location
-                </div>
-              )}
+          <div className="text-xs text-slate-500">
+            Click mark attendance to submit your attendance for today.
           </div>
-
-          <Alert
-            type="info"
-            message="Your location will be recorded with your attendance for verification purposes."
-            showIcon
-            className="text-xs"
-          />
         </div>
       </Modal>
     </div>

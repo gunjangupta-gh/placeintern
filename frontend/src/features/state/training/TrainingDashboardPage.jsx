@@ -1,89 +1,43 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Button, Card, Col, List, Progress, Row, Space, Typography } from 'antd';
+import { Button, Card, Col, List, Progress, Row, Space, Statistic, Typography } from 'antd';
 import {
-  DashboardOutlined,
   CalendarOutlined,
   FileTextOutlined,
   TeamOutlined,
-  SafetyCertificateOutlined,
   PlusOutlined,
   RightOutlined,
-  CheckCircleOutlined,
   SettingOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  FormOutlined,
+  SolutionOutlined,
   BarChartOutlined,
-  ArrowUpOutlined,
-  ArrowDownOutlined,
   BookOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
-import { Link, useNavigate } from 'react-router-dom';
-import PageHeader from '../../../components/PageHeader';
-import TrainingGreeting from '../../../components/training/TrainingGreeting';
+import { useNavigate } from 'react-router-dom';
 import TrainingDateRange from '../../../components/training/TrainingDateRange';
 import DeliveryModeBadge from '../../../components/training/DeliveryModeBadge';
-import TrainingStatusBadge from '../../../components/training/TrainingStatusBadge';
 import TrainingEmptyState from '../../../components/training/TrainingEmptyState';
-import { TrainingStatSkeleton, DashboardSkeleton } from '../../../components/training/skeletons/TrainingSkeletons';
 import { fetchStateTrainingDashboard, fetchStateTrainingUpcoming } from '../store/stateTrainingSlice';
 
 const { Title, Text } = Typography;
 
-const STAT_TONES = {
-  primary: { icon: 'bg-blue-100 text-blue-700', card: 'bg-gradient-to-br from-blue-50 via-white to-slate-50' },
-  success: { icon: 'bg-emerald-100 text-emerald-700', card: 'bg-gradient-to-br from-emerald-50 via-white to-slate-50' },
-  warning: { icon: 'bg-amber-100 text-amber-700', card: 'bg-gradient-to-br from-amber-50 via-white to-slate-50' },
-  secondary: { icon: 'bg-slate-100 text-slate-700', card: 'bg-gradient-to-br from-slate-50 via-white to-blue-50' },
-};
-
-const StatCard = ({ icon: Icon, title, value, subtitle, tone, trend, onClick }) => {
-  const styles = STAT_TONES[tone] || STAT_TONES.primary;
-  const hasTrend = trend !== undefined && trend !== null;
-  const isPositiveTrend = hasTrend && trend >= 0;
-
-  return (
-    <Card
-      className={`rounded-2xl border-border shadow-none cursor-pointer hover:shadow-soft transition-shadow h-full ${styles.card}`}
-      onClick={onClick}
-      styles={{ body: { padding: '16px' } }}
-      role="button"
-      tabIndex={0}
-      aria-label={`${title}: ${value}. ${subtitle || ''}${hasTrend ? ` Trend: ${isPositiveTrend ? 'up' : 'down'} ${Math.abs(trend)}%` : ''}`}
-      onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
-    >
-      <div className="flex items-start justify-between">
-        <div>
-          <Text className="text-text-secondary text-xs block mb-1">{title}</Text>
-          <div className="flex items-baseline gap-2">
-            <Title level={4} className="!mb-0 !mt-0" style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text-primary)' }}>{value}</Title>
-            {hasTrend && (
-              <span className={`flex items-center text-xs font-medium ${isPositiveTrend ? 'text-emerald-600' : 'text-red-600'}`}>
-                {isPositiveTrend ? <ArrowUpOutlined className="mr-0.5" /> : <ArrowDownOutlined className="mr-0.5" />}
-                {Math.abs(trend)}%
-              </span>
-            )}
-          </div>
-          {subtitle && <Text type="secondary" className="text-xs">{subtitle}</Text>}
-        </div>
-        <div className={`flex items-center justify-center w-10 h-10 rounded-lg ${styles.icon}`}>
-          <Icon className="text-lg" />
-        </div>
-      </div>
-    </Card>
-  );
-};
-
-const QuickAction = ({ icon: Icon, title, onClick }) => (
-  <Button
-    type="default"
-    icon={<Icon />}
+const QuickAccessCard = ({ icon: Icon, title, description, color, bgColor, onClick }) => (
+  <div
+    className={`flex items-center gap-3 p-4 rounded-xl ${bgColor} hover:shadow-md transition-all cursor-pointer border border-transparent hover:border-slate-200`}
     onClick={onClick}
-    className="flex items-center gap-2 h-auto py-3 px-4"
-    block
-    aria-label={title}
   >
-    <span className="flex-1 text-left">{title}</span>
-    <RightOutlined className="text-xs text-text-secondary" />
-  </Button>
+    <div className={`flex items-center justify-center w-10 h-10 rounded-lg ${color}`}>
+      <Icon className="text-lg text-white" />
+    </div>
+    <div className="flex-1 min-w-0">
+      <Text className="font-medium block text-sm">{title}</Text>
+      <Text className="text-xs text-slate-500">{description}</Text>
+    </div>
+    <RightOutlined className="text-slate-400 text-xs" />
+  </div>
 );
 
 const TrainingDashboardPage = () => {
@@ -97,143 +51,234 @@ const TrainingDashboardPage = () => {
     dispatch(fetchStateTrainingUpcoming());
   }, [dispatch]);
 
-  const isLoading = reports.loading && !reports.dashboard;
   const dashboard = reports.dashboard || {};
+  const upcomingTrainings = reports.upcoming || [];
 
-  const stats = [
+  // Extract data from API response structure
+  const trainings = dashboard.trainings || {};
+  const applications = dashboard.applications || {};
+  const attendance = dashboard.attendance || {};
+  const feedback = dashboard.feedback || {};
+  const lessonPlans = dashboard.lessonPlans || {};
+
+  const stats = useMemo(() => [
     {
       title: 'Total Trainings',
-      value: dashboard.totalTrainings || 0,
-      subtitle: `${dashboard.publishedTrainings || 0} published`,
+      value: trainings.total || 0,
       icon: CalendarOutlined,
-      tone: 'primary',
-      trend: dashboard.trainingsTrend,
-      onClick: () => navigate('/app/training/manage'),
+      color: '#2563eb',
+      subtitle: `${trainings.published || 0} published`,
+    },
+    {
+      title: 'Ongoing',
+      value: trainings.ongoing || 0,
+      icon: ClockCircleOutlined,
+      color: '#059669',
+      subtitle: `${trainings.upcoming || 0} upcoming`,
     },
     {
       title: 'Applications',
-      value: dashboard.totalApplications || 0,
-      subtitle: `${dashboard.pendingApplications || 0} pending`,
+      value: applications.total || 0,
       icon: FileTextOutlined,
-      tone: 'warning',
-      trend: dashboard.applicationsTrend,
+      color: '#d97706',
+      subtitle: `${applications.approved || 0} approved`,
+    },
+    {
+      title: 'Attendance',
+      value: attendance.total || 0,
+      icon: CheckCircleOutlined,
+      color: '#7c3aed',
+      subtitle: 'records',
+    },
+  ], [trainings, applications, attendance]);
+
+  const quickAccessItems = [
+    {
+      icon: TeamOutlined,
+      title: 'View Attendance',
+      description: `${attendance.total || 0} total records`,
+      color: 'bg-blue-600',
+      bgColor: 'bg-blue-50',
       onClick: () => navigate('/app/training/manage'),
     },
     {
-      title: 'Participants',
-      value: dashboard.totalParticipants || 0,
-      subtitle: 'Enrolled faculty',
-      icon: TeamOutlined,
-      tone: 'success',
-      trend: dashboard.participantsTrend,
-      onClick: () => navigate('/app/training/reports'),
+      icon: FileTextOutlined,
+      title: 'Feedback Forms',
+      description: `${feedback.total || 0} responses collected`,
+      color: 'bg-amber-600',
+      bgColor: 'bg-amber-50',
+      onClick: () => navigate('/app/training/feedback-forms'),
     },
     {
-      title: 'Certificates',
-      value: dashboard.totalCertificates || 0,
-      subtitle: 'Issued to date',
-      icon: SafetyCertificateOutlined,
-      tone: 'secondary',
-      trend: dashboard.certificatesTrend,
-      onClick: () => navigate('/app/training/reports'),
+      icon: FormOutlined,
+      title: 'Pre-Test Forms',
+      description: 'Manage pre-assessments',
+      color: 'bg-purple-600',
+      bgColor: 'bg-purple-50',
+      onClick: () => navigate('/app/training/test-forms'),
+    },
+    {
+      icon: SolutionOutlined,
+      title: 'Post-Test Forms',
+      description: 'Manage post-assessments',
+      color: 'bg-green-600',
+      bgColor: 'bg-green-50',
+      onClick: () => navigate('/app/training/test-forms'),
+    },
+    {
+      icon: BookOutlined,
+      title: 'Lesson Plans',
+      description: `${lessonPlans.total || 0} submitted`,
+      color: 'bg-indigo-600',
+      bgColor: 'bg-indigo-50',
+      onClick: () => navigate('/app/training/manage'),
+    },
+    {
+      icon: BarChartOutlined,
+      title: 'Applications',
+      description: `${Math.round(applications.approvalRate || 0)}% approval rate`,
+      color: 'bg-rose-600',
+      bgColor: 'bg-rose-50',
+      onClick: () => navigate('/app/training/manage'),
     },
   ];
 
-  const quickActions = [
-    { icon: PlusOutlined, title: 'Create New Training', onClick: () => navigate('/app/training/create') },
-    { icon: SettingOutlined, title: 'Manage Trainings', onClick: () => navigate('/app/training/manage') },
-    { icon: FileTextOutlined, title: 'Feedback Forms', onClick: () => navigate('/app/training/feedback-forms') },
-    { icon: BarChartOutlined, title: 'View Reports', onClick: () => navigate('/app/training/reports') },
-  ];
-
-  if (isLoading) {
-    return <DashboardSkeleton />;
-  }
-
   return (
-    <div className="p-6 training-ui" role="main" aria-label="Training Dashboard">
-      {/* <PageHeader
-        icon={DashboardOutlined}
-        title={<span className="training-heading">Training Dashboard</span>}
-        description="Statewide overview of faculty training programs and participation."
-        actions={[
-          <Button
-            key="create"
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => navigate('/app/training/create')}
-            aria-label="Create new training"
-          >
+    <div className="p-6 training-ui">
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+        <div>
+          <Title level={2} className="!mb-1">
+            Training Dashboard
+          </Title>
+          <Text type="secondary" className="text-sm">
+            Welcome back, {user?.name}! Monitor trainings and participation at a glance.
+          </Text>
+        </div>
+        <Space>
+          <Button onClick={() => navigate('/app/training/manage')}>
+            <SettingOutlined /> Manage
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/app/training/create')}>
             Create Training
-          </Button>,
-        ]}
-      /> */}
+          </Button>
+        </Space>
+      </div>
 
-      <Card className="rounded-2xl border-border shadow-none bg-gradient-to-br from-blue-50 via-white to-amber-50 mb-6">
-        <Row gutter={[16, 16]} align="middle">
-          <Col xs={24} lg={16}>
-            <TrainingGreeting
-              userName={user?.name}
-              subtitle="Monitor participation, applications, and certifications at a glance."
-            />
-          </Col>
-          <Col xs={24} lg={8} className="lg:text-right">
-            <Button type="default" onClick={() => navigate('/app/training/manage')} aria-label="Go to manage trainings">
-              Manage Trainings
-            </Button>
-          </Col>
-        </Row>
-      </Card>
-
-      <Row gutter={[16, 16]} className="mb-6" role="region" aria-label="Training statistics">
+      {/* Stats Cards */}
+      <Row gutter={[16, 16]} className="mb-6">
         {stats.map((stat) => (
-          <Col xs={24} sm={12} lg={6} key={stat.title}>
-            <StatCard {...stat} />
+          <Col xs={12} sm={12} lg={6} key={stat.title}>
+            <Card className="rounded-xl border-border shadow-none hover:shadow-md transition-shadow">
+              <Statistic
+                title={<Text className="text-xs text-slate-600">{stat.title}</Text>}
+                value={stat.value}
+                prefix={<stat.icon style={{ color: stat.color }} />}
+                valueStyle={{ fontSize: 24, fontWeight: 700, color: stat.color }}
+                suffix={
+                  stat.subtitle && (
+                    <Text className="text-xs text-slate-400 ml-1">{stat.subtitle}</Text>
+                  )
+                }
+              />
+            </Card>
           </Col>
         ))}
       </Row>
 
+      {/* Progress Cards */}
+      <Row gutter={[16, 16]} className="mb-6">
+        <Col xs={24} sm={12}>
+          <Card className="rounded-xl border-border shadow-none">
+            <div className="flex items-center justify-between mb-2">
+              <Text className="text-sm font-medium">Application Approval Rate</Text>
+              <Text className="text-lg font-bold text-blue-600">
+                {Math.round(applications.approvalRate || 0)}%
+              </Text>
+            </div>
+            <Progress
+              percent={Math.round(applications.approvalRate || 0)}
+              showInfo={false}
+              strokeColor="#2563eb"
+              trailColor="#e2e8f0"
+            />
+            <Text className="text-xs text-slate-500 mt-2 block">
+              {applications.approved || 0} of {applications.total || 0} applications approved
+            </Text>
+          </Card>
+        </Col>
+        <Col xs={24} sm={12}>
+          <Card className="rounded-xl border-border shadow-none">
+            <div className="flex items-center justify-between mb-2">
+              <Text className="text-sm font-medium">Lesson Plan Approval Rate</Text>
+              <Text className="text-lg font-bold text-green-600">
+                {Math.round(lessonPlans.approvalRate || 0)}%
+              </Text>
+            </div>
+            <Progress
+              percent={Math.round(lessonPlans.approvalRate || 0)}
+              showInfo={false}
+              strokeColor="#059669"
+              trailColor="#e2e8f0"
+            />
+            <Text className="text-xs text-slate-500 mt-2 block">
+              {lessonPlans.approved || 0} of {lessonPlans.total || 0} lesson plans approved
+            </Text>
+          </Card>
+        </Col>
+      </Row>
+
       <Row gutter={[16, 16]}>
-        <Col xs={24} lg={16}>
+        {/* Quick Access */}
+        <Col xs={24} lg={10}>
           <Card
-            className="rounded-xl border-border shadow-none"
+            className="rounded-xl border-border shadow-none h-full"
             title={
               <div className="flex items-center gap-2">
-                <CalendarOutlined className="text-blue-700" />
-                Upcoming Trainings
+                <EyeOutlined className="text-blue-600" />
+                <span>Quick Access</span>
+              </div>
+            }
+          >
+            <div className="space-y-3">
+              {quickAccessItems.map((item, index) => (
+                <QuickAccessCard key={index} {...item} />
+              ))}
+            </div>
+          </Card>
+        </Col>
+
+        {/* Upcoming Trainings */}
+        <Col xs={24} lg={14}>
+          <Card
+            className="rounded-xl border-border shadow-none h-full"
+            title={
+              <div className="flex items-center gap-2">
+                <CalendarOutlined className="text-blue-600" />
+                <span>Upcoming Trainings</span>
+                {upcomingTrainings.length > 0 && (
+                  <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
+                    {upcomingTrainings.length}
+                  </span>
+                )}
               </div>
             }
             extra={
-              <Link to="/app/training/manage" className="text-primary flex items-center gap-1" aria-label="View all trainings">
+              <Button type="link" onClick={() => navigate('/app/training/manage')} className="flex items-center gap-1">
                 View All <RightOutlined className="text-xs" />
-              </Link>
+              </Button>
             }
           >
-            {reports.upcoming?.length ? (
+            {upcomingTrainings.length > 0 ? (
               <List
-                dataSource={reports.upcoming.slice(0, 5)}
+                dataSource={upcomingTrainings.slice(0, 5)}
                 renderItem={(training) => (
                   <List.Item
-                    className="hover:bg-gray-50 rounded-lg px-3 py-2! -mx-3 transition-colors"
-                    actions={[
-                      <Button
-                        key="view"
-                        type="link"
-                        size="small"
-                        onClick={() => navigate(`/app/training/${training.id}`)}
-                        aria-label={`View ${training.title}`}
-                      >
-                        View
-                      </Button>,
-                    ]}
+                    className="hover:bg-slate-50 rounded-lg px-3 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/app/training/${training.id}`)}
                   >
                     <List.Item.Meta
-                      title={
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{training.title}</span>
-                          <TrainingStatusBadge status={training.isPublished ? 'PUBLISHED' : 'DRAFT'} showIcon={false} />
-                        </div>
-                      }
+                      title={<span className="font-medium text-sm">{training.title}</span>}
                       description={
                         <div className="flex items-center gap-3 flex-wrap mt-1">
                           <TrainingDateRange
@@ -241,10 +286,10 @@ const TrainingDashboardPage = () => {
                             endDate={training.endDate}
                             compact
                           />
-                          <DeliveryModeBadge mode={training.deliveryMode} showIcon={false} />
+                          <DeliveryModeBadge mode={training.deliveryMode} />
                           {training.capacity && (
                             <Text type="secondary" className="text-xs">
-                              <TeamOutlined /> {training.availableSeats || training.capacity}/{training.capacity}
+                              <TeamOutlined /> {training._count?.applications || 0}/{training.capacity}
                             </Text>
                           )}
                         </div>
@@ -260,71 +305,12 @@ const TrainingDashboardPage = () => {
                 description="Create your first training to get started."
                 actionText="Create Training"
                 onAction={() => navigate('/app/training/create')}
+                compact
               />
             )}
           </Card>
         </Col>
-
-        <Col xs={24} lg={8}>
-          <Card
-            className="rounded-xl border-border shadow-none h-full"
-            title={
-              <div className="flex items-center gap-2">
-                <CheckCircleOutlined className="text-success-700" />
-                Quick Actions
-              </div>
-            }
-          >
-            <Space direction="vertical" className="w-full" size="middle" role="navigation" aria-label="Quick actions">
-              {quickActions.map((action) => (
-                <QuickAction key={action.title} {...action} />
-              ))}
-            </Space>
-          </Card>
-        </Col>
       </Row>
-
-      {dashboard.recentActivity?.length > 0 && (
-        <Card
-          className="rounded-xl border-border shadow-none mt-6"
-          title="Recent Activity"
-          role="region"
-          aria-label="Recent activity"
-        >
-          <List
-            dataSource={dashboard.recentActivity.slice(0, 5)}
-            renderItem={(activity) => (
-              <List.Item className="px-3! py-2!">
-                <List.Item.Meta
-                  title={activity.description}
-                  description={new Date(activity.createdAt).toLocaleString()}
-                />
-              </List.Item>
-            )}
-          />
-        </Card>
-      )}
-
-      {/* Quick Links */}
-      {/* <Card className="rounded-xl border-border shadow-none mt-6" role="navigation" aria-label="Quick links">
-        <div className="flex flex-wrap gap-3">
-          <Button onClick={() => navigate('/app/training/create')} aria-label="Create new training">
-            <PlusOutlined /> Create Training
-          </Button>
-          <Button onClick={() => navigate('/app/training/manage')} aria-label="Manage trainings">
-            <SettingOutlined /> Manage Trainings
-          </Button>
-          <Button onClick={() => navigate('/app/training/feedback-forms')} aria-label="Manage feedback forms">
-            <FileTextOutlined /> Feedback Forms
-          </Button>
-          <Button onClick={() => navigate('/app/training/lesson-plans')} aria-label="Review lesson plans">
-            <BookOutlined /> Lesson Plans
-          </Button>
-          <Button onClick={() => navigate('/app/training/reports')} aria-label="View reports">
-            <BarChartOutlined /> Reports
-          </Button>
-        </div>
-      </Card> */}
     </div>
   );
 };

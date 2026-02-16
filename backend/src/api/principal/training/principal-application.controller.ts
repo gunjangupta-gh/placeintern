@@ -40,8 +40,8 @@ export class PrincipalApplicationController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get application details' })
-  async getApplication(@Param('id') id: string) {
-    return this.applicationService.getById(id);
+  async getApplication(@Param('id') id: string, @Req() req) {
+    return this.applicationService.getById(id, req.user.institutionId);
   }
 
   @Patch(':id/review')
@@ -51,7 +51,7 @@ export class PrincipalApplicationController {
     @Body() dto: ReviewApplicationDto,
     @Req() req,
   ) {
-    return this.applicationService.review(id, dto, req.user.userId);
+    return this.applicationService.review(id, dto, req.user.userId, req.user.institutionId);
   }
 
   @Post('bulk-review')

@@ -68,6 +68,23 @@ const initialState = {
     loading: false,
     error: null,
   },
+  preTest: {
+    form: null,
+    statusByTraining: {},
+    loading: false,
+    error: null,
+  },
+  postTest: {
+    form: null,
+    statusByTraining: {},
+    loading: false,
+    error: null,
+  },
+  pendingTests: {
+    list: [],
+    loading: false,
+    error: null,
+  },
   lastFetched: {
     trainings: null,
     trainingsKey: null,
@@ -81,6 +98,7 @@ const initialState = {
     lessonPlansKey: null,
     certificates: null,
     recommendations: null,
+    pendingTests: null,
   },
 };
 
@@ -122,6 +140,13 @@ export const fetchTrainings = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch trainings');
     }
+  },
+  {
+    condition: (params = {}, { getState }) => {
+      const state = getState().facultyTraining;
+      if (params?.forceRefresh) return true;
+      return !state.trainings.loading;
+    },
   }
 );
 
@@ -166,6 +191,13 @@ export const fetchCalendar = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch calendar');
     }
+  },
+  {
+    condition: (params = {}, { getState }) => {
+      const state = getState().facultyTraining;
+      if (params?.forceRefresh) return true;
+      return !state.calendar.loading;
+    },
   }
 );
 
@@ -185,6 +217,12 @@ export const fetchUpcoming = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch upcoming trainings');
     }
+  },
+  {
+    condition: (_, { getState }) => {
+      const state = getState().facultyTraining;
+      return !state.upcoming.loading;
+    },
   }
 );
 
@@ -204,6 +242,12 @@ export const fetchMyTrainings = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch my trainings');
     }
+  },
+  {
+    condition: (_, { getState }) => {
+      const state = getState().facultyTraining;
+      return !state.myTrainings.loading;
+    },
   }
 );
 
@@ -250,6 +294,13 @@ export const fetchMyApplications = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch applications');
     }
+  },
+  {
+    condition: (params = {}, { getState }) => {
+      const state = getState().facultyTraining;
+      if (params?.forceRefresh) return true;
+      return !state.applications.loading;
+    },
   }
 );
 
@@ -417,6 +468,13 @@ export const fetchLessonPlans = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch lesson plans');
     }
+  },
+  {
+    condition: (params = {}, { getState }) => {
+      const state = getState().facultyTraining;
+      if (params?.forceRefresh) return true;
+      return !state.lessonPlans.loading;
+    },
   }
 );
 
@@ -497,6 +555,12 @@ export const fetchCertificates = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch certificates');
     }
+  },
+  {
+    condition: (_, { getState }) => {
+      const state = getState().facultyTraining;
+      return !state.certificates.loading;
+    },
   }
 );
 
@@ -541,6 +605,13 @@ export const fetchMyRecommendations = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch recommendations');
     }
+  },
+  {
+    condition: (params = {}, { getState }) => {
+      const state = getState().facultyTraining;
+      if (params?.forceRefresh) return true;
+      return !state.recommendations.loading;
+    },
   }
 );
 
@@ -577,6 +648,119 @@ export const deleteRecommendation = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete recommendation');
     }
+  }
+);
+
+// Pre-Test
+export const fetchPreTestForm = createAsyncThunk(
+  'facultyTraining/fetchPreTestForm',
+  async (trainingId, { rejectWithValue }) => {
+    try {
+      const response = await trainingService.getPreTestForm(trainingId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch pre-test form');
+    }
+  }
+);
+
+export const fetchPreTestStatus = createAsyncThunk(
+  'facultyTraining/fetchPreTestStatus',
+  async (trainingId, { rejectWithValue }) => {
+    try {
+      const response = await trainingService.getPreTestStatus(trainingId);
+      return { trainingId, data: response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch pre-test status');
+    }
+  }
+);
+
+export const submitPreTest = createAsyncThunk(
+  'facultyTraining/submitPreTest',
+  async ({ trainingId, data }, { rejectWithValue }) => {
+    try {
+      const response = await trainingService.submitPreTest(trainingId, data);
+      return { trainingId, response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to submit pre-test');
+    }
+  }
+);
+
+// Post-Test
+export const fetchPostTestForm = createAsyncThunk(
+  'facultyTraining/fetchPostTestForm',
+  async (trainingId, { rejectWithValue }) => {
+    try {
+      const response = await trainingService.getPostTestForm(trainingId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch post-test form');
+    }
+  }
+);
+
+export const fetchPostTestStatus = createAsyncThunk(
+  'facultyTraining/fetchPostTestStatus',
+  async (trainingId, { rejectWithValue }) => {
+    try {
+      const response = await trainingService.getPostTestStatus(trainingId);
+      return { trainingId, data: response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch post-test status');
+    }
+  }
+);
+
+export const submitPostTest = createAsyncThunk(
+  'facultyTraining/submitPostTest',
+  async ({ trainingId, data }, { rejectWithValue }) => {
+    try {
+      const response = await trainingService.submitPostTest(trainingId, data);
+      return { trainingId, response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to submit post-test');
+    }
+  }
+);
+
+// Test Statuses
+export const fetchTestStatuses = createAsyncThunk(
+  'facultyTraining/fetchTestStatuses',
+  async (trainingId, { rejectWithValue }) => {
+    try {
+      const response = await trainingService.getTestStatuses(trainingId);
+      return { trainingId, data: response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch test statuses');
+    }
+  }
+);
+
+// Pending Tests
+export const fetchPendingTests = createAsyncThunk(
+  'facultyTraining/fetchPendingTests',
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.facultyTraining.lastFetched.pendingTests;
+
+      if (isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
+        return { cached: true };
+      }
+
+      const response = await trainingService.getPendingTests();
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch pending tests');
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      const state = getState().facultyTraining;
+      return !state.pendingTests.loading;
+    },
   }
 );
 
@@ -921,6 +1105,102 @@ const facultyTrainingSlice = createSlice({
       })
       .addCase(deleteRecommendation.fulfilled, (state, action) => {
         state.recommendations.list = state.recommendations.list.filter((r) => r.id !== action.payload.id);
+      })
+
+      // Pre-Test
+      .addCase(fetchPreTestForm.pending, (state) => {
+        state.preTest.loading = true;
+        state.preTest.error = null;
+      })
+      .addCase(fetchPreTestForm.fulfilled, (state, action) => {
+        state.preTest.loading = false;
+        state.preTest.form = action.payload;
+      })
+      .addCase(fetchPreTestForm.rejected, (state, action) => {
+        state.preTest.loading = false;
+        state.preTest.error = action.payload;
+      })
+      .addCase(fetchPreTestStatus.fulfilled, (state, action) => {
+        state.preTest.statusByTraining[action.payload.trainingId] = action.payload.data;
+      })
+      .addCase(submitPreTest.fulfilled, (state, action) => {
+        const trainingId = action.payload.trainingId;
+        if (trainingId) {
+          state.preTest.statusByTraining[trainingId] = {
+            submitted: true,
+            hasSubmitted: true,
+            ...action.payload.response,
+          };
+        }
+        // Invalidate pending tests cache
+        state.lastFetched.pendingTests = null;
+      })
+
+      // Post-Test
+      .addCase(fetchPostTestForm.pending, (state) => {
+        state.postTest.loading = true;
+        state.postTest.error = null;
+      })
+      .addCase(fetchPostTestForm.fulfilled, (state, action) => {
+        state.postTest.loading = false;
+        state.postTest.form = action.payload;
+      })
+      .addCase(fetchPostTestForm.rejected, (state, action) => {
+        state.postTest.loading = false;
+        state.postTest.error = action.payload;
+      })
+      .addCase(fetchPostTestStatus.fulfilled, (state, action) => {
+        state.postTest.statusByTraining[action.payload.trainingId] = action.payload.data;
+      })
+      .addCase(submitPostTest.fulfilled, (state, action) => {
+        const trainingId = action.payload.trainingId;
+        if (trainingId) {
+          state.postTest.statusByTraining[trainingId] = {
+            submitted: true,
+            hasSubmitted: true,
+            ...action.payload.response,
+          };
+        }
+        // Invalidate pending tests cache
+        state.lastFetched.pendingTests = null;
+      })
+
+      // Test Statuses
+      .addCase(fetchTestStatuses.fulfilled, (state, action) => {
+        const { trainingId, data } = action.payload;
+        if (data.preTest) {
+          state.preTest.statusByTraining[trainingId] = data.preTest;
+        }
+        if (data.postTest) {
+          state.postTest.statusByTraining[trainingId] = data.postTest;
+        }
+      })
+
+      // Pending Tests
+      .addCase(fetchPendingTests.pending, (state) => {
+        state.pendingTests.loading = true;
+        state.pendingTests.error = null;
+      })
+      .addCase(fetchPendingTests.fulfilled, (state, action) => {
+        state.pendingTests.loading = false;
+        if (!action.payload?.cached) {
+          // Backend returns { pendingPreTests, pendingPostTests, totalPending }
+          // Transform into a flat list with type indicator
+          const preTests = (action.payload?.pendingPreTests || []).map((t) => ({
+            ...t,
+            type: 'PRE_TEST',
+          }));
+          const postTests = (action.payload?.pendingPostTests || []).map((t) => ({
+            ...t,
+            type: 'POST_TEST',
+          }));
+          state.pendingTests.list = [...preTests, ...postTests];
+          state.lastFetched.pendingTests = Date.now();
+        }
+      })
+      .addCase(fetchPendingTests.rejected, (state, action) => {
+        state.pendingTests.loading = false;
+        state.pendingTests.error = action.payload;
       });
   },
 });

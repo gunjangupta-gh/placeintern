@@ -185,6 +185,49 @@ const trainingService = {
     return response.data;
   },
 
+  // Pre-Test
+  async getPreTestForm(trainingId) {
+    const response = await API.get(`/faculty/training/${trainingId}/pre-test`);
+    return response.data;
+  },
+
+  async getPreTestStatus(trainingId) {
+    const response = await API.get(`/faculty/training/${trainingId}/pre-test/status`);
+    return response.data;
+  },
+
+  async submitPreTest(trainingId, data) {
+    const response = await API.post(`/faculty/training/${trainingId}/pre-test/submit`, data);
+    return response.data;
+  },
+
+  // Post-Test
+  async getPostTestForm(trainingId) {
+    const response = await API.get(`/faculty/training/${trainingId}/post-test`);
+    return response.data;
+  },
+
+  async getPostTestStatus(trainingId) {
+    const response = await API.get(`/faculty/training/${trainingId}/post-test/status`);
+    return response.data;
+  },
+
+  async submitPostTest(trainingId, data) {
+    const response = await API.post(`/faculty/training/${trainingId}/post-test/submit`, data);
+    return response.data;
+  },
+
+  // Combined Test Status
+  async getTestStatuses(trainingId) {
+    const response = await API.get(`/faculty/training/${trainingId}/tests/status`);
+    return response.data;
+  },
+
+  async getPendingTests() {
+    const response = await API.get('/faculty/training/tests/pending');
+    return response.data;
+  },
+
   // Recommendations
   async getMyRecommendations(params = {}) {
     const queryParams = this.buildQueryParams(params);

@@ -134,6 +134,26 @@ const trainingPrincipalService = {
     const response = await API.get(url);
     return response.data;
   },
+
+  // Recommendations
+  async getRecommendations(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams
+      ? `/principal/training/recommendations?${queryParams}`
+      : '/principal/training/recommendations';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  async getRecommendation(id) {
+    const response = await API.get(`/principal/training/recommendations/${id}`);
+    return response.data;
+  },
+
+  async reviewRecommendation(id, data) {
+    const response = await API.patch(`/principal/training/recommendations/${id}/review`, data);
+    return response.data;
+  },
 };
 
 export default trainingPrincipalService;

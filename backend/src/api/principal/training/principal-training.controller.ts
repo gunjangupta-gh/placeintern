@@ -2,7 +2,9 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
@@ -26,31 +28,31 @@ export class PrincipalTrainingController {
   @Throttle({ default: THROTTLE_PRESETS.list })
   @Get()
   @ApiOperation({ summary: 'Get all published trainings' })
-  async getTrainings(@Query() filters: TrainingFilterDto) {
-    return this.trainingService.findAll(filters, false); // Only published trainings
+  async getTrainings(@Query() filters: TrainingFilterDto, @Req() req) {
+    return this.trainingService.findAll(filters, false, undefined, req.user.institutionId);
   }
 
   @Get('calendar')
   @ApiOperation({ summary: 'Get training calendar' })
-  async getCalendar(@Query() filters: CalendarFilterDto) {
-    return this.trainingService.getCalendar(filters);
+  async getCalendar(@Query() filters: CalendarFilterDto, @Req() req) {
+    return this.trainingService.getCalendar(filters, undefined, req.user.institutionId);
   }
 
   @Get('upcoming')
   @ApiOperation({ summary: 'Get upcoming trainings' })
-  async getUpcoming(@Query('limit') limit?: string) {
-    return this.trainingService.getUpcoming(limit ? Number(limit) : 10);
+  async getUpcoming(@Query('limit') limit: string | undefined, @Req() req) {
+    return this.trainingService.getUpcoming(limit ? Number(limit) : 10, undefined, undefined, req.user.institutionId);
   }
 
   @Get(':id/stats')
   @ApiOperation({ summary: 'Get training statistics' })
-  async getTrainingStats(@Param('id') id: string) {
-    return this.trainingService.getTrainingStats(id);
+  async getTrainingStats(@Param('id', new ParseUUIDPipe()) id: string, @Req() req) {
+    return this.trainingService.getTrainingStats(id, req.user.institutionId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get training details' })
-  async getTraining(@Param('id') id: string) {
-    return this.trainingService.findOne(id);
+  async getTraining(@Param('id', new ParseUUIDPipe()) id: string, @Req() req) {
+    return this.trainingService.findOne(id, undefined, req.user.institutionId);
   }
 }

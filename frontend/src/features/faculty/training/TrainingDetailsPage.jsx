@@ -40,6 +40,8 @@ import {
   InfoCircleOutlined,
   TeamOutlined,
   FileTextOutlined,
+  FormOutlined,
+  SolutionOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useParams } from "react-router-dom";
 import TrainingDateRange from "../../../components/training/TrainingDateRange";
@@ -55,12 +57,19 @@ import {
   fetchTrainingDetails,
   checkEligibility,
   fetchApplicationStatus,
+  fetchMyApplications,
   applyForTraining,
   withdrawApplication,
   fetchUpcoming,
   submitFeedback,
   fetchFeedbackStatus,
   fetchFeedbackForm,
+  markSelfAttendance,
+  fetchPreTestForm,
+  fetchPostTestForm,
+  fetchTestStatuses,
+  submitPreTest,
+  submitPostTest,
 } from "../store/facultyTrainingSlice";
 
 const { Title, Text, Paragraph } = Typography;
@@ -85,24 +94,32 @@ const TrainingDetailsPage = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { currentTraining, applicationStatus, upcoming, feedback } = useSelector(
+  const { currentTraining, applicationStatus, upcoming, feedback, applications, preTest, postTest } = useSelector(
     (state) => state.facultyTraining,
   );
   const [applyOpen, setApplyOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [preTestOpen, setPreTestOpen] = useState(false);
+  const [postTestOpen, setPostTestOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [applicationSuccess, setApplicationSuccess] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
+  const [preTestSuccess, setPreTestSuccess] = useState(false);
+  const [postTestSuccess, setPostTestSuccess] = useState(false);
   const [form] = Form.useForm();
   const [feedbackFormInstance] = Form.useForm();
+  const [preTestFormInstance] = Form.useForm();
+  const [postTestFormInstance] = Form.useForm();
 
   useEffect(() => {
     if (!id) return;
     dispatch(fetchTrainingDetails(id));
     dispatch(checkEligibility(id));
     dispatch(fetchApplicationStatus(id));
+    dispatch(fetchMyApplications({ trainingId: id }));
     dispatch(fetchFeedbackStatus(id));
     dispatch(fetchFeedbackForm(id));
+    dispatch(fetchTestStatuses(id));
     dispatch(fetchUpcoming()); // For similar trainings
   }, [dispatch, id]);
 
@@ -110,6 +127,10 @@ const TrainingDetailsPage = () => {
   const status = applicationStatus?.[id];
   const feedbackStatus = feedback?.statusByTraining?.[id];
   const feedbackFormData = feedback?.form;
+  const preTestStatus = preTest?.statusByTraining?.[id];
+  const postTestStatus = postTest?.statusByTraining?.[id];
+  const preTestFormData = preTest?.form;
+  const postTestFormData = postTest?.form;
   const isLoading = currentTraining.loading;
 
   const capacityInfo = useMemo(() => {
@@ -203,14 +224,137 @@ const TrainingDetailsPage = () => {
       setSubmitting(false);
     }
   };
+
+  const handlePreTestSubmit = async () => {
+    try {
+      setSubmitting(true);
+      const values = await preTestFormInstance.validateFields();
+
+      // Format responses for backend
+      const responses = {};
+      preTestFormData?.questions?.forEach((question) => {
+        if (values[question.id] !== undefined) {
+          responses[question.id] = values[question.id];
+        }
+      });
+
+      const payload = {
+        preTestFormId: preTestFormData.id,
+        trainingId: id,
+        responses,
+      };
+
+      await dispatch(submitPreTest({ trainingId: id, data: payload })).unwrap();
+      setPreTestSuccess(true);
+      setPreTestOpen(false);
+      preTestFormInstance.resetFields();
+      message.success('Pre-test submitted successfully!');
+
+      setTimeout(() => {
+        dispatch(fetchTestStatuses(id));
+      }, 500);
+    } catch (error) {
+      message.error(error || 'Failed to submit pre-test');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePostTestSubmit = async () => {
+    try {
+      setSubmitting(true);
+      const values = await postTestFormInstance.validateFields();
+
+      // Format responses for backend
+      const responses = {};
+      postTestFormData?.questions?.forEach((question) => {
+        if (values[question.id] !== undefined) {
+          responses[question.id] = values[question.id];
+        }
+      });
+
+      const payload = {
+        postTestFormId: postTestFormData.id,
+        trainingId: id,
+        responses,
+      };
+
+      await dispatch(submitPostTest({ trainingId: id, data: payload })).unwrap();
+      setPostTestSuccess(true);
+      setPostTestOpen(false);
+      postTestFormInstance.resetFields();
+      message.success('Post-test submitted successfully!');
+
+      setTimeout(() => {
+        dispatch(fetchTestStatuses(id));
+      }, 500);
+    } catch (error) {
+      message.error(error || 'Failed to submit post-test');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleOpenPreTest = () => {
+    dispatch(fetchPreTestForm(id));
+    setPreTestOpen(true);
+  };
+
+  const handleOpenPostTest = () => {
+    dispatch(fetchPostTestForm(id));
+    setPostTestOpen(true);
+  };
+
+  const captureLocation = async () => {
+    if (!navigator.geolocation) {
+      throw new Error("Geolocation is not supported by your browser");
+    }
+
+    const position = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0,
+      });
+    });
+
+    const { latitude, longitude } = position.coords;
+    return { latitude, longitude };
+  };
+
+  const handleMarkAttendance = async () => {
+    try {
+      setSubmitting(true);
+      const { latitude, longitude } = await captureLocation();
+
+      await dispatch(
+        markSelfAttendance({
+          trainingId: id,
+          latitude,
+          longitude,
+        })
+      ).unwrap();
+
+      message.success("Attendance marked successfully!");
+      dispatch(fetchMyApplications({ trainingId: id, forceRefresh: true }));
+      dispatch(fetchApplicationStatus(id));
+    } catch (error) {
+      message.error(error || "Failed to mark attendance");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const getApplicationStepStatus = () => {
     if (!status?.status) return -1;
+    const isCompleted = training?.endDate && new Date(training.endDate) < new Date();
+
     switch (status.status) {
       case "PENDING":
       case "SUBMITTED":
         return 0;
       case "APPROVED":
-        return 1;
+        return isCompleted ? 2 : 1;
       case "REJECTED":
         return "error";
       default:
@@ -221,12 +365,45 @@ const TrainingDetailsPage = () => {
   const canApply = !status?.status && capacityInfo.available > 0;
   const canWithdraw = ["PENDING", "SUBMITTED"].includes(status?.status);  
   const isApproved = status?.status === 'APPROVED';
+
+  const currentApplication = useMemo(() => {
+    return (applications.list || []).find(
+      (app) => app.trainingId === id || app.training?.id === id
+    );
+  }, [applications.list, id]);
+
+  const hasMarkedAttendanceToday = currentApplication?.hasMarkedAttendanceToday === true;
   
   // Check if training has ended
   const trainingEnded = training?.endDate && new Date(training.endDate) < new Date();
+  const trainingOngoing = useMemo(() => {
+    if (!training?.startDate || !training?.endDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(training.startDate);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(training.endDate);
+    endDate.setHours(23, 59, 59, 999);
+    return today >= startDate && today <= endDate;
+  }, [training?.startDate, training?.endDate]);
   
   const hasPendingFeedback = isApproved && trainingEnded && feedbackFormData && (!feedbackStatus?.submitted && !feedbackStatus?.hasSubmitted);
-  
+
+  // Training has pre-test and post-test forms assigned
+  const hasPreTest = training?.preTestForm || training?.preTestFormId;
+  const hasPostTest = training?.postTestForm || training?.postTestFormId;
+
+  // Check if pre-test/post-test are completed
+  const preTestCompleted = preTestStatus?.submitted || preTestStatus?.hasSubmitted;
+  const postTestCompleted = postTestStatus?.submitted || postTestStatus?.hasSubmitted;
+
+  // Pre-test is pending if: approved, training has pre-test, hasn't started yet, and not submitted
+  const trainingNotStarted = training?.startDate && new Date(training.startDate) > new Date();
+  const hasPendingPreTest = isApproved && hasPreTest && !preTestCompleted;
+
+  // Post-test is pending if: approved, training has post-test, training ended, and not submitted
+  const hasPendingPostTest = isApproved && hasPostTest && trainingEnded && !postTestCompleted;
+
   // Helper function to render different field types
   const renderFormField = (question) => {
     switch (question.type) {
@@ -313,7 +490,7 @@ const TrainingDetailsPage = () => {
           type="success"
           showIcon
           icon={<CheckCircleOutlined />}
-          className="!mb-4 rounded-xl"
+          className="mb-4! rounded-xl"
           message="Application Submitted Successfully!"
           description="Your application has been submitted and is awaiting review. You'll receive a notification once it's processed."
           closable
@@ -335,13 +512,77 @@ const TrainingDetailsPage = () => {
         />
       )}
 
+      {/* Pre-Test Success */}
+      {preTestSuccess && (
+        <Alert
+          type="success"
+          showIcon
+          icon={<CheckCircleOutlined />}
+          className="mb-4! rounded-xl"
+          message="Pre-Test Submitted Successfully!"
+          description="You have completed the pre-test assessment. You are now ready to attend the training."
+          closable
+          onClose={() => setPreTestSuccess(false)}
+        />
+      )}
+
+      {/* Post-Test Success */}
+      {postTestSuccess && (
+        <Alert
+          type="success"
+          showIcon
+          icon={<CheckCircleOutlined />}
+          className="mb-4! rounded-xl"
+          message="Post-Test Submitted Successfully!"
+          description="You have completed the post-test assessment. Thank you for completing this training!"
+          closable
+          onClose={() => setPostTestSuccess(false)}
+        />
+      )}
+
+      {/* Pending Pre-Test Alert */}
+      {hasPendingPreTest && !preTestSuccess && (
+        <Alert
+          type="warning"
+          showIcon
+          icon={<FormOutlined />}
+          className="mb-4! rounded-xl"
+          message="Pre-Test Required"
+          description="Please complete the pre-test assessment before attending this training."
+          action={
+            <Button size="small" type="primary" onClick={handleOpenPreTest}>
+              Take Pre-Test
+            </Button>
+          }
+          closable
+        />
+      )}
+
+      {/* Pending Post-Test Alert */}
+      {hasPendingPostTest && !postTestSuccess && (
+        <Alert
+          type="info"
+          showIcon
+          icon={<SolutionOutlined />}
+          className="mb-4! rounded-xl"
+          message="Post-Test Pending"
+          description="You have completed this training. Please complete the post-test assessment."
+          action={
+            <Button size="small" type="primary" onClick={handleOpenPostTest}>
+              Take Post-Test
+            </Button>
+          }
+          closable
+        />
+      )}
+
       {/* Pending Feedback Alert */}
       {hasPendingFeedback && (
         <Alert
           type="info"
           showIcon
           icon={<InfoCircleOutlined />}
-          className="!mb-4 rounded-xl"
+          className="mb-4! rounded-xl"
           message="Feedback Pending"
           description="You have completed this training. Please share your feedback to help us improve."
           action={
@@ -354,14 +595,14 @@ const TrainingDetailsPage = () => {
       )}
 
       {/* Hero Card */}
-      <Card className="rounded-2xl border-border shadow-none !mb-6 bg-gradient-to-br from-slate-50 via-white to-blue-50">
+      <Card className="rounded-2xl border-border shadow-none mb-6! bg-linear-to-br from-slate-50 via-white to-blue-50">
         <Row gutter={[24, 16]} align="middle">
           <Col xs={24} lg={16}>
             <Space className="mb-3" wrap>
               <DeliveryModeBadge mode={training?.deliveryMode} />
               <DifficultyBadge level={training?.difficulty} />
             </Space>
-            <Title level={2} className="!mb-2 training-heading">
+            <Title level={2} className="mb-2! training-heading">
               {training?.title || "Training"}
             </Title>
             <Text type="secondary" className="text-base">
@@ -401,13 +642,80 @@ const TrainingDetailsPage = () => {
                 </Popconfirm>
               )}
               {status?.status === "APPROVED" && (
-                <div className="!space-y-2">
+                <div className="space-y-2!">
                   <Alert
                     message="You're enrolled!"
-                    description={trainingEnded ? "Training completed" : "Your application has been approved."}
+                    description={
+                      trainingEnded
+                        ? "Training completed"
+                        : trainingOngoing
+                          ? "Training is in progress. Mark your attendance for today."
+                          : "Your application has been approved."
+                    }
                     type="success"
                     showIcon
                   />
+                  {/* Pre-Test Button */}
+                  {hasPendingPreTest && (
+                    <Button
+                      type="primary"
+                      size="large"
+                      icon={<FormOutlined />}
+                      onClick={handleOpenPreTest}
+                      block
+                    >
+                      Take Pre-Test
+                    </Button>
+                  )}
+                  {hasPreTest && preTestCompleted && (
+                    <div className="text-center text-sm text-green-600">
+                      ✓ Pre-test completed
+                      {preTestStatus?.score !== undefined && (
+                        <span className="ml-2 text-gray-500">
+                          (Score: {preTestStatus.score}%)
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {trainingOngoing && !hasMarkedAttendanceToday && (
+                    <Button
+                      type="primary"
+                      size="large"
+                      icon={<CheckCircleOutlined />}
+                      onClick={handleMarkAttendance}
+                      loading={submitting}
+                      block
+                    >
+                      Mark Attendance
+                    </Button>
+                  )}
+                  {trainingOngoing && hasMarkedAttendanceToday && (
+                    <div className="text-center text-sm text-green-600">
+                      ✓ Attendance marked for today
+                    </div>
+                  )}
+                  {/* Post-Test Button */}
+                  {hasPendingPostTest && (
+                    <Button
+                      type="primary"
+                      size="large"
+                      icon={<SolutionOutlined />}
+                      onClick={handleOpenPostTest}
+                      block
+                    >
+                      Take Post-Test
+                    </Button>
+                  )}
+                  {hasPostTest && postTestCompleted && trainingEnded && (
+                    <div className="text-center text-sm text-green-600">
+                      ✓ Post-test completed
+                      {postTestStatus?.score !== undefined && (
+                        <span className="ml-2 text-gray-500">
+                          (Score: {postTestStatus.score}%)
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {hasPendingFeedback && (
                     <Button
                       type="default"
@@ -434,7 +742,7 @@ const TrainingDetailsPage = () => {
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={16}>
           {/* About Section */}
-          <Card className="rounded-xl border-border shadow-none !mb-4">
+          <Card className="rounded-xl border-border shadow-none mb-4!">
             <Title level={4} className="flex items-center gap-2">
               <InfoCircleOutlined className="text-blue-700" />
               About This Training
@@ -473,7 +781,7 @@ const TrainingDetailsPage = () => {
           </Card>
 
           {/* Learning Outcomes */}
-          <Card className="rounded-xl border-border shadow-none !mb-4">
+          <Card className="rounded-xl border-border shadow-none mb-4!">
             <Title level={4} className="flex items-center gap-2">
               <CheckCircleOutlined className="text-emerald-600" />
               Learning Outcomes
@@ -486,9 +794,9 @@ const TrainingDetailsPage = () => {
 
           {/* Prerequisites */}
           {training?.prerequisites && (
-            <Card className="rounded-xl border-border shadow-none !mb-4">
+            <Card className="rounded-xl border-border shadow-none mb-4!">
               <Title level={4}>Prerequisites</Title>
-              <Paragraph className="text-text-secondary !mb-0">
+              <Paragraph className="text-text-secondary mb-0!">
                 {training.prerequisites}
               </Paragraph>
             </Card>
@@ -506,7 +814,7 @@ const TrainingDetailsPage = () => {
           </div>
 
           {/* Application Status Card */}
-          <Card className="rounded-xl border-border shadow-none !mb-4">
+          <Card className="rounded-xl border-border shadow-none mb-4!">
             <Title level={4} className="flex items-center gap-2">
               <SendOutlined className="text-blue-700" />
               Application Status
@@ -518,7 +826,13 @@ const TrainingDetailsPage = () => {
                   direction="vertical"
                   size="small"
                   current={getApplicationStepStatus()}
-                  status={status.status === "REJECTED" ? "error" : "process"}
+                  status={
+                    status.status === "REJECTED"
+                      ? "error"
+                      : status.status === "APPROVED" && trainingEnded
+                        ? "finish"
+                        : "process"
+                  }
                   items={[
                     {
                       title: "Applied",
@@ -539,7 +853,13 @@ const TrainingDetailsPage = () => {
                       title: "Enrolled",
                       description:
                         status.status === "APPROVED"
-                          ? "Ready to attend"
+                          ? trainingEnded
+                            ? "Training completed"
+                            : trainingOngoing
+                              ? hasMarkedAttendanceToday
+                                ? "Attendance marked for today"
+                                : "Training in progress"
+                              : "Ready to attend"
                           : "Awaiting approval",
                     },
                   ]}
@@ -758,6 +1078,133 @@ const TrainingDetailsPage = () => {
             <Text className="text-xs text-blue-700">
               <strong>Note:</strong> Your honest feedback helps us improve the
               quality of our training programs.
+            </Text>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Pre-Test Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <FormOutlined className="text-blue-700" />
+            {preTestFormData?.title || "Pre-Test Assessment"}
+          </div>
+        }
+        open={preTestOpen}
+        onCancel={() => setPreTestOpen(false)}
+        onOk={handlePreTestSubmit}
+        okText="Submit Pre-Test"
+        confirmLoading={submitting}
+        width={600}
+      >
+        <div className="py-2">
+          {preTestFormData?.description && (
+            <Alert
+              message={preTestFormData.description}
+              type="info"
+              className="mb-4"
+            />
+          )}
+
+          {preTest?.loading ? (
+            <div className="text-center py-8">
+              <Text type="secondary">Loading pre-test form...</Text>
+            </div>
+          ) : !preTestFormData ? (
+            <Alert
+              message="No pre-test form available"
+              description="This training does not have a pre-test form configured."
+              type="warning"
+            />
+          ) : (
+            <Form layout="vertical" form={preTestFormInstance}>
+              {preTestFormData.questions?.map((question, index) => (
+                <Form.Item
+                  key={question.id || index}
+                  name={question.id || `question_${index}`}
+                  label={`${index + 1}. ${question.question}`}
+                  rules={[
+                    {
+                      required: question.required !== false,
+                      message: `Please provide an answer for this question`,
+                    },
+                  ]}
+                >
+                  {renderFormField(question)}
+                </Form.Item>
+              ))}
+            </Form>
+          )}
+
+          <div className="mt-4 p-3 bg-amber-50 rounded-lg">
+            <Text className="text-xs text-amber-700">
+              <strong>Note:</strong> Please complete this pre-test assessment before
+              attending the training. Your responses help us understand your
+              current knowledge level.
+            </Text>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Post-Test Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <SolutionOutlined className="text-blue-700" />
+            {postTestFormData?.title || "Post-Test Assessment"}
+          </div>
+        }
+        open={postTestOpen}
+        onCancel={() => setPostTestOpen(false)}
+        onOk={handlePostTestSubmit}
+        okText="Submit Post-Test"
+        confirmLoading={submitting}
+        width={600}
+      >
+        <div className="py-2">
+          {postTestFormData?.description && (
+            <Alert
+              message={postTestFormData.description}
+              type="info"
+              className="mb-4"
+            />
+          )}
+
+          {postTest?.loading ? (
+            <div className="text-center py-8">
+              <Text type="secondary">Loading post-test form...</Text>
+            </div>
+          ) : !postTestFormData ? (
+            <Alert
+              message="No post-test form available"
+              description="This training does not have a post-test form configured."
+              type="warning"
+            />
+          ) : (
+            <Form layout="vertical" form={postTestFormInstance}>
+              {postTestFormData.questions?.map((question, index) => (
+                <Form.Item
+                  key={question.id || index}
+                  name={question.id || `question_${index}`}
+                  label={`${index + 1}. ${question.question}`}
+                  rules={[
+                    {
+                      required: question.required !== false,
+                      message: `Please provide an answer for this question`,
+                    },
+                  ]}
+                >
+                  {renderFormField(question)}
+                </Form.Item>
+              ))}
+            </Form>
+          )}
+
+          <div className="mt-4 p-3 bg-green-50 rounded-lg">
+            <Text className="text-xs text-green-700">
+              <strong>Note:</strong> Please complete this post-test assessment to
+              measure your learning outcomes from the training.
             </Text>
           </div>
         </div>

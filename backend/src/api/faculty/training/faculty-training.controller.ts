@@ -27,20 +27,20 @@ export class FacultyTrainingController {
   @Throttle({ default: THROTTLE_PRESETS.list })
   @Get()
   @ApiOperation({ summary: 'Get all available trainings' })
-  async getTrainings(@Query() filters: TrainingFilterDto) {
-    return this.trainingService.findAll(filters, false); // Only published trainings
+  async getTrainings(@Query() filters: TrainingFilterDto, @Req() req) {
+    return this.trainingService.findAll(filters, false, req.user.userId); // Only published + branch-scoped trainings
   }
 
   @Get('calendar')
   @ApiOperation({ summary: 'Get training calendar' })
-  async getCalendar(@Query() filters: CalendarFilterDto) {
-    return this.trainingService.getCalendar(filters);
+  async getCalendar(@Query() filters: CalendarFilterDto, @Req() req) {
+    return this.trainingService.getCalendar(filters, req.user.userId);
   }
 
   @Get('upcoming')
   @ApiOperation({ summary: 'Get upcoming trainings' })
-  async getUpcoming(@Query('limit') limit?: string) {
-    return this.trainingService.getUpcoming(limit ? Number(limit) : 10);
+  async getUpcoming(@Query('limit') limit: string | undefined, @Req() req) {
+    return this.trainingService.getUpcoming(limit ? Number(limit) : 10, undefined, req.user.userId);
   }
 
   @Get('my-trainings')
@@ -51,8 +51,8 @@ export class FacultyTrainingController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get training details' })
-  async getTraining(@Param('id') id: string) {
-    return this.trainingService.findOne(id);
+  async getTraining(@Param('id') id: string, @Req() req) {
+    return this.trainingService.findOne(id, req.user.userId);
   }
 
   @Get(':id/eligibility')

@@ -1,5 +1,19 @@
-import React, { useMemo, useState } from 'react';
-import { Button, Col, DatePicker, Form, Input, InputNumber, Row, Select, Space, Steps, Switch, TimePicker, Typography } from 'antd';
+import React, { useMemo, useState } from "react";
+import {
+  Button,
+  Col,
+  DatePicker,
+  Form,
+  Input,
+  InputNumber,
+  Row,
+  Select,
+  Space,
+  Steps,
+  Switch,
+  TimePicker,
+  Typography,
+} from "antd";
 import {
   InfoCircleOutlined,
   CalendarOutlined,
@@ -9,41 +23,51 @@ import {
   RightOutlined,
   CheckOutlined,
   ClockCircleOutlined,
-} from '@ant-design/icons';
-import dayjs from 'dayjs';
-import { useBranches } from '../../../../shared/hooks/useLookup';
+} from "@ant-design/icons";
+import dayjs from "dayjs";
+import { useBranches } from "../../../../shared/hooks/useLookup";
 
 const { Title, Text } = Typography;
 
-const FormSection = ({ icon: Icon, title, description, children }) => (
-  <div className="mb-6">
-    <div className="flex items-center gap-2 mb-4">
-      {Icon && <Icon className="text-primary text-lg" />}
-      <div>
-        <Title level={5} className="!mb-0 training-heading">{title}</Title>
-        {description && <Text type="secondary" className="text-xs">{description}</Text>}
-      </div>
+const FormSection = ({ icon: Icon, title, children }) => (
+  <div className="mb-5">
+    <div className="flex items-center gap-2 mb-3">
+      {Icon && <Icon className="text-primary text-base" />}
+      <Title level={5} className="!mb-0 !text-sm training-heading">
+        {title}
+      </Title>
     </div>
     {children}
   </div>
 );
 
 const STEPS = [
-  { title: 'Basic Info', icon: <InfoCircleOutlined /> },
-  { title: 'Schedule', icon: <CalendarOutlined /> },
-  { title: 'Capacity', icon: <TeamOutlined /> },
-  { title: 'Settings', icon: <SettingOutlined /> },
+  { title: "Basic Info", icon: <InfoCircleOutlined /> },
+  { title: "Schedule", icon: <CalendarOutlined /> },
+  { title: "Capacity", icon: <TeamOutlined /> },
+  { title: "Settings", icon: <SettingOutlined /> },
 ];
 
 // Fields required for each step (for validation)
 const STEP_FIELDS = {
-  0: ['title'], // Basic Information - title is required
-  1: ['startDate', 'endDate', 'applicationDeadline', 'deliveryMode'], // Schedule & Details
-  2: ['capacity'], // Capacity & Audience
+  0: ["title"], // Basic Information - title is required
+  1: ["startDate", "endDate", "applicationDeadline", "deliveryMode"], // Schedule & Details
+  2: ["capacity"], // Capacity & Audience
   3: [], // Settings - no required fields
 };
 
-const TrainingForm = ({ form, onSubmit, loading, submitText = 'Save', feedbackForms = [], onCancel, currentStep, onStepChange }) => {
+const TrainingForm = ({
+  form,
+  onSubmit,
+  loading,
+  submitText = "Save",
+  feedbackForms = [],
+  preTestForms = [],
+  postTestForms = [],
+  onCancel,
+  currentStep,
+  onStepChange,
+}) => {
   const { activeBranches } = useBranches(true);
   const [internalStep, setInternalStep] = useState(0);
 
@@ -52,21 +76,51 @@ const TrainingForm = ({ form, onSubmit, loading, submitText = 'Save', feedbackFo
   const setStep = onStepChange || setInternalStep;
 
   const branchOptions = useMemo(
-    () => activeBranches.map((branch) => ({ value: branch.id, label: branch.name })),
-    [activeBranches]
+    () =>
+      activeBranches.map((branch) => ({
+        value: branch.id,
+        label: branch.name,
+      })),
+    [activeBranches],
   );
 
   const feedbackOptions = useMemo(
-    () => feedbackForms.map((formItem) => ({ value: formItem.id, label: formItem.title })),
-    [feedbackForms]
+    () =>
+      feedbackForms.map((formItem) => ({
+        value: formItem.id,
+        label: formItem.title,
+      })),
+    [feedbackForms],
+  );
+
+  const preTestOptions = useMemo(
+    () =>
+      preTestForms.filter((f) => f.isPublished).map((formItem) => ({
+        value: formItem.id,
+        label: formItem.title,
+      })),
+    [preTestForms],
+  );
+
+  const postTestOptions = useMemo(
+    () =>
+      postTestForms.filter((f) => f.isPublished).map((formItem) => ({
+        value: formItem.id,
+        label: formItem.title,
+      })),
+    [postTestForms],
   );
 
   const handleFinish = (values) => {
     const payload = {
       ...values,
-      startDate: values.startDate ? dayjs(values.startDate).toISOString() : undefined,
+      startDate: values.startDate
+        ? dayjs(values.startDate).toISOString()
+        : undefined,
       endDate: values.endDate ? dayjs(values.endDate).toISOString() : undefined,
-      startTime: values.startTime ? dayjs(values.startTime).toISOString() : undefined,
+      startTime: values.startTime
+        ? dayjs(values.startTime).toISOString()
+        : undefined,
       endTime: values.endTime ? dayjs(values.endTime).toISOString() : undefined,
       applicationDeadline: values.applicationDeadline
         ? dayjs(values.applicationDeadline).toISOString()
@@ -77,14 +131,14 @@ const TrainingForm = ({ form, onSubmit, loading, submitText = 'Save', feedbackFo
 
   // Auto-calculate duration when startTime or endTime changes
   const handleTimeChange = () => {
-    const startTime = form.getFieldValue('startTime');
-    const endTime = form.getFieldValue('endTime');
+    const startTime = form.getFieldValue("startTime");
+    const endTime = form.getFieldValue("endTime");
     if (startTime && endTime) {
       const start = dayjs(startTime);
       const end = dayjs(endTime);
-      const diffHours = end.diff(start, 'hour', true);
+      const diffHours = end.diff(start, "hour", true);
       if (diffHours > 0) {
-        form.setFieldValue('duration', Math.round(diffHours * 10) / 10);
+        form.setFieldValue("duration", Math.round(diffHours * 10) / 10);
       }
     }
   };
@@ -120,10 +174,10 @@ const TrainingForm = ({ form, onSubmit, loading, submitText = 'Save', feedbackFo
       handleFinish(values);
     } catch (error) {
       // Find which step has errors and go to it
-      const errorFields = error.errorFields?.map(f => f.name[0]) || [];
+      const errorFields = error.errorFields?.map((f) => f.name[0]) || [];
       for (let i = 0; i < STEPS.length; i++) {
         const stepFields = STEP_FIELDS[i];
-        if (stepFields.some(field => errorFields.includes(field))) {
+        if (stepFields.some((field) => errorFields.includes(field))) {
           setStep(i);
           break;
         }
@@ -133,17 +187,16 @@ const TrainingForm = ({ form, onSubmit, loading, submitText = 'Save', feedbackFo
 
   // Step 1: Basic Information
   const renderBasicInfo = () => (
-    <FormSection
-      icon={InfoCircleOutlined}
-      title="Basic Information"
-      description="Enter the training title and description"
-    >
+    <FormSection>
       <Form.Item
         name="title"
         label="Training Title"
-        rules={[{ required: true, message: 'Please enter a training title' }]}
+        rules={[{ required: true, message: "Please enter a training title" }]}
       >
-        <Input placeholder="e.g., Advanced CNC Programming Workshop" size="large" />
+        <Input
+          placeholder="e.g., Advanced CNC Programming Workshop"
+          size="large"
+        />
       </Form.Item>
 
       <Form.Item name="description" label="Description">
@@ -172,17 +225,13 @@ const TrainingForm = ({ form, onSubmit, loading, submitText = 'Save', feedbackFo
 
   // Step 2: Schedule & Details
   const renderScheduleDetails = () => (
-    <FormSection
-      icon={CalendarOutlined}
-      title="Schedule & Details"
-      description="Set training dates, duration, mode, and location"
-    >
+    <FormSection >
       <Row gutter={16}>
         <Col xs={24} sm={8}>
           <Form.Item
             name="startDate"
             label="Start Date"
-            rules={[{ required: true, message: 'Required' }]}
+            rules={[{ required: true, message: "Required" }]}
           >
             <DatePicker className="w-full" format="DD MMM YYYY" />
           </Form.Item>
@@ -191,7 +240,7 @@ const TrainingForm = ({ form, onSubmit, loading, submitText = 'Save', feedbackFo
           <Form.Item
             name="endDate"
             label="End Date"
-            rules={[{ required: true, message: 'Required' }]}
+            rules={[{ required: true, message: "Required" }]}
           >
             <DatePicker className="w-full" format="DD MMM YYYY" />
           </Form.Item>
@@ -200,7 +249,7 @@ const TrainingForm = ({ form, onSubmit, loading, submitText = 'Save', feedbackFo
           <Form.Item
             name="applicationDeadline"
             label="Application Deadline"
-            rules={[{ required: true, message: 'Required' }]}
+            rules={[{ required: true, message: "Required" }]}
           >
             <DatePicker className="w-full" format="DD MMM YYYY" />
           </Form.Item>
@@ -236,12 +285,23 @@ const TrainingForm = ({ form, onSubmit, loading, submitText = 'Save', feedbackFo
             label="Duration (hours)"
             extra="Auto-calculated from times"
           >
-            <InputNumber min={0.5} max={500} className="w-full" placeholder="Auto" readOnly />
+            <InputNumber
+              min={0.5}
+              max={500}
+              className="w-full"
+              placeholder="Auto"
+              readOnly
+            />
           </Form.Item>
         </Col>
         <Col xs={24} sm={6}>
           <Form.Item name="cost" label="Cost (₹)">
-            <InputNumber min={0} className="w-full" placeholder="0 = Free" prefix="₹" />
+            <InputNumber
+              min={0}
+              className="w-full"
+              placeholder="0 = Free"
+              prefix="₹"
+            />
           </Form.Item>
         </Col>
       </Row>
@@ -251,14 +311,14 @@ const TrainingForm = ({ form, onSubmit, loading, submitText = 'Save', feedbackFo
           <Form.Item
             name="deliveryMode"
             label="Delivery Mode"
-            rules={[{ required: true, message: 'Required' }]}
+            rules={[{ required: true, message: "Required" }]}
           >
             <Select
               placeholder="Select mode"
               options={[
-                { value: 'ONLINE', label: 'Online' },
-                { value: 'OFFLINE', label: 'In-Person' },
-                { value: 'HYBRID', label: 'Hybrid' },
+                { value: "ONLINE", label: "Online" },
+                { value: "OFFLINE", label: "In-Person" },
+                { value: "HYBRID", label: "Hybrid" },
               ]}
             />
           </Form.Item>
@@ -269,9 +329,9 @@ const TrainingForm = ({ form, onSubmit, loading, submitText = 'Save', feedbackFo
               placeholder="Select level"
               allowClear
               options={[
-                { value: 'BEGINNER', label: 'Beginner' },
-                { value: 'INTERMEDIATE', label: 'Intermediate' },
-                { value: 'ADVANCED', label: 'Advanced' },
+                { value: "BEGINNER", label: "Beginner" },
+                { value: "INTERMEDIATE", label: "Intermediate" },
+                { value: "ADVANCED", label: "Advanced" },
               ]}
             />
           </Form.Item>
@@ -300,19 +360,20 @@ const TrainingForm = ({ form, onSubmit, loading, submitText = 'Save', feedbackFo
 
   // Step 3: Capacity & Audience
   const renderCapacityAudience = () => (
-    <FormSection
-      icon={TeamOutlined}
-      title="Capacity & Audience"
-      description="Define participant limits, target branches, prerequisites, and learning outcomes"
-    >
+    <FormSection>
       <Row gutter={16}>
         <Col xs={24} sm={8}>
           <Form.Item
             name="capacity"
             label="Maximum Participants"
-            rules={[{ required: true, message: 'Required' }]}
+            rules={[{ required: true, message: "Required" }]}
           >
-            <InputNumber min={1} max={1000} className="w-full" placeholder="e.g., 40" />
+            <InputNumber
+              min={1}
+              max={1000}
+              className="w-full"
+              placeholder="e.g., 40"
+            />
           </Form.Item>
         </Col>
         <Col xs={24} sm={16}>
@@ -341,7 +402,7 @@ const TrainingForm = ({ form, onSubmit, loading, submitText = 'Save', feedbackFo
       >
         <Select
           mode="tags"
-          tokenSeparators={[',']}
+          tokenSeparators={[","]}
           placeholder="e.g., Master advanced CNC programming techniques"
           className="w-full"
         />
@@ -351,11 +412,27 @@ const TrainingForm = ({ form, onSubmit, loading, submitText = 'Save', feedbackFo
 
   // Step 4: Settings
   const renderSettings = () => (
-    <FormSection
-      icon={SettingOutlined}
-      title="Settings"
-      description="Configure feedback and publication options"
-    >
+    <FormSection>
+      <Row gutter={16}>
+        <Col xs={24} sm={12}>
+          <Form.Item name="preTestFormId" label="Pre-Test Form" extra="Prerequisites assessment before training">
+            <Select
+              allowClear
+              options={preTestOptions}
+              placeholder="Assign a pre-test form"
+            />
+          </Form.Item>
+        </Col>
+        <Col xs={24} sm={12}>
+          <Form.Item name="postTestFormId" label="Post-Test Form" extra="Learning assessment after training">
+            <Select
+              allowClear
+              options={postTestOptions}
+              placeholder="Assign a post-test form"
+            />
+          </Form.Item>
+        </Col>
+      </Row>
       <Row gutter={16}>
         <Col xs={24} sm={12}>
           <Form.Item name="feedbackFormId" label="Feedback Form">
@@ -367,7 +444,11 @@ const TrainingForm = ({ form, onSubmit, loading, submitText = 'Save', feedbackFo
           </Form.Item>
         </Col>
         <Col xs={24} sm={12}>
-          <Form.Item name="publish" label="Publish Immediately" valuePropName="checked">
+          <Form.Item
+            name="publish"
+            label="Publish Immediately"
+            valuePropName="checked"
+          >
             <Switch checkedChildren="Yes" unCheckedChildren="No" />
           </Form.Item>
         </Col>
@@ -391,23 +472,20 @@ const TrainingForm = ({ form, onSubmit, loading, submitText = 'Save', feedbackFo
   };
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-3xl">
       <Steps
         current={step}
         items={STEPS}
-        className="mb-8"
+        className="mb-5"
+        size="small"
         responsive
       />
 
-      <Form layout="vertical" form={form} onFinish={handleFinish}>
+      <Form layout="vertical" form={form} onFinish={handleFinish} size="small">
         {renderStepContent()}
 
-        <div className="flex justify-between gap-3 pt-6 border-t border-border mt-6">
-          <div>
-            {onCancel && (
-              <Button onClick={onCancel}>Cancel</Button>
-            )}
-          </div>
+        <div className="flex justify-between gap-2 pt-4 border-t border-border mt-4">
+          <div>{onCancel && <Button onClick={onCancel}>Cancel</Button>}</div>
           <Space>
             {step > 0 && (
               <Button onClick={handlePrevious} icon={<LeftOutlined />}>
@@ -415,7 +493,12 @@ const TrainingForm = ({ form, onSubmit, loading, submitText = 'Save', feedbackFo
               </Button>
             )}
             {step < STEPS.length - 1 ? (
-              <Button type="primary" onClick={handleNext} icon={<RightOutlined />} iconPosition="end">
+              <Button
+                type="primary"
+                onClick={handleNext}
+                icon={<RightOutlined />}
+                iconPosition="end"
+              >
                 Next
               </Button>
             ) : (

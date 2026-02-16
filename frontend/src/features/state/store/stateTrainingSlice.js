@@ -39,6 +39,16 @@ const initialState = {
     loading: false,
     error: null,
   },
+  preTestForms: {
+    list: [],
+    loading: false,
+    error: null,
+  },
+  postTestForms: {
+    list: [],
+    loading: false,
+    error: null,
+  },
   feedbackResponses: {
     data: null,
     loading: false,
@@ -62,6 +72,8 @@ const initialState = {
     applications: null,
     lessonPlans: null,
     feedbackForms: null,
+    preTestForms: null,
+    postTestForms: null,
     reportsDashboard: null,
   },
 };
@@ -436,6 +448,138 @@ export const fetchStateFeedbackStats = createAsyncThunk(
   }
 );
 
+// Pre-Test Forms
+export const fetchStatePreTestForms = createAsyncThunk(
+  'stateTraining/fetchPreTestForms',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.stateTraining.lastFetched.preTestForms;
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
+        return { cached: true };
+      }
+      const response = await trainingAdminService.getPreTestForms(params);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch pre-test forms');
+    }
+  }
+);
+
+export const createStatePreTestForm = createAsyncThunk(
+  'stateTraining/createPreTestForm',
+  async (data, { rejectWithValue }) => {
+    try {
+      const response = await trainingAdminService.createPreTestForm(data);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create pre-test form');
+    }
+  }
+);
+
+export const updateStatePreTestForm = createAsyncThunk(
+  'stateTraining/updatePreTestForm',
+  async ({ id, data }, { rejectWithValue }) => {
+    try {
+      const response = await trainingAdminService.updatePreTestForm(id, data);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update pre-test form');
+    }
+  }
+);
+
+export const deleteStatePreTestForm = createAsyncThunk(
+  'stateTraining/deletePreTestForm',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await trainingAdminService.deletePreTestForm(id);
+      return { id, response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete pre-test form');
+    }
+  }
+);
+
+export const publishStatePreTestForm = createAsyncThunk(
+  'stateTraining/publishPreTestForm',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await trainingAdminService.publishPreTestForm(id);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to publish pre-test form');
+    }
+  }
+);
+
+// Post-Test Forms
+export const fetchStatePostTestForms = createAsyncThunk(
+  'stateTraining/fetchPostTestForms',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.stateTraining.lastFetched.postTestForms;
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
+        return { cached: true };
+      }
+      const response = await trainingAdminService.getPostTestForms(params);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch post-test forms');
+    }
+  }
+);
+
+export const createStatePostTestForm = createAsyncThunk(
+  'stateTraining/createPostTestForm',
+  async (data, { rejectWithValue }) => {
+    try {
+      const response = await trainingAdminService.createPostTestForm(data);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create post-test form');
+    }
+  }
+);
+
+export const updateStatePostTestForm = createAsyncThunk(
+  'stateTraining/updatePostTestForm',
+  async ({ id, data }, { rejectWithValue }) => {
+    try {
+      const response = await trainingAdminService.updatePostTestForm(id, data);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update post-test form');
+    }
+  }
+);
+
+export const deleteStatePostTestForm = createAsyncThunk(
+  'stateTraining/deletePostTestForm',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await trainingAdminService.deletePostTestForm(id);
+      return { id, response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete post-test form');
+    }
+  }
+);
+
+export const publishStatePostTestForm = createAsyncThunk(
+  'stateTraining/publishPostTestForm',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await trainingAdminService.publishPostTestForm(id);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to publish post-test form');
+    }
+  }
+);
+
 // Reports
 export const fetchStateTrainingDashboard = createAsyncThunk(
   'stateTraining/fetchDashboard',
@@ -667,6 +811,76 @@ const stateTrainingSlice = createSlice({
         const index = state.feedbackForms.list.findIndex((form) => form.id === action.payload.id);
         if (index !== -1) {
           state.feedbackForms.list[index] = action.payload;
+        }
+      })
+
+      // Pre-test forms
+      .addCase(fetchStatePreTestForms.pending, (state) => {
+        state.preTestForms.loading = true;
+        state.preTestForms.error = null;
+      })
+      .addCase(fetchStatePreTestForms.fulfilled, (state, action) => {
+        state.preTestForms.loading = false;
+        if (!action.payload?.cached) {
+          state.preTestForms.list = action.payload?.data || action.payload?.items || action.payload || [];
+          state.lastFetched.preTestForms = Date.now();
+        }
+      })
+      .addCase(fetchStatePreTestForms.rejected, (state, action) => {
+        state.preTestForms.loading = false;
+        state.preTestForms.error = action.payload;
+      })
+      .addCase(createStatePreTestForm.fulfilled, (state, action) => {
+        state.preTestForms.list = [action.payload, ...state.preTestForms.list];
+      })
+      .addCase(updateStatePreTestForm.fulfilled, (state, action) => {
+        const index = state.preTestForms.list.findIndex((form) => form.id === action.payload.id);
+        if (index !== -1) {
+          state.preTestForms.list[index] = action.payload;
+        }
+      })
+      .addCase(deleteStatePreTestForm.fulfilled, (state, action) => {
+        state.preTestForms.list = state.preTestForms.list.filter((form) => form.id !== action.payload.id);
+      })
+      .addCase(publishStatePreTestForm.fulfilled, (state, action) => {
+        const index = state.preTestForms.list.findIndex((form) => form.id === action.payload.id);
+        if (index !== -1) {
+          state.preTestForms.list[index] = action.payload;
+        }
+      })
+
+      // Post-test forms
+      .addCase(fetchStatePostTestForms.pending, (state) => {
+        state.postTestForms.loading = true;
+        state.postTestForms.error = null;
+      })
+      .addCase(fetchStatePostTestForms.fulfilled, (state, action) => {
+        state.postTestForms.loading = false;
+        if (!action.payload?.cached) {
+          state.postTestForms.list = action.payload?.data || action.payload?.items || action.payload || [];
+          state.lastFetched.postTestForms = Date.now();
+        }
+      })
+      .addCase(fetchStatePostTestForms.rejected, (state, action) => {
+        state.postTestForms.loading = false;
+        state.postTestForms.error = action.payload;
+      })
+      .addCase(createStatePostTestForm.fulfilled, (state, action) => {
+        state.postTestForms.list = [action.payload, ...state.postTestForms.list];
+      })
+      .addCase(updateStatePostTestForm.fulfilled, (state, action) => {
+        const index = state.postTestForms.list.findIndex((form) => form.id === action.payload.id);
+        if (index !== -1) {
+          state.postTestForms.list[index] = action.payload;
+        }
+      })
+      .addCase(deleteStatePostTestForm.fulfilled, (state, action) => {
+        state.postTestForms.list = state.postTestForms.list.filter((form) => form.id !== action.payload.id);
+      })
+      .addCase(publishStatePostTestForm.fulfilled, (state, action) => {
+        const index = state.postTestForms.list.findIndex((form) => form.id === action.payload.id);
+        if (index !== -1) {
+          state.postTestForms.list[index] = action.payload;
         }
       })
 

@@ -6,6 +6,7 @@ import {
   TrainingDifficulty,
   FeedbackFormPurpose,
   LessonPlanStatus,
+  TestFormPurpose,
 } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
@@ -36,6 +37,13 @@ async function cleanupTrainingData() {
   });
   console.log(`  Deleted ${feedbackResponsesDeleted.count} feedback responses`);
 
+  // Delete test responses
+  const preTestResponsesDeleted = await prisma.preTestResponse.deleteMany({});
+  console.log(`  Deleted ${preTestResponsesDeleted.count} pre-test responses`);
+
+  const postTestResponsesDeleted = await prisma.postTestResponse.deleteMany({});
+  console.log(`  Deleted ${postTestResponsesDeleted.count} post-test responses`);
+
   const lessonPlansDeleted = await prisma.lessonPlan.deleteMany({});
   console.log(`  Deleted ${lessonPlansDeleted.count} lesson plans`);
 
@@ -52,6 +60,13 @@ async function cleanupTrainingData() {
     where: { purpose: FeedbackFormPurpose.TRAINING },
   });
   console.log(`  Deleted ${feedbackFormsDeleted.count} feedback forms`);
+
+  // Delete test forms
+  const preTestFormsDeleted = await prisma.preTestForm.deleteMany({});
+  console.log(`  Deleted ${preTestFormsDeleted.count} pre-test forms`);
+
+  const postTestFormsDeleted = await prisma.postTestForm.deleteMany({});
+  console.log(`  Deleted ${postTestFormsDeleted.count} post-test forms`);
 
   console.log('  Cleanup completed!\n');
 }
@@ -172,6 +187,21 @@ type FeedbackFormSeed = {
     question: string;
     required: boolean;
     options?: any;
+  }>;
+};
+
+type TestFormSeed = {
+  title: string;
+  description: string;
+  purpose: TestFormPurpose;
+  passingScore?: number;
+  questions: Array<{
+    id: string;
+    type: string;
+    question: string;
+    required: boolean;
+    options?: any;
+    correctAnswer?: any;
   }>;
 };
 
@@ -347,6 +377,202 @@ const FEEDBACK_FORMS: FeedbackFormSeed[] = [
         type: 'text',
         question: 'Topics you would like covered in future trainings',
         required: false,
+      },
+    ],
+  },
+];
+
+// ============================================================================
+// PRE-TEST FORMS (Assessment before training)
+// ============================================================================
+
+const PRE_TEST_FORMS: TestFormSeed[] = [
+  {
+    title: 'General Training Prerequisites Assessment',
+    description: 'Assess your current knowledge level before the training begins.',
+    purpose: TestFormPurpose.PRE_TEST,
+    passingScore: 60,
+    questions: [
+      {
+        id: 'pt1',
+        type: 'multiChoice',
+        question: 'How would you rate your current understanding of outcome-based education?',
+        required: true,
+        options: { choices: ['Beginner', 'Intermediate', 'Advanced', 'Expert'] },
+      },
+      {
+        id: 'pt2',
+        type: 'multiChoice',
+        question: 'Have you previously attended any faculty development program?',
+        required: true,
+        options: { choices: ['None', '1-2 programs', '3-5 programs', 'More than 5'] },
+        correctAnswer: '3-5 programs',
+      },
+      {
+        id: 'pt3',
+        type: 'multiChoice',
+        question: 'Which digital teaching tools are you familiar with?',
+        required: true,
+        options: { choices: ['LMS platforms', 'Video conferencing', 'Interactive whiteboards', 'All of the above', 'None'] },
+        correctAnswer: 'All of the above',
+      },
+      {
+        id: 'pt4',
+        type: 'text',
+        question: 'What specific skills do you hope to gain from this training?',
+        required: true,
+      },
+      {
+        id: 'pt5',
+        type: 'yesNo',
+        question: 'Are you currently teaching courses related to this training topic?',
+        required: true,
+      },
+    ],
+  },
+  {
+    title: 'Technical Skills Pre-Assessment',
+    description: 'Evaluate your technical background before advanced training sessions.',
+    purpose: TestFormPurpose.PRE_TEST,
+    passingScore: 50,
+    questions: [
+      {
+        id: 'tpt1',
+        type: 'multiChoice',
+        question: 'What is your experience level with programming?',
+        required: true,
+        options: { choices: ['No experience', 'Basic', 'Intermediate', 'Advanced'] },
+      },
+      {
+        id: 'tpt2',
+        type: 'multiChoice',
+        question: 'Which programming languages are you proficient in?',
+        required: true,
+        options: { choices: ['Python', 'Java', 'C/C++', 'JavaScript', 'None'] },
+      },
+      {
+        id: 'tpt3',
+        type: 'multiChoice',
+        question: 'How familiar are you with data analysis concepts?',
+        required: true,
+        options: { choices: ['Not familiar', 'Somewhat familiar', 'Familiar', 'Very familiar'] },
+        correctAnswer: 'Familiar',
+      },
+      {
+        id: 'tpt4',
+        type: 'yesNo',
+        question: 'Have you worked with machine learning frameworks before?',
+        required: true,
+      },
+      {
+        id: 'tpt5',
+        type: 'text',
+        question: 'Describe a technical project you have worked on recently.',
+        required: false,
+      },
+    ],
+  },
+];
+
+// ============================================================================
+// POST-TEST FORMS (Assessment after training completion)
+// ============================================================================
+
+const POST_TEST_FORMS: TestFormSeed[] = [
+  {
+    title: 'Training Knowledge Assessment',
+    description: 'Evaluate your learning outcomes after completing the training.',
+    purpose: TestFormPurpose.POST_TEST,
+    passingScore: 70,
+    questions: [
+      {
+        id: 'pst1',
+        type: 'multiChoice',
+        question: 'What is the primary purpose of outcome-based education?',
+        required: true,
+        options: { choices: ['Focus on teaching methods', 'Measure student learning outcomes', 'Reduce assessment burden', 'Simplify curriculum'] },
+        correctAnswer: 'Measure student learning outcomes',
+      },
+      {
+        id: 'pst2',
+        type: 'multiChoice',
+        question: 'Which of the following is NOT a component of Bloom\'s Taxonomy?',
+        required: true,
+        options: { choices: ['Remember', 'Understand', 'Optimize', 'Evaluate'] },
+        correctAnswer: 'Optimize',
+      },
+      {
+        id: 'pst3',
+        type: 'multiChoice',
+        question: 'CO-PO mapping helps in:',
+        required: true,
+        options: { choices: ['Tracking attendance', 'Aligning course outcomes with program outcomes', 'Grading students', 'Scheduling classes'] },
+        correctAnswer: 'Aligning course outcomes with program outcomes',
+      },
+      {
+        id: 'pst4',
+        type: 'rating',
+        question: 'Rate your confidence in applying the training concepts (1-5)',
+        required: true,
+        options: { min: 1, max: 5 },
+      },
+      {
+        id: 'pst5',
+        type: 'text',
+        question: 'How do you plan to implement the learnings from this training in your teaching?',
+        required: true,
+      },
+      {
+        id: 'pst6',
+        type: 'yesNo',
+        question: 'Do you feel confident to train your colleagues on this topic?',
+        required: true,
+        correctAnswer: true,
+      },
+    ],
+  },
+  {
+    title: 'Advanced Technical Training Assessment',
+    description: 'Test your understanding of advanced technical concepts covered in the training.',
+    purpose: TestFormPurpose.POST_TEST,
+    passingScore: 65,
+    questions: [
+      {
+        id: 'apt1',
+        type: 'multiChoice',
+        question: 'Which library is primarily used for data manipulation in Python?',
+        required: true,
+        options: { choices: ['NumPy', 'Pandas', 'Matplotlib', 'TensorFlow'] },
+        correctAnswer: 'Pandas',
+      },
+      {
+        id: 'apt2',
+        type: 'multiChoice',
+        question: 'What is the purpose of cross-validation in machine learning?',
+        required: true,
+        options: { choices: ['Speed up training', 'Evaluate model performance', 'Reduce dataset size', 'Visualize results'] },
+        correctAnswer: 'Evaluate model performance',
+      },
+      {
+        id: 'apt3',
+        type: 'multiChoice',
+        question: 'Which algorithm is best suited for classification problems?',
+        required: true,
+        options: { choices: ['Linear Regression', 'K-Means', 'Random Forest', 'PCA'] },
+        correctAnswer: 'Random Forest',
+      },
+      {
+        id: 'apt4',
+        type: 'rating',
+        question: 'Rate your ability to implement ML projects independently (1-5)',
+        required: true,
+        options: { min: 1, max: 5 },
+      },
+      {
+        id: 'apt5',
+        type: 'text',
+        question: 'Describe how you will integrate these technical skills into your curriculum.',
+        required: true,
       },
     ],
   },
@@ -705,28 +931,186 @@ async function ensureFeedbackForms(createdById: string): Promise<Map<string, str
   return formIdMap;
 }
 
+async function ensureTestForms(createdById: string): Promise<{
+  preTestFormIdMap: Map<string, string>;
+  postTestFormIdMap: Map<string, string>;
+}> {
+  const preTestFormIdMap = new Map<string, string>();
+  const postTestFormIdMap = new Map<string, string>();
+
+  // Create Pre-Test Forms
+  for (const form of PRE_TEST_FORMS) {
+    const existing = await prisma.preTestForm.findFirst({
+      where: { title: form.title },
+      select: { id: true },
+    });
+
+    if (existing) {
+      preTestFormIdMap.set(form.title, existing.id);
+      console.log(`  Pre-test form exists: ${form.title}`);
+    } else {
+      const created = await prisma.preTestForm.create({
+        data: {
+          title: form.title,
+          description: form.description,
+          purpose: form.purpose,
+          passingScore: form.passingScore,
+          questions: form.questions,
+          isActive: true,
+          isPublished: true,
+          createdById,
+        },
+        select: { id: true },
+      });
+      preTestFormIdMap.set(form.title, created.id);
+      console.log(`  Created pre-test form: ${form.title}`);
+    }
+  }
+
+  // Create Post-Test Forms
+  for (const form of POST_TEST_FORMS) {
+    const existing = await prisma.postTestForm.findFirst({
+      where: { title: form.title },
+      select: { id: true },
+    });
+
+    if (existing) {
+      postTestFormIdMap.set(form.title, existing.id);
+      console.log(`  Post-test form exists: ${form.title}`);
+    } else {
+      const created = await prisma.postTestForm.create({
+        data: {
+          title: form.title,
+          description: form.description,
+          purpose: form.purpose,
+          passingScore: form.passingScore,
+          questions: form.questions,
+          isActive: true,
+          isPublished: true,
+          createdById,
+        },
+        select: { id: true },
+      });
+      postTestFormIdMap.set(form.title, created.id);
+      console.log(`  Created post-test form: ${form.title}`);
+    }
+  }
+
+  return { preTestFormIdMap, postTestFormIdMap };
+}
+
+function getTestFormForTraining(
+  preTestFormIdMap: Map<string, string>,
+  postTestFormIdMap: Map<string, string>,
+  trainingTitle: string,
+): { preTestFormId: string | null; postTestFormId: string | null } {
+  // Assign test forms based on training type
+  const isTechnical =
+    trainingTitle.includes('Python') ||
+    trainingTitle.includes('AI') ||
+    trainingTitle.includes('Industry 4.0') ||
+    trainingTitle.includes('Machine Learning');
+
+  if (isTechnical) {
+    return {
+      preTestFormId: preTestFormIdMap.get('Technical Skills Pre-Assessment') || null,
+      postTestFormId: postTestFormIdMap.get('Advanced Technical Training Assessment') || null,
+    };
+  }
+
+  return {
+    preTestFormId: preTestFormIdMap.get('General Training Prerequisites Assessment') || null,
+    postTestFormId: postTestFormIdMap.get('Training Knowledge Assessment') || null,
+  };
+}
+
+function generateTestResponse(questions: any[], isCorrect: boolean = true): Record<string, any> {
+  const responses: Record<string, any> = {};
+
+  questions.forEach((q) => {
+    if (q.type === 'multiChoice') {
+      if (isCorrect && q.correctAnswer) {
+        responses[q.id] = q.correctAnswer;
+      } else {
+        responses[q.id] = q.options?.choices?.[Math.floor(Math.random() * q.options.choices.length)] || 'Option A';
+      }
+    } else if (q.type === 'rating') {
+      responses[q.id] = getRandomRating(3, 5);
+    } else if (q.type === 'yesNo') {
+      if (isCorrect && q.correctAnswer !== undefined) {
+        responses[q.id] = q.correctAnswer;
+      } else {
+        responses[q.id] = Math.random() > 0.5;
+      }
+    } else if (q.type === 'text') {
+      const textResponses = [
+        'I plan to apply these concepts in my teaching practice.',
+        'The training provided valuable insights for curriculum development.',
+        'I will share these learnings with my colleagues.',
+        'This will help improve student outcomes in my courses.',
+      ];
+      responses[q.id] = getRandomElement(textResponses);
+    }
+  });
+
+  return responses;
+}
+
 async function getEligibleUsers() {
   const targetUsers = await prisma.user.findMany({
     where: { email: { in: TARGET_EMAILS } },
-    select: { id: true, name: true, email: true },
+    select: { id: true, name: true, email: true, institutionId: true },
   });
+
+  // Get teachers from different institutions
+  const institutions = await prisma.institution.findMany({
+    where: { isActive: true },
+    select: { id: true, name: true },
+    take: 5,
+  });
+
+  console.log(`Found ${institutions.length} active institutions`);
+
+  // Get teachers from each institution
+  const crossInstitutionUsers: Array<{ id: string; name: string; email: string; institutionId: string | null }> = [];
+
+  for (const institution of institutions) {
+    const usersFromInstitution = await prisma.user.findMany({
+      where: {
+        active: true,
+        role: Role.TEACHER,
+        institutionId: institution.id,
+      },
+      select: { id: true, name: true, email: true, institutionId: true },
+      take: 5, // 5 users per institution
+    });
+    crossInstitutionUsers.push(...usersFromInstitution);
+    console.log(`  Found ${usersFromInstitution.length} teachers from ${institution.name}`);
+  }
 
   const teachers = await prisma.user.findMany({
     where: { active: true, role: Role.TEACHER },
-    select: { id: true, name: true, email: true },
+    select: { id: true, name: true, email: true, institutionId: true },
     take: 25,
   });
 
   const allActive = await prisma.user.findMany({
     where: { active: true },
-    select: { id: true, name: true, email: true },
+    select: { id: true, name: true, email: true, institutionId: true },
     take: 15,
   });
+
+  // Combine and deduplicate users
+  const allUsers = [...targetUsers, ...crossInstitutionUsers, ...teachers];
+  const uniqueUsers = Array.from(
+    new Map(allUsers.map((u) => [u.id, u])).values()
+  );
 
   return {
     targetUsers,
     teachers,
-    fallbackUsers: targetUsers.length ? targetUsers : teachers.length ? teachers : allActive,
+    crossInstitutionUsers,
+    fallbackUsers: uniqueUsers.length ? uniqueUsers : allActive,
   };
 }
 
@@ -818,10 +1202,14 @@ async function main() {
   const counts = {
     trainings: { created: 0, existing: 0 },
     feedbackForms: { created: 0, existing: 0 },
+    preTestForms: { created: 0, existing: 0 },
+    postTestForms: { created: 0, existing: 0 },
     applications: { created: 0, existing: 0 },
     attendance: { created: 0, existing: 0 },
     lessonPlans: { created: 0, existing: 0 },
     feedbackResponses: { created: 0, existing: 0 },
+    preTestResponses: { created: 0, existing: 0 },
+    postTestResponses: { created: 0, existing: 0 },
     certificates: { created: 0, existing: 0 },
   };
 
@@ -837,6 +1225,13 @@ async function main() {
   console.log('--- Creating Feedback Forms ---');
   const formIdMap = await ensureFeedbackForms(createdById);
   counts.feedbackForms.created = FEEDBACK_FORMS.length;
+  console.log('');
+
+  // Create test forms
+  console.log('--- Creating Test Forms ---');
+  const { preTestFormIdMap, postTestFormIdMap } = await ensureTestForms(createdById);
+  counts.preTestForms.created = PRE_TEST_FORMS.length;
+  counts.postTestForms.created = POST_TEST_FORMS.length;
   console.log('');
 
   // Get eligible users
@@ -860,6 +1255,11 @@ async function main() {
 
     const targetBranches = await getTargetBranches(seed.targetBranchCodes);
     const feedbackFormId = getFeedbackFormForTraining(formIdMap, seed.title);
+    const { preTestFormId, postTestFormId } = getTestFormForTraining(
+      preTestFormIdMap,
+      postTestFormIdMap,
+      seed.title,
+    );
 
     let training;
     if (existingTraining) {
@@ -878,11 +1278,13 @@ async function main() {
           isPublished: seed.category !== 'future',
           publishedAt: seed.category !== 'future' ? new Date() : null,
           feedbackFormId,
+          preTestFormId,
+          postTestFormId,
           targetBranches: missingBranches.length
             ? { connect: missingBranches }
             : undefined,
         },
-        select: { id: true, title: true, startDate: true, endDate: true },
+        select: { id: true, title: true, startDate: true, endDate: true, preTestFormId: true, postTestFormId: true },
       });
       counts.trainings.existing++;
       console.log(`  Updated existing training`);
@@ -913,11 +1315,13 @@ async function main() {
           publishedAt: seed.category !== 'future' ? new Date() : null,
           createdById,
           feedbackFormId,
+          preTestFormId,
+          postTestFormId,
           targetBranches: targetBranches.length
             ? { connect: targetBranches }
             : undefined,
         },
-        select: { id: true, title: true, startDate: true, endDate: true },
+        select: { id: true, title: true, startDate: true, endDate: true, preTestFormId: true, postTestFormId: true },
       });
       counts.trainings.created++;
       console.log(`  Created new training`);
@@ -1124,6 +1528,72 @@ async function main() {
           counts.feedbackResponses.existing++;
         }
 
+        // Create pre-test responses for past trainings
+        if (training.preTestFormId) {
+          const existingPreTestResponse = await prisma.preTestResponse.findUnique({
+            where: {
+              userId_preTestFormId_trainingId: {
+                userId: user.id,
+                preTestFormId: training.preTestFormId,
+                trainingId: training.id,
+              },
+            },
+            select: { id: true },
+          });
+
+          if (!existingPreTestResponse) {
+            const preTestFormData = PRE_TEST_FORMS.find(
+              (f) => preTestFormIdMap.get(f.title) === training.preTestFormId
+            );
+            await prisma.preTestResponse.create({
+              data: {
+                userId: user.id,
+                preTestFormId: training.preTestFormId,
+                trainingId: training.id,
+                responses: generateTestResponse(preTestFormData?.questions || [], true),
+                score: Math.floor(Math.random() * 30) + 70, // Random score 70-100
+                submittedAt: new Date(seed.startDate.getTime() - 2 * 24 * 60 * 60 * 1000),
+              },
+            });
+            counts.preTestResponses.created++;
+          } else {
+            counts.preTestResponses.existing++;
+          }
+        }
+
+        // Create post-test responses for past trainings
+        if (training.postTestFormId) {
+          const existingPostTestResponse = await prisma.postTestResponse.findUnique({
+            where: {
+              userId_postTestFormId_trainingId: {
+                userId: user.id,
+                postTestFormId: training.postTestFormId,
+                trainingId: training.id,
+              },
+            },
+            select: { id: true },
+          });
+
+          if (!existingPostTestResponse) {
+            const postTestFormData = POST_TEST_FORMS.find(
+              (f) => postTestFormIdMap.get(f.title) === training.postTestFormId
+            );
+            await prisma.postTestResponse.create({
+              data: {
+                userId: user.id,
+                postTestFormId: training.postTestFormId,
+                trainingId: training.id,
+                responses: generateTestResponse(postTestFormData?.questions || [], true),
+                score: Math.floor(Math.random() * 25) + 75, // Random score 75-100
+                submittedAt: new Date(seed.endDate.getTime() + 1 * 24 * 60 * 60 * 1000),
+              },
+            });
+            counts.postTestResponses.created++;
+          } else {
+            counts.postTestResponses.existing++;
+          }
+        }
+
         // Create certificates for past trainings
         const existingCertificate = await prisma.trainingCertificate.findUnique({
           where: {
@@ -1166,6 +1636,12 @@ async function main() {
   console.log(`Feedback Forms:`);
   console.log(`  - Total: ${FEEDBACK_FORMS.length}`);
   console.log('');
+  console.log(`Pre-Test Forms:`);
+  console.log(`  - Total: ${PRE_TEST_FORMS.length}`);
+  console.log('');
+  console.log(`Post-Test Forms:`);
+  console.log(`  - Total: ${POST_TEST_FORMS.length}`);
+  console.log('');
   console.log(`Applications:`);
   console.log(`  - Created: ${counts.applications.created}`);
   console.log(`  - Already Existed: ${counts.applications.existing}`);
@@ -1185,6 +1661,16 @@ async function main() {
   console.log(`  - Created: ${counts.feedbackResponses.created}`);
   console.log(`  - Already Existed: ${counts.feedbackResponses.existing}`);
   console.log(`  - Total: ${counts.feedbackResponses.created + counts.feedbackResponses.existing}`);
+  console.log('');
+  console.log(`Pre-Test Responses:`);
+  console.log(`  - Created: ${counts.preTestResponses.created}`);
+  console.log(`  - Already Existed: ${counts.preTestResponses.existing}`);
+  console.log(`  - Total: ${counts.preTestResponses.created + counts.preTestResponses.existing}`);
+  console.log('');
+  console.log(`Post-Test Responses:`);
+  console.log(`  - Created: ${counts.postTestResponses.created}`);
+  console.log(`  - Already Existed: ${counts.postTestResponses.existing}`);
+  console.log(`  - Total: ${counts.postTestResponses.created + counts.postTestResponses.existing}`);
   console.log('');
   console.log(`Certificates:`);
   console.log(`  - Created: ${counts.certificates.created}`);

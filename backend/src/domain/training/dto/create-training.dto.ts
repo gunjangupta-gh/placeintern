@@ -132,6 +132,16 @@ export class CreateTrainingDto {
   @IsUUID()
   feedbackFormId?: string;
 
+  @ApiPropertyOptional({ description: 'Pre-test form ID to assign' })
+  @IsOptional()
+  @IsUUID()
+  preTestFormId?: string;
+
+  @ApiPropertyOptional({ description: 'Post-test form ID to assign' })
+  @IsOptional()
+  @IsUUID()
+  postTestFormId?: string;
+
   @ApiPropertyOptional({ description: 'Publish immediately' })
   @IsOptional()
   @IsBoolean()

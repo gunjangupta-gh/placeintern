@@ -37,11 +37,18 @@ const initialState = {
   lessonPlans: {
     list: [],
     pending: [],
+    pagination: null,
     loading: false,
     error: null,
   },
   lessonPlanStats: {
     data: null,
+    loading: false,
+    error: null,
+  },
+  recommendations: {
+    list: [],
+    statusCounts: {},
     loading: false,
     error: null,
   },
@@ -60,6 +67,7 @@ const initialState = {
     upcoming: null,
     applications: null,
     lessonPlans: null,
+    recommendations: null,
     dashboard: null,
   },
 };
@@ -81,6 +89,13 @@ export const fetchPrincipalTrainings = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch trainings');
     }
+  },
+  {
+    condition: (params = {}, { getState }) => {
+      const state = getState().principalTraining;
+      if (params?.forceRefresh) return true;
+      return !state.trainings.loading;
+    },
   }
 );
 
@@ -124,6 +139,13 @@ export const fetchPrincipalCalendar = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch calendar');
     }
+  },
+  {
+    condition: (params = {}, { getState }) => {
+      const state = getState().principalTraining;
+      if (params?.forceRefresh) return true;
+      return !state.calendar.loading;
+    },
   }
 );
 
@@ -163,6 +185,13 @@ export const fetchPrincipalApplications = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch applications');
     }
+  },
+  {
+    condition: (params = {}, { getState }) => {
+      const state = getState().principalTraining;
+      if (params?.forceRefresh) return true;
+      return !state.applications.loading;
+    },
   }
 );
 
@@ -219,6 +248,13 @@ export const fetchPrincipalLessonPlans = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch lesson plans');
     }
+  },
+  {
+    condition: (params = {}, { getState }) => {
+      const state = getState().principalTraining;
+      if (params?.forceRefresh) return true;
+      return !state.lessonPlans.loading;
+    },
   }
 );
 
@@ -261,13 +297,26 @@ export const fetchPrincipalLessonPlanStats = createAsyncThunk(
 // Reports
 export const fetchPrincipalTrainingDashboard = createAsyncThunk(
   'principalTraining/fetchDashboard',
-  async (_, { rejectWithValue }) => {
+  async (_, { getState, rejectWithValue }) => {
     try {
+      const state = getState();
+      const lastFetched = state.principalTraining.lastFetched.dashboard;
+
+      if (isCacheValid(lastFetched, CACHE_DURATIONS.DEFAULT)) {
+        return { cached: true };
+      }
+
       const response = await trainingPrincipalService.getDashboard();
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch dashboard');
     }
+  },
+  {
+    condition: (_, { getState }) => {
+      const state = getState().principalTraining;
+      return !state.reports.loading;
+    },
   }
 );
 
@@ -315,6 +364,45 @@ export const fetchPrincipalFeedbackSummary = createAsyncThunk(
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch feedback summary');
+    }
+  }
+);
+
+// Recommendations
+export const fetchPrincipalRecommendations = createAsyncThunk(
+  'principalTraining/fetchRecommendations',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.principalTraining.lastFetched.recommendations;
+
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
+        return { cached: true };
+      }
+
+      const response = await trainingPrincipalService.getRecommendations(params);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch recommendations');
+    }
+  },
+  {
+    condition: (params = {}, { getState }) => {
+      const state = getState().principalTraining;
+      if (params?.forceRefresh) return true;
+      return !state.recommendations.loading;
+    },
+  }
+);
+
+export const reviewPrincipalRecommendation = createAsyncThunk(
+  'principalTraining/reviewRecommendation',
+  async ({ id, data }, { rejectWithValue }) => {
+    try {
+      const response = await trainingPrincipalService.reviewRecommendation(id, data);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to review recommendation');
     }
   }
 );
@@ -423,6 +511,7 @@ const principalTrainingSlice = createSlice({
         state.lessonPlans.loading = false;
         if (!action.payload?.cached) {
           state.lessonPlans.list = action.payload?.data || action.payload?.items || action.payload || [];
+          state.lessonPlans.pagination = action.payload?.pagination || null;
           state.lastFetched.lessonPlans = Date.now();
         }
       })
@@ -450,8 +539,10 @@ const principalTrainingSlice = createSlice({
       })
       .addCase(fetchPrincipalTrainingDashboard.fulfilled, (state, action) => {
         state.reports.loading = false;
-        state.reports.dashboard = action.payload;
-        state.lastFetched.dashboard = Date.now();
+        if (!action.payload?.cached) {
+          state.reports.dashboard = action.payload;
+          state.lastFetched.dashboard = Date.now();
+        }
       })
       .addCase(fetchPrincipalTrainingDashboard.rejected, (state, action) => {
         state.reports.loading = false;
@@ -468,6 +559,31 @@ const principalTrainingSlice = createSlice({
       })
       .addCase(fetchPrincipalFeedbackSummary.fulfilled, (state, action) => {
         state.reports.feedback = action.payload;
+      })
+
+      // Recommendations
+      .addCase(fetchPrincipalRecommendations.pending, (state) => {
+        state.recommendations.loading = true;
+        state.recommendations.error = null;
+      })
+      .addCase(fetchPrincipalRecommendations.fulfilled, (state, action) => {
+        state.recommendations.loading = false;
+        if (!action.payload?.cached) {
+          state.recommendations.list = action.payload?.data || [];
+          state.recommendations.statusCounts = action.payload?.statusCounts || {};
+          state.lastFetched.recommendations = Date.now();
+        }
+      })
+      .addCase(fetchPrincipalRecommendations.rejected, (state, action) => {
+        state.recommendations.loading = false;
+        state.recommendations.error = action.payload;
+      })
+      .addCase(reviewPrincipalRecommendation.fulfilled, (state, action) => {
+        const index = state.recommendations.list.findIndex((item) => item.id === action.payload.id);
+        if (index !== -1) {
+          state.recommendations.list[index] = action.payload;
+        }
+        state.lastFetched.recommendations = null;
       });
   },
 });

@@ -56,15 +56,13 @@ import { MonthlyCompliancePage } from '../../features/state/compliance';
 import { StudentsList } from '../../features/state/students';
 import StateTrainingDashboardPage from '../../features/state/training/TrainingDashboardPage';
 import StateTrainingManagementPage from '../../features/state/training/TrainingManagementPage';
-import StateCreateTrainingPage from '../../features/state/training/CreateTrainingPage';
-import StateEditTrainingPage from '../../features/state/training/EditTrainingPage';
+import StateTrainingManageFormPage from '../../features/state/training/TrainingManageFormPage';
 import StateTrainingDetailsPage from '../../features/state/training/TrainingDetailsPage';
 import StateApplicationManagementPage from '../../features/state/training/ApplicationManagementPage';
 import StateAttendanceManagementPage from '../../features/state/training/AttendanceManagementPage';
 import StateCertificateManagementPage from '../../features/state/training/CertificateManagementPage';
 import StateFeedbackFormManagementPage from '../../features/state/training/FeedbackFormManagementPage';
-import StateFeedbackAnalyticsPage from '../../features/state/training/FeedbackAnalyticsPage';
-import StateTrainingReportsPage from '../../features/state/training/TrainingReportsPage';
+import StateTestFormManagementPage from '../../features/state/training/TestFormManagementPage';
 import StateLessonPlanReviewPage from '../../features/state/training/LessonPlanReviewPage';
 
 // Shared
@@ -93,6 +91,7 @@ import PrincipalApplicationReviewPage from '../../features/principal/training/Ap
 import PrincipalLessonPlanReviewPage from '../../features/principal/training/LessonPlanReviewPage';
 import PrincipalParticipationReportPage from '../../features/principal/training/ParticipationReportPage';
 import PrincipalTrainingDetailsPage from '../../features/principal/training/TrainingDetailsPage';
+import PrincipalRecommendTrainingApprovalPage from '../../features/principal/training/RecommendTrainingApprovalPage';
 
 // Faculty
 import FacultyDashboard from '../../features/faculty/dashboard/FacultyDashboard';
@@ -383,7 +382,7 @@ const AppRoutes = () => {
           path="training/create"
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE]}>
-              <StateCreateTrainingPage />
+              <StateTrainingManageFormPage />
             </ProtectedRoute>
           }
         />
@@ -391,7 +390,7 @@ const AppRoutes = () => {
           path="training/:id/edit"
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE]}>
-              <StateEditTrainingPage />
+              <StateTrainingManageFormPage />
             </ProtectedRoute>
           }
         />
@@ -428,10 +427,10 @@ const AppRoutes = () => {
           }
         />
         <Route
-          path="training/analytics"
+          path="training/test-forms"
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE]}>
-              <StateFeedbackAnalyticsPage />
+              <StateTestFormManagementPage />
             </ProtectedRoute>
           }
         />
@@ -456,6 +455,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL, ...ROLES.FACULTY]}>
               <TrainingLessonPlansRouter />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/recommend-approvals"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
+              <PrincipalRecommendTrainingApprovalPage />
             </ProtectedRoute>
           }
         />
@@ -1004,7 +1011,8 @@ function TrainingReportsRouter() {
   const { user } = useSelector((state) => state.auth);
   const role = user?.role;
 
-  if (role === ROLES.STATE) return <StateTrainingReportsPage />;
+  // State users now see stats in modal from management page
+  if (role === ROLES.STATE) return <Navigate to="/app/training/manage" replace />;
   if (role === ROLES.PRINCIPAL) return <PrincipalParticipationReportPage />;
 
   return <Navigate to="/unauthorized" replace />;

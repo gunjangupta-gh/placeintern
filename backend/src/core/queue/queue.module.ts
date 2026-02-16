@@ -30,13 +30,16 @@ const queueLogger = new Logger('QueueModule');
         const redisHost = configService.get<string>('REDIS_HOST', 'localhost');
         const redisPort = configService.get<number>('REDIS_PORT', 6379);
         const redisPassword = configService.get<string>('REDIS_PASSWORD');
+        const enableOfflineQueue = configService.get<string>('BULLMQ_ENABLE_OFFLINE_QUEUE', 'true') === 'true';
 
         const connection: any = {
           host: redisHost,
           port: redisPort,
           password: redisPassword || undefined,
-          // Disable offline queue to prevent memory issues
-          enableOfflineQueue: false,
+          // For BullMQ workers, keep offline queue enabled to avoid
+          // "Stream isn't writeable" crashes during transient Redis disconnects.
+          // Can be overridden with BULLMQ_ENABLE_OFFLINE_QUEUE=false.
+          enableOfflineQueue,
           // Required for BullMQ compatibility
           maxRetriesPerRequest: null,
           // Connection timeouts - increased for DragonflyDB stability

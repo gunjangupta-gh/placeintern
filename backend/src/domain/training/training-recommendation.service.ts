@@ -289,6 +289,159 @@ export class TrainingRecommendationService {
   }
 
   /**
+   * Get recommendations from faculty of an institution (Principal)
+   */
+  async getByInstitution(institutionId: string, filters: RecommendationFilterDto) {
+    try {
+      const { status, priority, search, page = 1, limit = 20 } = filters;
+
+      const where: Prisma.TrainingRecommendationWhereInput = {
+        user: { institutionId },
+        ...(status ? { status } : {}),
+        ...(priority ? { priority } : {}),
+        ...(search
+          ? {
+              OR: [
+                { title: { contains: search, mode: 'insensitive' } },
+                { description: { contains: search, mode: 'insensitive' } },
+                { user: { name: { contains: search, mode: 'insensitive' } } },
+                { user: { email: { contains: search, mode: 'insensitive' } } },
+              ],
+            }
+          : {}),
+      };
+
+      const [recommendations, total] = await Promise.all([
+        this.prisma.trainingRecommendation.findMany({
+          where,
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                branchName: true,
+                designation: true,
+                Institution: { select: { id: true, name: true, shortName: true } },
+              },
+            },
+            targetBranches: { select: { id: true, name: true, code: true } },
+            reviewedBy: { select: { id: true, name: true } },
+            implementedTraining: { select: { id: true, title: true } },
+          },
+          orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        this.prisma.trainingRecommendation.count({ where }),
+      ]);
+
+      const statusCounts = await this.prisma.trainingRecommendation.groupBy({
+        by: ['status'],
+        where,
+        _count: true,
+      });
+
+      return {
+        data: recommendations,
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+        statusCounts: statusCounts.reduce((acc, s) => ({ ...acc, [s.status]: s._count }), {}),
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get institution recommendations: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Get recommendation by ID with institution access check (Principal)
+   */
+  async getByIdForInstitution(id: string, institutionId: string) {
+    const recommendation = await this.getById(id);
+
+    if (recommendation.user?.Institution?.id !== institutionId) {
+      throw new ForbiddenException('You do not have access to this recommendation');
+    }
+
+    return recommendation;
+  }
+
+  /**
+   * Review recommendation by principal for their institution only
+   */
+  async reviewForInstitution(
+    id: string,
+    dto: ReviewRecommendationDto,
+    reviewerId: string,
+    institutionId: string,
+  ) {
+    const allowedStatuses: TrainingRecommendationStatus[] = [
+      TrainingRecommendationStatus.UNDER_REVIEW,
+      TrainingRecommendationStatus.APPROVED,
+      TrainingRecommendationStatus.REJECTED,
+    ];
+
+    if (!allowedStatuses.includes(dto.status)) {
+      throw new BadRequestException('Principal can only set status to UNDER_REVIEW, APPROVED, or REJECTED');
+    }
+
+    if (dto.status === TrainingRecommendationStatus.REJECTED && !dto.rejectionReason) {
+      throw new BadRequestException('Rejection reason is required when rejecting a recommendation');
+    }
+
+    const existing = await this.prisma.trainingRecommendation.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            institutionId: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Recommendation not found');
+    }
+
+    if (existing.user.institutionId !== institutionId) {
+      throw new ForbiddenException('You can only review recommendations from your institution');
+    }
+
+    const recommendation = await this.prisma.trainingRecommendation.update({
+      where: { id },
+      data: {
+        status: dto.status,
+        reviewedById: reviewerId,
+        reviewedAt: new Date(),
+        reviewComments: dto.reviewComments,
+        rejectionReason: dto.status === TrainingRecommendationStatus.REJECTED ? dto.rejectionReason : null,
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        targetBranches: { select: { id: true, name: true, code: true } },
+        reviewedBy: { select: { id: true, name: true } },
+        implementedTraining: { select: { id: true, title: true } },
+      },
+    });
+
+    this.auditService.log({
+      action: AuditAction.TRAINING_UPDATE,
+      entityType: 'TrainingRecommendation',
+      entityId: id,
+      userId: reviewerId,
+      category: AuditCategory.DATA_MANAGEMENT,
+      severity: AuditSeverity.MEDIUM,
+      description: `Principal reviewed recommendation "${existing.title}" as ${dto.status}`,
+      institutionId,
+    }).catch(() => {});
+
+    return recommendation;
+  }
+
+  /**
    * Review a recommendation (State - Admin)
    */
   async review(id: string, dto: ReviewRecommendationDto, reviewerId: string) {
