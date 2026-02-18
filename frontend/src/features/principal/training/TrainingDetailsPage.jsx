@@ -46,17 +46,17 @@ import {
 const { Title, Paragraph, Text } = Typography;
 
 const InfoItem = ({ icon: Icon, label, children, tooltip }) => (
-  <div className="flex items-start gap-3 py-2">
+  <div className="flex items-start gap-2.5 py-1.5">
     <Tooltip title={tooltip}>
-      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 shrink-0">
-        <Icon className="text-blue-700" />
+      <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 shrink-0">
+        <Icon className="text-blue-700 text-xs" />
       </div>
     </Tooltip>
     <div className="flex-1 min-w-0">
-      <Text type="secondary" className="text-xs block">
+      <Text type="secondary" className="text-[10px] uppercase tracking-wider font-semibold block leading-tight">
         {label}
       </Text>
-      <div className="mt-0.5">{children}</div>
+      <div className="mt-0">{children}</div>
     </div>
   </div>
 );
@@ -84,8 +84,8 @@ const StatCard = ({ icon: Icon, title, value, tone, trend, onClick }) => {
   const styles = STAT_TONES[tone] || STAT_TONES.primary;
   return (
     <Card
-      className={`rounded-2xl border-border shadow-none h-full hover:shadow-soft transition-shadow ${styles.card} ${onClick ? "cursor-pointer" : ""}`}
-      styles={{ body: { padding: "16px" } }}
+      className={`rounded-xl border-border shadow-none h-full hover:shadow-soft transition-shadow ${styles.card} ${onClick ? "cursor-pointer" : ""}`}
+      styles={{ body: { padding: "12px" } }}
       onClick={onClick}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
@@ -93,30 +93,30 @@ const StatCard = ({ icon: Icon, title, value, tone, trend, onClick }) => {
     >
       <div className="flex items-start justify-between">
         <div>
-          <Text className="text-text-secondary text-xs block mb-1">
+          <Text className="text-text-secondary text-[10px] uppercase tracking-wider font-semibold opacity-80 block mb-0.5">
             {title}
           </Text>
-          <div className="text-2xl font-bold text-text-primary">{value}</div>
+          <div className="text-xl font-bold text-text-primary leading-tight">{value}</div>
           {trend !== undefined && trend !== null && (
             <div
-              className={`flex items-center gap-1 mt-1 text-xs ${trend > 0 ? "text-emerald-600" : trend < 0 ? "text-rose-600" : "text-text-secondary"}`}
+              className={`flex items-center gap-1 mt-0.5 text-[10px] ${trend > 0 ? "text-emerald-600" : trend < 0 ? "text-rose-600" : "text-text-secondary"}`}
             >
               {trend > 0 ? (
-                <RiseOutlined />
+                <RiseOutlined className="text-[9px]" />
               ) : trend < 0 ? (
-                <FallOutlined />
+                <FallOutlined className="text-[9px]" />
               ) : null}
               <span>
                 {trend > 0 ? "+" : ""}
-                {trend}% from last period
+                {trend}%
               </span>
             </div>
           )}
         </div>
         <div
-          className={`flex items-center justify-center w-10 h-10 rounded-lg ${styles.icon}`}
+          className={`flex items-center justify-center w-8 h-8 rounded-lg ${styles.icon}`}
         >
-          <Icon className="text-lg" />
+          <Icon className="text-sm" />
         </div>
       </div>
     </Card>
@@ -183,31 +183,35 @@ const PrincipalTrainingDetailsPage = () => {
   ];
 
   return (
-    <div className="p-6 training-ui">
+    <div className="p-4 training-ui">
       {/* Back Button */}
-      <div className="mb-4">
+      <div className="mb-3">
         <Button
           type="text"
+          size="small"
           icon={<ArrowLeftOutlined />}
           onClick={() => navigate(-1)}
-          className="text-text-secondary hover:text-primary"
+          className="text-text-secondary hover:text-primary text-xs"
         >
           Back
         </Button>
       </div>
 
       {/* Hero Card */}
-      <Card className="rounded-2xl border-border shadow-none !mb-4 bg-gradient-to-br from-slate-50 via-white to-blue-50">
-        <Row gutter={[24, 16]} align="middle">
+      <Card 
+        className="rounded-2xl border-border shadow-none !mb-3 bg-gradient-to-br from-slate-50 via-white to-blue-50"
+        styles={{ body: { padding: '20px' } }}
+      >
+        <Row gutter={[20, 16]} align="middle">
           <Col xs={24}>
-            <Space className="mb-3" wrap>
+            <Space className="mb-2" wrap>
               <DeliveryModeBadge mode={training?.deliveryMode} />
               <DifficultyBadge level={training?.difficulty} />
             </Space>
-            <Title level={2} className="mb-2 training-heading">
+            <Title level={3} className="mb-1 mt-0">
               {training?.title || "Training"}
             </Title>
-            <Text type="secondary" className="text-base">
+            <Text type="secondary" className="text-sm">
               {training?.providedBy || "Training Provider"}
             </Text>
           </Col>
@@ -215,7 +219,7 @@ const PrincipalTrainingDetailsPage = () => {
       </Card>
 
       {/* Statistics Cards */}
-      <Row gutter={[16, 16]} className="!mb-4">
+      <Row gutter={[12, 12]} className="!mb-3">
         {statCards.map((stat) => (
           <Col xs={12} lg={8} key={stat.title}>
             <StatCard {...stat} />
@@ -223,21 +227,26 @@ const PrincipalTrainingDetailsPage = () => {
         ))}
       </Row>
 
-      <Row gutter={[16, 16]}>
+      <Row gutter={[12, 12]}>
         <Col xs={24} lg={16}>
           {/* About Section */}
-          <Card className="rounded-xl border-border shadow-none !mb-4">
-            <Title level={4} className="flex items-center gap-2">
-              <InfoCircleOutlined className="text-blue-700" />
-              About This Training
-            </Title>
-            <Paragraph className="text-base text-text-secondary">
+          <Card 
+            className="rounded-xl border-border shadow-none !mb-3"
+            styles={{ header: { padding: '8px 16px', minHeight: 'auto' }, body: { padding: '16px' } }}
+            title={
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <InfoCircleOutlined className="text-blue-700" />
+                <span>About This Training</span>
+              </div>
+            }
+          >
+            <Paragraph className="text-sm text-text-secondary mb-3">
               {training?.description || "No description provided."}
             </Paragraph>
 
-            <Divider />
+            <Divider className="my-3" />
 
-            <Row gutter={[24, 16]}>
+            <Row gutter={[20, 12]}>
               <Col xs={24} sm={12}>
                 <InfoItem
                   icon={CalendarOutlined}
@@ -247,6 +256,7 @@ const PrincipalTrainingDetailsPage = () => {
                   <TrainingDateRange
                     startDate={training?.startDate}
                     endDate={training?.endDate}
+                    compact
                   />
                 </InfoItem>
               </Col>
@@ -256,7 +266,7 @@ const PrincipalTrainingDetailsPage = () => {
                   label="Duration"
                   tooltip="Total training hours"
                 >
-                  <Text>
+                  <Text className="text-sm">
                     {training?.duration ? `${training.duration} hours` : "TBD"}
                   </Text>
                 </InfoItem>
@@ -267,8 +277,8 @@ const PrincipalTrainingDetailsPage = () => {
                   label="Capacity"
                   tooltip="Maximum participants"
                 >
-                  <Text strong>{capacityInfo.total} participants</Text>
-                  <div className="text-xs text-text-secondary mt-1">
+                  <Text strong className="text-sm">{capacityInfo.total} participants</Text>
+                  <div className="text-[10px] text-text-secondary mt-0">
                     {capacityInfo.approved} approved, {capacityInfo.available}{" "}
                     available
                   </div>
@@ -277,10 +287,10 @@ const PrincipalTrainingDetailsPage = () => {
               <Col xs={24} sm={12}>
                 <InfoItem
                   icon={CheckCircleOutlined}
-                  label="Application Deadline"
+                  label="Deadline"
                   tooltip="Last date to apply"
                 >
-                  <Text>
+                  <Text className="text-sm">
                     {training?.applicationDeadline
                       ? new Date(
                           training.applicationDeadline,
@@ -298,97 +308,99 @@ const PrincipalTrainingDetailsPage = () => {
 
           {/* Target Branches */}
           {training?.targetBranches && training.targetBranches.length > 0 && (
-            <Card className="rounded-xl border-border shadow-none !mb-4">
-              <Title level={4} className="flex items-center gap-2">
-                <ApartmentOutlined className="text-blue-700" />
-                Target Departments
-              </Title>
-              <Paragraph type="secondary" className="mb-3">
-                This training is designed for faculty members from the following
-                departments:
+            <Card 
+              className="rounded-xl border-border shadow-none !mb-3"
+              styles={{ header: { padding: '8px 16px', minHeight: 'auto' }, body: { padding: '16px' } }}
+              title={
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <ApartmentOutlined className="text-blue-700" />
+                  <span>Target Departments</span>
+                </div>
+              }
+            >
+              <Paragraph type="secondary" className="mb-2 text-xs">
+                Designed for faculty from:
               </Paragraph>
-              <BranchTags branches={training.targetBranches} />
+              <BranchTags branches={training.targetBranches} compact />
             </Card>
           )}
 
           {/* Learning Outcomes */}
-          <Card className="rounded-xl border-border shadow-none !mb-4">
-            <Title level={4} className="flex items-center gap-2">
-              <CheckCircleOutlined className="text-emerald-600" />
-              Learning Outcomes
-            </Title>
-            <Paragraph type="secondary" className="!mb-4">
+          <Card 
+            className="rounded-xl border-border shadow-none !mb-3"
+            styles={{ header: { padding: '8px 16px', minHeight: 'auto' }, body: { padding: '16px' } }}
+            title={
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <CheckCircleOutlined className="text-emerald-600" />
+                <span>Learning Outcomes</span>
+              </div>
+            }
+          >
+            <Paragraph type="secondary" className="!mb-2 text-xs">
               By the end of this training, participants will be able to:
             </Paragraph>
-            <LearningOutcomesList outcomes={training?.learningOutcomes || []} />
+            <LearningOutcomesList outcomes={training?.learningOutcomes || []} compact />
           </Card>
-
-          {/* Prerequisites */}
-          {training?.prerequisites && (
-            <Card className="rounded-xl border-border shadow-none !mb-4">
-              <Title level={4}>Prerequisites</Title>
-              <Paragraph className="text-text-secondary mb-0">
-                {training.prerequisites}
-              </Paragraph>
-            </Card>
-          )}
         </Col>
 
         <Col xs={24} lg={8}>
           {/* Deadline Countdown */}
           {training?.applicationDeadline && (
-            <div className="!mb-4">
+            <div className="!mb-3">
               <DeadlineCountdown
                 deadline={training.applicationDeadline}
                 label="Application closes in"
-                expiredLabel="Application deadline has passed"
+                expiredLabel="Deadline passed"
+                compact
               />
             </div>
           )}
 
           {/* Trainer & Venue Card */}
-          <Card className="rounded-xl border-border shadow-none mb-4">
-            <Title level={4} className="flex items-center gap-2">
-              <UserOutlined className="text-blue-700" />
-              Trainer & Venue
-            </Title>
+          <Card 
+            className="rounded-xl border-border shadow-none mb-3"
+            styles={{ header: { padding: '8px 16px', minHeight: 'auto' }, body: { padding: '16px' } }}
+            title={
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <UserOutlined className="text-blue-700" />
+                <span>Trainer & Venue</span>
+              </div>
+            }
+          >
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {training?.trainerName && (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   <Avatar
-                    size={48}
+                    size={40}
                     icon={<UserOutlined />}
                     className="bg-blue-100 text-blue-700"
                   />
                   <div>
-                    <Text strong className="block">
+                    <Text strong className="block text-sm leading-tight">
                       {training.trainerName}
                     </Text>
                     {training?.trainerContact && (
-                      <Text type="secondary" className="text-xs block">
+                      <Text type="secondary" className="text-[10px] block mt-0.5">
                         {training.trainerContact}
                       </Text>
                     )}
-                    <Text type="secondary" className="text-xs block">
-                      Trainer
-                    </Text>
                   </div>
                 </div>
               )}
 
-              <Descriptions column={1} size="small">
+              <Descriptions column={1} size="small" className="compact-descriptions">
                 <Descriptions.Item
                   label={
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1 text-xs">
                       <EnvironmentOutlined /> Venue
                     </span>
                   }
                 >
                   <div>
-                    <Text>{training?.venue || "TBD"}</Text>
+                    <Text className="text-xs">{training?.venue || "TBD"}</Text>
                     {training?.city && training?.state && (
-                      <div className="text-xs text-text-secondary mt-1">
+                      <div className="text-[10px] text-text-secondary mt-0">
                         {training.city}, {training.state}
                       </div>
                     )}
@@ -397,8 +409,8 @@ const PrincipalTrainingDetailsPage = () => {
                 {training?.meetingLink && (
                   <Descriptions.Item
                     label={
-                      <span className="flex items-center gap-1">
-                        <LinkOutlined /> Meeting Link
+                      <span className="flex items-center gap-1 text-xs">
+                        <LinkOutlined /> Link
                       </span>
                     }
                   >
@@ -406,9 +418,9 @@ const PrincipalTrainingDetailsPage = () => {
                       href={training.meetingLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary"
+                      className="text-primary text-xs"
                     >
-                      Join Online
+                      Join
                     </a>
                   </Descriptions.Item>
                 )}
@@ -420,5 +432,6 @@ const PrincipalTrainingDetailsPage = () => {
     </div>
   );
 };
+
 
 export default PrincipalTrainingDetailsPage;

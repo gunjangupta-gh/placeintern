@@ -29,9 +29,9 @@ const StatCard = ({ icon: Icon, title, value, subtitle, tone, trend, onClick }) 
 
   return (
     <Card
-      className={`rounded-2xl border-border shadow-none ${onClick ? 'cursor-pointer hover:shadow-soft' : ''} transition-shadow h-full ${styles.card}`}
+      className={`rounded-xl border-border shadow-none ${onClick ? 'cursor-pointer hover:shadow-soft' : ''} transition-shadow h-full ${styles.card}`}
       onClick={onClick}
-      styles={{ body: { padding: '16px' } }}
+      styles={{ body: { padding: '12px' } }}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       aria-label={`${title}: ${value}. ${subtitle || ''}${hasTrend ? ` Trend: ${isPositiveTrend ? 'up' : 'down'} ${Math.abs(trend)}%` : ''}`}
@@ -39,21 +39,21 @@ const StatCard = ({ icon: Icon, title, value, subtitle, tone, trend, onClick }) 
     >
       <div className="flex items-start justify-between">
         <div>
-          <Text className="text-text-secondary text-xs block mb-1">{title}</Text>
+          <Text className="text-text-secondary text-[10px] uppercase font-semibold opacity-80 block mb-0.5">{title}</Text>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-text-primary">{value}</span>
+            <span className="text-xl font-bold text-text-primary leading-tight">{value}</span>
             {hasTrend && (
-              <span className={`flex items-center text-xs font-medium ${isPositiveTrend ? 'text-emerald-600' : 'text-red-600'}`}>
+              <span className={`flex items-center text-[10px] font-medium ${isPositiveTrend ? 'text-emerald-600' : 'text-red-600'}`}>
                 {isPositiveTrend ? <ArrowUpOutlined className="mr-0.5" /> : <ArrowDownOutlined className="mr-0.5" />}
                 {Math.abs(trend)}%
               </span>
             )}
           </div>
-          {subtitle && <Text type="secondary" className="text-xs">{subtitle}</Text>}
+          {subtitle && <Text type="secondary" className="text-[10px]">{subtitle}</Text>}
         </div>
         {Icon && (
-          <div className={`flex items-center justify-center w-10 h-10 rounded-lg ${styles.icon}`}>
-            <Icon className="text-lg" />
+          <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${styles.icon}`}>
+            <Icon className="text-sm" />
           </div>
         )}
       </div>
@@ -164,14 +164,14 @@ const CertificateManagementPage = () => {
   const searchResultCount = searchText ? filteredCertificates.length : null;
 
   return (
-    <div className="p-6 training-ui" role="main" aria-label="Certificate Management">
+    <div className="p-4 training-ui" role="main" aria-label="Certificate Management">
       <PageHeader
         icon={SafetyCertificateOutlined}
-        title={<span className="training-heading">Certificate Management</span>}
+        title={<span className="training-heading text-lg">Certificate Management</span>}
         description="Issue and manage certificates for this training."
       />
 
-      <Row gutter={[16, 16]} className="mb-6" role="region" aria-label="Certificate statistics">
+      <Row gutter={[12, 12]} className="mb-4" role="region" aria-label="Certificate statistics">
         {isLoading ? (
           <>
             <Col xs={24} md={8}><TrainingStatSkeleton /></Col>
@@ -208,12 +208,12 @@ const CertificateManagementPage = () => {
         )}
       </Row>
 
-      <Card className="rounded-2xl border-border shadow-none mb-6" title="Issue Certificates">
-        <Form layout="vertical" form={form}>
-          <Form.Item name="userId" label="Single User ID">
+      <Card className="rounded-xl border-border shadow-none mb-4" styles={{ header: { padding: '8px 16px', minHeight: 'auto' }, body: { padding: '16px' } }} title={<span className="text-sm font-semibold">Issue Certificates</span>}>
+        <Form layout="vertical" form={form} size="small">
+          <Form.Item name="userId" label="Single User ID" className="mb-2">
             <Input placeholder="User ID" aria-label="Single user ID for certificate" />
           </Form.Item>
-          <Form.Item name="userIds" label="Bulk User IDs (comma separated)">
+          <Form.Item name="userIds" label="Bulk User IDs (comma separated)" className="mb-3">
             <Input.TextArea rows={2} placeholder="user-id-1, user-id-2" aria-label="Bulk user IDs for certificates" />
           </Form.Item>
           <Button type="primary" onClick={handleIssue} aria-label="Issue certificates">
@@ -222,19 +222,20 @@ const CertificateManagementPage = () => {
         </Form>
       </Card>
 
-      <Card className="rounded-2xl border-border shadow-none">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+      <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: '12px' } }}>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-3">
             <Input
-              placeholder="Search faculty or certificate number"
+              placeholder="Search faculty or certificate"
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
               className="lg:w-80"
+              size="middle"
               allowClear
               aria-label="Search certificates"
             />
             {searchResultCount !== null && (
-              <Text type="secondary" className="text-sm" aria-live="polite">
+              <Text type="secondary" className="text-xs" aria-live="polite">
                 {searchResultCount} result{searchResultCount !== 1 ? 's' : ''} found
               </Text>
             )}
@@ -243,20 +244,24 @@ const CertificateManagementPage = () => {
         {isLoading ? (
           <TableRowSkeleton rows={5} columns={4} />
         ) : filteredCertificates.length > 0 ? (
-          <Table
-            className="custom-table"
-            rowKey="id"
-            columns={columns}
-            dataSource={filteredCertificates}
-            loading={certificates.loading}
-            pagination={{ pageSize: 10 }}
-            aria-label="Certificates table"
-          />
+          <div className="custom-scrollbar overflow-x-auto">
+            <Table
+              className="custom-table"
+              rowKey="id"
+              columns={columns}
+              dataSource={filteredCertificates}
+              loading={certificates.loading}
+              size="small"
+              pagination={{ pageSize: 10, size: 'small' }}
+              aria-label="Certificates table"
+              scroll={{ x: 'max-content' }}
+            />
+          </div>
         ) : (
           <TrainingEmptyState
             type={searchText ? 'search' : 'certificates'}
             message={searchText ? 'No certificates found' : 'No certificates issued yet'}
-            description={searchText ? 'Try adjusting your search terms.' : 'Issue certificates to faculty who have completed the training.'}
+            description={searchText ? 'Try adjusting your search terms.' : 'Issue certificates to faculty.'}
             actionText={searchText ? 'Clear Search' : null}
             onAction={searchText ? () => setSearchText('') : null}
           />

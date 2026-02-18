@@ -240,20 +240,21 @@ const MyCertificatesPage = () => {
   const isLoading = certificates.loading && !certificates.list;
 
   return (
-    <div className="p-6 training-ui">
+    <div className="p-4 training-ui">
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <Title level={3} className="!mb-1 flex items-center gap-2">
+          <Title level={4} className="!mb-0.5 flex items-center gap-2 text-lg">
             <SafetyCertificateOutlined className="text-amber-500" />
             My Certificates
           </Title>
-          <Text className="text-text-secondary">
-            View and download certificates for trainings you have completed.
+          <Text type="secondary" className="text-xs">
+            Download certificates for completed trainings.
           </Text>
         </div>
         <Segmented
+          size="small"
           value={viewMode}
           onChange={setViewMode}
           options={[
@@ -264,31 +265,31 @@ const MyCertificatesPage = () => {
       </div>
 
       {/* Stats */}
-      <Row gutter={[16, 16]} className="mb-6">
+      <Row gutter={[12, 12]} className="mb-4">
         <Col xs={12} md={6}>
-          <Card className="rounded-2xl border-border shadow-none bg-gradient-to-br from-amber-50 via-white to-slate-50">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-100">
-                <TrophyOutlined className="text-lg text-amber-600" />
+          <Card className="rounded-xl border-border shadow-none bg-gradient-to-br from-amber-50 via-white to-slate-50" styles={{ body: { padding: '12px' } }}>
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-100">
+                <TrophyOutlined className="text-base text-amber-600" />
               </div>
-              <Statistic title="Total" value={certificateStats.total} valueStyle={{ fontSize: 24, fontWeight: 700 }} />
+              <Statistic title={<span className="text-[10px] uppercase font-semibold">Total</span>} value={certificateStats.total} valueStyle={{ fontSize: 20, fontWeight: 700, lineHeight: 1 }} />
             </div>
           </Card>
         </Col>
         <Col xs={12} md={6}>
-          <Card className="rounded-2xl border-border shadow-none">
+          <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: '12px' } }}>
             <Statistic
-              title="Training Hours"
+              title={<span className="text-[10px] uppercase font-semibold">Hours</span>}
               value={certificateStats.totalHours}
-              suffix="hrs"
-              valueStyle={{ fontSize: 24, fontWeight: 700 }}
+              suffix={<span className="text-xs">hrs</span>}
+              valueStyle={{ fontSize: 20, fontWeight: 700, lineHeight: 1 }}
             />
           </Card>
         </Col>
         <Col xs={12} md={6}>
-          <Card className="rounded-2xl border-border shadow-none">
+          <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: '12px' } }}>
             <Statistic
-              title="Latest Issued"
+              title={<span className="text-[10px] uppercase font-semibold">Latest</span>}
               value={
                 certificateStats.latestIssued
                   ? new Date(certificateStats.latestIssued).toLocaleDateString('en-US', {
@@ -297,26 +298,26 @@ const MyCertificatesPage = () => {
                     })
                   : 'N/A'
               }
-              valueStyle={{ fontSize: 18, fontWeight: 700 }}
+              valueStyle={{ fontSize: 16, fontWeight: 700, lineHeight: 1 }}
             />
           </Card>
         </Col>
         <Col xs={12} md={6}>
-          <Card className="rounded-2xl border-border shadow-none">
-            <Statistic title="Providers" value={certificateStats.providers} valueStyle={{ fontSize: 24, fontWeight: 700 }} />
+          <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: '12px' } }}>
+            <Statistic title={<span className="text-[10px] uppercase font-semibold">Providers</span>} value={certificateStats.providers} valueStyle={{ fontSize: 20, fontWeight: 700, lineHeight: 1 }} />
           </Card>
         </Col>
       </Row>
 
       {/* Search */}
-      <Card className="rounded-xl border-border shadow-none mb-6">
+      <Card className="rounded-xl border-border shadow-none mb-4" styles={{ body: { padding: '12px' } }}>
         <Input
-          placeholder="Search by training name, certificate ID, or provider..."
-          prefix={<SearchOutlined className="text-text-secondary" />}
+          placeholder="Search certificates..."
+          prefix={<SearchOutlined className="text-slate-400" />}
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
           allowClear
-          size="large"
+          size="middle"
           aria-label="Search certificates"
         />
       </Card>
@@ -324,7 +325,7 @@ const MyCertificatesPage = () => {
       {/* Content */}
       {isLoading ? (
         viewMode === 'grid' ? (
-          <Row gutter={[16, 16]}>
+          <Row gutter={[12, 12]}>
             {Array.from({ length: 4 }).map((_, idx) => (
               <Col xs={24} sm={12} lg={8} xl={6} key={idx}>
                 <CertificateCardSkeleton />
@@ -351,7 +352,7 @@ const MyCertificatesPage = () => {
           />
         </Card>
       ) : viewMode === 'grid' ? (
-        <Row gutter={[16, 16]}>
+        <Row gutter={[12, 12]}>
           {filteredCertificates.map((cert) => (
             <Col xs={24} sm={12} lg={8} xl={6} key={cert.id}>
               <CertificateCard
@@ -363,19 +364,28 @@ const MyCertificatesPage = () => {
           ))}
         </Row>
       ) : (
-        <Card className="rounded-xl border-border shadow-none">
-          <Table
-            className="custom-table"
-            rowKey="id"
-            columns={columns}
-            dataSource={filteredCertificates}
-            loading={certificates.loading}
-            pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} certificates`,
-            }}
-          />
+        <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: 0 } }}>
+          <div className="custom-scrollbar overflow-x-auto">
+            <Table
+              className="custom-table"
+              rowKey="id"
+              columns={columns}
+              dataSource={filteredCertificates}
+              loading={certificates.loading}
+              size="small"
+              pagination={{
+                pageSize: 10,
+                showSizeChanger: true,
+                showTotal: (total, range) => (
+                  <Text className="text-[10px] text-slate-600">
+                    {range[0]}-{range[1]} of {total}
+                  </Text>
+                ),
+                size: "small",
+              }}
+              scroll={{ x: 'max-content' }}
+            />
+          </div>
         </Card>
       )}
 

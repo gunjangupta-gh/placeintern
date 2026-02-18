@@ -231,20 +231,21 @@ const RecommendTrainingPage = () => {
   const reviewedCount = recommendations?.list?.filter(r => r.status !== "PENDING").length || 0;
 
   return (
-    <div className="p-6 training-ui">
+    <div className="p-4 training-ui">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <Title level={4} className="!mb-1">
+          <Title level={4} className="!mb-0.5 text-lg">
             <BulbOutlined className="mr-2 text-amber-500" />
             Recommend Training
           </Title>
-          <Text type="secondary" className="text-sm">
-            Suggest new training programs that would benefit you and your colleagues
+          <Text type="secondary" className="text-xs">
+            Suggest new training programs for faculty development
           </Text>
         </div>
         <Button
           type="primary"
+          size="middle"
           icon={<PlusOutlined />}
           onClick={() => handleOpenModal()}
         >
@@ -253,63 +254,81 @@ const RecommendTrainingPage = () => {
       </div>
 
       {/* Content */}
-      <Card className="rounded-xl border-border shadow-none">
+      <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: 0 } }}>
         <Tabs
           defaultActiveKey="all"
+          className="custom-tabs px-4"
+          size="small"
           items={[
             {
               key: "all",
               label: `All (${recommendations?.list?.length || 0})`,
               children: (
-                <Table
-                  dataSource={recommendations?.list || []}
-                  columns={columns}
-                  rowKey="id"
-                  loading={recommendations?.loading}
-                  pagination={{
-                    pageSize: 10,
-                    showSizeChanger: true,
-                    showTotal: (total) => `${total} recommendations`,
-                  }}
-                  locale={{
-                    emptyText: (
-                      <Empty
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
-                        description="No recommendations yet"
-                      >
-                        <Button type="primary" onClick={() => handleOpenModal()}>
-                          Submit Your First Recommendation
-                        </Button>
-                      </Empty>
-                    ),
-                  }}
-                />
+                <div className="py-2 custom-scrollbar overflow-x-auto">
+                  <Table
+                    className="custom-table"
+                    dataSource={recommendations?.list || []}
+                    columns={columns}
+                    rowKey="id"
+                    loading={recommendations?.loading}
+                    size="small"
+                    pagination={{
+                      pageSize: 10,
+                      showSizeChanger: true,
+                      showTotal: (total) => <Text className="text-[10px]">{total} recommendations</Text>,
+                      size: 'small',
+                    }}
+                    scroll={{ x: 'max-content' }}
+                    locale={{
+                      emptyText: (
+                        <Empty
+                          image={Empty.PRESENTED_IMAGE_SIMPLE}
+                          description="No recommendations yet"
+                        >
+                          <Button type="primary" size="small" onClick={() => handleOpenModal()}>
+                            Submit Your First Recommendation
+                          </Button>
+                        </Empty>
+                      ),
+                    }}
+                  />
+                </div>
               ),
             },
             {
               key: "pending",
               label: `Pending (${pendingCount})`,
               children: (
-                <Table
-                  dataSource={recommendations?.list?.filter(r => r.status === "PENDING") || []}
-                  columns={columns}
-                  rowKey="id"
-                  loading={recommendations?.loading}
-                  pagination={{ pageSize: 10 }}
-                />
+                <div className="py-2 custom-scrollbar overflow-x-auto">
+                  <Table
+                    className="custom-table"
+                    dataSource={recommendations?.list?.filter(r => r.status === "PENDING") || []}
+                    columns={columns}
+                    rowKey="id"
+                    size="small"
+                    loading={recommendations?.loading}
+                    pagination={{ pageSize: 10, size: 'small' }}
+                    scroll={{ x: 'max-content' }}
+                  />
+                </div>
               ),
             },
             {
               key: "reviewed",
               label: `Reviewed (${reviewedCount})`,
               children: (
-                <Table
-                  dataSource={recommendations?.list?.filter(r => r.status !== "PENDING") || []}
-                  columns={columns}
-                  rowKey="id"
-                  loading={recommendations?.loading}
-                  pagination={{ pageSize: 10 }}
-                />
+                <div className="py-2 custom-scrollbar overflow-x-auto">
+                  <Table
+                    className="custom-table"
+                    dataSource={recommendations?.list?.filter(r => r.status !== "PENDING") || []}
+                    columns={columns}
+                    rowKey="id"
+                    size="small"
+                    loading={recommendations?.loading}
+                    pagination={{ pageSize: 10, size: 'small' }}
+                    scroll={{ x: 'max-content' }}
+                  />
+                </div>
               ),
             },
           ]}

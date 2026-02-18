@@ -43,18 +43,18 @@ const StatCard = ({ icon: Icon, title, value, color, onClick }) => {
   
   return (
     <div
-      className={`${styles.bg} rounded-xl p-3 h-full border ${styles.border} ${onClick ? 'cursor-pointer hover:shadow-sm transition-shadow' : ''}`}
+      className={`${styles.bg} rounded-xl p-2.5 h-full border ${styles.border} ${onClick ? 'cursor-pointer hover:shadow-sm transition-shadow' : ''}`}
       onClick={onClick}
     >
-      <div className="flex items-center justify-between mb-2">
-        <span className={`${styles.icon} p-2 rounded-lg`}>
-          <Icon className="text-base" />
+      <div className="flex items-center justify-between mb-1.5">
+        <span className={`${styles.icon} p-1.5 rounded-lg`}>
+          <Icon className="text-sm" />
         </span>
       </div>
       <Statistic
-        title={<span className={`${styles.text} text-xs`}>{title}</span>}
+        title={<span className={`${styles.text} text-[10px] uppercase tracking-wider font-semibold opacity-80`}>{title}</span>}
         value={value}
-        valueStyle={{ fontSize: 24, fontWeight: 700 }}
+        valueStyle={{ fontSize: 20, fontWeight: 700, lineHeight: 1.2 }}
       />
     </div>
   );
@@ -133,7 +133,7 @@ const TrainingOverviewPage = () => {
       title: 'Faculty',
       key: 'faculty',
       render: (_, record) => (
-        <div className="py-1">
+        <div>
           <div className="font-medium text-sm text-slate-800">{record.user?.name || 'N/A'}</div>
           <Text className="text-xs text-slate-500">{record.user?.branchName || record.user?.email}</Text>
         </div>
@@ -143,7 +143,7 @@ const TrainingOverviewPage = () => {
       title: 'Training',
       key: 'training',
       render: (_, record) => (
-        <div className="py-1">
+        <div>
           <div className="font-medium text-sm text-slate-800">{record.training?.title || 'N/A'}</div>
           <div className="flex items-center gap-2 mt-0.5">
             <DeliveryModeBadge mode={record.training?.deliveryMode} showIcon={false} />
@@ -295,7 +295,7 @@ const TrainingOverviewPage = () => {
   ];
 
   const renderStatSkeletons = () => (
-    <Row gutter={[16, 16]} className="mb-6">
+    <Row gutter={[12, 12]} className="mb-4">
       {Array.from({ length: 4 }).map((_, idx) => (
         <Col xs={24} sm={12} lg={6} key={idx}>
           <TrainingStatSkeleton />
@@ -307,9 +307,9 @@ const TrainingOverviewPage = () => {
 
 
   return (
-    <div className="p-6 training-ui">
+    <div className="p-4 training-ui">
       {/* Greeting Section */}
-      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 mb-4">
         <TrainingGreeting
           userName={user?.name}
           subtitle="Monitor faculty training opportunities and participation across your institution."
@@ -318,7 +318,7 @@ const TrainingOverviewPage = () => {
 
       {/* Stats Grid */}
       {isLoading ? renderStatSkeletons() : (
-        <Row gutter={[16, 16]} className="mb-6">
+        <Row gutter={[12, 12]} className="mb-4">
           {stats.slice(0, 4).map((stat) => (
             <Col xs={24} sm={12} lg={6} key={stat.title}>
               <StatCard {...stat} />
@@ -327,7 +327,7 @@ const TrainingOverviewPage = () => {
         </Row>
       )}
 
-      <Card className="rounded-xl border-border shadow-none">
+      <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: 0 } }}>
         <Tabs
           className="custom-tabs"
           activeKey={activeTab}
@@ -336,15 +336,15 @@ const TrainingOverviewPage = () => {
             {
               key: 'trainings',
               label: (
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-2 px-4">
                   <CalendarOutlined />
                   Trainings
                   {filteredTrainings.length > 0 && <Badge count={filteredTrainings.length} size="small" />}
                 </span>
               ),
               children: (
-                <div className="p-5">
-                  <div className="flex items-center justify-between mb-4">
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-3">
                     <Input
                       placeholder="Search trainings..."
                       prefix={<SearchOutlined className="text-slate-400" />}
@@ -358,20 +358,23 @@ const TrainingOverviewPage = () => {
                   {isLoading ? (
                     <TableRowSkeleton rows={5} columns={4} />
                   ) : filteredTrainings.length > 0 ? (
-                    <Table
-                      className="custom-table"
-                      rowKey="id"
-                      columns={trainingColumns}
-                      dataSource={filteredTrainings}
-                      loading={trainings.loading}
-                      size="small"
-                      pagination={{
-                        pageSize: 10,
-                        showSizeChanger: true,
-                        showTotal: (total, range) => <Text className="text-xs">{range[0]}-{range[1]} of {total}</Text>,
-                        size: 'small',
-                      }}
-                    />
+                    <div className="custom-scrollbar overflow-x-auto">
+                      <Table
+                        className="custom-table"
+                        rowKey="id"
+                        columns={trainingColumns}
+                        dataSource={filteredTrainings}
+                        loading={trainings.loading}
+                        size="small"
+                        pagination={{
+                          pageSize: 10,
+                          showSizeChanger: true,
+                          showTotal: (total, range) => <Text className="text-xs">{range[0]}-{range[1]} of {total}</Text>,
+                          size: 'small',
+                        }}
+                        scroll={{ x: 'max-content' }}
+                      />
+                    </div>
                   ) : (
                     <TrainingEmptyState
                       type={searchText ? 'search' : 'calendar'}
@@ -385,34 +388,37 @@ const TrainingOverviewPage = () => {
             {
               key: 'applications',
               label: (
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-2 px-4">
                   <FileTextOutlined />
                   Applications
                   {reportData.applications.length > 0 && <Badge count={reportData.applications.length} size="small" />}
                 </span>
               ),
               children: (
-                <div className="p-5">
+                <div className="p-4">
                   {isReportsLoading ? (
                     <TableRowSkeleton rows={5} columns={4} />
                   ) : reportData.applications.length > 0 ? (
-                    <Table
-                      className="custom-table"
-                      rowKey="id"
-                      columns={applicationColumns}
-                      dataSource={reportData.applications}
-                      size="small"
-                      pagination={{
-                        pageSize: 10,
-                        showSizeChanger: true,
-                        showTotal: (total, range) => <Text className="text-xs">{range[0]}-{range[1]} of {total}</Text>,
-                        size: 'small',
-                      }}
-                      onRow={(record) => ({
-                        className: 'cursor-pointer hover:bg-slate-50',
-                        onClick: () => openDetails(record),
-                      })}
-                    />
+                    <div className="custom-scrollbar overflow-x-auto">
+                      <Table
+                        className="custom-table"
+                        rowKey="id"
+                        columns={applicationColumns}
+                        dataSource={reportData.applications}
+                        size="small"
+                        pagination={{
+                          pageSize: 10,
+                          showSizeChanger: true,
+                          showTotal: (total, range) => <Text className="text-xs">{range[0]}-{range[1]} of {total}</Text>,
+                          size: 'small',
+                        }}
+                        scroll={{ x: 'max-content' }}
+                        onRow={(record) => ({
+                          className: 'cursor-pointer hover:bg-slate-50',
+                          onClick: () => openDetails(record),
+                        })}
+                      />
+                    </div>
                   ) : (
                     <TrainingEmptyState
                       type="default"
@@ -435,15 +441,15 @@ const TrainingOverviewPage = () => {
         width={450}
       >
         {selected && (
-          <div className="mb-3 p-3 bg-blue-50 rounded">
+          <div className="mb-2 p-2 bg-blue-50 rounded">
             <Descriptions size="small" column={1}>
               <Descriptions.Item label="Faculty">{selected.user?.name}</Descriptions.Item>
               <Descriptions.Item label="Training">{selected.training?.title}</Descriptions.Item>
             </Descriptions>
           </div>
         )}
-        <Form layout="vertical" form={form}>
-          <Form.Item name="status" label="Decision" rules={[{ required: true }]}>
+        <Form layout="vertical" form={form} size="small">
+          <Form.Item name="status" label="Decision" rules={[{ required: true }]} className="mb-2">
             <Select
               options={[
                 { value: 'APPROVED', label: 'Approve' },
@@ -451,7 +457,7 @@ const TrainingOverviewPage = () => {
               ]}
             />
           </Form.Item>
-          <Form.Item name="reviewComments" label="Comments">
+          <Form.Item name="reviewComments" label="Comments" className="mb-0">
             <Input.TextArea
               rows={2}
               placeholder="Optional feedback..."
@@ -465,12 +471,13 @@ const TrainingOverviewPage = () => {
         open={detailsOpen}
         onCancel={() => setDetailsOpen(false)}
         footer={[
-          <Button key="close" onClick={() => setDetailsOpen(false)}>
+          <Button key="close" size="small" onClick={() => setDetailsOpen(false)}>
             Close
           </Button>,
           selected && selected.training && (
             <Button
               key="training"
+              size="small"
               onClick={() => {
                 setDetailsOpen(false);
                 navigate(`/app/training/${selected.trainingId || selected.training?.id}`);
@@ -484,6 +491,7 @@ const TrainingOverviewPage = () => {
               <Button
                 key="reject"
                 danger
+                size="small"
                 icon={<CloseOutlined />}
                 onClick={() => {
                   setDetailsOpen(false);
@@ -495,6 +503,7 @@ const TrainingOverviewPage = () => {
               <Button
                 key="approve"
                 type="primary"
+                size="small"
                 icon={<CheckOutlined />}
                 onClick={() => {
                   setDetailsOpen(false);
@@ -509,7 +518,7 @@ const TrainingOverviewPage = () => {
         width={600}
       >
         {selected && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <Card className="bg-blue-50 border-blue-100" size="small">
               <Descriptions column={1} size="small">
                 <Descriptions.Item label="Faculty">
@@ -534,35 +543,25 @@ const TrainingOverviewPage = () => {
             </Card>
 
             <div>
-              <Title level={5} className="mb-2!">Relevance to Teaching</Title>
+              <Title level={5} className="mb-1! text-sm">Relevance to Teaching</Title>
               <Card size="small" className="bg-gray-50">
-                <Text>{selected.relevanceToTeaching || 'Not provided'}</Text>
+                <Text className="text-xs">{selected.relevanceToTeaching || 'Not provided'}</Text>
               </Card>
             </div>
 
             <div>
-              <Title level={5} className="mb-2!">Expected Application</Title>
+              <Title level={5} className="mb-1! text-sm">Expected Application</Title>
               <Card size="small" className="bg-gray-50">
-                <Text>{selected.expectedApplication || 'Not provided'}</Text>
+                <Text className="text-xs">{selected.expectedApplication || 'Not provided'}</Text>
               </Card>
             </div>
 
             {selected.reviewComments && (
               <div>
-                <Title level={5} className="mb-2!">Review Comments</Title>
+                <Title level={5} className="mb-1! text-sm">Review Comments</Title>
                 <Card size="small" className="bg-amber-50 border-amber-100">
-                  <Text>{selected.reviewComments}</Text>
+                  <Text className="text-xs">{selected.reviewComments}</Text>
                 </Card>
-              </div>
-            )}
-
-            {selected.reviewedAt && (
-              <div className="text-xs text-slate-500">
-                Reviewed on {new Date(selected.reviewedAt).toLocaleDateString('en-US', {
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}
               </div>
             )}
           </div>

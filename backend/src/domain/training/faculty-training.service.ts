@@ -1,0 +1,92 @@
+import { ForbiddenException, Injectable } from '@nestjs/common';
+import { PrismaService } from '../../core/database/prisma.service';
+import { TrainingService } from './training.service';
+import { CalendarFilterDto, TrainingFilterDto } from './dto';
+
+@Injectable()
+export class FacultyTrainingService {
+  constructor(
+    private readonly trainingService: TrainingService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  private async getFacultyBranchId(userId: string): Promise<string | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { branchId: true },
+    });
+
+    return user?.branchId || null;
+  }
+
+  async getTrainings(filters: TrainingFilterDto, userId: string) {
+    const branchId = await this.getFacultyBranchId(userId);
+
+    if (!branchId) {
+      return {
+        data: [],
+        pagination: {
+          page: filters?.page || 1,
+          limit: filters?.limit || 20,
+          total: 0,
+          totalPages: 0,
+        },
+      };
+    }
+
+    return this.trainingService.findAll(
+      { ...filters, branchIds: [branchId] },
+      false,
+      userId,
+    );
+  }
+
+  async getCalendar(filters: CalendarFilterDto, userId: string) {
+    const branchId = await this.getFacultyBranchId(userId);
+
+    if (!branchId) {
+      return {
+        year: filters?.year || new Date().getFullYear(),
+        month: filters?.month,
+        trainings: [],
+      };
+    }
+
+    return this.trainingService.getCalendar(
+      { ...filters, branchIds: [branchId] },
+      userId,
+    );
+  }
+
+  async getUpcoming(limit: number, userId: string) {
+    const branchId = await this.getFacultyBranchId(userId);
+
+    if (!branchId) {
+      return [];
+    }
+
+    return this.trainingService.getUpcoming(limit, [branchId], userId);
+  }
+
+  async getMyTrainings(userId: string) {
+    return this.trainingService.getUserTrainings(userId);
+  }
+
+  async getTraining(id: string, userId: string) {
+    const branchId = await this.getFacultyBranchId(userId);
+    if (!branchId) {
+      throw new ForbiddenException('Your profile is not mapped to a branch');
+    }
+
+    return this.trainingService.findOne(id, userId);
+  }
+
+  async checkEligibility(trainingId: string, userId: string) {
+    const branchId = await this.getFacultyBranchId(userId);
+    if (!branchId) {
+      return { eligible: false, reason: 'Your profile is not mapped to a branch' };
+    }
+
+    return this.trainingService.checkUserEligibility(trainingId, userId);
+  }
+}

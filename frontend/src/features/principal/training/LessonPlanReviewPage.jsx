@@ -91,7 +91,7 @@ const LessonPlanReviewPage = () => {
       dataIndex: ['user', 'name'],
       key: 'user',
       render: (_, record) => (
-        <div className="py-1">
+        <div>
           <div className="font-medium text-sm text-slate-800">{record.user?.name || 'Faculty'}</div>
           <Text className="text-xs text-slate-500">
             {record.user?.branchName || record.user?.email || ''}
@@ -104,7 +104,7 @@ const LessonPlanReviewPage = () => {
       dataIndex: 'title',
       key: 'title',
       render: (title, record) => (
-        <div className="py-1">
+        <div>
           <div className="font-medium text-sm text-slate-800">{title || 'Untitled'}</div>
           <Text className="text-xs text-slate-500 flex items-center gap-1">
             <BookOutlined /> {record.training?.title || 'Training'}
@@ -201,48 +201,49 @@ const LessonPlanReviewPage = () => {
   ];
 
   return (
-    <div className="p-6 training-ui">
+    <div className="p-4 training-ui">
       {/* Header Section */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Title level={4} className="mb-0!">
+          <Title level={4} className="mb-0! text-lg">
             Lesson Plan Review
           </Title>
         </div>
       </div>
 
       {/* Filters Section */}
-      <Card className="rounded-xl border-border shadow-none">
-        <div className="mb-4">
+      <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: '12px' } }}>
+        <div className="mb-3">
           <Input
-            placeholder="Search by faculty, title, or training name..."
+            placeholder="Search by faculty or training..."
             prefix={<SearchOutlined className="text-slate-400" />}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             className="w-full"
+            size="middle"
             allowClear
             aria-label="Search lesson plans"
           />
         </div>
 
         {/* Tab Buttons */}
-
-        {/* Tab Buttons */}
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2 mb-3">
           <Button
             type={activeTab === 'pending' ? 'primary' : 'default'}
             onClick={() => setActiveTab('pending')}
             icon={<ClockCircleOutlined />}
             size="small"
+            className="text-[10px]"
           >
             Pending
-            {pendingPlans.length > 0 && <Badge count={pendingPlans.length} size="small" className="ml-2" />}
+            {pendingPlans.length > 0 && <Badge count={pendingPlans.length} size="small" className="ml-1.5" />}
           </Button>
           <Button
             type={activeTab === 'reviewed' ? 'primary' : 'default'}
             onClick={() => setActiveTab('reviewed')}
             icon={<CheckCircleOutlined />}
             size="small"
+            className="text-[10px]"
           >
             Reviewed
           </Button>
@@ -250,81 +251,85 @@ const LessonPlanReviewPage = () => {
 
         {/* Results info */}
         {(activeTab === 'pending' ? pendingPlans : reviewedPlans).length > 0 && (
-          <div className="mb-3 pb-3 border-b border-slate-200">
-            <Text className="text-xs text-slate-600">
+          <div className="mb-2 pb-2 border-b border-slate-200">
+            <Text className="text-[10px] text-slate-600">
               Showing <Text strong>{activeTab === 'pending' ? pendingPlans.length : reviewedPlans.length}</Text> of{" "}
-              <Text strong>{totalLessonPlans}</Text> lesson plans
+              <Text strong>{totalLessonPlans}</Text> plans
             </Text>
           </div>
         )}
-
-        {/* Content */}
 
         {/* Content */}
         {isLoading ? (
           <TableRowSkeleton rows={5} columns={4} />
         ) : activeTab === 'pending' ? (
           pendingPlans.length > 0 ? (
-            <Table
-              className="custom-table"
-              rowKey="id"
-              columns={columns}
-              dataSource={pendingPlans}
-              loading={lessonPlans.loading}
-              size="small"
-              pagination={{
-                pageSize: 10,
-                showSizeChanger: true,
-                showTotal: (total, range) => (
-                  <Text className="text-xs text-slate-600">
-                    {range[0]}-{range[1]} of {total}
-                  </Text>
-                ),
-                size: 'small',
-              }}
-              onRow={(record) => ({
-                className: 'cursor-pointer hover:bg-slate-50',
-                onClick: () => openReview(record),
-              })}
-            />
+            <div className="custom-scrollbar overflow-x-auto">
+              <Table
+                className="custom-table"
+                rowKey="id"
+                columns={columns}
+                dataSource={pendingPlans}
+                loading={lessonPlans.loading}
+                size="small"
+                pagination={{
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  showTotal: (total, range) => (
+                    <Text className="text-[10px] text-slate-600">
+                      {range[0]}-{range[1]} of {total}
+                    </Text>
+                  ),
+                  size: 'small',
+                }}
+                scroll={{ x: 'max-content' }}
+                onRow={(record) => ({
+                  className: 'cursor-pointer hover:bg-slate-50',
+                  onClick: () => openReview(record),
+                })}
+              />
+            </div>
           ) : (
             <TrainingEmptyState
               type={searchText ? 'search' : 'lessonPlans'}
-              message={searchText ? 'No matching lesson plans' : 'No pending lesson plans'}
-              description={searchText ? 'Try adjusting your search criteria.' : 'All lesson plans have been reviewed.'}
+              message={searchText ? 'No matching plans' : 'No pending plans'}
+              description={searchText ? 'Try adjusting your search.' : 'All reviewed.'}
               actionText={searchText ? 'Clear Search' : undefined}
               onAction={searchText ? () => setSearchText('') : undefined}
             />
           )
         ) : (
           reviewedPlans.length > 0 ? (
-            <Table
-              className="custom-table"
-              rowKey="id"
-              columns={reviewedColumns}
-              dataSource={reviewedPlans}
-              loading={lessonPlans.loading}
-              size="small"
-              pagination={{
-                pageSize: 10,
-                showSizeChanger: true,
-                showTotal: (total, range) => (
-                  <Text className="text-xs text-slate-600">
-                    {range[0]}-{range[1]} of {total}
-                  </Text>
-                ),
-                size: 'small',
-              }}
-              onRow={(record) => ({
-                className: 'cursor-pointer hover:bg-slate-50',
-                onClick: () => openReview(record),
-              })}
-            />
+            <div className="custom-scrollbar overflow-x-auto">
+              <Table
+                className="custom-table"
+                rowKey="id"
+                columns={reviewedColumns}
+                dataSource={reviewedPlans}
+                loading={lessonPlans.loading}
+                size="small"
+                pagination={{
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  showTotal: (total, range) => (
+                    <Text className="text-[10px] text-slate-600">
+                      {range[0]}-{range[1]} of {total}
+                    </Text>
+                  ),
+                  size: 'small',
+                }}
+                scroll={{ x: 'max-content' }}
+                onRow={(record) => ({
+                  className: 'cursor-pointer hover:bg-slate-50',
+                  onClick: () => openReview(record),
+                })}
+              />
+            </div>
           ) : (
             <TrainingEmptyState
               type={searchText ? 'search' : 'lessonPlans'}
-              message={searchText ? 'No matching lesson plans' : 'No reviewed lesson plans'}
-              description={searchText ? 'Try adjusting your search criteria.' : 'Reviewed lesson plans will appear here.'}
+              message={searchText ? 'No matching plans' : 'No reviewed plans'}
+              description={searchText ? 'Try adjusting your search.' : 'Reviewed plans appear here.'}
               actionText={searchText ? 'Clear Search' : undefined}
               onAction={searchText ? () => setSearchText('') : undefined}
             />

@@ -218,6 +218,12 @@ export const menuConfig = {
         path: "/app/training/test-forms",
       },
       {
+        key: "training-lesson-plans",
+        label: "Lesson Plans",
+        icon: <FileDoneOutlined />,
+        path: "/app/training/lesson-plans",
+      },
+      {
         key: "training-feedback-forms",
         label: "Feedback Forms",
         icon: <FileTextOutlined />,

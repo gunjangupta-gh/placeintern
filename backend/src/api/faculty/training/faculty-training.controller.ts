@@ -13,7 +13,7 @@ import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { Role } from '../../../generated/prisma/client';
-import { TrainingService } from '../../../domain/training/training.service';
+import { FacultyTrainingService } from '../../../domain/training/faculty-training.service';
 import { TrainingFilterDto, CalendarFilterDto } from '../../../domain/training/dto';
 
 @ApiTags('Faculty - Training')
@@ -22,42 +22,42 @@ import { TrainingFilterDto, CalendarFilterDto } from '../../../domain/training/d
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.TEACHER)
 export class FacultyTrainingController {
-  constructor(private readonly trainingService: TrainingService) {}
+  constructor(private readonly facultyTrainingService: FacultyTrainingService) {}
 
   @Throttle({ default: THROTTLE_PRESETS.list })
   @Get()
   @ApiOperation({ summary: 'Get all available trainings' })
   async getTrainings(@Query() filters: TrainingFilterDto, @Req() req) {
-    return this.trainingService.findAll(filters, false, req.user.userId); // Only published + branch-scoped trainings
+    return this.facultyTrainingService.getTrainings(filters, req.user.userId);
   }
 
   @Get('calendar')
   @ApiOperation({ summary: 'Get training calendar' })
   async getCalendar(@Query() filters: CalendarFilterDto, @Req() req) {
-    return this.trainingService.getCalendar(filters, req.user.userId);
+    return this.facultyTrainingService.getCalendar(filters, req.user.userId);
   }
 
   @Get('upcoming')
   @ApiOperation({ summary: 'Get upcoming trainings' })
   async getUpcoming(@Query('limit') limit: string | undefined, @Req() req) {
-    return this.trainingService.getUpcoming(limit ? Number(limit) : 10, undefined, req.user.userId);
+    return this.facultyTrainingService.getUpcoming(limit ? Number(limit) : 10, req.user.userId);
   }
 
   @Get('my-trainings')
   @ApiOperation({ summary: 'Get trainings user is registered for' })
   async getMyTrainings(@Req() req) {
-    return this.trainingService.getUserTrainings(req.user.userId);
+    return this.facultyTrainingService.getMyTrainings(req.user.userId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get training details' })
   async getTraining(@Param('id') id: string, @Req() req) {
-    return this.trainingService.findOne(id, req.user.userId);
+    return this.facultyTrainingService.getTraining(id, req.user.userId);
   }
 
   @Get(':id/eligibility')
   @ApiOperation({ summary: 'Check eligibility for a training' })
   async checkEligibility(@Param('id') trainingId: string, @Req() req) {
-    return this.trainingService.checkUserEligibility(trainingId, req.user.userId);
+    return this.facultyTrainingService.checkEligibility(trainingId, req.user.userId);
   }
 }

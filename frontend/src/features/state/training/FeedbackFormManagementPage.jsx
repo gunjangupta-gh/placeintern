@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Button, Card, Col, Form, Input, Modal, Row, Select, Switch, Table, Tag, Tooltip, Typography, message } from 'antd';
-import { FileTextOutlined, PlusOutlined, CheckCircleOutlined, ArrowUpOutlined, ArrowDownOutlined, EditOutlined, DeleteOutlined, EyeOutlined, MinusCircleOutlined, PlusCircleOutlined } from '@ant-design/icons';
+import { FileTextOutlined, PlusOutlined, CheckCircleOutlined, ArrowUpOutlined, ArrowDownOutlined, EditOutlined, DeleteOutlined, EyeOutlined, MinusCircleOutlined, PlusCircleOutlined, SearchOutlined } from '@ant-design/icons';
 import InputNumber from 'antd/es/input-number';
 import TrainingEmptyState from '../../../components/training/TrainingEmptyState';
 import { TrainingStatSkeleton, TableRowSkeleton } from '../../../components/training/skeletons/TrainingSkeletons';
@@ -327,62 +327,36 @@ const FeedbackFormManagementPage = () => {
   const searchResultCount = searchText ? filteredForms.length : null;
 
   return (
-    <div className="p-6 training-ui">
+    <div className="p-4 training-ui">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
         <div>
-          <Title level={2} className="!mb-1 training-heading">
+          <Title level={4} className="!mb-0.5 text-lg">
             Feedback Forms
           </Title>
+          <Text type="secondary" className="text-xs">Manage evaluation and feedback surveys</Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+        <Button type="primary" size="middle" icon={<PlusOutlined />} onClick={openCreate}>
           New Form
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      {/* <Row gutter={[16, 16]} className="mb-6">
-        {isLoading ? (
-          <>
-            <Col xs={12} lg={6}><TrainingStatSkeleton /></Col>
-            <Col xs={12} lg={6}><TrainingStatSkeleton /></Col>
-          </>
-        ) : (
-          <>
-            <Col xs={12} lg={6}>
-              <StatCard
-                icon={FileTextOutlined}
-                title="Total Forms"
-                value={stats.total}
-                tone="primary"
-              />
-            </Col>
-            <Col xs={12} lg={6}>
-              <StatCard
-                icon={CheckCircleOutlined}
-                title="Published"
-                value={stats.published}
-                tone="success"
-              />
-            </Col>
-          </>
-        )}
-      </Row> */}
-
       {/* Forms Table */}
-      <Card className="rounded-xl border-border shadow-none">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+      <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: '12px' } }}>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-3">
             <Input
-              placeholder="Search by title or purpose"
+              placeholder="Search forms..."
+              prefix={<SearchOutlined className="text-slate-400" />}
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
               className="lg:w-80"
+              size="middle"
               allowClear
             />
             {searchResultCount !== null && (
-              <Text type="secondary" className="text-sm">
-                {searchResultCount} result{searchResultCount !== 1 ? 's' : ''} found
+              <Text type="secondary" className="text-xs">
+                {searchResultCount} result{searchResultCount !== 1 ? 's' : ''}
               </Text>
             )}
           </div>
@@ -390,19 +364,23 @@ const FeedbackFormManagementPage = () => {
         {isLoading ? (
           <TableRowSkeleton rows={5} columns={4} />
         ) : filteredForms.length > 0 ? (
-          <Table
-            className="custom-table"
-            rowKey="id"
-            columns={columns}
-            dataSource={filteredForms}
-            loading={feedbackForms.loading}
-            pagination={{ pageSize: 10 }}
-          />
+          <div className="custom-scrollbar overflow-x-auto">
+            <Table
+              className="custom-table"
+              rowKey="id"
+              columns={columns}
+              dataSource={filteredForms}
+              loading={feedbackForms.loading}
+              size="small"
+              pagination={{ pageSize: 10, size: 'small' }}
+              scroll={{ x: 'max-content' }}
+            />
+          </div>
         ) : (
           <TrainingEmptyState
             type={searchText ? 'search' : 'feedback'}
-            message={searchText ? 'No feedback forms found' : 'No feedback forms yet'}
-            description={searchText ? 'Try adjusting your search terms.' : 'Create your first feedback form to collect responses.'}
+            message={searchText ? 'No forms found' : 'No forms yet'}
+            description={searchText ? 'Try adjusting your search.' : 'Create your first feedback form.'}
             actionText={searchText ? 'Clear Search' : 'Create Form'}
             onAction={searchText ? () => setSearchText('') : openCreate}
           />

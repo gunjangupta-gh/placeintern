@@ -45,8 +45,12 @@ import {
   fetchStateTrainings,
   fetchStateTrainingAttendance,
   fetchStateFeedbackForms,
+  fetchStatePreTestForms,
+  fetchStatePostTestForms,
   createStateTraining,
   updateStateTraining,
+  publishStateTraining,
+  unpublishStateTraining,
 } from "../store/stateTrainingSlice";
 
 const { Text } = Typography;
@@ -54,7 +58,7 @@ const { Text } = Typography;
 const TrainingManagementPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { trainings, feedbackForms, attendance } = useSelector(
+  const { trainings, feedbackForms, preTestForms, postTestForms, attendance } = useSelector(
     (state) => state.stateTraining,
   );
   const [searchText, setSearchText] = useState("");
@@ -75,6 +79,8 @@ const TrainingManagementPage = () => {
   useEffect(() => {
     dispatch(fetchStateTrainings());
     dispatch(fetchStateFeedbackForms());
+    dispatch(fetchStatePreTestForms({ forceRefresh: true }));
+    dispatch(fetchStatePostTestForms({ forceRefresh: true }));
   }, [dispatch]);
 
   const handleOpenCreateModal = () => {
@@ -96,6 +102,7 @@ const TrainingManagementPage = () => {
       description: training.description,
       providedBy: training.providedBy,
       trainerName: training.trainerName,
+      trainerContact: training.trainerContact,
       startDate: training.startDate ? dayjs(training.startDate) : null,
       endDate: training.endDate ? dayjs(training.endDate) : null,
       startTime: training.startTime ? dayjs(training.startTime) : null,
@@ -113,8 +120,12 @@ const TrainingManagementPage = () => {
       capacity: training.capacity,
       targetBranchIds: training.targetBranches?.map((b) => b.id) || [],
       prerequisites: training.prerequisites,
-      learningOutcomes: training.learningOutcomes,
+      learningOutcomes: Array.isArray(training.learningOutcomes)
+        ? training.learningOutcomes.join("\n")
+        : training.learningOutcomes,
       feedbackFormId: training.feedbackFormId,
+      preTestFormId: training.preTestFormId || training.preTestForm?.id || null,
+      postTestFormId: training.postTestFormId || training.postTestForm?.id || null,
       publish: training.isPublished,
     });
 
@@ -153,6 +164,23 @@ const TrainingManagementPage = () => {
     setSelectedTraining(training);
     await dispatch(fetchStateTrainingAttendance({ trainingId: training.id }));
     setStatsModalOpen(true);
+  };
+
+  const handleTogglePublish = async (training) => {
+    try {
+      if (training.isPublished) {
+        await dispatch(unpublishStateTraining(training.id)).unwrap();
+        message.success("Training moved to draft and marked inactive");
+      } else {
+        await dispatch(publishStateTraining(training.id)).unwrap();
+        message.success("Training published and marked active");
+      }
+    } catch (error) {
+      message.error(
+        error ||
+          `Failed to ${training.isPublished ? "unpublish" : "publish"} training`,
+      );
+    }
   };
 
   const filteredTrainings = useMemo(() => {
@@ -226,7 +254,7 @@ const TrainingManagementPage = () => {
       width: 100,
       render: (value) => (
         <Tag color={value ? "green" : "orange"} className="text-xs">
-          {value ? "Published" : "Draft"}
+          {value ? "Published / Active" : "Draft / Inactive"}
         </Tag>
       ),
     },
@@ -258,6 +286,14 @@ const TrainingManagementPage = () => {
               size="small"
               icon={<EditOutlined />}
               onClick={() => handleOpenEditModal(record)}
+            />
+          </Tooltip>
+          <Tooltip title={record.isPublished ? "Unpublish (Draft)" : "Publish (Active)"}>
+            <Button
+              type="text"
+              size="small"
+              icon={record.isPublished ? <CloseCircleOutlined /> : <CheckCircleFilled />}
+              onClick={() => handleTogglePublish(record)}
             />
           </Tooltip>
         </Space>
@@ -331,21 +367,21 @@ const TrainingManagementPage = () => {
   );
 
   return (
-    <div className="p-6 training-ui">
+    <div className="p-4 training-ui">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 mb-1">
+          <h1 className="text-xl font-bold text-slate-800 mb-0.5">
             Training Management
           </h1>
-          <Text type="secondary" className="text-sm">
+          <Text type="secondary" className="text-xs">
             Manage and monitor all training programs
           </Text>
         </div>
         <Button
           type="primary"
           icon={<PlusOutlined />}
-          size="large"
+          size="middle"
           onClick={handleOpenCreateModal}
         >
           Create Training
@@ -354,7 +390,7 @@ const TrainingManagementPage = () => {
 
 
       {/* Filters */}
-      <Card className="rounded-xl border-border shadow-none !mb-4">
+      <Card className="rounded-xl border-border shadow-none !mb-3" styles={{ body: { padding: '12px' } }}>
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <Input
             placeholder="Search trainings..."
@@ -362,10 +398,12 @@ const TrainingManagementPage = () => {
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             className="lg:w-80"
+            size="middle"
             allowClear
           />
-          <Space>
+          <Space size="small">
             <Segmented
+              size="small"
               options={[
                 { label: "All", value: "ALL" },
                 { label: "Published", value: "PUBLISHED" },
@@ -375,6 +413,7 @@ const TrainingManagementPage = () => {
               onChange={setStatusFilter}
             />
             <Segmented
+              size="small"
               options={[
                 {
                   label: "List",
@@ -396,36 +435,42 @@ const TrainingManagementPage = () => {
 
       {/* Table/Calendar View */}
       {viewMode === "LIST" ? (
-        <Card className="rounded-xl border-border shadow-none">
-          {filteredTrainings.length > 0 ? (
-            <Table
-              rowKey="id"
-              columns={columns}
-              dataSource={filteredTrainings}
-              loading={trainings.loading}
-              pagination={{ pageSize: 10, showSizeChanger: true }}
-              size="small"
-            />
-          ) : (
-            <TrainingEmptyState
-              type={searchText ? "search" : "calendar"}
-              message={searchText ? "No trainings found" : "No trainings yet"}
-              description={
-                searchText
-                  ? "Try adjusting your search terms."
-                  : "Create your first training to get started."
-              }
-              actionText={searchText ? "Clear Search" : "Create Training"}
-              onAction={() =>
-                searchText ? setSearchText("") : handleOpenCreateModal()
-              }
-            />
-          )}
+        <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: 0 } }}>
+          <div className="p-0 custom-scrollbar overflow-x-auto">
+            {filteredTrainings.length > 0 ? (
+              <Table
+                rowKey="id"
+                columns={columns}
+                dataSource={filteredTrainings}
+                loading={trainings.loading}
+                pagination={{ pageSize: 10, showSizeChanger: true, size: 'small' }}
+                size="small"
+                className="custom-table"
+                scroll={{ x: 'max-content' }}
+              />
+            ) : (
+              <div className="p-6">
+                <TrainingEmptyState
+                  type={searchText ? "search" : "calendar"}
+                  message={searchText ? "No trainings found" : "No trainings yet"}
+                  description={
+                    searchText
+                      ? "Try adjusting your search terms."
+                      : "Create your first training to get started."
+                  }
+                  actionText={searchText ? "Clear Search" : "Create Training"}
+                  onAction={() =>
+                    searchText ? setSearchText("") : handleOpenCreateModal()
+                  }
+                />
+              </div>
+            )}
+          </div>
         </Card>
       ) : (
-        <Row gutter={[16, 16]}>
+        <Row gutter={[12, 12]}>
           <Col xs={24} lg={16}>
-            <Card className="rounded-xl border-border shadow-none">
+            <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: '12px' } }}>
               <style>{`
                 .training-calendar .ant-picker-calendar-date {
                   margin: 2px;
@@ -551,33 +596,33 @@ const TrainingManagementPage = () => {
             </Card>
           </Col>
           <Col xs={24} lg={8}>
-            <Card className="rounded-xl border-border shadow-none sticky ">
-              <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-200">
+            <Card className="rounded-xl border-border shadow-none sticky" styles={{ body: { padding: '12px' } }}>
+              <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-200">
                 <div>
-                  <Text className="text-xs text-slate-500 block mb-0.5">
+                  <Text className="text-[10px] text-slate-500 block mb-0">
                     {selectedDate.isSame(dayjs(), "day")
                       ? "Today"
                       : "Selected Day"}
                   </Text>
-                  <Text className="font-semibold text-base text-slate-800">
+                  <Text className="font-semibold text-sm text-slate-800">
                     {selectedDate.format("DD MMM, YYYY")}
                   </Text>
                 </div>
-                <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xs">
                   {selectedDate.format("DD")}
                 </div>
               </div>
               {selectedDayTrainings.length > 0 ? (
-                <div className="!space-y-2 max-h-[500px] overflow-y-auto">
+                <div className="!space-y-2 max-h-[450px] overflow-y-auto pr-1 custom-scrollbar">
                   {selectedDayTrainings.map((training) => (
                     <Card
                       key={training.id}
                       className="rounded-lg border-slate-200 hover:border-blue-400 cursor-pointer transition-all"
-                      styles={{ body: { padding: "12px" } }}
+                      styles={{ body: { padding: "10px" } }}
                       onClick={() => navigate(`/app/training/${training.id}`)}
                     >
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <Text className="font-medium text-sm text-slate-800 flex-1">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <Text className="font-medium text-xs text-slate-800 flex-1 line-clamp-1">
                           {training.title}
                         </Text>
                         <DeliveryModeBadge
@@ -585,25 +630,25 @@ const TrainingManagementPage = () => {
                           showIcon={false}
                         />
                       </div>
-                      <Text type="secondary" className="text-xs block mb-2">
+                      <Text type="secondary" className="text-[10px] block mb-1">
                         {training.providedBy || "Training Provider"}
                       </Text>
-                      <div className="pt-2 border-t border-slate-100">
+                      <div className="pt-1.5 border-t border-slate-100">
                         <TrainingDateRange
                           startDate={training.startDate}
                           endDate={training.endDate}
                           compact
                         />
                       </div>
-                      <div className="mt-2 flex items-center justify-between">
+                      <div className="mt-1.5 flex items-center justify-between">
                         <Tag
                           color={training.isPublished ? "green" : "orange"}
-                          className="text-xs m-0"
+                          className="text-[9px] m-0 px-1 py-0 leading-normal"
                         >
                           {training.isPublished ? "Published" : "Draft"}
                         </Tag>
                         {training.capacity && (
-                          <Text type="secondary" className="text-xs">
+                          <Text type="secondary" className="text-[10px]">
                             {training.capacity} seats
                           </Text>
                         )}
@@ -667,7 +712,7 @@ const TrainingManagementPage = () => {
             />
           </div>
         </div>
-        <div className="p-4 max-h-[65vh] overflow-y-auto">
+        <div className="p-4">
           <TrainingForm
             form={form}
             onSubmit={handleFormSubmit}
@@ -676,6 +721,8 @@ const TrainingManagementPage = () => {
               formMode === "create" ? "Create Training" : "Update Training"
             }
             feedbackForms={feedbackForms?.list || []}
+            preTestForms={preTestForms?.list || []}
+            postTestForms={postTestForms?.list || []}
             onCancel={handleCloseFormModal}
             currentStep={formStep}
             onStepChange={setFormStep}
@@ -764,6 +811,21 @@ const TrainingManagementPage = () => {
                   overflow: auto;
                   border: 1px solid #e2e8f0;
                   border-radius: 6px;
+                }
+                .attendance-table-wrapper::-webkit-scrollbar {
+                  width: 6px;
+                  height: 6px;
+                }
+                .attendance-table-wrapper::-webkit-scrollbar-track {
+                  background: rgba(241, 245, 249, 0.3);
+                  border-radius: 10px;
+                }
+                .attendance-table-wrapper::-webkit-scrollbar-thumb {
+                  background: rgba(226, 232, 240, 0.8);
+                  border-radius: 10px;
+                }
+                .attendance-table-wrapper::-webkit-scrollbar-thumb:hover {
+                  background: rgba(71, 85, 105, 0.5);
                 }
                 .attendance-table {
                   width: 100%;

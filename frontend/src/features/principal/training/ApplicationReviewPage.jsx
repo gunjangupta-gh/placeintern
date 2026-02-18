@@ -60,7 +60,7 @@ const ApplicationReviewPage = () => {
       dataIndex: ['user', 'name'],
       key: 'user',
       render: (_, record) => (
-        <div className="py-1">
+        <div>
           <div className="font-medium text-sm text-slate-800">{record.user?.name || 'Faculty'}</div>
           <Text className="text-xs text-slate-500">
             {record.user?.email || ''}
@@ -73,7 +73,7 @@ const ApplicationReviewPage = () => {
       dataIndex: ['training', 'title'],
       key: 'training',
       render: (_, record) => (
-        <div className="py-1">
+        <div>
           <div className="font-medium text-sm text-slate-800">{record.training?.title || 'Training'}</div>
         </div>
       ),
@@ -165,25 +165,26 @@ const ApplicationReviewPage = () => {
   }, [applications.list, searchText]);
 
   return (
-    <div className="p-6 training-ui">
+    <div className="p-4 training-ui">
       {/* Header Section */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Title level={4} className="!mb-0">
+          <Title level={4} className="!mb-0 text-lg">
             Application Review
           </Title>
         </div>
       </div>
 
       {/* Filters Section */}
-      <Card className="rounded-xl border-border shadow-none">
-        <div className="mb-4">
+      <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: '12px' } }}>
+        <div className="mb-3">
           <Input
-            placeholder="Search by faculty or training name..."
+            placeholder="Search faculty or training..."
             prefix={<SearchOutlined className="text-slate-400" />}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             className="w-full"
+            size="middle"
             allowClear
             aria-label="Search applications"
           />
@@ -191,8 +192,8 @@ const ApplicationReviewPage = () => {
 
         {/* Results info */}
         {filteredApplications.length > 0 && (
-          <div className="mb-3 pb-3 border-b border-slate-200">
-            <Text className="text-xs text-slate-600">
+          <div className="mb-2 pb-2 border-b border-slate-200">
+            <Text className="text-[10px] text-slate-600">
               Showing <Text strong>{filteredApplications.length}</Text> of{" "}
               <Text strong>{applications.list?.length || 0}</Text> applications
             </Text>
@@ -207,33 +208,36 @@ const ApplicationReviewPage = () => {
           <TrainingEmptyState
             type={searchText ? 'search' : 'applications'}
             message={searchText ? 'No matching applications' : 'No applications yet'}
-            description={searchText ? 'Try adjusting your search criteria.' : 'There are no applications waiting for your review.'}
+            description={searchText ? 'Try adjusting your search criteria.' : 'There are no applications for review.'}
             actionText={searchText ? 'Clear Search' : undefined}
             onAction={searchText ? () => setSearchText('') : undefined}
           />
         ) : (
-          <Table
-            className="custom-table"
-            rowKey="id"
-            columns={columns}
-            dataSource={filteredApplications}
-            loading={applications.loading}
-            size="small"
-            pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showTotal: (total, range) => (
-                <Text className="text-xs text-slate-600">
-                  {range[0]}-{range[1]} of {total}
-                </Text>
-              ),
-              size: 'small',
-            }}
-            onRow={(record) => ({
-              className: 'cursor-pointer hover:bg-slate-50',
-              onClick: () => navigate(`/app/training/${record.trainingId || record.training?.id}`),
-            })}
-          />
+          <div className="custom-scrollbar overflow-x-auto">
+            <Table
+              className="custom-table"
+              rowKey="id"
+              columns={columns}
+              dataSource={filteredApplications}
+              loading={applications.loading}
+              size="small"
+              pagination={{
+                pageSize: 10,
+                showSizeChanger: true,
+                showTotal: (total, range) => (
+                  <Text className="text-[10px] text-slate-600">
+                    {range[0]}-{range[1]} of {total}
+                  </Text>
+                ),
+                size: 'small',
+              }}
+              scroll={{ x: 'max-content' }}
+              onRow={(record) => ({
+                className: 'cursor-pointer hover:bg-slate-50',
+                onClick: () => navigate(`/app/training/${record.trainingId || record.training?.id}`),
+              })}
+            />
+          </div>
         )}
       </Card>
 

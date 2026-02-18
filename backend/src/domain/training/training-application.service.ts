@@ -47,14 +47,18 @@ export class TrainingApplicationService {
         throw new BadRequestException('Training is no longer active');
       }
 
-      // Enforce target branch eligibility
+      // Enforce branch eligibility only when training is branch-targeted
       if (training.targetBranches?.length > 0) {
         const user = await this.prisma.user.findUnique({
           where: { id: userId },
           select: { branchId: true },
         });
 
-        const isBranchAllowed = !!user?.branchId && training.targetBranches.some((branch) => branch.id === user.branchId);
+        if (!user?.branchId) {
+          throw new ForbiddenException('Your profile is not mapped to a branch');
+        }
+
+        const isBranchAllowed = training.targetBranches.some((branch) => branch.id === user.branchId);
         if (!isBranchAllowed) {
           throw new ForbiddenException('This training is not available for your branch');
         }

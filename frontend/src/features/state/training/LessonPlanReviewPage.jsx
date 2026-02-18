@@ -1,64 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Button, Card, Col, Form, Input, Modal, Row, Select, Table, Tag, Typography, message } from 'antd';
-import { FileDoneOutlined, FileTextOutlined, CheckCircleOutlined, ClockCircleOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
-import PageHeader from '../../../components/PageHeader';
+import { Button, Card, Descriptions, Form, Input, Modal, Space, Table, Tag, Tooltip, Typography, message, Select } from 'antd';
+import { EyeOutlined, FileDoneOutlined, CheckCircleOutlined, ClockCircleOutlined, SearchOutlined } from '@ant-design/icons';
 import TrainingEmptyState from '../../../components/training/TrainingEmptyState';
-import { TrainingStatSkeleton, TableRowSkeleton } from '../../../components/training/skeletons/TrainingSkeletons';
+import { TableRowSkeleton } from '../../../components/training/skeletons/TrainingSkeletons';
 import { fetchStateLessonPlans, reviewStateLessonPlan } from '../store/stateTrainingSlice';
 
 const { Text } = Typography;
 
-const STAT_TONES = {
-  primary: { icon: 'bg-blue-100 text-blue-700', card: 'bg-gradient-to-br from-blue-50 via-white to-slate-50' },
-  success: { icon: 'bg-emerald-100 text-emerald-700', card: 'bg-gradient-to-br from-emerald-50 via-white to-slate-50' },
-  warning: { icon: 'bg-amber-100 text-amber-700', card: 'bg-gradient-to-br from-amber-50 via-white to-slate-50' },
-  secondary: { icon: 'bg-slate-100 text-slate-700', card: 'bg-gradient-to-br from-slate-50 via-white to-blue-50' },
-};
-
-const StatCard = ({ icon: Icon, title, value, subtitle, tone, trend, onClick }) => {
-  const styles = STAT_TONES[tone] || STAT_TONES.primary;
-  const hasTrend = trend !== undefined && trend !== null;
-  const isPositiveTrend = hasTrend && trend >= 0;
-
-  return (
-    <Card
-      className={`rounded-2xl border-border shadow-none ${onClick ? 'cursor-pointer hover:shadow-soft' : ''} transition-shadow h-full ${styles.card}`}
-      onClick={onClick}
-      styles={{ body: { padding: '16px' } }}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      aria-label={`${title}: ${value}. ${subtitle || ''}${hasTrend ? ` Trend: ${isPositiveTrend ? 'up' : 'down'} ${Math.abs(trend)}%` : ''}`}
-      onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
-    >
-      <div className="flex items-start justify-between">
-        <div>
-          <Text className="text-text-secondary text-xs block mb-1">{title}</Text>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-text-primary">{value}</span>
-            {hasTrend && (
-              <span className={`flex items-center text-xs font-medium ${isPositiveTrend ? 'text-emerald-600' : 'text-red-600'}`}>
-                {isPositiveTrend ? <ArrowUpOutlined className="mr-0.5" /> : <ArrowDownOutlined className="mr-0.5" />}
-                {Math.abs(trend)}%
-              </span>
-            )}
-          </div>
-          {subtitle && <Text type="secondary" className="text-xs">{subtitle}</Text>}
-        </div>
-        {Icon && (
-          <div className={`flex items-center justify-center w-10 h-10 rounded-lg ${styles.icon}`}>
-            <Icon className="text-lg" />
-          </div>
-        )}
-      </div>
-    </Card>
-  );
-};
-
 const StateLessonPlanReviewPage = () => {
   const dispatch = useDispatch();
   const { lessonPlans } = useSelector((state) => state.stateTraining);
-  const { user } = useSelector((state) => state.auth);
+  const [viewOpen, setViewOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const [searchText, setSearchText] = useState('');
@@ -76,6 +29,19 @@ const StateLessonPlanReviewPage = () => {
     form.setFieldsValue({ status: 'APPROVED', reviewComments: '' });
   };
 
+  const openView = (record) => {
+    setSelected(record);
+    setViewOpen(true);
+  };
+
+  const renderTextValue = (value, fallback = 'Not provided') => {
+    if (Array.isArray(value)) {
+      const cleaned = value.filter(Boolean);
+      return cleaned.length ? cleaned.join(', ') : fallback;
+    }
+    return value ? String(value) : fallback;
+  };
+
   const handleReview = async () => {
     try {
       const values = await form.validateFields();
@@ -89,12 +55,12 @@ const StateLessonPlanReviewPage = () => {
 
   const columns = [
     { title: 'Title', dataIndex: 'title', key: 'title' },
-    {
-      title: 'Training',
-      dataIndex: ['training', 'title'],
-      key: 'training',
-      render: (_, record) => record.training?.title || record.trainingTitle || 'Training',
-    },
+    // {
+    //   title: 'Training',
+    //   dataIndex: ['training', 'title'],
+    //   key: 'training',
+    //   render: (_, record) => record.training?.title || record.trainingTitle || 'Training',
+    // },
     {
       title: 'Faculty',
       dataIndex: ['user', 'name'],
@@ -122,21 +88,23 @@ const StateLessonPlanReviewPage = () => {
       title: 'Actions',
       key: 'actions',
       render: (_, record) => (
-        <Button size="small" onClick={() => openReview(record)} aria-label={`Review lesson plan: ${record.title}`}>
-          Review
-        </Button>
+        <Space size="small">
+          <Tooltip title="View full lesson plan">
+            <Button
+              type="text"
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => openView(record)}
+              aria-label={`View lesson plan: ${record.title}`}
+            />
+          </Tooltip>
+          <Button size="small" onClick={() => openReview(record)} aria-label={`Review lesson plan: ${record.title}`}>
+            Review
+          </Button>
+        </Space>
       ),
     },
   ];
-
-  const stats = useMemo(() => {
-    const list = lessonPlans.list || [];
-    return {
-      total: list.length,
-      pending: list.filter((item) => ['SUBMITTED', 'UNDER_REVIEW'].includes(item.status)).length,
-      approved: list.filter((item) => item.status === 'APPROVED').length,
-    };
-  }, [lessonPlans.list]);
 
   const filteredLessonPlans = useMemo(() => {
     if (!searchText) return lessonPlans.list || [];
@@ -151,90 +119,131 @@ const StateLessonPlanReviewPage = () => {
   const searchResultCount = searchText ? filteredLessonPlans.length : null;
 
   return (
-    <div className="p-6 training-ui" role="main" aria-label="Lesson Plan Review">
-      <PageHeader
-        icon={FileDoneOutlined}
-        title={<span className="training-heading">Lesson Plan Review</span>}
-        description="Review lesson plans across institutions."
-      />
+    <div className="p-4 training-ui" role="main" aria-label="Lesson Plan Review">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-800 mb-0.5">Lesson Plan Management</h1>
+          <Text type="secondary" className="text-xs">
+            Review lesson plans across institutions.
+          </Text>
+        </div>
+      </div>
 
-      <Row gutter={[16, 16]} className="mb-6" role="region" aria-label="Lesson plan statistics">
-        {isLoading ? (
-          <>
-            <Col xs={12} lg={6}><TrainingStatSkeleton /></Col>
-            <Col xs={12} lg={6}><TrainingStatSkeleton /></Col>
-            <Col xs={12} lg={6}><TrainingStatSkeleton /></Col>
-          </>
-        ) : (
-          <>
-            <Col xs={12} lg={6}>
-              <StatCard
-                icon={FileTextOutlined}
-                title="Total"
-                value={stats.total}
-                tone="primary"
-              />
-            </Col>
-            <Col xs={12} lg={6}>
-              <StatCard
-                icon={ClockCircleOutlined}
-                title="Pending"
-                value={stats.pending}
-                tone="warning"
-              />
-            </Col>
-            <Col xs={12} lg={6}>
-              <StatCard
-                icon={CheckCircleOutlined}
-                title="Approved"
-                value={stats.approved}
-                tone="success"
-              />
-            </Col>
-          </>
-        )}
-      </Row>
-
-      <Card className="rounded-2xl border-border shadow-none">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+      <Card className="rounded-xl border-border shadow-none !mb-3" styles={{ body: { padding: '12px' } }}>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Input
               placeholder="Search by title, faculty, or training"
+              prefix={<SearchOutlined />}
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
               className="lg:w-80"
+              size="middle"
               allowClear
               aria-label="Search lesson plans"
             />
             {searchResultCount !== null && (
-              <Text type="secondary" className="text-sm" aria-live="polite">
+              <Text type="secondary" className="text-xs" aria-live="polite">
                 {searchResultCount} result{searchResultCount !== 1 ? 's' : ''} found
               </Text>
             )}
           </div>
         </div>
-        {isLoading ? (
-          <TableRowSkeleton rows={5} columns={5} />
-        ) : filteredLessonPlans.length > 0 ? (
-          <Table
-            className="custom-table"
-            rowKey="id"
-            columns={columns}
-            dataSource={filteredLessonPlans}
-            loading={lessonPlans.loading}
-            pagination={{ pageSize: 10 }}
-            aria-label="Lesson plans table"
-          />
-        ) : (
-          <TrainingEmptyState
-            type={searchText ? 'search' : 'lessonPlans'}
-            message={searchText ? 'No lesson plans found' : 'No lesson plans submitted yet'}
-            description={searchText ? 'Try adjusting your search terms.' : 'Lesson plans submitted by faculty will appear here for review.'}
-            actionText={searchText ? 'Clear Search' : null}
-            onAction={searchText ? () => setSearchText('') : null}
-          />
-        )}
       </Card>
+
+      <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: 0 } }}>
+        <div className="p-0">
+          {isLoading ? (
+            <div className="p-4">
+              <TableRowSkeleton rows={5} columns={5} />
+            </div>
+          ) : filteredLessonPlans.length > 0 ? (
+            <div className="custom-scrollbar overflow-x-auto">
+              <Table
+                className="custom-table"
+                rowKey="id"
+                columns={columns}
+                dataSource={filteredLessonPlans}
+                loading={lessonPlans.loading}
+                size="small"
+                pagination={{ pageSize: 10, showSizeChanger: true, size: 'small' }}
+                aria-label="Lesson plans table"
+                scroll={{ x: 'max-content' }}
+              />
+            </div>
+          ) : (
+            <div className="p-6">
+              <TrainingEmptyState
+                type={searchText ? 'search' : 'lessonPlans'}
+                message={searchText ? 'No plans found' : 'No plans yet'}
+                description={searchText ? 'Try adjusting your search.' : 'Lesson plans will appear here.'}
+                actionText={searchText ? 'Clear Search' : null}
+                onAction={searchText ? () => setSearchText('') : null}
+              />
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <EyeOutlined className="text-blue-700" />
+            Full Lesson Plan
+          </div>
+        }
+        open={viewOpen}
+        onCancel={() => setViewOpen(false)}
+        footer={null}
+        width={820}
+        aria-label="View full lesson plan modal"
+      >
+        {selected && (
+          <div className="space-y-3">
+            <Descriptions column={1} size="small" bordered>
+              <Descriptions.Item label="Lesson Plan Title">
+                {selected.title || 'Untitled'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Training">
+                {selected.training?.title || selected.trainingTitle || 'Training'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Faculty">
+                {selected.user?.name || selected.user?.email || 'Faculty'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Status">
+                <Tag>{selected.status || 'N/A'}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Course/Semester">
+                {renderTextValue(selected.courseOrSemester)}
+              </Descriptions.Item>
+              <Descriptions.Item label="Implementation Timeline">
+                {renderTextValue(selected.implementationTimeline)}
+              </Descriptions.Item>
+              <Descriptions.Item label="Connection to Training">
+                <div className="whitespace-pre-wrap">{renderTextValue(selected.connectionToTraining)}</div>
+              </Descriptions.Item>
+              <Descriptions.Item label="Learning Objectives">
+                <div className="whitespace-pre-wrap">{renderTextValue(selected.learningObjectives)}</div>
+              </Descriptions.Item>
+              <Descriptions.Item label="New Skills/Technologies">
+                <div className="whitespace-pre-wrap">{renderTextValue(selected.newSkillsTechnologies)}</div>
+              </Descriptions.Item>
+              <Descriptions.Item label="Delivery Methods">
+                <div className="whitespace-pre-wrap">{renderTextValue(selected.deliveryMethods)}</div>
+              </Descriptions.Item>
+              <Descriptions.Item label="Hands-on Activities">
+                <div className="whitespace-pre-wrap">{renderTextValue(selected.handsOnActivities)}</div>
+              </Descriptions.Item>
+              <Descriptions.Item label="Assessment Methods">
+                <div className="whitespace-pre-wrap">{renderTextValue(selected.assessmentMethods)}</div>
+              </Descriptions.Item>
+              <Descriptions.Item label="Expected Outcomes">
+                <div className="whitespace-pre-wrap">{renderTextValue(selected.expectedOutcomes)}</div>
+              </Descriptions.Item>
+            </Descriptions>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         title={

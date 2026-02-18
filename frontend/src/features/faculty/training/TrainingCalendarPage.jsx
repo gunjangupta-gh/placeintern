@@ -21,6 +21,7 @@ import {
   SearchOutlined,
   FilterOutlined,
   UnorderedListOutlined,
+  EyeOutlined,
   RightOutlined,
   ClockCircleOutlined,
   ClearOutlined,
@@ -41,14 +42,12 @@ import {
   SelectedDaySkeleton,
 } from "../../../components/training/skeletons/TrainingSkeletons";
 import { fetchCalendar, fetchTrainings } from "../store/facultyTrainingSlice";
-import { useBranches } from "../../../hooks";
 
 const { Text, Title } = Typography;
 
 const TrainingCalendarPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { activeBranches } = useBranches(true);
   const { trainings, calendar } = useSelector((state) => state.facultyTraining);
 
   const [viewMode, setViewMode] = useState("calendar");
@@ -59,7 +58,6 @@ const TrainingCalendarPage = () => {
   const [filters, setFilters] = useState({
     year: null,
     month: null,
-    branchIds: [],
     deliveryMode: null,
     difficulty: null,
   });
@@ -103,11 +101,6 @@ const TrainingCalendarPage = () => {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  const branchOptions = useMemo(
-    () => activeBranches.map((b) => ({ value: b.id, label: b.name })),
-    [activeBranches],
-  );
-
   const filteredTrainings = useMemo(() => {
     let result = trainings.list || [];
     if (searchText) {
@@ -149,7 +142,6 @@ const TrainingCalendarPage = () => {
   const hasActiveFilters =
     filters.year ||
     filters.month ||
-    filters.branchIds.length ||
     filters.deliveryMode ||
     filters.difficulty;
 
@@ -157,7 +149,6 @@ const TrainingCalendarPage = () => {
     setFilters({
       year: null,
       month: null,
-      branchIds: [],
       deliveryMode: null,
       difficulty: null,
     });
@@ -219,20 +210,20 @@ const TrainingCalendarPage = () => {
   const isLoading = trainings.loading && calendar.loading && !trainings.list;
 
   return (
-    <div className="p-6 training-ui">
+    <div className="p-4 training-ui">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Title level={4} className="!mb-0">
+          <Title level={4} className="mb-0! text-lg">
             Training Calendar
           </Title>
         </div>
-        <Space>
-          <Button size="medium" icon={<AimOutlined />} onClick={jumpToToday}>
+        <Space size="small">
+          <Button size="middle" icon={<AimOutlined />} onClick={jumpToToday}>
             Today
           </Button>
           <Segmented
-            size="medium"
+            size="middle"
             value={viewMode}
             onChange={setViewMode}
             options={[
@@ -244,19 +235,20 @@ const TrainingCalendarPage = () => {
       </div>
 
       {/* Search and Filters Bar */}
-      <Card className="rounded-xl border-border shadow-none !mb-4">
-        <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+      <Card className="rounded-xl border-border shadow-none mb-3!" styles={{ body: { padding: '12px' } }}>
+        <div className="flex flex-col lg:flex-row lg:items-center gap-2.5">
           <Input
             placeholder="Search trainings..."
             prefix={<SearchOutlined className="text-slate-400" />}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             className="lg:flex-1"
+            size="middle"
             allowClear
             aria-label="Search trainings"
           />
           <Button
-            size="small"
+            size="middle"
             icon={<FilterOutlined />}
             onClick={() => setShowFilters(!showFilters)}
             type={showFilters ? "primary" : "default"}
@@ -278,11 +270,12 @@ const TrainingCalendarPage = () => {
 
         {/* Filters */}
         {showFilters && (
-          <div className="pt-3 mt-3 border-border">
+          <div className="pt-2.5 mt-2.5 border-t border-slate-100">
             <Row gutter={[8, 8]}>
               <Col xs={24} sm={12} md={4}>
                 <DatePicker
                   picker="year"
+                  size="small"
                   className="w-full"
                   placeholder="Year"
                   value={filters.year ? dayjs().year(filters.year) : null}
@@ -297,6 +290,7 @@ const TrainingCalendarPage = () => {
               <Col xs={24} sm={12} md={4}>
                 <DatePicker
                   picker="month"
+                  size="small"
                   className="w-full"
                   placeholder="Month"
                   value={
@@ -310,24 +304,11 @@ const TrainingCalendarPage = () => {
                   }
                 />
               </Col>
-              <Col xs={24} sm={12} md={5}>
-                <Select
-                  mode="multiple"
-                  allowClear
-                  placeholder="Branches"
-                  className="w-full"
-                  options={branchOptions}
-                  value={filters.branchIds}
-                  onChange={(value) =>
-                    setFilters((prev) => ({ ...prev, branchIds: value }))
-                  }
-                  maxTagCount="responsive"
-                />
-              </Col>
               <Col xs={24} sm={12} md={4}>
                 <Select
+                  size="small"
                   allowClear
-                  placeholder="Delivery Mode"
+                  placeholder="Mode"
                   className="w-full"
                   value={filters.deliveryMode}
                   onChange={(value) =>
@@ -340,25 +321,9 @@ const TrainingCalendarPage = () => {
                   ]}
                 />
               </Col>
-              {/* <Col xs={24} sm={12} md={4}>
-                <Select
-                  allowClear
-                  placeholder="Difficulty"
-                  className="w-full"
-                  value={filters.difficulty}
-                  onChange={(value) =>
-                    setFilters((prev) => ({ ...prev, difficulty: value }))
-                  }
-                  options={[
-                    { value: "BEGINNER", label: "Beginner" },
-                    { value: "INTERMEDIATE", label: "Intermediate" },
-                    { value: "ADVANCED", label: "Advanced" },
-                  ]}
-                />
-              </Col> */}
               {hasActiveFilters && (
                 <Col xs={24} sm={12} md={3}>
-                  <Button icon={<ClearOutlined />} onClick={clearFilters} block>
+                  <Button size="small" icon={<ClearOutlined />} onClick={clearFilters} block>
                     Clear
                   </Button>
                 </Col>
@@ -370,25 +335,34 @@ const TrainingCalendarPage = () => {
 
       {/* Loading State */}
       {isLoading ? (
-        <Row gutter={[16, 16]}>
-          <Col xs={24} lg={16}>
+        <Row gutter={[12, 12]}>
+          <Col xs={24} lg={18}>
             <CalendarSkeleton />
           </Col>
-          <Col xs={24} lg={8}>
+          <Col xs={24} lg={6}>
             <SelectedDaySkeleton />
           </Col>
         </Row>
       ) : filteredTrainings.length > 0 ? (
         viewMode === "calendar" ? (
-          <Row gutter={[16, 16]}>
-            <Col xs={24} lg={16}>
-              <Card className="rounded-xl border-border shadow-none">
+          <Row gutter={[12, 12]}>
+            <Col xs={24} lg={18}>
+              <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: '12px' } }}>
                 <style>{`
                   .training-calendar .ant-picker-calendar-date {
                     margin: 2px;
                   }
                   .training-calendar .ant-picker-cell {
                     padding: 2px;
+                  }
+                  .training-calendar .ant-picker-calendar-header {
+                    padding: 0 0 12px 0;
+                  }
+                  .training-calendar .ant-picker-content {
+                    min-height: 400px;
+                  }
+                  .training-calendar .ant-picker-cell-in-view {
+                    min-height: 60px;
                   }
                 `}</style>
                 <Calendar
@@ -411,43 +385,13 @@ const TrainingCalendarPage = () => {
                         },
                       );
                       return (
-                        <div className="h-full flex flex-col items-center justify-center p-2 rounded-lg hover:bg-slate-50">
+                        <div className="h-full min-h-20 flex flex-col items-center justify-center p-2 rounded-lg hover:bg-slate-50">
                           <div className="text-sm font-medium text-slate-700">
                             {dateValue.format("MMM")}
                           </div>
                           {monthTrainings.length > 0 && (
                             <div className="text-[10px] text-blue-600 font-medium mt-1">
-                              {monthTrainings.length} training
-                              {monthTrainings.length !== 1 ? "s" : ""}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-
-                    // Handle year view
-                    if (info.type === "year") {
-                      const yearTrainings = calendarTrainings.filter(
-                        (training) => {
-                          const start = dayjs(training.startDate);
-                          const end = dayjs(training.endDate);
-                          return (
-                            dateValue.isSame(start, "year") ||
-                            dateValue.isSame(end, "year") ||
-                            (dateValue.isAfter(start, "year") &&
-                              dateValue.isBefore(end, "year"))
-                          );
-                        },
-                      );
-                      return (
-                        <div className="h-full flex flex-col items-center justify-center p-2 rounded-lg hover:bg-slate-50">
-                          <div className="text-sm font-medium text-slate-700">
-                            {dateValue.format("YYYY")}
-                          </div>
-                          {yearTrainings.length > 0 && (
-                            <div className="text-[10px] text-blue-600 font-medium mt-1">
-                              {yearTrainings.length} training
-                              {yearTrainings.length !== 1 ? "s" : ""}
+                              {monthTrainings.length}
                             </div>
                           )}
                         </div>
@@ -463,7 +407,7 @@ const TrainingCalendarPage = () => {
                     return (
                       <div
                         className={
-                          `h-full rounded-lg p-1.5 border ` +
+                          `h-full min-h-20 rounded-lg p-2 border ` +
                           (isSelected
                             ? "bg-blue-50 border-blue-400"
                             : isToday
@@ -480,20 +424,15 @@ const TrainingCalendarPage = () => {
                         >
                           {dateValue.date()}
                         </div>
-                        <div className="space-y-0.5">
+                        <div className="space-y-1">
                           {dayTrainings.slice(0, 2).map((training) => (
                             <div
                               key={training.id}
-                              className="text-[10px] text-slate-600 truncate"
+                              className="text-[10px] text-slate-600 truncate leading-tight"
                             >
                               • {training.title}
                             </div>
                           ))}
-                          {dayTrainings.length > 2 && (
-                            <div className="text-[9px] text-blue-600 font-medium">
-                              +{dayTrainings.length - 2} more
-                            </div>
-                          )}
                         </div>
                       </div>
                     );
@@ -501,42 +440,38 @@ const TrainingCalendarPage = () => {
                 />
 
                 {/* Calendar Legend */}
-                <div className="mt-3 pt-3 border-t border-slate-200">
-                  <CalendarLegend showDeliveryModes showStatus={false} />
+                <div className="mt-2 pt-2 border-t border-slate-200">
+                  <CalendarLegend showDeliveryModes showStatus={false} compact />
                 </div>
               </Card>
             </Col>
 
             {/* Selected Day Panel */}
-            <Col xs={24} lg={8}>
-              <Card className="rounded-xl border-border shadow-none sticky ">
-                <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-200">
+            <Col xs={24} lg={6}>
+              <Card className="rounded-xl border-border shadow-none sticky" styles={{ body: { padding: '12px' } }}>
+                <div className="mb-2! pb-2 border-b border-slate-200">
                   <div>
-                    <Text className="text-xs text-slate-500 block mb-0.5">
+                    <Text className="text-[10px] text-slate-500 block mb-0">
                       {selectedDate.isSame(dayjs(), "day")
                         ? "Today"
                         : "Selected Day"}
                     </Text>
-                    <Text className="font-semibold text-base text-slate-800">
+                    <Text className="font-semibold text-sm text-slate-800">
                       {selectedDate.format("DD MMM, YYYY")}
                     </Text>
-                  </div>
-                  <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
-                    {selectedDate.format("DD")}
                   </div>
                 </div>
 
                 {selectedDayTrainings.length ? (
-                  <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                  <div className="space-y-2! max-h-112.5 overflow-y-auto pr-1">
                     {selectedDayTrainings.map((training) => (
                       <Card
                         key={training.id}
-                        className="rounded-lg border-slate-200 hover:border-blue-400 cursor-pointer"
-                        styles={{ body: { padding: "12px" } }}
-                        onClick={() => navigate(`/app/training/${training.id}`)}
+                        className="rounded-lg border-slate-200 hover:border-blue-400"
+                        styles={{ body: { padding: "10px" } }}
                       >
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <Text className="font-medium text-sm text-slate-800 flex-1">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <Text className="font-medium text-xs text-slate-800 flex-1 line-clamp-1">
                             {training.title}
                           </Text>
                           <DeliveryModeBadge
@@ -544,15 +479,24 @@ const TrainingCalendarPage = () => {
                             showIcon={false}
                           />
                         </div>
-                        <Text type="secondary" className="text-xs block mb-2">
+                        <Text type="secondary" className="text-[10px] block mb-1">
                           {training.venue || training.providedBy}
                         </Text>
-                        <div className="pt-2 border-t border-slate-100">
+                        <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between gap-2">
                           <TrainingDateRange
                             startDate={training.startDate}
                             endDate={training.endDate}
                             compact
                           />
+                          <Tooltip title="View training">
+                            <Button
+                              size="small"
+                              type="text"
+                              icon={<EyeOutlined />}
+                              onClick={() => navigate(`/app/training/${training.id}`)}
+                              aria-label={`View training: ${training.title}`}
+                            />
+                          </Tooltip>
                         </div>
                       </Card>
                     ))}
@@ -569,29 +513,32 @@ const TrainingCalendarPage = () => {
             </Col>
           </Row>
         ) : (
-          <Card className="rounded-xl border-border shadow-none">
-            <Table
-              className="custom-table"
-              rowKey="id"
-              columns={columns}
-              dataSource={filteredTrainings}
-              loading={trainings.loading}
-              size="small"
-              pagination={{
-                pageSize: 10,
-                showSizeChanger: true,
-                showTotal: (total, range) => (
-                  <Text className="text-xs text-slate-600">
-                    {range[0]}-{range[1]} of {total}
-                  </Text>
-                ),
-                size: "small",
-              }}
-              onRow={(record) => ({
-                onClick: () => navigate(`/app/training/${record.id}`),
-                className: "cursor-pointer hover:bg-slate-50",
-              })}
-            />
+          <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: 0 } }}>
+            <div className="custom-scrollbar overflow-x-auto">
+              <Table
+                className="custom-table"
+                rowKey="id"
+                columns={columns}
+                dataSource={filteredTrainings}
+                loading={trainings.loading}
+                size="small"
+                pagination={{
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  showTotal: (total, range) => (
+                    <Text className="text-[10px] text-slate-600">
+                      {range[0]}-{range[1]} of {total}
+                    </Text>
+                  ),
+                  size: "small",
+                }}
+                scroll={{ x: 'max-content' }}
+                onRow={(record) => ({
+                  onClick: () => navigate(`/app/training/${record.id}`),
+                  className: "cursor-pointer hover:bg-slate-50",
+                })}
+              />
+            </div>
           </Card>
         )
       ) : (

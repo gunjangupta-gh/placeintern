@@ -32,6 +32,7 @@ import {
   CloseCircleOutlined,
   MinusCircleOutlined,
   PlusCircleOutlined,
+  SearchOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import TrainingEmptyState from "../../../components/training/TrainingEmptyState";
@@ -516,25 +517,26 @@ const TestFormManagementPage = () => {
   ];
 
   return (
-    <div className="p-6 training-ui">
+    <div className="p-4 training-ui">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
         <div>
-          <Title level={2} className="!mb-1 training-heading">
+          <Title level={4} className="!mb-0.5 text-lg">
             Test Forms
           </Title>
         </div>
         <Button
           type="primary"
+          size="middle"
           icon={<PlusOutlined />}
           onClick={openCreate}
         >
-          New {activeTab === "pre-test" ? "Pre-Test" : "Post-Test"} Form
+          New {activeTab === "pre-test" ? "Pre-Test" : "Post-Test"}
         </Button>
       </div>
 
       {/* Forms Tabs */}
-      <Card className="rounded-xl border-border shadow-none">
+      <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: '12px' } }}>
         <Tabs
           activeKey={activeTab}
           onChange={(key) => {
@@ -542,21 +544,24 @@ const TestFormManagementPage = () => {
             setSearchText("");
           }}
           items={tabItems}
-          className="mb-4"
+          className="mb-3"
+          size="small"
         />
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-3">
             <Input
-              placeholder="Search by title or purpose"
+              placeholder="Search forms..."
+              prefix={<SearchOutlined className="text-slate-400" />}
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
               className="lg:w-80"
+              size="middle"
               allowClear
             />
             {searchResultCount !== null && (
-              <Text type="secondary" className="text-sm">
-                {searchResultCount} result{searchResultCount !== 1 ? "s" : ""} found
+              <Text type="secondary" className="text-xs">
+                {searchResultCount} result{searchResultCount !== 1 ? 's' : ''}
               </Text>
             )}
           </div>
@@ -565,14 +570,18 @@ const TestFormManagementPage = () => {
         {isLoading ? (
           <TableRowSkeleton rows={5} columns={6} />
         ) : filteredForms.length > 0 ? (
-          <Table
-            className="custom-table"
-            rowKey="id"
-            columns={columns}
-            dataSource={filteredForms}
-            loading={currentForms.loading}
-            pagination={{ pageSize: 10 }}
-          />
+          <div className="custom-scrollbar overflow-x-auto">
+            <Table
+              className="custom-table"
+              rowKey="id"
+              columns={columns}
+              dataSource={filteredForms}
+              loading={currentForms.loading}
+              size="small"
+              pagination={{ pageSize: 10, size: 'small' }}
+              scroll={{ x: 'max-content' }}
+            />
+          </div>
         ) : (
           <TrainingEmptyState
             type={searchText ? "search" : "feedback"}
@@ -584,7 +593,7 @@ const TestFormManagementPage = () => {
             description={
               searchText
                 ? "Try adjusting your search terms."
-                : `Create your first ${activeTab === "pre-test" ? "pre-test" : "post-test"} form to assess participants.`
+                : `Create your first ${activeTab === "pre-test" ? "pre-test" : "post-test"} form.`
             }
             actionText={searchText ? "Clear Search" : "Create Form"}
             onAction={searchText ? () => setSearchText("") : openCreate}
@@ -966,15 +975,17 @@ const TestFormManagementPage = () => {
                   <Text type="secondary">Loading responses...</Text>
                 </div>
               ) : responsesData.length > 0 ? (
-                <Table
-                  className="responses-table"
-                  rowKey="id"
-                  columns={responseColumns}
-                  dataSource={responsesData}
-                  pagination={{ pageSize: 10, size: "small" }}
-                  size="small"
-                  scroll={{ x: 800 }}
-                />
+                <div className="custom-scrollbar overflow-x-auto">
+                  <Table
+                    className="responses-table"
+                    rowKey="id"
+                    columns={responseColumns}
+                    dataSource={responsesData}
+                    pagination={{ pageSize: 10, size: "small" }}
+                    size="small"
+                    scroll={{ x: 800 }}
+                  />
+                </div>
               ) : (
                 <div className="text-center py-12">
                   <div className="text-slate-300 mb-2">

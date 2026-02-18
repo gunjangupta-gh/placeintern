@@ -7,6 +7,7 @@ import { TrainingCertificateService } from './training-certificate.service';
 import { TrainingRecommendationService } from './training-recommendation.service';
 import { TestFormService } from './test-form.service';
 import { TestResponseService } from './test-response.service';
+import { FacultyTrainingService } from './faculty-training.service';
 import { AuditModule } from '../../infrastructure/audit/audit.module';
 import { NotificationModule } from '../../infrastructure/notification/notification.module';
 
@@ -19,6 +20,7 @@ import { NotificationModule } from '../../infrastructure/notification/notificati
     LessonPlanService,
     TrainingCertificateService,
     TrainingRecommendationService,
+    FacultyTrainingService,
     TestFormService,
     TestResponseService,
   ],
@@ -29,6 +31,7 @@ import { NotificationModule } from '../../infrastructure/notification/notificati
     LessonPlanService,
     TrainingCertificateService,
     TrainingRecommendationService,
+    FacultyTrainingService,
     TestFormService,
     TestResponseService,
   ],

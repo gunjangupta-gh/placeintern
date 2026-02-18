@@ -9,7 +9,7 @@ import {
   Row,
   Select,
   Space,
-  Steps,
+  Tabs,
   Switch,
   TimePicker,
   Typography,
@@ -30,8 +30,8 @@ import { useBranches } from "../../../../shared/hooks/useLookup";
 const { Title, Text } = Typography;
 
 const FormSection = ({ icon: Icon, title, children }) => (
-  <div className="mb-5">
-    <div className="flex items-center gap-2 mb-3">
+  <div className="mb-4">
+    <div className="flex items-center gap-1.5 mb-2">
       {Icon && <Icon className="text-primary text-base" />}
       <Title level={5} className="!mb-0 !text-sm training-heading">
         {title}
@@ -86,45 +86,73 @@ const TrainingForm = ({
 
   const feedbackOptions = useMemo(
     () =>
-      feedbackForms.map((formItem) => ({
+      (Array.isArray(feedbackForms) ? feedbackForms : []).map((formItem) => ({
         value: formItem.id,
-        label: formItem.title,
+        label: formItem.title || formItem.name || "Untitled Form",
       })),
     [feedbackForms],
   );
 
   const preTestOptions = useMemo(
     () =>
-      preTestForms.filter((f) => f.isPublished).map((formItem) => ({
+      (Array.isArray(preTestForms) ? preTestForms : []).map((formItem) => ({
         value: formItem.id,
-        label: formItem.title,
+        label: formItem.title || formItem.name || "Untitled Form",
       })),
     [preTestForms],
   );
 
   const postTestOptions = useMemo(
     () =>
-      postTestForms.filter((f) => f.isPublished).map((formItem) => ({
+      (Array.isArray(postTestForms) ? postTestForms : []).map((formItem) => ({
         value: formItem.id,
-        label: formItem.title,
+        label: formItem.title || formItem.name || "Untitled Form",
       })),
     [postTestForms],
   );
 
+  const toIsoOrUndefined = (value) => {
+    if (!value) return undefined;
+    if (typeof value === "string") {
+      const parsed = dayjs(value);
+      return parsed.isValid() ? parsed.toISOString() : undefined;
+    }
+    const parsed = dayjs(value);
+    return parsed.isValid() ? parsed.toISOString() : undefined;
+  };
+
+  const parseLearningOutcomes = (value) => {
+    if (!value) return undefined;
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => String(item || "").trim())
+        .filter(Boolean);
+    }
+
+    return String(value)
+      .split(/\r?\n|,/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  };
+
   const handleFinish = (values) => {
     const payload = {
       ...values,
-      startDate: values.startDate
-        ? dayjs(values.startDate).toISOString()
-        : undefined,
-      endDate: values.endDate ? dayjs(values.endDate).toISOString() : undefined,
-      startTime: values.startTime
-        ? dayjs(values.startTime).toISOString()
-        : undefined,
-      endTime: values.endTime ? dayjs(values.endTime).toISOString() : undefined,
-      applicationDeadline: values.applicationDeadline
-        ? dayjs(values.applicationDeadline).toISOString()
-        : undefined,
+      title: values.title?.trim(),
+      startDate: toIsoOrUndefined(values.startDate),
+      endDate: toIsoOrUndefined(values.endDate),
+      startTime: toIsoOrUndefined(values.startTime),
+      endTime: toIsoOrUndefined(values.endTime),
+      applicationDeadline: toIsoOrUndefined(values.applicationDeadline),
+      capacity:
+        values.capacity === undefined || values.capacity === null
+          ? undefined
+          : Number(values.capacity),
+      duration:
+        values.duration === undefined || values.duration === null
+          ? undefined
+          : Number(values.duration),
+      learningOutcomes: parseLearningOutcomes(values.learningOutcomes),
     };
     onSubmit(payload);
   };
@@ -138,7 +166,7 @@ const TrainingForm = ({
       const end = dayjs(endTime);
       const diffHours = end.diff(start, "hour", true);
       if (diffHours > 0) {
-        form.setFieldValue("duration", Math.round(diffHours * 10) / 10);
+        form.setFieldValue("duration", Math.max(1, Math.round(diffHours)));
       }
     }
   };
@@ -170,7 +198,8 @@ const TrainingForm = ({
 
   const handleSubmit = async () => {
     try {
-      const values = await form.validateFields();
+      await form.validateFields(["title", "startDate", "endDate", "applicationDeadline", "deliveryMode", "capacity"]);
+      const values = form.getFieldsValue(true);
       handleFinish(values);
     } catch (error) {
       // Find which step has errors and go to it
@@ -201,22 +230,40 @@ const TrainingForm = ({
 
       <Form.Item name="description" label="Description">
         <Input.TextArea
-          rows={4}
+          rows={3}
           placeholder="Provide a detailed description of the training program, objectives, and what participants will learn..."
           showCount
           maxLength={2000}
         />
       </Form.Item>
 
-      <Row gutter={16}>
-        <Col xs={24} sm={12}>
+      <Row gutter={12}>
+        <Col xs={24} sm={8}>
           <Form.Item name="providedBy" label="Training Provider">
             <Input placeholder="e.g., Industry Partner Name" />
           </Form.Item>
         </Col>
-        <Col xs={24} sm={12}>
-          <Form.Item name="trainerName" label="Trainer Name">
+        <Col xs={24} sm={8}>
+          <Form.Item name="trainerName" label="Mentor Name">
             <Input placeholder="e.g., Dr. John Smith" />
+          </Form.Item>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Form.Item name="trainerContact" label="Mentor Email">
+            <Input type="email" placeholder="mentor@example.com" />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      <Row gutter={12}>
+        <Col xs={24} sm={12}>
+          <Form.Item name="venue" label="Venue">
+            <Input placeholder="e.g., Training Lab, Building 3" />
+          </Form.Item>
+        </Col>
+        <Col xs={24} sm={12}>
+          <Form.Item name="meetingLink" label="Meeting Link (for online)">
+            <Input placeholder="https://..." />
           </Form.Item>
         </Col>
       </Row>
@@ -226,7 +273,7 @@ const TrainingForm = ({
   // Step 2: Schedule & Details
   const renderScheduleDetails = () => (
     <FormSection >
-      <Row gutter={16}>
+      <Row gutter={12}>
         <Col xs={24} sm={8}>
           <Form.Item
             name="startDate"
@@ -256,7 +303,7 @@ const TrainingForm = ({
         </Col>
       </Row>
 
-      <Row gutter={16}>
+      <Row gutter={12}>
         <Col xs={24} sm={6}>
           <Form.Item name="startTime" label="Start Time">
             <TimePicker
@@ -280,11 +327,7 @@ const TrainingForm = ({
           </Form.Item>
         </Col>
         <Col xs={24} sm={6}>
-          <Form.Item
-            name="duration"
-            label="Duration (hours)"
-            extra="Auto-calculated from times"
-          >
+          <Form.Item name="duration" label="Duration (hours)">
             <InputNumber
               min={0.5}
               max={500}
@@ -306,7 +349,7 @@ const TrainingForm = ({
         </Col>
       </Row>
 
-      <Row gutter={16}>
+      <Row gutter={12}>
         <Col xs={24} sm={8}>
           <Form.Item
             name="deliveryMode"
@@ -336,24 +379,11 @@ const TrainingForm = ({
             />
           </Form.Item>
         </Col>
-        <Col xs={24} sm={8}>
+        {/* <Col xs={24} sm={8}>
           <Form.Item name="designation" label="Target Designation">
             <Input placeholder="e.g., For Computer Science Faculty" />
           </Form.Item>
-        </Col>
-      </Row>
-
-      <Row gutter={16}>
-        <Col xs={24} sm={12}>
-          <Form.Item name="venue" label="Venue">
-            <Input placeholder="e.g., Training Lab, Building 3" />
-          </Form.Item>
-        </Col>
-        <Col xs={24} sm={12}>
-          <Form.Item name="meetingLink" label="Meeting Link (for online)">
-            <Input placeholder="https://..." />
-          </Form.Item>
-        </Col>
+        </Col> */}
       </Row>
     </FormSection>
   );
@@ -361,7 +391,7 @@ const TrainingForm = ({
   // Step 3: Capacity & Audience
   const renderCapacityAudience = () => (
     <FormSection>
-      <Row gutter={16}>
+      <Row gutter={12}>
         <Col xs={24} sm={8}>
           <Form.Item
             name="capacity"
@@ -398,13 +428,11 @@ const TrainingForm = ({
       <Form.Item
         name="learningOutcomes"
         label="Learning Outcomes"
-        extra="Press Enter or comma to add each outcome"
+        extra="Enter one outcome per line (or separate by commas)"
       >
-        <Select
-          mode="tags"
-          tokenSeparators={[","]}
+        <Input.TextArea
+          rows={3}
           placeholder="e.g., Master advanced CNC programming techniques"
-          className="w-full"
         />
       </Form.Item>
     </FormSection>
@@ -473,18 +501,27 @@ const TrainingForm = ({
 
   return (
     <div className="max-w-3xl">
-      <Steps
-        current={step}
-        items={STEPS}
-        className="mb-5"
+      <Tabs
+        activeKey={String(step)}
+        onChange={(activeKey) => setStep(Number(activeKey))}
+        className="mb-3"
         size="small"
-        responsive
+        tabBarGutter={12}
+        items={STEPS.map((stepItem, index) => ({
+          key: String(index),
+          label: (
+            <span className="inline-flex items-center gap-1.5">
+              {stepItem.icon}
+              {stepItem.title}
+            </span>
+          ),
+        }))}
       />
 
       <Form layout="vertical" form={form} onFinish={handleFinish} size="small">
         {renderStepContent()}
 
-        <div className="flex justify-between gap-2 pt-4 border-t border-border mt-4">
+        <div className="flex justify-between gap-2 pt-3 border-t border-border mt-3">
           <div>{onCancel && <Button onClick={onCancel}>Cancel</Button>}</div>
           <Space>
             {step > 0 && (

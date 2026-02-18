@@ -110,7 +110,7 @@ const RecommendTrainingApprovalPage = () => {
       title: "Recommendation",
       key: "title",
       render: (_, record) => (
-        <div className="py-1">
+        <div>
           <div className="font-medium text-sm text-slate-800">
             {record.title}
           </div>
@@ -199,30 +199,31 @@ const RecommendTrainingApprovalPage = () => {
   ];
 
   return (
-    <div className="p-6 training-ui">
-      <div className="flex items-center justify-between mb-4">
+    <div className="p-4 training-ui">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Title level={4} className="mb-0!">
-            Recommend Training Approvals
+          <Title level={4} className="mb-0! text-lg">
+            Training Recommendations
           </Title>
         </div>
       </div>
 
-      <Card className="rounded-xl border-border shadow-none">
-        <div className="mb-4">
+      <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: '12px' } }}>
+        <div className="mb-3">
           <Input
-            placeholder="Search by recommendation, faculty name or email..."
+            placeholder="Search recommendations..."
             prefix={<SearchOutlined className="text-slate-400" />}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             className="w-full"
+            size="middle"
             allowClear
           />
         </div>
 
         {filteredRecommendations.length > 0 && (
-          <div className="mb-3 pb-3 border-b border-slate-200">
-            <Text className="text-xs text-slate-600">
+          <div className="mb-2 pb-2 border-b border-slate-200">
+            <Text className="text-[10px] text-slate-600">
               Showing <Text strong>{filteredRecommendations.length}</Text> of{" "}
               <Text strong>{recommendations.list?.length || 0}</Text>{" "}
               recommendations
@@ -243,30 +244,33 @@ const RecommendTrainingApprovalPage = () => {
             description={
               searchText
                 ? "Try adjusting your search criteria."
-                : "No faculty recommendations are available for review right now."
+                : "No faculty recommendations are available."
             }
             actionText={searchText ? "Clear Search" : undefined}
             onAction={searchText ? () => setSearchText("") : undefined}
           />
         ) : (
-          <Table
-            className="custom-table"
-            rowKey="id"
-            columns={columns}
-            dataSource={filteredRecommendations}
-            loading={recommendations.loading}
-            size="small"
-            pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showTotal: (total, range) => (
-                <Text className="text-xs text-slate-600">
-                  {range[0]}-{range[1]} of {total}
-                </Text>
-              ),
-              size: "small",
-            }}
-          />
+          <div className="custom-scrollbar overflow-x-auto">
+            <Table
+              className="custom-table"
+              rowKey="id"
+              columns={columns}
+              dataSource={filteredRecommendations}
+              loading={recommendations.loading}
+              size="small"
+              pagination={{
+                pageSize: 10,
+                showSizeChanger: true,
+                showTotal: (total, range) => (
+                  <Text className="text-[10px] text-slate-600">
+                    {range[0]}-{range[1]} of {total}
+                  </Text>
+                ),
+                size: "small",
+              }}
+              scroll={{ x: 'max-content' }}
+            />
+          </div>
         )}
       </Card>
 

@@ -295,6 +295,16 @@ export class TrainingService {
       const { page = 1, limit = 20, search, year, month, deliveryMode, difficulty, branchIds, isPublished, isActive, startDateFrom, startDateTo } = filters;
       const userBranchId = userId ? await this.getUserBranchId(userId) : null;
       const effectiveBranchIds = this.getEffectiveBranchIds(branchIds, userBranchId);
+      const branchScopeCondition: Prisma.TrainingWhereInput | undefined = effectiveBranchIds
+        ? effectiveBranchIds.length > 0
+          ? {
+              OR: [
+                { targetBranches: { some: { id: { in: effectiveBranchIds } } } },
+                { targetBranches: { none: {} } },
+              ],
+            }
+          : { targetBranches: { none: {} } }
+        : undefined;
 
       const where: Prisma.TrainingWhereInput = {
         ...(includeUnpublished ? {} : { isPublished: true }),
@@ -311,11 +321,6 @@ export class TrainingService {
                 },
               },
             }
-          : {}),
-        ...(effectiveBranchIds
-          ? effectiveBranchIds.length > 0
-            ? { targetBranches: { some: { id: { in: effectiveBranchIds } } } }
-            : { id: '__no_training_match__' }
           : {}),
         ...(search
           ? {
@@ -357,8 +362,12 @@ export class TrainingService {
         }
 
         if (dateFilters.length > 0) {
-          where.AND = dateFilters;
+          where.AND = [...(Array.isArray(where.AND) ? where.AND : []), ...dateFilters];
         }
+      }
+
+      if (branchScopeCondition) {
+        where.AND = [...(Array.isArray(where.AND) ? where.AND : []), branchScopeCondition];
       }
 
       const [trainings, total] = await Promise.all([
@@ -420,6 +429,16 @@ export class TrainingService {
       const { year = new Date().getFullYear(), month, branchIds, deliveryMode } = filters;
       const userBranchId = userId ? await this.getUserBranchId(userId) : null;
       const effectiveBranchIds = this.getEffectiveBranchIds(branchIds, userBranchId);
+      const branchScopeCondition: Prisma.TrainingWhereInput | undefined = effectiveBranchIds
+        ? effectiveBranchIds.length > 0
+          ? {
+              OR: [
+                { targetBranches: { some: { id: { in: effectiveBranchIds } } } },
+                { targetBranches: { none: {} } },
+              ],
+            }
+          : { targetBranches: { none: {} } }
+        : undefined;
 
       const cacheKey = `training:calendar:${year}:${month || 'all'}:${effectiveBranchIds?.join(',') || 'all'}:${deliveryMode || 'all'}`;
 
@@ -455,13 +474,12 @@ export class TrainingService {
               { endDate: { gte: startDate, lte: endDate } },
               { AND: [{ startDate: { lte: startDate } }, { endDate: { gte: endDate } }] },
             ],
-            ...(effectiveBranchIds
-              ? effectiveBranchIds.length > 0
-                ? { targetBranches: { some: { id: { in: effectiveBranchIds } } } }
-                : { id: '__no_training_match__' }
-              : {}),
             ...(deliveryMode ? { deliveryMode } : {}),
           };
+
+          if (branchScopeCondition) {
+            where.AND = [...(Array.isArray(where.AND) ? where.AND : []), branchScopeCondition];
+          }
 
           const trainings = await this.prisma.training.findMany({
             where,
@@ -512,6 +530,16 @@ export class TrainingService {
       const now = new Date();
       const userBranchId = userId ? await this.getUserBranchId(userId) : null;
       const effectiveBranchIds = this.getEffectiveBranchIds(branchIds, userBranchId);
+      const branchScopeCondition: Prisma.TrainingWhereInput | undefined = effectiveBranchIds
+        ? effectiveBranchIds.length > 0
+          ? {
+              OR: [
+                { targetBranches: { some: { id: { in: effectiveBranchIds } } } },
+                { targetBranches: { none: {} } },
+              ],
+            }
+          : { targetBranches: { none: {} } }
+        : undefined;
 
       const trainings = await this.prisma.training.findMany({
         where: {
@@ -528,11 +556,7 @@ export class TrainingService {
                 },
               }
             : {}),
-          ...(effectiveBranchIds
-            ? effectiveBranchIds.length > 0
-              ? { targetBranches: { some: { id: { in: effectiveBranchIds } } } }
-              : { id: '__no_training_match__' }
-            : {}),
+          ...(branchScopeCondition ? { AND: [branchScopeCondition] } : {}),
         },
         include: {
           targetBranches: { select: { id: true, name: true, shortName: true } },
@@ -614,7 +638,11 @@ export class TrainingService {
 
       if (userId && training.targetBranches?.length > 0) {
         const userBranchId = await this.getUserBranchId(userId);
-        const isBranchAllowed = !!userBranchId && training.targetBranches.some((branch) => branch.id === userBranchId);
+        if (!userBranchId) {
+          throw new ForbiddenException('Your profile is not mapped to a branch');
+        }
+
+        const isBranchAllowed = training.targetBranches.some((branch) => branch.id === userBranchId);
         if (!isBranchAllowed) {
           throw new ForbiddenException('This training is not available for your branch');
         }
@@ -908,7 +936,11 @@ export class TrainingService {
     }
 
     if (training.targetBranches?.length > 0) {
-      const isBranchAllowed = !!user.branchId && training.targetBranches.some((branch) => branch.id === user.branchId);
+      if (!user.branchId) {
+        return { eligible: false, reason: 'Your profile is not mapped to a branch' };
+      }
+
+      const isBranchAllowed = training.targetBranches.some((branch) => branch.id === user.branchId);
       if (!isBranchAllowed) {
         return { eligible: false, reason: 'This training is not available for your branch' };
       }

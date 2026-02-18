@@ -130,9 +130,9 @@ const LessonPlanEditorPage = () => {
   }, [myTrainings.list, lessonPlans.current]);
 
   return (
-    <div className="p-6 training-ui">
+    <div className="p-4 training-ui">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div>
             <h2 className="text-lg font-semibold mb-0">
@@ -142,19 +142,20 @@ const LessonPlanEditorPage = () => {
         </div>
       </div>
 
-      <Card className="rounded-xl border-border shadow-none">
-        <Form layout="vertical" form={form}>
-          <Row gutter={[12, 12]}>
+      <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: '16px' } }}>
+        <Form layout="vertical" form={form} size="small">
+          <Row gutter={[12, 8]}>
             <Col xs={24} md={12}>
               <Form.Item
                 name="trainingId"
-                label={<span className="text-xs font-medium">Training</span>}
+                label={<span className="text-[10px] uppercase font-semibold text-slate-500">Training</span>}
                 rules={[
                   { required: true, message: "Please select a training" },
                 ]}
+                className="mb-3"
                 extra={
-                  <Text type="secondary" className="text-xs">
-                    Only completed trainings are available for lesson plans
+                  <Text type="secondary" className="text-[10px]">
+                    Only completed trainings are available
                   </Text>
                 }
               >
@@ -162,10 +163,8 @@ const LessonPlanEditorPage = () => {
                   options={trainingOptions}
                   placeholder={
                     myTrainings.loading
-                      ? "Loading trainings..."
-                      : trainingOptions.length === 0
-                        ? "No completed trainings available"
-                        : "Select a completed training"
+                      ? "Loading..."
+                      : "Select training"
                   }
                   showSearch
                   filterOption={(input, option) =>
@@ -174,11 +173,6 @@ const LessonPlanEditorPage = () => {
                       .includes(input.toLowerCase())
                   }
                   loading={myTrainings.loading}
-                  notFoundContent={
-                    myTrainings.loading
-                      ? "Loading..."
-                      : "No completed trainings found. You can only create lesson plans for trainings that have ended."
-                  }
                   disabled={myTrainings.loading || trainingOptions.length === 0}
                 />
               </Form.Item>
@@ -187,10 +181,11 @@ const LessonPlanEditorPage = () => {
               <Form.Item
                 name="courseOrSemester"
                 label={
-                  <span className="text-xs font-medium">
+                  <span className="text-[10px] uppercase font-semibold text-slate-500">
                     Course or Semester
                   </span>
                 }
+                className="mb-3"
               >
                 <Input placeholder="Course or semester" />
               </Form.Item>
@@ -200,26 +195,29 @@ const LessonPlanEditorPage = () => {
           <Form.Item
             name="title"
             label={
-              <span className="text-xs font-medium">Lesson Plan Title</span>
+              <span className="text-[10px] uppercase font-semibold text-slate-500">Lesson Plan Title</span>
             }
             rules={[{ required: true, message: "Please enter a title" }]}
+            className="mb-3"
           >
             <Input placeholder="Lesson plan title" />
           </Form.Item>
 
-          <Row gutter={[12, 12]}>
+          <Row gutter={[12, 8]}>
             <Col xs={24} md={12}>
               <Form.Item
                 name="connectionToTraining"
                 label={
-                  <span className="text-xs font-medium">
+                  <span className="text-[10px] uppercase font-semibold text-slate-500">
                     Connection to Training
                   </span>
                 }
+                className="mb-3"
               >
                 <Input.TextArea
-                  rows={3}
+                  rows={2}
                   placeholder="How does the training connect?"
+                  className="custom-scrollbar"
                 />
               </Form.Item>
             </Col>
@@ -227,91 +225,101 @@ const LessonPlanEditorPage = () => {
               <Form.Item
                 name="learningObjectives"
                 label={
-                  <span className="text-xs font-medium">
+                  <span className="text-[10px] uppercase font-semibold text-slate-500">
                     Learning Objectives
                   </span>
                 }
+                className="mb-3"
               >
                 <Select
                   mode="tags"
                   tokenSeparators={[","]}
-                  placeholder="Add objectives (press Enter or comma to add)"
+                  placeholder="Add objectives"
+                  className="custom-scrollbar"
                 />
               </Form.Item>
             </Col>
           </Row>
 
-          <Row gutter={[12, 12]}>
+          <Row gutter={[12, 8]}>
             <Col xs={24} md={12}>
               <Form.Item
                 name="newSkillsTechnologies"
                 label={
-                  <span className="text-xs font-medium">
+                  <span className="text-[10px] uppercase font-semibold text-slate-500">
                     New Skills or Technologies
                   </span>
                 }
+                className="mb-3"
               >
-                <Input.TextArea rows={3} placeholder="Describe new skills" />
+                <Input.TextArea rows={2} placeholder="Describe new skills" className="custom-scrollbar" />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
               <Form.Item
                 name="deliveryMethods"
                 label={
-                  <span className="text-xs font-medium">Delivery Methods</span>
+                  <span className="text-[10px] uppercase font-semibold text-slate-500">Delivery Methods</span>
                 }
+                className="mb-3"
               >
                 <Input.TextArea
-                  rows={3}
+                  rows={2}
                   placeholder="Describe delivery methods"
+                  className="custom-scrollbar"
                 />
               </Form.Item>
             </Col>
           </Row>
 
-          <Row gutter={[12, 12]}>
+          <Row gutter={[12, 8]}>
             <Col xs={24} md={12}>
               <Form.Item
                 name="handsOnActivities"
                 label={
-                  <span className="text-xs font-medium">
+                  <span className="text-[10px] uppercase font-semibold text-slate-500">
                     Hands-on Activities
                   </span>
                 }
+                className="mb-3"
               >
-                <Input.TextArea rows={3} placeholder="Describe activities" />
+                <Input.TextArea rows={2} placeholder="Describe activities" className="custom-scrollbar" />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
               <Form.Item
                 name="assessmentMethods"
                 label={
-                  <span className="text-xs font-medium">
+                  <span className="text-[10px] uppercase font-semibold text-slate-500">
                     Assessment Methods
                   </span>
                 }
+                className="mb-3"
               >
                 <Input.TextArea
-                  rows={3}
+                  rows={2}
                   placeholder="Describe assessment methods"
+                  className="custom-scrollbar"
                 />
               </Form.Item>
             </Col>
           </Row>
 
-          <Row gutter={[12, 12]}>
+          <Row gutter={[12, 8]}>
             <Col xs={24} md={12}>
               <Form.Item
                 name="industryConnections"
                 label={
-                  <span className="text-xs font-medium">
+                  <span className="text-[10px] uppercase font-semibold text-slate-500">
                     Industry Connections
                   </span>
                 }
+                className="mb-3"
               >
                 <Input.TextArea
-                  rows={3}
+                  rows={2}
                   placeholder="Describe industry connections"
+                  className="custom-scrollbar"
                 />
               </Form.Item>
             </Col>
@@ -319,25 +327,27 @@ const LessonPlanEditorPage = () => {
               <Form.Item
                 name="resourceRequirements"
                 label={
-                  <span className="text-xs font-medium">
+                  <span className="text-[10px] uppercase font-semibold text-slate-500">
                     Resource Requirements
                   </span>
                 }
+                className="mb-3"
               >
-                <Input.TextArea rows={3} placeholder="Resources needed" />
+                <Input.TextArea rows={2} placeholder="Resources needed" className="custom-scrollbar" />
               </Form.Item>
             </Col>
           </Row>
 
-          <Row gutter={[12, 12]}>
+          <Row gutter={[12, 8]}>
             <Col xs={24} md={12}>
               <Form.Item
                 name="implementationTimeline"
                 label={
-                  <span className="text-xs font-medium">
+                  <span className="text-[10px] uppercase font-semibold text-slate-500">
                     Implementation Timeline
                   </span>
                 }
+                className="mb-3"
               >
                 <Input placeholder="Timeline" />
               </Form.Item>
@@ -346,22 +356,23 @@ const LessonPlanEditorPage = () => {
               <Form.Item
                 name="expectedOutcomes"
                 label={
-                  <span className="text-xs font-medium">Expected Outcomes</span>
+                  <span className="text-[10px] uppercase font-semibold text-slate-500">Expected Outcomes</span>
                 }
+                className="mb-3"
               >
-                <Input.TextArea rows={2} placeholder="Expected outcomes" />
+                <Input.TextArea rows={2} placeholder="Expected outcomes" className="custom-scrollbar" />
               </Form.Item>
             </Col>
           </Row>
 
-          <div className="flex gap-2 pt-3 border-t border-slate-200">
-            <Button type="primary" onClick={handleSave}>
+          <div className="flex gap-2 pt-3 border-t border-slate-100">
+            <Button type="primary" onClick={handleSave} size="middle">
               Save
             </Button>
-            <Button onClick={handleSubmit} disabled={!id}>
-              Submit for Review
+            <Button onClick={handleSubmit} disabled={!id} size="middle">
+              Submit
             </Button>
-            <Button onClick={() => navigate("/app/training/lesson-plans")}>
+            <Button onClick={() => navigate("/app/training/lesson-plans")} size="middle">
               Cancel
             </Button>
           </div>

@@ -34,8 +34,8 @@ const TrainingManageFormPage = () => {
       dispatch(fetchStateTrainingDetails(id));
     }
     dispatch(fetchStateFeedbackForms());
-    dispatch(fetchStatePreTestForms());
-    dispatch(fetchStatePostTestForms());
+    dispatch(fetchStatePreTestForms({ forceRefresh: true }));
+    dispatch(fetchStatePostTestForms({ forceRefresh: true }));
   }, [dispatch, id, isEdit]);
 
   useEffect(() => {
@@ -50,6 +50,9 @@ const TrainingManageFormPage = () => {
         applicationDeadline: training.applicationDeadline ? dayjs(training.applicationDeadline) : null,
         preTestFormId: training.preTestFormId || training.preTestForm?.id || null,
         postTestFormId: training.postTestFormId || training.postTestForm?.id || null,
+        learningOutcomes: Array.isArray(training.learningOutcomes)
+          ? training.learningOutcomes.join('\n')
+          : training.learningOutcomes,
       });
     }
   }, [isEdit, currentTraining.data, form]);
@@ -71,25 +74,25 @@ const TrainingManageFormPage = () => {
 
   if (isEdit && currentTraining.loading) {
     return (
-      <div className="p-6 training-ui flex justify-center items-center min-h-96">
+      <div className="p-4 training-ui flex justify-center items-center min-h-96">
         <Spin size="large" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 training-ui">
+    <div className="p-4 training-ui">
       <PageHeader
         icon={isEdit ? EditOutlined : PlusOutlined}
-        title={<span className="training-heading">{isEdit ? 'Edit' : 'Create'} Training</span>}
-        description={isEdit ? 'Update training details.' : 'Set up a new training session.'}
+        title={<span className="training-heading text-lg">{isEdit ? 'Edit' : 'Create'} Training</span>}
+        description={<span className="text-xs">{isEdit ? 'Update training details.' : 'Set up a new training session.'}</span>}
         extra={
-          <Text type="secondary" className="text-sm">
+          <Text type="secondary" className="text-[10px] uppercase font-semibold">
             Step {currentStep + 1} of {STEP_LABELS.length}: {STEP_LABELS[currentStep]}
           </Text>
         }
       />
-      <Card className="rounded-2xl border-border shadow-none bg-gradient-to-br from-slate-50 via-white to-blue-50">
+      <Card className="rounded-xl border-border shadow-none bg-gradient-to-br from-slate-50 via-white to-blue-50" styles={{ body: { padding: '20px' } }}>
         <TrainingForm
           form={form}
           onSubmit={handleSubmit}

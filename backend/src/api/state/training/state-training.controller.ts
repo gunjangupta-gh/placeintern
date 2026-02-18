@@ -66,6 +66,21 @@ export class StateTrainingController {
     return this.trainingService.findAll(filters, true); // Include unpublished
   }
 
+  // ==================== LESSON PLANS ====================
+
+  @Throttle({ default: THROTTLE_PRESETS.list })
+  @Get('lesson-plans')
+  @ApiOperation({ summary: 'Get all lesson plans for review' })
+  async getLessonPlans(@Query() filters: LessonPlanFilterDto) {
+    return this.lessonPlanService.getForReview(filters);
+  }
+
+  @Get('lesson-plans/:id')
+  @ApiOperation({ summary: 'Get lesson plan details' })
+  async getLessonPlan(@Param('id') id: string) {
+    return this.lessonPlanService.getById(id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get training details' })
   async getTraining(@Param('id') id: string) {
@@ -205,21 +220,6 @@ export class StateTrainingController {
   @ApiOperation({ summary: 'Verify a certificate by number' })
   async verifyCertificate(@Param('number') certificateNumber: string) {
     return this.certificateService.verify(certificateNumber);
-  }
-
-  // ==================== LESSON PLANS ====================
-
-  @Throttle({ default: THROTTLE_PRESETS.list })
-  @Get('lesson-plans')
-  @ApiOperation({ summary: 'Get all lesson plans for review' })
-  async getLessonPlans(@Query() filters: LessonPlanFilterDto) {
-    return this.lessonPlanService.getForReview(filters);
-  }
-
-  @Get('lesson-plans/:id')
-  @ApiOperation({ summary: 'Get lesson plan details' })
-  async getLessonPlan(@Param('id') id: string) {
-    return this.lessonPlanService.getById(id);
   }
 
   @Get(':id/lesson-plans')

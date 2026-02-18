@@ -453,12 +453,13 @@ export const fetchStatePreTestForms = createAsyncThunk(
   'stateTraining/fetchPreTestForms',
   async (params = {}, { getState, rejectWithValue }) => {
     try {
+      const { forceRefresh, ...queryParams } = params || {};
       const state = getState();
       const lastFetched = state.stateTraining.lastFetched.preTestForms;
-      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
+      if (!forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true };
       }
-      const response = await trainingAdminService.getPreTestForms(params);
+      const response = await trainingAdminService.getPreTestForms(queryParams);
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch pre-test forms');
@@ -519,12 +520,13 @@ export const fetchStatePostTestForms = createAsyncThunk(
   'stateTraining/fetchPostTestForms',
   async (params = {}, { getState, rejectWithValue }) => {
     try {
+      const { forceRefresh, ...queryParams } = params || {};
       const state = getState();
       const lastFetched = state.stateTraining.lastFetched.postTestForms;
-      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
+      if (!forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true };
       }
-      const response = await trainingAdminService.getPostTestForms(params);
+      const response = await trainingAdminService.getPostTestForms(queryParams);
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch post-test forms');
