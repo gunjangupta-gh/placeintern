@@ -884,48 +884,50 @@ async function getSeedOwnerId(): Promise<string | null> {
   return anyUser?.id ?? null;
 }
 
-async function getTargetBranches(codes: string[]) {
-  if (codes.length === 0) return [];
-
+async function buildBranchLookup(): Promise<Map<string, string>> {
   const branches = await prisma.branch.findMany({
-    where: { code: { in: codes } },
-    select: { id: true },
+    select: { id: true, code: true },
   });
 
-  return branches.map((branch) => ({ id: branch.id }));
+  return new Map(branches.map((branch) => [branch.code, branch.id]));
+}
+
+function getTargetBranchesFromLookup(codes: string[], branchLookup: Map<string, string>) {
+  return codes
+    .map((code) => branchLookup.get(code))
+    .filter((id): id is string => Boolean(id))
+    .map((id) => ({ id }));
 }
 
 async function ensureFeedbackForms(createdById: string): Promise<Map<string, string>> {
   const formIdMap = new Map<string, string>();
 
   for (const form of FEEDBACK_FORMS) {
-    const existing = await prisma.feedbackForm.findFirst({
+    const saved = await prisma.feedbackForm.upsert({
       where: {
         title: form.title,
+      },
+      update: {
+        description: form.description,
         purpose: form.purpose,
+        questions: form.questions,
+        isActive: true,
+        isPublished: true,
+      },
+      create: {
+        title: form.title,
+        description: form.description,
+        purpose: form.purpose,
+        questions: form.questions,
+        isActive: true,
+        isPublished: true,
+        createdById,
       },
       select: { id: true },
     });
 
-    if (existing) {
-      formIdMap.set(form.title, existing.id);
-      console.log(`  Feedback form exists: ${form.title}`);
-    } else {
-      const created = await prisma.feedbackForm.create({
-        data: {
-          title: form.title,
-          description: form.description,
-          purpose: form.purpose,
-          questions: form.questions,
-          isActive: true,
-          isPublished: true,
-          createdById,
-        },
-        select: { id: true },
-      });
-      formIdMap.set(form.title, created.id);
-      console.log(`  Created feedback form: ${form.title}`);
-    }
+    formIdMap.set(form.title, saved.id);
+    console.log(`  Upserted feedback form: ${form.title}`);
   }
 
   return formIdMap;
@@ -940,60 +942,60 @@ async function ensureTestForms(createdById: string): Promise<{
 
   // Create Pre-Test Forms
   for (const form of PRE_TEST_FORMS) {
-    const existing = await prisma.preTestForm.findFirst({
+    const saved = await prisma.preTestForm.upsert({
       where: { title: form.title },
+      update: {
+        description: form.description,
+        purpose: form.purpose,
+        passingScore: form.passingScore,
+        questions: form.questions,
+        isActive: true,
+        isPublished: true,
+      },
+      create: {
+        title: form.title,
+        description: form.description,
+        purpose: form.purpose,
+        passingScore: form.passingScore,
+        questions: form.questions,
+        isActive: true,
+        isPublished: true,
+        createdById,
+      },
       select: { id: true },
     });
 
-    if (existing) {
-      preTestFormIdMap.set(form.title, existing.id);
-      console.log(`  Pre-test form exists: ${form.title}`);
-    } else {
-      const created = await prisma.preTestForm.create({
-        data: {
-          title: form.title,
-          description: form.description,
-          purpose: form.purpose,
-          passingScore: form.passingScore,
-          questions: form.questions,
-          isActive: true,
-          isPublished: true,
-          createdById,
-        },
-        select: { id: true },
-      });
-      preTestFormIdMap.set(form.title, created.id);
-      console.log(`  Created pre-test form: ${form.title}`);
-    }
+    preTestFormIdMap.set(form.title, saved.id);
+    console.log(`  Upserted pre-test form: ${form.title}`);
   }
 
   // Create Post-Test Forms
   for (const form of POST_TEST_FORMS) {
-    const existing = await prisma.postTestForm.findFirst({
+    const saved = await prisma.postTestForm.upsert({
       where: { title: form.title },
+      update: {
+        description: form.description,
+        purpose: form.purpose,
+        passingScore: form.passingScore,
+        questions: form.questions,
+        isActive: true,
+        isPublished: true,
+      },
+      create: {
+        title: form.title,
+        description: form.description,
+        purpose: form.purpose,
+        passingScore: form.passingScore,
+        questions: form.questions,
+        isActive: true,
+        isPublished: true,
+        createdById,
+      },
       select: { id: true },
     });
 
-    if (existing) {
-      postTestFormIdMap.set(form.title, existing.id);
-      console.log(`  Post-test form exists: ${form.title}`);
-    } else {
-      const created = await prisma.postTestForm.create({
-        data: {
-          title: form.title,
-          description: form.description,
-          purpose: form.purpose,
-          passingScore: form.passingScore,
-          questions: form.questions,
-          isActive: true,
-          isPublished: true,
-          createdById,
-        },
-        select: { id: true },
-      });
-      postTestFormIdMap.set(form.title, created.id);
-      console.log(`  Created post-test form: ${form.title}`);
-    }
+    postTestFormIdMap.set(form.title, saved.id);
+    console.log(`  Upserted post-test form: ${form.title}`);
   }
 
   return { preTestFormIdMap, postTestFormIdMap };
@@ -1072,21 +1074,25 @@ async function getEligibleUsers() {
   console.log(`Found ${institutions.length} active institutions`);
 
   // Get teachers from each institution
-  const crossInstitutionUsers: Array<{ id: string; name: string; email: string; institutionId: string | null }> = [];
+  const usersByInstitution = await Promise.all(
+    institutions.map(async (institution) => {
+      const usersFromInstitution = await prisma.user.findMany({
+        where: {
+          active: true,
+          role: Role.TEACHER,
+          institutionId: institution.id,
+        },
+        select: { id: true, name: true, email: true, institutionId: true },
+        take: 5,
+      });
 
-  for (const institution of institutions) {
-    const usersFromInstitution = await prisma.user.findMany({
-      where: {
-        active: true,
-        role: Role.TEACHER,
-        institutionId: institution.id,
-      },
-      select: { id: true, name: true, email: true, institutionId: true },
-      take: 5, // 5 users per institution
-    });
-    crossInstitutionUsers.push(...usersFromInstitution);
-    console.log(`  Found ${usersFromInstitution.length} teachers from ${institution.name}`);
-  }
+      console.log(`  Found ${usersFromInstitution.length} teachers from ${institution.name}`);
+      return usersFromInstitution;
+    }),
+  );
+
+  const crossInstitutionUsers: Array<{ id: string; name: string; email: string; institutionId: string | null }> =
+    usersByInstitution.flat();
 
   const teachers = await prisma.user.findMany({
     where: { active: true, role: Role.TEACHER },
@@ -1241,19 +1247,24 @@ async function main() {
   }
   console.log(`Found ${fallbackUsers.length} eligible users for applications.\n`);
 
+  const branchLookup = await buildBranchLookup();
+  const feedbackFormTitleById = new Map(
+    [...formIdMap.entries()].map(([title, id]) => [id, title]),
+  );
+  const preTestQuestionsByFormId = new Map(
+    PRE_TEST_FORMS.map((form) => [preTestFormIdMap.get(form.title), form.questions]),
+  );
+  const postTestQuestionsByFormId = new Map(
+    POST_TEST_FORMS.map((form) => [postTestFormIdMap.get(form.title), form.questions]),
+  );
+
   // Process each training
   console.log('--- Creating Trainings ---');
   for (let trainingIndex = 0; trainingIndex < TRAINING_SEED.length; trainingIndex++) {
     const seed = TRAINING_SEED[trainingIndex];
     console.log(`\nProcessing: ${seed.title} [${seed.category.toUpperCase()}]`);
 
-    // Check for existing training
-    const existingTraining = await prisma.training.findFirst({
-      where: { title: seed.title },
-      select: { id: true, targetBranches: { select: { id: true } } },
-    });
-
-    const targetBranches = await getTargetBranches(seed.targetBranchCodes);
+    const targetBranches = getTargetBranchesFromLookup(seed.targetBranchCodes, branchLookup);
     const feedbackFormId = getFeedbackFormForTraining(formIdMap, seed.title);
     const { preTestFormId, postTestFormId } = getTestFormForTraining(
       preTestFormIdMap,
@@ -1261,71 +1272,41 @@ async function main() {
       seed.title,
     );
 
-    let training;
-    if (existingTraining) {
-      // Update existing training
-      const existingBranchIds = new Set(
-        existingTraining.targetBranches.map((b) => b.id),
-      );
-      const missingBranches = targetBranches.filter(
-        (b) => !existingBranchIds.has(b.id),
-      );
-
-      training = await prisma.training.update({
-        where: { id: existingTraining.id },
-        data: {
-          isActive: true,
-          isPublished: seed.category !== 'future',
-          publishedAt: seed.category !== 'future' ? new Date() : null,
-          feedbackFormId,
-          preTestFormId,
-          postTestFormId,
-          targetBranches: missingBranches.length
-            ? { connect: missingBranches }
-            : undefined,
-        },
-        select: { id: true, title: true, startDate: true, endDate: true, preTestFormId: true, postTestFormId: true },
-      });
-      counts.trainings.existing++;
-      console.log(`  Updated existing training`);
-    } else {
-      // Create new training
-      training = await prisma.training.create({
-        data: {
-          title: seed.title,
-          description: seed.description,
-          providedBy: seed.providedBy,
-          trainerName: seed.trainerName,
-          trainerContact: seed.trainerContact,
-          startDate: seed.startDate,
-          endDate: seed.endDate,
-          duration: seed.duration,
-          applicationDeadline: seed.applicationDeadline,
-          deliveryMode: seed.deliveryMode,
-          venue: seed.venue,
-          city: seed.city,
-          state: seed.state,
-          meetingLink: seed.meetingLink,
-          capacity: seed.capacity,
-          prerequisites: 'Basic teaching experience required',
-          difficulty: seed.difficulty,
-          learningOutcomes: seed.learningOutcomes,
-          isActive: true,
-          isPublished: seed.category !== 'future',
-          publishedAt: seed.category !== 'future' ? new Date() : null,
-          createdById,
-          feedbackFormId,
-          preTestFormId,
-          postTestFormId,
-          targetBranches: targetBranches.length
-            ? { connect: targetBranches }
-            : undefined,
-        },
-        select: { id: true, title: true, startDate: true, endDate: true, preTestFormId: true, postTestFormId: true },
-      });
-      counts.trainings.created++;
-      console.log(`  Created new training`);
-    }
+    const training = await prisma.training.create({
+      data: {
+        title: seed.title,
+        description: seed.description,
+        providedBy: seed.providedBy,
+        trainerName: seed.trainerName,
+        trainerContact: seed.trainerContact,
+        startDate: seed.startDate,
+        endDate: seed.endDate,
+        duration: seed.duration,
+        applicationDeadline: seed.applicationDeadline,
+        deliveryMode: seed.deliveryMode,
+        venue: seed.venue,
+        city: seed.city,
+        state: seed.state,
+        meetingLink: seed.meetingLink,
+        capacity: seed.capacity,
+        prerequisites: 'Basic teaching experience required',
+        difficulty: seed.difficulty,
+        learningOutcomes: seed.learningOutcomes,
+        isActive: true,
+        isPublished: seed.category !== 'future',
+        publishedAt: seed.category !== 'future' ? new Date() : null,
+        createdById,
+        feedbackFormId,
+        preTestFormId,
+        postTestFormId,
+        targetBranches: targetBranches.length
+          ? { connect: targetBranches }
+          : undefined,
+      },
+      select: { id: true, title: true, startDate: true, endDate: true, preTestFormId: true, postTestFormId: true },
+    });
+    counts.trainings.created++;
+    console.log(`  Created new training`);
 
     // Skip applications for future trainings
     if (seed.category === 'future') {
@@ -1333,291 +1314,215 @@ async function main() {
       continue;
     }
 
-    // Create applications and related data for each user
-    for (let userIndex = 0; userIndex < fallbackUsers.length; userIndex++) {
-      const user = fallbackUsers[userIndex];
+    const userApplications = fallbackUsers.map((user, userIndex) => {
       const applicationStatus = getApplicationStatus(seed.category, userIndex);
+      return {
+        user,
+        userIndex,
+        applicationStatus,
+      };
+    });
 
-      // Create or update application
-      const existingApplication = await prisma.trainingApplication.findUnique({
-        where: {
-          userId_trainingId: { userId: user.id, trainingId: training.id },
-        },
-        select: { id: true, status: true },
-      });
+    const applicationInsert = await prisma.trainingApplication.createMany({
+      data: userApplications.map(({ user, applicationStatus }) => ({
+        userId: user.id,
+        trainingId: training.id,
+        relevanceToTeaching:
+          'This training directly aligns with my course outcomes and will enhance my teaching methodology.',
+        expectedApplication:
+          'I plan to implement the learnings in my lab sessions and update my lesson plans accordingly.',
+        status: applicationStatus,
+        appliedAt: new Date(seed.applicationDeadline.getTime() - 5 * 24 * 60 * 60 * 1000),
+        reviewedAt:
+          applicationStatus !== TrainingApplicationStatus.PENDING &&
+          applicationStatus !== TrainingApplicationStatus.SUBMITTED
+            ? new Date(seed.applicationDeadline.getTime() - 2 * 24 * 60 * 60 * 1000)
+            : null,
+        reviewedById:
+          applicationStatus !== TrainingApplicationStatus.PENDING &&
+          applicationStatus !== TrainingApplicationStatus.SUBMITTED
+            ? createdById
+            : null,
+        reviewComments:
+          applicationStatus === TrainingApplicationStatus.APPROVED
+            ? 'Application approved. Welcome to the training program.'
+            : applicationStatus === TrainingApplicationStatus.REJECTED
+              ? 'Unfortunately, capacity reached. Please apply for the next batch.'
+              : applicationStatus === TrainingApplicationStatus.WAITLISTED
+                ? 'Application withdrawn by applicant.'
+                : 'Application under review.',
+      })),
+    });
+    counts.applications.created += applicationInsert.count;
 
-      if (!existingApplication) {
-        await prisma.trainingApplication.create({
-          data: {
-            userId: user.id,
-            trainingId: training.id,
-            relevanceToTeaching:
-              'This training directly aligns with my course outcomes and will enhance my teaching methodology.',
-            expectedApplication:
-              'I plan to implement the learnings in my lab sessions and update my lesson plans accordingly.',
-            status: applicationStatus,
-            appliedAt: new Date(seed.applicationDeadline.getTime() - 5 * 24 * 60 * 60 * 1000),
-            reviewedAt:
-              applicationStatus !== TrainingApplicationStatus.PENDING &&
-              applicationStatus !== TrainingApplicationStatus.SUBMITTED
-                ? new Date(seed.applicationDeadline.getTime() - 2 * 24 * 60 * 60 * 1000)
-                : null,
-            reviewedById:
-              applicationStatus !== TrainingApplicationStatus.PENDING &&
-              applicationStatus !== TrainingApplicationStatus.SUBMITTED
-                ? createdById
-                : null,
-            reviewComments:
-              applicationStatus === TrainingApplicationStatus.APPROVED
-                ? 'Application approved. Welcome to the training program.'
-                : applicationStatus === TrainingApplicationStatus.REJECTED
-                  ? 'Unfortunately, capacity reached. Please apply for the next batch.'
-                  : applicationStatus === TrainingApplicationStatus.WAITLISTED
-                    ? 'Application withdrawn by applicant.'
-                    : 'Application under review.',
-          },
-        });
-        counts.applications.created++;
-      } else {
-        counts.applications.existing++;
-      }
+    const approvedUserApplications = userApplications.filter(
+      ({ applicationStatus }) => applicationStatus === TrainingApplicationStatus.APPROVED,
+    );
 
-      // Only create attendance, lesson plans, feedback, and certificates for approved applications
-      if (applicationStatus !== TrainingApplicationStatus.APPROVED) {
-        continue;
-      }
+    if (seed.category === 'past' || seed.category === 'ongoing') {
+      const startDate = new Date(seed.startDate);
+      const endDate = new Date(seed.endDate);
+      const daysDiff = Math.ceil(
+        (endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000),
+      );
+      const daysToMark =
+        seed.category === 'past' ? daysDiff + 1 : Math.ceil((daysDiff + 1) / 2);
 
-      // Create multi-day attendance for past and ongoing trainings
-      if (seed.category === 'past' || seed.category === 'ongoing') {
-        const startDate = new Date(seed.startDate);
-        const endDate = new Date(seed.endDate);
-        const daysDiff = Math.ceil(
-          (endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000),
-        );
-        const daysToMark =
-          seed.category === 'past' ? daysDiff + 1 : Math.ceil((daysDiff + 1) / 2);
-
-        for (let day = 0; day < daysToMark; day++) {
+      const attendanceData = approvedUserApplications.flatMap(({ user }) => {
+        return Array.from({ length: daysToMark }, (_, day) => {
           const attendanceDate = new Date(startDate);
           attendanceDate.setDate(attendanceDate.getDate() + day);
 
-          const existingAttendance = await prisma.trainingAttendance.findUnique({
-            where: {
-              userId_trainingId_attendanceDate: {
-                userId: user.id,
-                trainingId: training.id,
-                attendanceDate,
-              },
-            },
-            select: { id: true },
-          });
+          return {
+            userId: user.id,
+            trainingId: training.id,
+            markedAt: new Date(attendanceDate.getTime() + 10 * 60 * 60 * 1000),
+            markedById: createdById,
+            attendanceDate,
+            ipAddress: `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+            userAgent: 'PlaceIntern/1.0 TrainingSeed',
+            locationAddress: seed.city ?? 'Virtual',
+          };
+        });
+      });
 
-          if (!existingAttendance) {
-            await prisma.trainingAttendance.create({
-              data: {
-                userId: user.id,
-                trainingId: training.id,
-                markedAt: new Date(
-                  attendanceDate.getTime() + 10 * 60 * 60 * 1000,
-                ),
-                markedById: createdById,
-                attendanceDate,
-                ipAddress: `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-                userAgent: 'PlaceIntern/1.0 TrainingSeed',
-                locationAddress: seed.city ?? 'Virtual',
-              },
-            });
-            counts.attendance.created++;
-          } else {
-            counts.attendance.existing++;
-          }
+      if (attendanceData.length > 0) {
+        const attendanceInsert = await prisma.trainingAttendance.createMany({
+          data: attendanceData,
+        });
+        counts.attendance.created += attendanceInsert.count;
+      }
+    }
+
+    if (seed.category === 'past') {
+      const lessonPlanData = approvedUserApplications.map(({ user, userIndex }) => {
+        const lessonPlanStatus = getLessonPlanStatus(userIndex);
+        return {
+          userId: user.id,
+          trainingId: training.id,
+          title: `Implementation Plan: ${seed.title}`,
+          courseOrSemester: `Semester ${(userIndex % 6) + 1}`,
+          connectionToTraining:
+            'This lesson plan integrates key learnings from the training into my regular teaching schedule.',
+          learningObjectives: [
+            'Apply training concepts to course delivery',
+            'Enhance student engagement using new techniques',
+            'Improve assessment alignment with outcomes',
+            'Incorporate industry-relevant examples',
+          ],
+          newSkillsTechnologies:
+            'Outcome mapping, rubric design, digital tools integration',
+          deliveryMethods:
+            'Interactive lectures, hands-on labs, peer discussions, case studies',
+          handsOnActivities:
+            'Design a comprehensive rubric for lab experiments and student projects',
+          assessmentMethods:
+            'Rubric-based evaluation, peer review, reflection journals, portfolio assessment',
+          industryConnections:
+            'Invite industry mentors for guest lectures and project reviews',
+          resourceRequirements:
+            'Projector, lab equipment, digital tools access, rubric templates',
+          implementationTimeline: '4-6 weeks after training completion',
+          expectedOutcomes:
+            'Improved student engagement, better assessment quality, enhanced learning outcomes',
+          status: lessonPlanStatus,
+          submittedAt: new Date(seed.endDate.getTime() + 7 * 24 * 60 * 60 * 1000),
+          dueDate: new Date(seed.endDate.getTime() + 21 * 24 * 60 * 60 * 1000),
+          reviewedById:
+            lessonPlanStatus !== LessonPlanStatus.SUBMITTED
+              ? createdById
+              : null,
+          reviewedAt:
+            lessonPlanStatus !== LessonPlanStatus.SUBMITTED
+              ? new Date(seed.endDate.getTime() + 14 * 24 * 60 * 60 * 1000)
+              : null,
+          reviewComments:
+            lessonPlanStatus === LessonPlanStatus.APPROVED
+              ? 'Excellent plan with clear alignment to training objectives. Approved.'
+              : lessonPlanStatus === LessonPlanStatus.REVISION_REQUIRED
+                ? 'Please add more specific timelines and measurable outcomes.'
+                : null,
+        };
+      });
+
+      if (lessonPlanData.length > 0) {
+        const lessonPlansInsert = await prisma.lessonPlan.createMany({
+          data: lessonPlanData,
+        });
+        counts.lessonPlans.created += lessonPlansInsert.count;
+      }
+
+      const formTitle = feedbackFormTitleById.get(feedbackFormId) || 'Standard';
+      const feedbackData = approvedUserApplications.map(({ user }) => ({
+        userId: user.id,
+        feedbackFormId,
+        trainingId: training.id,
+        responses: generateFeedbackResponse(formTitle),
+        submittedAt: new Date(seed.endDate.getTime() + 2 * 24 * 60 * 60 * 1000),
+      }));
+
+      if (feedbackData.length > 0) {
+        const feedbackInsert = await prisma.feedbackResponse.createMany({
+          data: feedbackData,
+        });
+        counts.feedbackResponses.created += feedbackInsert.count;
+      }
+
+      if (training.preTestFormId) {
+        const questions = preTestQuestionsByFormId.get(training.preTestFormId) || [];
+        const preTestData = approvedUserApplications.map(({ user }) => ({
+          userId: user.id,
+          preTestFormId: training.preTestFormId as string,
+          trainingId: training.id,
+          responses: generateTestResponse(questions, true),
+          score: Math.floor(Math.random() * 30) + 70,
+          submittedAt: new Date(seed.startDate.getTime() - 2 * 24 * 60 * 60 * 1000),
+        }));
+
+        if (preTestData.length > 0) {
+          const preTestInsert = await prisma.preTestResponse.createMany({
+            data: preTestData,
+          });
+          counts.preTestResponses.created += preTestInsert.count;
         }
       }
 
-      // Create lesson plans for past trainings
-      if (seed.category === 'past') {
-        const existingLessonPlan = await prisma.lessonPlan.findUnique({
-          where: {
-            userId_trainingId: { userId: user.id, trainingId: training.id },
-          },
-          select: { id: true },
+      if (training.postTestFormId) {
+        const questions = postTestQuestionsByFormId.get(training.postTestFormId) || [];
+        const postTestData = approvedUserApplications.map(({ user }) => ({
+          userId: user.id,
+          postTestFormId: training.postTestFormId as string,
+          trainingId: training.id,
+          responses: generateTestResponse(questions, true),
+          score: Math.floor(Math.random() * 25) + 75,
+          submittedAt: new Date(seed.endDate.getTime() + 1 * 24 * 60 * 60 * 1000),
+        }));
+
+        if (postTestData.length > 0) {
+          const postTestInsert = await prisma.postTestResponse.createMany({
+            data: postTestData,
+          });
+          counts.postTestResponses.created += postTestInsert.count;
+        }
+      }
+
+      const certificateData = approvedUserApplications.map(({ user }) => {
+        const certNumber = `TRN-${seed.startDate.getFullYear()}-${training.id.slice(0, 6).toUpperCase()}-${user.id.slice(0, 6).toUpperCase()}`;
+        return {
+          userId: user.id,
+          trainingId: training.id,
+          certificateNumber: certNumber,
+          issuedAt: new Date(seed.endDate.getTime() + 10 * 24 * 60 * 60 * 1000),
+          issuedById: createdById,
+          certificateUrl: `https://storage.placeintern.com/certificates/${certNumber}.pdf`,
+        };
+      });
+
+      if (certificateData.length > 0) {
+        const certificatesInsert = await prisma.trainingCertificate.createMany({
+          data: certificateData,
         });
-
-        if (!existingLessonPlan) {
-          const lessonPlanStatus = getLessonPlanStatus(userIndex);
-          await prisma.lessonPlan.create({
-            data: {
-              userId: user.id,
-              trainingId: training.id,
-              title: `Implementation Plan: ${seed.title}`,
-              courseOrSemester: `Semester ${(userIndex % 6) + 1}`,
-              connectionToTraining:
-                'This lesson plan integrates key learnings from the training into my regular teaching schedule.',
-              learningObjectives: [
-                'Apply training concepts to course delivery',
-                'Enhance student engagement using new techniques',
-                'Improve assessment alignment with outcomes',
-                'Incorporate industry-relevant examples',
-              ],
-              newSkillsTechnologies:
-                'Outcome mapping, rubric design, digital tools integration',
-              deliveryMethods:
-                'Interactive lectures, hands-on labs, peer discussions, case studies',
-              handsOnActivities:
-                'Design a comprehensive rubric for lab experiments and student projects',
-              assessmentMethods:
-                'Rubric-based evaluation, peer review, reflection journals, portfolio assessment',
-              industryConnections:
-                'Invite industry mentors for guest lectures and project reviews',
-              resourceRequirements:
-                'Projector, lab equipment, digital tools access, rubric templates',
-              implementationTimeline: '4-6 weeks after training completion',
-              expectedOutcomes:
-                'Improved student engagement, better assessment quality, enhanced learning outcomes',
-              status: lessonPlanStatus,
-              submittedAt: new Date(seed.endDate.getTime() + 7 * 24 * 60 * 60 * 1000),
-              dueDate: new Date(seed.endDate.getTime() + 21 * 24 * 60 * 60 * 1000),
-              reviewedById:
-                lessonPlanStatus !== LessonPlanStatus.SUBMITTED
-                  ? createdById
-                  : null,
-              reviewedAt:
-                lessonPlanStatus !== LessonPlanStatus.SUBMITTED
-                  ? new Date(seed.endDate.getTime() + 14 * 24 * 60 * 60 * 1000)
-                  : null,
-              reviewComments:
-                lessonPlanStatus === LessonPlanStatus.APPROVED
-                  ? 'Excellent plan with clear alignment to training objectives. Approved.'
-                  : lessonPlanStatus === LessonPlanStatus.REVISION_REQUIRED
-                    ? 'Please add more specific timelines and measurable outcomes.'
-                    : null,
-            },
-          });
-          counts.lessonPlans.created++;
-        } else {
-          counts.lessonPlans.existing++;
-        }
-
-        // Create feedback responses for past trainings
-        const existingFeedback = await prisma.feedbackResponse.findUnique({
-          where: {
-            userId_feedbackFormId_trainingId: {
-              userId: user.id,
-              feedbackFormId,
-              trainingId: training.id,
-            },
-          },
-          select: { id: true },
-        });
-
-        if (!existingFeedback) {
-          const formTitle =
-            [...formIdMap.entries()].find(([_, id]) => id === feedbackFormId)?.[0] ||
-            'Standard';
-          await prisma.feedbackResponse.create({
-            data: {
-              userId: user.id,
-              feedbackFormId,
-              trainingId: training.id,
-              responses: generateFeedbackResponse(formTitle),
-              submittedAt: new Date(seed.endDate.getTime() + 2 * 24 * 60 * 60 * 1000),
-            },
-          });
-          counts.feedbackResponses.created++;
-        } else {
-          counts.feedbackResponses.existing++;
-        }
-
-        // Create pre-test responses for past trainings
-        if (training.preTestFormId) {
-          const existingPreTestResponse = await prisma.preTestResponse.findUnique({
-            where: {
-              userId_preTestFormId_trainingId: {
-                userId: user.id,
-                preTestFormId: training.preTestFormId,
-                trainingId: training.id,
-              },
-            },
-            select: { id: true },
-          });
-
-          if (!existingPreTestResponse) {
-            const preTestFormData = PRE_TEST_FORMS.find(
-              (f) => preTestFormIdMap.get(f.title) === training.preTestFormId
-            );
-            await prisma.preTestResponse.create({
-              data: {
-                userId: user.id,
-                preTestFormId: training.preTestFormId,
-                trainingId: training.id,
-                responses: generateTestResponse(preTestFormData?.questions || [], true),
-                score: Math.floor(Math.random() * 30) + 70, // Random score 70-100
-                submittedAt: new Date(seed.startDate.getTime() - 2 * 24 * 60 * 60 * 1000),
-              },
-            });
-            counts.preTestResponses.created++;
-          } else {
-            counts.preTestResponses.existing++;
-          }
-        }
-
-        // Create post-test responses for past trainings
-        if (training.postTestFormId) {
-          const existingPostTestResponse = await prisma.postTestResponse.findUnique({
-            where: {
-              userId_postTestFormId_trainingId: {
-                userId: user.id,
-                postTestFormId: training.postTestFormId,
-                trainingId: training.id,
-              },
-            },
-            select: { id: true },
-          });
-
-          if (!existingPostTestResponse) {
-            const postTestFormData = POST_TEST_FORMS.find(
-              (f) => postTestFormIdMap.get(f.title) === training.postTestFormId
-            );
-            await prisma.postTestResponse.create({
-              data: {
-                userId: user.id,
-                postTestFormId: training.postTestFormId,
-                trainingId: training.id,
-                responses: generateTestResponse(postTestFormData?.questions || [], true),
-                score: Math.floor(Math.random() * 25) + 75, // Random score 75-100
-                submittedAt: new Date(seed.endDate.getTime() + 1 * 24 * 60 * 60 * 1000),
-              },
-            });
-            counts.postTestResponses.created++;
-          } else {
-            counts.postTestResponses.existing++;
-          }
-        }
-
-        // Create certificates for past trainings
-        const existingCertificate = await prisma.trainingCertificate.findUnique({
-          where: {
-            userId_trainingId: { userId: user.id, trainingId: training.id },
-          },
-          select: { id: true },
-        });
-
-        if (!existingCertificate) {
-          const certNumber = `TRN-${seed.startDate.getFullYear()}-${training.id.slice(0, 6).toUpperCase()}-${user.id.slice(0, 6).toUpperCase()}`;
-          await prisma.trainingCertificate.create({
-            data: {
-              userId: user.id,
-              trainingId: training.id,
-              certificateNumber: certNumber,
-              issuedAt: new Date(seed.endDate.getTime() + 10 * 24 * 60 * 60 * 1000),
-              issuedById: createdById,
-              certificateUrl: `https://storage.placeintern.com/certificates/${certNumber}.pdf`,
-            },
-          });
-          counts.certificates.created++;
-        } else {
-          counts.certificates.existing++;
-        }
+        counts.certificates.created += certificatesInsert.count;
       }
     }
   }
