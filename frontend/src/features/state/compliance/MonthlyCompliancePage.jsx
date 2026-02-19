@@ -482,8 +482,8 @@ const MonthlyCompliancePage = () => {
 
   // Tab Contents
   const OverviewTab = () => (
-    <div style={{ padding: 12 }}>
-      <Row gutter={[8, 8]}>
+    <div style={{ padding: 10 }}>
+      <Row gutter={[6, 6]}>
         {[
           {
             label: "Reports",
@@ -510,9 +510,9 @@ const MonthlyCompliancePage = () => {
           <Col xs={24} sm={8} key={i}>
             <div
               style={{
-                padding: "10px 12px",
+                padding: "8px 10px",
                 background: token.colorFillQuaternary,
-                borderRadius: 6,
+                borderRadius: 4,
                 borderLeft: `3px solid ${item.color}`,
               }}
             >
@@ -527,7 +527,7 @@ const MonthlyCompliancePage = () => {
                   <div style={tinyText}>{item.label}</div>
                   <div
                     style={{
-                      fontSize: 18,
+                      fontSize: 15,
                       fontWeight: 600,
                       color: token.colorText,
                     }}
@@ -539,7 +539,7 @@ const MonthlyCompliancePage = () => {
                         {item.val}
                         <span
                           style={{
-                            fontSize: 12,
+                            fontSize: 10,
                             fontWeight: 400,
                             color: token.colorTextSecondary,
                           }}
@@ -553,11 +553,11 @@ const MonthlyCompliancePage = () => {
                 <Progress
                   type="circle"
                   percent={item.rate || 0}
-                  size={36}
-                  strokeWidth={8}
+                  size={30}
+                  strokeWidth={10}
                   strokeColor={getColor(item.rate)}
                   format={(p) => (
-                    <span style={{ fontSize: 9, fontWeight: 600 }}>{p}%</span>
+                    <span style={{ fontSize: 8, fontWeight: 600 }}>{p}%</span>
                   )}
                 />
               </div>
@@ -567,17 +567,17 @@ const MonthlyCompliancePage = () => {
       </Row>
       <div
         style={{
-          marginTop: 12,
-          padding: 12,
+          marginTop: 10,
+          padding: 10,
           background: token.colorFillQuaternary,
-          borderRadius: 6,
+          borderRadius: 4,
         }}
       >
-        <div style={{ ...smallText, marginBottom: 8 }}>
+        <div style={{ ...smallText, marginBottom: 6, fontSize: 10 }}>
           <TeamOutlined style={{ marginRight: 4 }} />
           Student Status
         </div>
-        <Row gutter={8}>
+        <Row gutter={6}>
           {[
             {
               label: "Compliant",
@@ -602,158 +602,79 @@ const MonthlyCompliancePage = () => {
               <div
                 style={{
                   textAlign: "center",
-                  padding: 8,
+                  padding: 6,
                   background: `${s.color}08`,
                   borderRadius: 4,
                 }}
               >
-                <div style={{ color: s.color, fontSize: 12 }}>{s.icon}</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: s.color }}>
+                <div style={{ color: s.color, fontSize: 10 }}>{s.icon}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: s.color }}>
                   {s.val}
                 </div>
-                <div style={tinyText}>{s.label}</div>
+                <div style={{ ...tinyText, fontSize: 9 }}>{s.label}</div>
               </div>
             </Col>
           ))}
         </Row>
       </div>
       {/* Visit Type Breakdown */}
-      {selectedDetails?.visitsByType && selectedDetails.visitsByType.total > 0 && (
-        <div
-          style={{
-            marginTop: 12,
-            padding: 12,
-            background: token.colorFillQuaternary,
-            borderRadius: 6,
-          }}
-        >
-          <div style={{ ...smallText, marginBottom: 8 }}>
-            <EyeOutlined style={{ marginRight: 4 }} />
-            Visits by Type
-          </div>
-          <Row gutter={8}>
-            {[
-              {
-                label: "In-Person",
-                sub: "Physical",
-                val: selectedDetails.visitsByType.inPerson,
-                color: "#22c55e",
-                icon: <EnvironmentOutlined />,
-              },
-              {
-                label: "Online",
-                sub: `Virtual: ${selectedDetails.visitsByType.virtual}, Telephonic: ${selectedDetails.visitsByType.telephonic}`,
-                val: selectedDetails.visitsByType.online,
-                color: "#3b82f6",
-                icon: <EyeOutlined />,
-              },
-            ].map((item, i) => (
-              <Col span={12} key={i}>
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: 8,
-                    background: `${item.color}14`,
-                    borderRadius: 4,
-                  }}
-                >
-                  <div style={{ color: item.color, fontSize: 12 }}>
-                    {item.icon}
-                  </div>
+      {selectedDetails?.visitsByType &&
+        selectedDetails.visitsByType.total > 0 && (
+          <div
+            style={{
+              marginTop: 10,
+              padding: 10,
+              background: token.colorFillQuaternary,
+              borderRadius: 4,
+            }}
+          >
+            <div style={{ ...smallText, marginBottom: 6, fontSize: 10 }}>
+              <EyeOutlined style={{ marginRight: 4 }} />
+              Visits by Type
+            </div>
+            <Row gutter={6}>
+              {[
+                {
+                  label: "In-Person",
+                  val: selectedDetails.visitsByType.inPerson,
+                  color: "#22c55e",
+                  icon: <EnvironmentOutlined />,
+                },
+                {
+                  label: "Online",
+                  val: selectedDetails.visitsByType.online,
+                  color: "#3b82f6",
+                  icon: <EyeOutlined />,
+                },
+              ].map((item, i) => (
+                <Col span={12} key={i}>
                   <div
                     style={{
-                      fontSize: 20,
-                      fontWeight: 700,
-                      color: item.color,
+                      textAlign: "center",
+                      padding: 6,
+                      background: `${item.color}14`,
+                      borderRadius: 4,
                     }}
                   >
-                    {item.val}
+                    <div style={{ color: item.color, fontSize: 10 }}>
+                      {item.icon}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 700,
+                        color: item.color,
+                      }}
+                    >
+                      {item.val}
+                    </div>
+                    <div style={{ ...tinyText, fontSize: 9 }}>{item.label}</div>
                   </div>
-                  <div style={tinyText}>{item.label}</div>
-                  <div style={{ fontSize: 9, color: token.colorTextQuaternary }}>
-                    ({item.sub})
-                  </div>
-                </div>
-              </Col>
-            ))}
-          </Row>
-          <div style={{ marginTop: 8 }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: 4,
-              }}
-            >
-              <span style={tinyText}>Distribution</span>
-              <span style={tinyText}>
-                {selectedDetails.visitsByType.total} total visits
-              </span>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                height: 6,
-                borderRadius: 3,
-                overflow: "hidden",
-                backgroundColor: token.colorFillSecondary,
-              }}
-            >
-              <div
-                style={{
-                  height: "100%",
-                  width: `${(selectedDetails.visitsByType.physical / selectedDetails.visitsByType.total) * 100}%`,
-                  backgroundColor: "#22c55e",
-                }}
-              />
-              <div
-                style={{
-                  height: "100%",
-                  width: `${(selectedDetails.visitsByType.virtual / selectedDetails.visitsByType.total) * 100}%`,
-                  backgroundColor: "#3b82f6",
-                }}
-              />
-              <div
-                style={{
-                  height: "100%",
-                  width: `${(selectedDetails.visitsByType.telephonic / selectedDetails.visitsByType.total) * 100}%`,
-                  backgroundColor: "#f59e0b",
-                }}
-              />
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 12,
-                marginTop: 4,
-              }}
-            >
-              {[
-                { label: "Physical", val: selectedDetails.visitsByType.physical, color: "#22c55e" },
-                { label: "Virtual", val: selectedDetails.visitsByType.virtual, color: "#3b82f6" },
-                { label: "Telephonic", val: selectedDetails.visitsByType.telephonic, color: "#f59e0b" },
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  style={{ display: "flex", alignItems: "center", gap: 4 }}
-                >
-                  <div
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: "50%",
-                      backgroundColor: item.color,
-                    }}
-                  />
-                  <span style={{ fontSize: 9, color: token.colorTextTertiary }}>
-                    {item.label} ({item.val})
-                  </span>
-                </div>
+                </Col>
               ))}
-            </div>
+            </Row>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 
@@ -864,12 +785,12 @@ const MonthlyCompliancePage = () => {
     ];
 
     return (
-      <div style={{ padding: 12 }}>
+      <div style={{ padding: 10 }}>
         <div
           style={{
             display: "flex",
-            gap: 8,
-            marginBottom: 10,
+            gap: 6,
+            marginBottom: 8,
             flexWrap: "wrap",
             alignItems: "center",
           }}
@@ -878,16 +799,16 @@ const MonthlyCompliancePage = () => {
             placeholder="Search..."
             prefix={
               <SearchOutlined
-                style={{ color: token.colorTextDisabled, fontSize: 12 }}
+                style={{ color: token.colorTextDisabled, fontSize: 10 }}
               />
             }
             value={sSearch}
             onChange={(e) => setSSearch(e.target.value)}
             allowClear
             size="small"
-            style={{ width: 180 }}
+            style={{ width: 140 }}
           />
-          <div style={{ display: "flex", gap: 4 }}>
+          <div style={{ display: "flex", gap: 3 }}>
             {[
               {
                 key: "all",
@@ -917,8 +838,8 @@ const MonthlyCompliancePage = () => {
                 style={{
                   cursor: "pointer",
                   margin: 0,
-                  fontSize: 10,
-                  padding: "0 6px",
+                  fontSize: 9,
+                  padding: "0 4px",
                 }}
                 color={sFilter === f.key ? f.color || "blue" : undefined}
                 onClick={() =>
@@ -931,7 +852,7 @@ const MonthlyCompliancePage = () => {
               </Tag>
             ))}
           </div>
-          <Text type="secondary" style={{ marginLeft: "auto", fontSize: 10 }}>
+          <Text type="secondary" style={{ marginLeft: "auto", fontSize: 9 }}>
             {filtered.length} students
           </Text>
         </div>
@@ -1154,14 +1075,14 @@ const MonthlyCompliancePage = () => {
       );
 
     return (
-      <div style={{ padding: 12 }}>
+      <div style={{ padding: 10 }}>
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: 10,
-            paddingBottom: 8,
+            marginBottom: 8,
+            paddingBottom: 6,
             borderBottom: `1px solid ${token.colorBorderSecondary}`,
           }}
         >
@@ -1170,7 +1091,7 @@ const MonthlyCompliancePage = () => {
               {
                 title: (
                   <span
-                    style={{ cursor: "pointer", fontSize: 11 }}
+                    style={{ cursor: "pointer", fontSize: 10 }}
                     onClick={() => {
                       setCurrentFolder(null);
                       setFileSearchTerm("");
@@ -1184,7 +1105,7 @@ const MonthlyCompliancePage = () => {
                 ? [
                     {
                       title: (
-                        <span style={{ fontSize: 11 }}>
+                        <span style={{ fontSize: 10 }}>
                           {FILE_TYPE_CONFIG[currentFolder]?.name}
                         </span>
                       ),
@@ -1195,7 +1116,7 @@ const MonthlyCompliancePage = () => {
           />
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             {fileTree?.summary && (
-              <Text type="secondary" style={{ fontSize: 10 }}>
+              <Text type="secondary" style={{ fontSize: 9 }}>
                 {fileTree.summary.totalFiles} files
               </Text>
             )}
@@ -1203,15 +1124,15 @@ const MonthlyCompliancePage = () => {
               type="text"
               size="small"
               icon={
-                <ReloadOutlined style={{ fontSize: 11 }} spin={filesLoading} />
+                <ReloadOutlined style={{ fontSize: 10 }} spin={filesLoading} />
               }
               onClick={() => fetchFileExplorer(true)}
-              style={{ padding: "0 4px", height: 20 }}
+              style={{ padding: "0 4px", height: 18 }}
             />
           </div>
         </div>
         {!currentFolder ? (
-          <Row gutter={[8, 8]}>
+          <Row gutter={[6, 6]}>
             {uniqueFolders.map((f) => {
               const cfg =
                 FILE_TYPE_CONFIG[f.type] || FILE_TYPE_CONFIG.documents;
@@ -1220,9 +1141,9 @@ const MonthlyCompliancePage = () => {
                   <div
                     onClick={() => setCurrentFolder(f.type)}
                     style={{
-                      padding: 12,
+                      padding: 10,
                       background: cfg.bgColor,
-                      borderRadius: 6,
+                      borderRadius: 4,
                       cursor: "pointer",
                       transition: "all 0.2s",
                       border: "1px solid transparent",
@@ -1243,22 +1164,22 @@ const MonthlyCompliancePage = () => {
                     >
                       <div
                         style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 6,
+                          width: 28,
+                          height: 28,
+                          borderRadius: 4,
                           background: cfg.color,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           color: "white",
-                          fontSize: 14,
+                          fontSize: 12,
                         }}
                       >
                         {cfg.icon}
                       </div>
                       <div
                         style={{
-                          fontSize: 22,
+                          fontSize: 18,
                           fontWeight: 700,
                           color: cfg.color,
                         }}
@@ -1267,11 +1188,11 @@ const MonthlyCompliancePage = () => {
                       </div>
                     </div>
                     <div
-                      style={{ marginTop: 8, fontSize: 12, fontWeight: 600 }}
+                      style={{ marginTop: 6, fontSize: 11, fontWeight: 600 }}
                     >
                       {cfg.name}
                     </div>
-                    <div style={tinyText}>
+                    <div style={{ ...tinyText, fontSize: 9 }}>
                       {f.count} file{f.count !== 1 ? "s" : ""}
                     </div>
                   </div>
@@ -1286,44 +1207,43 @@ const MonthlyCompliancePage = () => {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                marginBottom: 10,
+                marginBottom: 8,
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <div
                   style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 6,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 4,
                     background: FILE_TYPE_CONFIG[currentFolder]?.color,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     color: "white",
-                    fontSize: 12,
+                    fontSize: 10,
                   }}
                 >
                   {FILE_TYPE_CONFIG[currentFolder]?.icon}
                 </div>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600 }}>
                     {FILE_TYPE_CONFIG[currentFolder]?.name}
                   </div>
-                  <div style={tinyText}>{filteredFiles.length} files</div>
                 </div>
               </div>
               <Input
                 placeholder="Search..."
                 prefix={
                   <SearchOutlined
-                    style={{ color: token.colorTextDisabled, fontSize: 11 }}
+                    style={{ color: token.colorTextDisabled, fontSize: 10 }}
                   />
                 }
                 value={fileSearchTerm}
                 onChange={(e) => setFileSearchTerm(e.target.value)}
                 allowClear
                 size="small"
-                style={{ width: 160 }}
+                style={{ width: 140 }}
               />
             </div>
             <Table
@@ -1388,7 +1308,7 @@ const MonthlyCompliancePage = () => {
   return (
     <div
       style={{
-        padding: screens.md ? 16 : 10,
+        padding: screens.md ? "12px 16px" : "8px",
         background: token.colorBgLayout,
         minHeight: "100vh",
       }}
@@ -1399,49 +1319,47 @@ const MonthlyCompliancePage = () => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: 12,
+          marginBottom: 10,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
+              width: 28,
+              height: 28,
+              borderRadius: 6,
               background: `linear-gradient(135deg, ${token.colorPrimary}, ${token.colorPrimaryActive})`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <PieChartOutlined style={{ color: "white", fontSize: 16 }} />
+            <PieChartOutlined style={{ color: "white", fontSize: 14 }} />
           </div>
           <div>
             <div
-              style={{ fontSize: 16, fontWeight: 600, color: token.colorText }}
+              style={{ fontSize: 15, fontWeight: 600, color: token.colorText }}
             >
-              Institution Overview
+              Internships Overview
             </div>
-            <div style={tinyText}>Monitor monthly compliance</div>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* <DatePicker picker="month" value={selectedDate} onChange={handleMonthChange} allowClear={false} format="MMM YYYY" size="small" style={{ width: 110 }} suffixIcon={<CalendarOutlined style={{ fontSize: 11 }} />} /> */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {error && (
             <Tag
               color="error"
-              style={{ fontSize: 10, padding: "0 4px", margin: 0 }}
+              style={{ fontSize: 9, padding: "0 4px", margin: 0 }}
             >
-              <WarningOutlined /> Error
+              Error
             </Tag>
           )}
           <Tooltip title="Refresh">
             <Button
               size="small"
-              icon={<ReloadOutlined style={{ fontSize: 12 }} spin={loading} />}
+              icon={<ReloadOutlined style={{ fontSize: 11 }} spin={loading} />}
               onClick={handleRefresh}
               disabled={loading}
-              style={{ padding: "0 6px" }}
+              style={{ height: 24 }}
             />
           </Tooltip>
         </div>
@@ -1475,14 +1393,14 @@ const MonthlyCompliancePage = () => {
         </div>
       )} */}
 
-      <Row gutter={[12, 12]}>
+      <Row gutter={[10, 10]}>
         {/* Left Panel */}
         <Col xs={24} md={7} lg={6} xl={5}>
           <Card
             size="small"
             title={
               <div
-                style={{ display: "flex", alignItems: "center", fontSize: 12 }}
+                style={{ display: "flex", alignItems: "center", fontSize: 11 }}
               >
                 <BankOutlined
                   style={{ marginRight: 6, color: token.colorPrimary }}
@@ -1490,16 +1408,16 @@ const MonthlyCompliancePage = () => {
                 Institutions
                 <Text
                   type="secondary"
-                  style={{ marginLeft: "auto", fontSize: 10 }}
+                  style={{ marginLeft: "auto", fontSize: 9 }}
                 >
-                  {filteredInstitutions.length}/{institutions.length}
+                  {filteredInstitutions.length}
                 </Text>
               </div>
             }
             bordered={false}
             style={{
               ...compactCard,
-              height: screens.md ? "calc(100vh - 160px)" : "45vh",
+              height: screens.md ? "calc(100vh - 120px)" : "45vh",
               display: "flex",
               flexDirection: "column",
             }}
@@ -1512,8 +1430,8 @@ const MonthlyCompliancePage = () => {
                 overflow: "hidden",
               },
               header: {
-                padding: "8px 12px",
-                minHeight: "auto",
+                padding: "4px 10px",
+                minHeight: 32,
                 background: token.colorFillQuaternary,
                 borderBottom: `1px solid ${token.colorBorderSecondary}`,
               },
@@ -1521,7 +1439,7 @@ const MonthlyCompliancePage = () => {
           >
             <div
               style={{
-                padding: 8,
+                padding: 6,
                 borderBottom: `1px solid ${token.colorBorderSecondary}`,
               }}
             >
@@ -1529,18 +1447,18 @@ const MonthlyCompliancePage = () => {
                 placeholder="Search..."
                 prefix={
                   <BankOutlined
-                    style={{ color: token.colorTextDisabled, fontSize: 11 }}
+                    style={{ color: token.colorTextDisabled, fontSize: 10 }}
                   />
                 }
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 allowClear
                 size="small"
-                style={{ marginBottom: 6 }}
+                style={{ marginBottom: 4 }}
               />
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
                 {[
-                  { key: "all", label: `All (${institutions.length})` },
+                  { key: "all", label: `All` },
                   {
                     key: "excellent",
                     icon: <CheckCircleFilled />,
@@ -1565,8 +1483,8 @@ const MonthlyCompliancePage = () => {
                     style={{
                       cursor: "pointer",
                       margin: 0,
-                      fontSize: 10,
-                      padding: "0 5px",
+                      fontSize: 9,
+                      padding: "0 4px",
                     }}
                     color={
                       statusFilter === f.key ? f.color || "blue" : undefined
@@ -1584,135 +1502,66 @@ const MonthlyCompliancePage = () => {
                 ))}
               </div>
             </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: 12 }}>
+            <div style={{ flex: 1, overflowY: "auto", padding: 8 }}>
               {loading && !institutions.length ? (
-                <div style={{ textAlign: "center", padding: 48 }}>
-                  <Spin tip="Loading institutions..." />
+                <div style={{ textAlign: "center", padding: 32 }}>
+                  <Spin size="small" />
                 </div>
               ) : filteredInstitutions.length === 0 ? (
                 <Empty
-                  description={
-                    search
-                      ? `No institutions found matching "${search}"`
-                      : "No institutions found"
-                  }
-                  style={{ marginTop: 48 }}
+                  description="No results"
+                  style={{ marginTop: 32 }}
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                 />
               ) : (
                 <div
-                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                  style={{ display: "flex", flexDirection: "column", gap: 4 }}
                 >
                   {filteredInstitutions.map((i) => {
                     const sel = selectedInstitutionId === i.institutionId;
                     const r = i.overallCompliance;
                     return (
-                      <Card
+                      <div
                         key={i.institutionId}
-                        hoverable
                         onClick={() => handleInstitutionSelect(i.institutionId)}
                         style={{
                           cursor: "pointer",
-                          borderLeft: sel
-                            ? `4px solid ${token.colorPrimary}`
-                            : "4px solid transparent",
+                          padding: "8px 10px",
+                          borderRadius: token.borderRadius,
+                          borderLeft: `3px solid ${sel ? token.colorPrimary : "transparent"}`,
                           backgroundColor: sel
                             ? token.colorPrimaryBg
-                            : token.colorBgContainer,
-                          transition: "all 0.3s",
+                            : "transparent",
+                          transition: "all 0.2s",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: 8,
                         }}
-                        styles={{ body: { padding: 12 } }}
+                        onMouseEnter={(e) => {
+                          if (!sel)
+                            e.currentTarget.style.backgroundColor =
+                              token.colorFillAlter;
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!sel)
+                            e.currentTarget.style.backgroundColor =
+                              "transparent";
+                        }}
                       >
-                        <div
+                        <Text
+                          strong={sel}
                           style={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: 12,
+                            fontSize: 13,
+                            color: sel ? token.colorPrimary : token.colorText,
+                            flex: 1,
+                            minWidth: 0,
                           }}
+                          ellipsis
                         >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "start",
-                                marginBottom: 4,
-                              }}
-                            >
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <Text
-                                  strong
-                                  style={{
-                                    fontSize: 14,
-                                    display: "block",
-                                    color: sel
-                                      ? token.colorPrimary
-                                      : token.colorText,
-                                  }}
-                                  ellipsis
-                                >
-                                  {i.shortName || i.institutionName}
-                                </Text>
-                                {i.institutionCode && (
-                                  <Text
-                                    type="secondary"
-                                    style={{ fontSize: 12, display: "block" }}
-                                  >
-                                    {i.institutionCode}
-                                  </Text>
-                                )}
-                              </div>
-                              <div
-                                style={{
-                                  fontSize: 16,
-                                  fontWeight: 700,
-                                  color: getColor(r),
-                                  marginLeft: 8,
-                                }}
-                              >
-                                {r ?? 0}%
-                              </div>
-                            </div>
-                            <div
-                              style={{
-                                display: "flex",
-                                flexWrap: "wrap",
-                                gap: 8,
-                                marginTop: 8,
-                              }}
-                            >
-                              <Tooltip title="Monthly Reports">
-                                <Tag
-                                  icon={<FileTextOutlined />}
-                                  color="blue"
-                                  style={{ fontSize: 11, margin: 0 }}
-                                >
-                                  {i.submittedReports}/{i.expectedReports}
-                                </Tag>
-                              </Tooltip>
-                              <Tooltip title="Faculty Visits">
-                                <Tag
-                                  icon={<EyeOutlined />}
-                                  color="green"
-                                  style={{ fontSize: 11, margin: 0 }}
-                                >
-                                  {i.completedVisits}/{i.expectedVisits}
-                                </Tag>
-                              </Tooltip>
-                              {i.studentsInTraining > 0 && (
-                                <Tooltip title="Students in Training">
-                                  <Tag
-                                    icon={<TeamOutlined />}
-                                    style={{ fontSize: 11, margin: 0 }}
-                                  >
-                                    {i.studentsInTraining}
-                                  </Tag>
-                                </Tooltip>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
+                          {i.shortName || i.institutionName}
+                        </Text>
+                      </div>
                     );
                   })}
                 </div>
@@ -1726,45 +1575,46 @@ const MonthlyCompliancePage = () => {
           {detailsLoading ? (
             <Card
               style={{
-                height: "calc(100vh - 160px)",
+                height: "calc(100vh - 120px)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 ...compactCard,
               }}
             >
-              <Spin tip="Loading..." />
+              <Spin size="small" />
             </Card>
           ) : selectedDetails && inst ? (
             <div
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: 10,
-                height: screens.md ? "calc(100vh - 160px)" : "auto",
+                gap: 8,
+                height: screens.md ? "calc(100vh - 120px)" : "auto",
                 overflowY: "auto",
+                paddingRight: 4,
               }}
             >
               {/* Header Card */}
               <Card size="small" bordered={false} style={compactCard}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div
                     style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 10,
+                      width: 30,
+                      height: 30,
+                      borderRadius: 8,
                       background: `linear-gradient(135deg, ${token.colorPrimary}, ${token.colorPrimaryActive})`,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <BankOutlined style={{ fontSize: 22, color: "white" }} />
+                    <BankOutlined style={{ fontSize: 18, color: "white" }} />
                   </div>
                   <div style={{ flex: 1 }}>
                     <div
                       style={{
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: 600,
                         color: token.colorText,
                       }}
@@ -1775,24 +1625,14 @@ const MonthlyCompliancePage = () => {
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: 8,
-                        marginTop: 2,
+                        gap: 6,
+                        marginTop: 1,
                       }}
                     >
-                      <Tag
-                        style={{
-                          fontFamily: "monospace",
-                          fontSize: 10,
-                          padding: "0 4px",
-                          margin: 0,
-                        }}
-                      >
-                        {inst.code}
-                      </Tag>
                       {inst.city && (
-                        <Text type="secondary" style={{ fontSize: 10 }}>
-                          <EnvironmentOutlined style={{ fontSize: 9 }} />{" "}
-                          {inst.city}
+                        <Text type="secondary" style={{ fontSize: 9 }}>
+                          <EnvironmentOutlined style={{ fontSize: 8 }} />{" "}
+                          {inst.address}
                         </Text>
                       )}
                     </div>
@@ -1801,7 +1641,7 @@ const MonthlyCompliancePage = () => {
                     <div style={tinyText}>Overall</div>
                     <div
                       style={{
-                        fontSize: 26,
+                        fontSize: 22,
                         fontWeight: 700,
                         color: getColor(summaryData?.overall),
                         lineHeight: 1,
@@ -1814,9 +1654,9 @@ const MonthlyCompliancePage = () => {
                 <div
                   style={{
                     display: "flex",
-                    gap: 16,
-                    marginTop: 10,
-                    padding: "8px 10px",
+                    gap: 12,
+                    marginTop: 8,
+                    padding: "6px 10px",
                     background: token.colorFillQuaternary,
                     borderRadius: 4,
                   }}
@@ -1844,19 +1684,20 @@ const MonthlyCompliancePage = () => {
                       key={i}
                       style={{ display: "flex", alignItems: "center", gap: 6 }}
                     >
-                      <span style={{ color: token.colorPrimary, fontSize: 14 }}>
+                      <span style={{ color: token.colorPrimary, fontSize: 13 }}>
                         {s.icon}
                       </span>
                       <div>
                         <div style={tinyText}>{s.label}</div>
-                        <div style={{ fontSize: 12, fontWeight: 600 }}>
+                        <div style={{ fontSize: 11, fontWeight: 600 }}>
                           {s.val}
                           {s.rate !== undefined && (
                             <Tag
                               style={{
-                                fontSize: 9,
-                                padding: "0 3px",
+                                fontSize: 8,
+                                padding: "0 2px",
                                 marginLeft: 4,
+                                lineHeight: "12px",
                               }}
                               color={getTagColor(s.rate)}
                             >
@@ -1882,14 +1723,14 @@ const MonthlyCompliancePage = () => {
                   items={tabItems}
                   size="small"
                   style={{ height: "100%" }}
-                  tabBarStyle={{ padding: "0 12px", marginBottom: 0 }}
+                  tabBarStyle={{ padding: "0 10px", marginBottom: 0 }}
                 />
               </Card>
             </div>
           ) : (
             <Card
               style={{
-                height: "calc(100vh - 160px)",
+                height: "calc(100vh - 120px)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1900,22 +1741,19 @@ const MonthlyCompliancePage = () => {
               <div style={{ textAlign: "center" }}>
                 <BankOutlined
                   style={{
-                    fontSize: 36,
+                    fontSize: 32,
                     color: token.colorTextDisabled,
-                    marginBottom: 8,
+                    marginBottom: 6,
                   }}
                 />
                 <div
                   style={{
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: 500,
                     color: token.colorTextSecondary,
                   }}
                 >
-                  Select an Institution
-                </div>
-                <div style={{ fontSize: 11, color: token.colorTextTertiary }}>
-                  Choose from the list to view details
+                  Select Institution
                 </div>
               </div>
             </Card>

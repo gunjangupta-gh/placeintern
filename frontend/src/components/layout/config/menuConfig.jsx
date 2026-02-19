@@ -42,42 +42,29 @@ export const menuConfig = {
   // ==========================================
   // STATE DIRECTORATE MENUS
   // ==========================================
-  STATE_HOME: {
-    key: "state-home",
-    title: "Home",
+  STATE_DASHBOARD: {
+    key: "state-dashboard",
+    title: "Dashboard",
     icon: <DashboardOutlined />,
-    items: [
-      {
-        key: "state-dashboard",
-        label: "Dashboard",
-        icon: <DashboardOutlined />,
-        path: "/app/dashboard",
-      },
-      {
-        key: "compliance-tracker",
-        label: "Institution Overview",
-        icon: <CheckSquareOutlined />,
-        path: "/app/compliance-tracker",
-      },
-      {
-        key: "report-builder",
-        label: "Report Builder",
-        icon: <BarChartOutlined />,
-        path: "/app/reports/builder",
-      },
-    ],
+    path: "/app/dashboard",
+  },
+  STATE_INSTITUTION_OVERVIEW: {
+    key: "compliance-tracker",
+    title: "Internships Overview",
+    icon: <CheckSquareOutlined />,
+    path: "/app/compliance-tracker",
+  },
+  STATE_REPORT_BUILDER: {
+    key: "report-builder",
+    title: "Report Builder",
+    icon: <BarChartOutlined />,
+    path: "/app/reports/builder",
   },
   STATE_INSTITUTIONS: {
     key: "state-institutions",
     title: "Institutions",
     icon: <BankOutlined />,
     items: [
-      {
-        key: "institutions-overview",
-        label: "Overview",
-        icon: <GlobalOutlined />,
-        path: "/app/institutions-overview",
-      },
       // {
       //   key: "institution-performance",
       //   label: "Performance",
@@ -86,7 +73,7 @@ export const menuConfig = {
       // },
       {
         key: "institutions-list",
-        label: "All Institutions",
+        label: "Manage Institution",
         icon: <BankOutlined />,
         path: "/app/institutions",
       },
@@ -231,6 +218,12 @@ export const menuConfig = {
         label: "Faculty Progress",
         icon: <CarOutlined />,
         path: "/app/faculty-progress",
+      },
+      {
+        key: "principal-visit-logs",
+        label: "Visit Logs",
+        icon: <FileDoneOutlined />,
+        path: "/app/principal-visit-logs",
       },
       {
         key: "student-grievances",
@@ -579,9 +572,11 @@ export const getMenuSectionsForRole = (role) => {
 
   switch (role) {
     case "STATE_DIRECTORATE":
-      sections.push(menuConfig.STATE_HOME);
+      sections.push(menuConfig.STATE_DASHBOARD);
+      sections.push(menuConfig.STATE_INSTITUTION_OVERVIEW);
       sections.push(menuConfig.STATE_INSTITUTIONS);
       sections.push(menuConfig.STATE_COMPANIES);
+      sections.push(menuConfig.STATE_REPORT_BUILDER);
       sections.push(menuConfig.STATE_BULK);
       sections.push(menuConfig.STATE_SYSTEM);
       break;

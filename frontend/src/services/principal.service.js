@@ -251,6 +251,26 @@ export const principalService = {
     return response.data;
   },
 
+  async getFacultyVisitReports(params = {}) {
+    const cleanParams = Object.fromEntries(
+      Object.entries(params).filter(([, v]) => v != null && v !== '')
+    );
+    const queryParams = new URLSearchParams(cleanParams).toString();
+    const url = queryParams ? `/principal/faculty/reports?${queryParams}` : '/principal/faculty/reports';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  async getPrincipalVisitReports(params = {}) {
+    const cleanParams = Object.fromEntries(
+      Object.entries(params).filter(([, v]) => v != null && v !== '')
+    );
+    const queryParams = new URLSearchParams(cleanParams).toString();
+    const url = queryParams ? `/principal/visit-logs?${queryParams}` : '/principal/visit-logs';
+    const response = await API.get(url);
+    return response.data;
+  },
+
   // Internship Management
   async getInternshipById(applicationId) {
     // STUBBED: Industry/internship functionality removed

@@ -40,7 +40,6 @@ const STATUS_FILTERS = [
   { value: 'all', label: 'All Visits' },
   { value: 'DRAFT', label: 'Drafts' },
   { value: 'COMPLETED', label: 'Completed' },
-  { value: 'SCHEDULED', label: 'Scheduled' },
 ];
 
 const VisitLogList = React.memo(() => {
@@ -183,7 +182,7 @@ const VisitLogList = React.memo(() => {
       key: 'visitType',
       width: 120,
       render: (type) => {
-        const colors = { PHYSICAL: 'green', VIRTUAL: 'blue', TELEPHONIC: 'orange' };
+        const colors = { PHYSICAL: 'green', VIRTUAL: 'blue', PHONE: 'orange', TELEPHONIC: 'orange' };
         return <Tag color={colors[type] || 'default'}>{type}</Tag>;
       },
     },

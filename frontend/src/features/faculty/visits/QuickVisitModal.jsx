@@ -45,6 +45,11 @@ const minWordsRule = (label, required) => ({
   },
 });
 
+const normalizeVisitType = (value) => {
+  const visitType = (value || '').toUpperCase();
+  return visitType === 'TELEPHONIC' ? 'PHONE' : visitType;
+};
+
 // Constant styles outside component
 const UPLOAD_BUTTON_STYLE = { marginTop: 8 };
 const SPACE_COMPACT_STYLE = { width: '100%' };
@@ -62,6 +67,8 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
   const [submitting, setSubmitting] = useState(false);
   const [selectedApplicationId, setSelectedApplicationId] = useState(null);
   const [internshipDateError, setInternshipDateError] = useState(null);
+  const [visitStatus, setVisitStatus] = useState('COMPLETED');
+  const isCompletedStatus = visitStatus === 'COMPLETED';
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -72,8 +79,14 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
       setFileList([]);
       setSelectedApplicationId(null);
       setInternshipDateError(null);
+      setVisitStatus('COMPLETED');
+      form.setFieldsValue({ status: 'COMPLETED' });
     }
   }, [visible, form]);
+
+  const handleStatusChange = useCallback((value) => {
+    setVisitStatus(value || 'COMPLETED');
+  }, []);
 
   // Handle student selection - extract applicationId from nested structure
   const handleStudentSelect = useCallback((studentId) => {
@@ -255,12 +268,12 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
       }
 
       // Prepare visit data with applicationId
-      const visitTypeValue = (values.visitType || '').toUpperCase();
+      const visitTypeValue = normalizeVisitType(values.visitType);
       const visitData = {
         applicationId: selectedApplicationId,
         visitType: visitTypeValue,
         visitDate: new Date().toISOString(),
-        status: 'COMPLETED',
+        status: values.status || 'COMPLETED',
         // Location for physical visits
         ...(visitTypeValue === 'PHYSICAL' && {
           visitLocation: values.visitLocation,
@@ -337,9 +350,9 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
       destroyOnHidden
     >
       <Alert
-        message="Important: All Fields Required"
-        description="All input fields are mandatory to complete the visit log. Images/photos are optional."
-        type="info"
+        message={isCompletedStatus ? 'Completed Status: Full Details Required' : 'Draft Status: Partial Save Allowed'}
+        description={isCompletedStatus ? 'Core and detailed visit fields are required for Completed submissions.' : 'For Draft, core fields are required and detailed fields can be filled later before marking Completed.'}
+        type={isCompletedStatus ? 'warning' : 'success'}
         showIcon
         closable
         className="mb-4"
@@ -351,7 +364,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
             <Form.Item
               name="studentId"
               label="Student"
-              rules={[{ required: isEdit, message: 'Please select a student' }]}
+              rules={[{ required: true, message: 'Please select a student' }]}
             >
               <Select
                 placeholder="Select student"
@@ -386,7 +399,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
             <Form.Item
               name="visitType"
               label="Visit Type"
-              rules={[{ required: isEdit, message: 'Please select visit type' }]}
+              rules={[{ required: true, message: 'Please select visit type' }]}
             >
               <Select
                 placeholder="Select visit type"
@@ -394,7 +407,22 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
               >
                 <Option value="PHYSICAL">Physical Visit</Option>
                 <Option value="VIRTUAL">Virtual Visit</Option>
-                <Option value="TELEPHONIC">Telephonic</Option>
+                <Option value="PHONE">Phone</Option>
+              </Select>
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="status"
+              label="Status"
+              rules={[{ required: true, message: 'Please select status' }]}
+            >
+              <Select placeholder="Select status" onChange={handleStatusChange}>
+                <Option value="COMPLETED">Completed</Option>
+                <Option value="DRAFT">Draft</Option>
               </Select>
             </Form.Item>
           </Col>
@@ -408,7 +436,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
               label="Location"
               rules={[
                 {
-                  required: isEdit,
+                  required: isCompletedStatus,
                   message: 'Please enter location or capture GPS coordinates',
                 },
               ]}
@@ -448,13 +476,13 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
         )}
 
         {/* Project Information */}
-        <Divider orientation="left" className="!text-sm !my-2">
+        <Divider orientation="left" className="text-sm! my-2!">
           Project Information
         </Divider>
 
         <Row gutter={16}>
           <Col xs={24} md={12}>
-            <Form.Item name="titleOfProjectWork" label="Title of Project/Work">
+            <Form.Item name="titleOfProjectWork" label="Title of Project/Work" rules={[{ required: isCompletedStatus, message: 'Please enter project title' }]}>
               <Input
                 placeholder="Enter the title of the project or work..."
                 maxLength={200}
@@ -462,7 +490,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>
-            <Form.Item name="assistanceRequiredFromInstitute" label="Assistance Required from Institute">
+            <Form.Item name="assistanceRequiredFromInstitute" label="Assistance Required from Institute" rules={[{ required: isCompletedStatus, message: 'Please describe assistance required' }]}>
               <TextArea
                 rows={2}
                 placeholder="Describe any assistance required..."
@@ -475,7 +503,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
 
         <Row gutter={16}>
           <Col xs={24} md={12}>
-            <Form.Item name="responseFromOrganisation" label="Response from Organisation">
+            <Form.Item name="responseFromOrganisation" label="Response from Organisation" rules={[{ required: isCompletedStatus, message: 'Please enter organisation response' }]}>
               <TextArea
                 rows={2}
                 placeholder="Enter response from organisation..."
@@ -485,7 +513,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>
-            <Form.Item name="remarksOfOrganisationSupervisor" label="Remarks of Organisation Supervisor">
+            <Form.Item name="remarksOfOrganisationSupervisor" label="Remarks of Organisation Supervisor" rules={[{ required: isCompletedStatus, message: 'Please enter supervisor remarks' }]}>
               <TextArea
                 rows={2}
                 placeholder="Enter supervisor remarks..."
@@ -496,7 +524,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
           </Col>
         </Row>
 
-        <Form.Item name="significantChangeInPlan" label="Any Significant Change with Respect to the Plan of Project/Work">
+        <Form.Item name="significantChangeInPlan" label="Any Significant Change with Respect to the Plan of Project/Work" rules={[{ required: isCompletedStatus, message: 'Please describe significant changes' }]}>
           <TextArea
             rows={2}
             placeholder="Describe any significant changes in the project plan..."
@@ -506,7 +534,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
         </Form.Item>
 
         {/* Observations & Feedback */}
-        <Divider orientation="left" className="!text-sm !my-2">
+        <Divider orientation="left" className="text-sm! my-2!">
           Observations & Feedback
         </Divider>
 
@@ -514,7 +542,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
           name="observationsAboutStudent"
           label="Observations about the Student"
           extra="Please provide at least 100 words"
-          rules={[minWordsRule('Observations', isEdit)]}
+          rules={[minWordsRule('Observations', isCompletedStatus)]}
         >
           <TextArea
             rows={4}
@@ -527,7 +555,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
         <Form.Item
           name="feedbackSharedWithStudent"
           label="Feedback Shared with Student"
-          rules={[minWordsRule('Feedback', isEdit)]}
+          rules={[minWordsRule('Feedback', isCompletedStatus)]}
         >
           <TextArea
             rows={2}
@@ -538,7 +566,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
         </Form.Item>
 
         {/* Photo Upload Section */}
-        <Divider orientation="left" className="!text-sm !my-2">
+        <Divider orientation="left" className="text-sm! my-2!">
           Attachments
         </Divider>
 

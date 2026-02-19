@@ -24,6 +24,12 @@ export class FacultyService {
     private readonly expectedCycleService: ExpectedCycleService,
   ) {}
 
+  private normalizeVisitType(visitType?: string): string | undefined {
+    if (!visitType) return visitType;
+    const normalized = String(visitType).toUpperCase();
+    return normalized === 'PHONE' ? 'TELEPHONIC' : normalized;
+  }
+
   /**
    * Build optional fields object using only valid Prisma FacultyVisitLog schema fields
    * This ensures type safety and prevents unknown field errors
@@ -33,7 +39,7 @@ export class FacultyService {
 
     // Core visit fields
     if (dto.visitLocation !== undefined) fields.visitLocation = dto.visitLocation;
-    if (dto.visitType !== undefined) fields.visitType = dto.visitType;
+    if (dto.visitType !== undefined) fields.visitType = this.normalizeVisitType(dto.visitType) as any;
     if (dto.status !== undefined) fields.status = dto.status;
     if (dto.visitDate !== undefined) fields.visitDate = dto.visitDate ? new Date(dto.visitDate) : null;
     if (dto.signedDocumentUrl !== undefined) fields.signedDocumentUrl = dto.signedDocumentUrl;
@@ -906,16 +912,18 @@ export class FacultyService {
       status,
     } = createVisitLogDto;
 
+    const normalizedVisitType = this.normalizeVisitType(visitType);
+
     // Filter to only valid Prisma schema fields (excludes unknown fields like 'notes')
     const filteredVisitData = this.buildVisitLogFields(createVisitLogDto);
 
     // Validate required fields
-    if (!visitType) {
+    if (!normalizedVisitType) {
       throw new BadRequestException('visitType is required');
     }
 
     // Location is required only for PHYSICAL visits (unless saving as draft)
-    if (visitType === 'PHYSICAL' && !visitLocation && status !== 'DRAFT') {
+    if (normalizedVisitType === 'PHYSICAL' && !visitLocation && status !== 'DRAFT') {
       throw new BadRequestException('visitLocation is required for physical visits');
     }
 
@@ -1034,7 +1042,7 @@ export class FacultyService {
       facultyId,
       internshipId: application.internshipId,
       visitNumber: visitCount + 1,
-      visitType,
+      visitType: normalizedVisitType,
       // Use the already validated visit date
       visitDate: visitDateToUse,
       // Auto-set visitMonth and visitYear for monthly compliance tracking
@@ -1094,7 +1102,7 @@ export class FacultyService {
         applicationId: application.id,
         studentId: visitLog.application.student.id,
         studentName: visitLog.application.student.user?.name,
-        visitType,
+        visitType: normalizedVisitType,
         visitLocation,
         visitDate: visitLog.visitDate,
       },

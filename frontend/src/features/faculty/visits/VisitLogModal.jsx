@@ -25,9 +25,8 @@ const minWordsRule = (label, required) => ({
 });
 
 const STATUS_OPTIONS = [
-  { value: 'scheduled', label: 'Scheduled' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'COMPLETED', label: 'Completed' },
+  { value: 'DRAFT', label: 'Draft' },
 ];
 
 const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
@@ -39,11 +38,13 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
   const [fileList, setFileList] = useState([]);
   const [internshipDateError, setInternshipDateError] = useState(null);
   const [selectedInternship, setSelectedInternship] = useState(null);
+  const [visitStatus, setVisitStatus] = useState('COMPLETED');
 
   const { visitLogs, students } = useSelector((state) => state.faculty);
   const currentVisitLog = visitLogs?.current;
   const assignedStudents = students?.list || [];
   const { companies } = useSelector((state) => state.company || { companies: [] });
+  const isCompletedStatus = visitStatus === 'COMPLETED';
 
   useEffect(() => {
     if (open) {
@@ -59,7 +60,9 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
             await dispatch(fetchVisitLogById(visitLogId));
           } else {
             form.resetFields();
+            form.setFieldsValue({ status: 'COMPLETED' });
             setFileList([]);
+            setVisitStatus('COMPLETED');
           }
         } catch (error) {
           toast.error('Failed to load data');
@@ -88,7 +91,9 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
         // Observations & Feedback fields
         observationsAboutStudent: currentVisitLog.observationsAboutStudent,
         feedbackSharedWithStudent: currentVisitLog.feedbackSharedWithStudent,
+        status: currentVisitLog.status || 'COMPLETED',
       });
+      setVisitStatus(currentVisitLog.status || 'COMPLETED');
     }
   }, [isEdit, currentVisitLog, form, open]);
 
@@ -97,8 +102,13 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
     setFileList([]);
     setInternshipDateError(null);
     setSelectedInternship(null);
+    setVisitStatus('COMPLETED');
     onClose();
   };
+
+  const handleStatusChange = useCallback((value) => {
+    setVisitStatus(value || 'COMPLETED');
+  }, []);
 
   // Validate visit date against internship dates
   const validateInternshipDates = useCallback((visitDate, internship) => {
@@ -261,9 +271,9 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
       ) : (
         <>
           <Alert
-            message="Important: All Fields Required"
-            description="All input fields are mandatory to complete the visit log. Attachments/documents are optional."
-            type="info"
+            message={isCompletedStatus ? 'Completed Status: Full Details Required' : 'Draft Status: Partial Save Allowed'}
+            description={isCompletedStatus ? 'Core and detailed visit fields are required for Completed submissions.' : 'For Draft, core fields are required and detailed fields can be filled later before marking Completed.'}
+            type={isCompletedStatus ? 'warning' : 'success'}
             showIcon
             closable
             className="mb-4"
@@ -276,7 +286,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
               <Form.Item
                 name="visitDate"
                 label="Visit Date"
-                rules={[{ required: isEdit, message: 'Please select visit date' }]}
+                rules={[{ required: true, message: 'Please select visit date' }]}
               >
                 <DatePicker
                   style={{ width: '100%' }}
@@ -291,9 +301,9 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
               <Form.Item
                 name="status"
                 label="Status"
-                rules={[{ required: isEdit, message: 'Please select status' }]}
+                rules={[{ required: true, message: 'Please select status' }]}
               >
-                <Select placeholder="Select status" options={STATUS_OPTIONS} />
+                <Select placeholder="Select status" options={STATUS_OPTIONS} onChange={handleStatusChange} />
               </Form.Item>
             </Col>
           </Row>
@@ -303,7 +313,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
               <Form.Item
                 name="studentId"
                 label="Student"
-                rules={[{ required: isEdit, message: 'Please select student' }]}
+                rules={[{ required: true, message: 'Please select student' }]}
               >
                 <Select
                   placeholder="Select student"
@@ -324,7 +334,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
               <Form.Item
                 name="companyId"
                 label="Company"
-                rules={[{ required: isEdit, message: 'Please select company' }]}
+                rules={[{ required: true, message: 'Please select company' }]}
               >
                 <Select
                   placeholder="Select company"
@@ -375,7 +385,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
             name="purpose"
             label="Purpose of Visit"
             rules={[
-              { required: isEdit, message: 'Please enter purpose of visit' },
+              { required: isCompletedStatus, message: 'Please enter purpose of visit' },
               {
                 validator: (_, value) => {
                   if (!value) {
@@ -400,7 +410,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
 
           <Row gutter={16}>
             <Col xs={24} md={12}>
-              <Form.Item name="titleOfProjectWork" label="Title of Project/Work">
+              <Form.Item name="titleOfProjectWork" label="Title of Project/Work" rules={[{ required: isCompletedStatus, message: 'Please enter project title' }]}>
                 <Input
                   placeholder="Enter the title of the project or work..."
                   maxLength={200}
@@ -408,7 +418,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item name="assistanceRequiredFromInstitute" label="Assistance Required from Institute">
+              <Form.Item name="assistanceRequiredFromInstitute" label="Assistance Required from Institute" rules={[{ required: isCompletedStatus, message: 'Please describe assistance required' }]}>
                 <Input.TextArea
                   rows={2}
                   placeholder="Describe any assistance required..."
@@ -421,7 +431,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
 
           <Row gutter={16}>
             <Col xs={24} md={12}>
-              <Form.Item name="responseFromOrganisation" label="Response from Organisation">
+              <Form.Item name="responseFromOrganisation" label="Response from Organisation" rules={[{ required: isCompletedStatus, message: 'Please enter organisation response' }]}>
                 <Input.TextArea
                   rows={2}
                   placeholder="Enter response from organisation..."
@@ -431,7 +441,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item name="remarksOfOrganisationSupervisor" label="Remarks of Organisation Supervisor">
+              <Form.Item name="remarksOfOrganisationSupervisor" label="Remarks of Organisation Supervisor" rules={[{ required: isCompletedStatus, message: 'Please enter supervisor remarks' }]}>
                 <Input.TextArea
                   rows={2}
                   placeholder="Enter supervisor remarks..."
@@ -442,7 +452,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
             </Col>
           </Row>
 
-          <Form.Item name="significantChangeInPlan" label="Any Significant Change with Respect to the Plan of Project/Work">
+          <Form.Item name="significantChangeInPlan" label="Any Significant Change with Respect to the Plan of Project/Work" rules={[{ required: isCompletedStatus, message: 'Please describe significant changes' }]}>
             <Input.TextArea
               rows={2}
               placeholder="Describe any significant changes in the project plan..."
@@ -457,7 +467,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
             name="observationsAboutStudent"
             label="Observations about the Student"
             extra="Please provide at least 100 words"
-            rules={[minWordsRule('Observations', isEdit)]}
+            rules={[minWordsRule('Observations', isCompletedStatus)]}
           >
             <Input.TextArea
               rows={4}
@@ -470,7 +480,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
           <Form.Item
             name="feedbackSharedWithStudent"
             label="Feedback Shared with Student"
-            rules={[minWordsRule('Feedback', isEdit)]}
+            rules={[minWordsRule('Feedback', isCompletedStatus)]}
           >
             <Input.TextArea
               rows={2}

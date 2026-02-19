@@ -2441,7 +2441,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
                 </span>
               ),
               children: (
-                <div className="h-full overflow-y-auto hide-scrollbar p-4">
+                <div className="h-full overflow-y-auto p-4">
                   <OverviewTab
                     data={overview.data}
                     loading={overview.loading}
@@ -2656,7 +2656,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
                 </span>
               ),
               children: (
-                <div className="h-full overflow-y-auto hide-scrollbar p-4">
+                <div className="h-full overflow-y-auto p-4">
                   <FacultyTab
                     principal={facultyPrincipal.principal}
                     faculty={facultyPrincipal.faculty}
@@ -2676,7 +2676,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
                 </span>
               ),
               children: (
-                <div className="h-full overflow-y-auto hide-scrollbar p-4">
+                <div className="h-full overflow-y-auto p-4">
                   <MentorOverviewTab institutionId={selectedInstitute?.id} />
                 </div>
               ),

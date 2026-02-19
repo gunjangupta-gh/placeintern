@@ -2936,6 +2936,7 @@ export class PrincipalService {
       PHYSICAL: 'In-Person',
       VIRTUAL: 'Virtual',
       TELEPHONIC: 'Phone',
+      PHONE: 'Phone',
     };
 
     // Transform logs to frontend format
@@ -2970,7 +2971,6 @@ export class PrincipalService {
         recommendations: log.recommendations || 'No recommendations',
         issuesIdentified: log.issuesIdentified,
         actionRequired: log.actionRequired,
-        feedbackSharedWithStudent: log.feedbackSharedWithStudent,
       };
     });
 
@@ -4464,6 +4464,8 @@ export class PrincipalService {
     const transformedVisits = visits.map((v) => ({
       id: v.id,
       visitDate: v.visitDate,
+      createdAt: v.createdAt,
+      updatedAt: v.updatedAt,
       visitType: v.visitType,
       visitDuration: v.visitDuration,
       visitLocation: v.visitLocation,
@@ -4471,13 +4473,25 @@ export class PrincipalService {
       studentRollNumber: v.application.student.user?.rollNumber,
       companyName: (v.application as any).companyName || 'N/A',
       internshipTitle: (v.application as any).jobProfile || 'N/A',
+      titleOfProjectWork: v.titleOfProjectWork,
+      assistanceRequiredFromInstitute: v.assistanceRequiredFromInstitute,
+      responseFromOrganisation: v.responseFromOrganisation,
+      remarksOfOrganisationSupervisor: v.remarksOfOrganisationSupervisor,
+      significantChangeInPlan: v.significantChangeInPlan,
+      observationsAboutStudent: v.observationsAboutStudent,
+      feedbackSharedWithStudent: v.feedbackSharedWithStudent,
       studentPerformance: v.studentPerformance,
       workEnvironment: v.workEnvironment,
       industrySupport: v.industrySupport,
       skillsDevelopment: v.skillsDevelopment,
-      overallRating: v.studentProgressRating,
-      remarks: v.recommendations,
-      status: 'COMPLETED',
+      issuesIdentified: v.issuesIdentified,
+      recommendations: v.recommendations,
+      actionRequired: v.actionRequired,
+      followUpRequired: v.followUpRequired,
+      nextVisitDate: v.nextVisitDate,
+      reportSubmittedTo: v.reportSubmittedTo,
+      overallRating: v.overallSatisfactionRating || v.studentProgressRating,
+      status: v.status,
     }));
 
     return {

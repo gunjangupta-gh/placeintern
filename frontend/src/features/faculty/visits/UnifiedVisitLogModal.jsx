@@ -52,10 +52,15 @@ const minWordsRule = (label, required) => ({
   },
 });
 
+const normalizeVisitType = (value) => {
+  const visitType = (value || '').toUpperCase();
+  return visitType === 'TELEPHONIC' ? 'PHONE' : visitType;
+};
+
 const VISIT_TYPES = [
   { value: 'PHYSICAL', label: 'Physical' },
   { value: 'VIRTUAL', label: 'Virtual' },
-  { value: 'TELEPHONIC', label: 'Telephonic' },
+  { value: 'PHONE', label: 'Phone' },
 ];
 
 const STATUS_OPTIONS = [
@@ -87,8 +92,10 @@ const UnifiedVisitLogModal = ({
   const [uploadingSignedDoc, setUploadingSignedDoc] = useState(false);
   const [selectedInternship, setSelectedInternship] = useState(null);
   const [selectedApplicationId, setSelectedApplicationId] = useState(null);
+  const [visitStatus, setVisitStatus] = useState('COMPLETED');
 
   const isEdit = !!visitLogId;
+  const isCompletedStatus = visitStatus === 'COMPLETED';
 
   useEffect(() => {
     if (visible) {
@@ -99,6 +106,7 @@ const UnifiedVisitLogModal = ({
       setSignedDocList([]);
       setSelectedInternship(null);
       setSelectedApplicationId(null);
+      setVisitStatus('COMPLETED');
 
       if (selectedStudent) {
         const studentId = (selectedStudent.student || selectedStudent).id;
@@ -118,10 +126,11 @@ const UnifiedVisitLogModal = ({
 
       if (existingData) {
         const studentId = existingData.application?.student?.id;
+        const normalizedVisitType = normalizeVisitType(existingData.visitType);
         form.setFieldsValue({
           studentId,
           visitDate: existingData.visitDate ? dayjs(existingData.visitDate) : dayjs(),
-          visitType: existingData.visitType,
+          visitType: normalizedVisitType,
           visitLocation: existingData.visitLocation,
           titleOfProjectWork: existingData.titleOfProjectWork,
           assistanceRequiredFromInstitute: existingData.assistanceRequiredFromInstitute,
@@ -134,7 +143,8 @@ const UnifiedVisitLogModal = ({
           nextVisitDate: existingData.nextVisitDate ? dayjs(existingData.nextVisitDate) : null,
           followUpRequired: existingData.followUpRequired || false,
         });
-        setVisitType(existingData.visitType);
+        setVisitStatus(existingData.status || 'COMPLETED');
+        setVisitType(normalizedVisitType);
         if (existingData.latitude && existingData.longitude) {
           setGpsLocation({ latitude: existingData.latitude, longitude: existingData.longitude, accuracy: existingData.gpsAccuracy });
         }
@@ -153,9 +163,14 @@ const UnifiedVisitLogModal = ({
         }
       } else {
         form.setFieldsValue({ visitDate: dayjs(), status: 'COMPLETED' });
+        setVisitStatus('COMPLETED');
       }
     }
   }, [visible, selectedStudent, existingData, form, students]);
+
+  const handleStatusChange = useCallback((value) => {
+    setVisitStatus(value || 'COMPLETED');
+  }, []);
 
   const handleStudentSelect = useCallback((studentId) => {
     const assignment = students.find(s => s.id === studentId || s.student?.id === studentId);
@@ -282,7 +297,7 @@ const UnifiedVisitLogModal = ({
 
       setSubmitting(true);
       const { photoUrls, signedDocUrl } = await uploadFiles();
-      const visitTypeValue = (values.visitType || '').toUpperCase();
+      const visitTypeValue = normalizeVisitType(values.visitType);
 
       // Common fields for both create and update
       const commonData = {
@@ -353,32 +368,38 @@ const UnifiedVisitLogModal = ({
     >
       <Alert
         message="Important: All Fields Required"
-        description="All input fields are mandatory to complete the visit log. Images and signed documents are optional."
+        description="Core fields are always required. For COMPLETED visits, all detailed sections are mandatory; for DRAFT visits, detailed sections are optional."
         type="info"
         showIcon
         closable
         className="mb-3"
       />
+      <Alert
+        message={isCompletedStatus ? 'Mentor Alert: Completed visit requires all mandatory details.' : 'Mentor Alert: Draft visit can be saved with partial details.'}
+        type={isCompletedStatus ? 'warning' : 'success'}
+        showIcon
+        className="mb-3"
+      />
       <Form form={form} layout="vertical" size="small" className="space-y-3">
         {/* Core Visit Info */}
-        <Card size="small" className="!mb-3">
+        <Card size="small" className="mb-3!">
           <SectionTitle>Visit Details</SectionTitle>
           <Row gutter={12}>
             <Col span={8}>
-              <Form.Item name="visitDate" label="Date & Time" rules={[{ required: isEdit, message: 'Please select date & time' }]} className="!mb-2">
+              <Form.Item name="visitDate" label="Date & Time" rules={[{ required: true, message: 'Please select date & time' }]} className="mb-2!">
                 <DatePicker showTime className="w-full" format="DD/MM/YY HH:mm" disabled={isEdit} />
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item name="visitType" label="Type" rules={[{ required: isEdit, message: 'Please select visit type' }]} className="!mb-2">
+              <Form.Item name="visitType" label="Type" rules={[{ required: true, message: 'Please select visit type' }]} className="mb-2!">
                 <Select placeholder="Select" onChange={handleVisitTypeChange} disabled={isEdit}>
                   {VISIT_TYPES.map(t => <Option key={t.value} value={t.value}>{t.label}</Option>)}
                 </Select>
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item name="status" label="Status" className="!mb-2">
-                <Select>
+              <Form.Item name="status" label="Status" className="mb-2!">
+                <Select onChange={handleStatusChange}>
                   {STATUS_OPTIONS.map(s => <Option key={s.value} value={s.value}><Tag color={s.color}>{s.label}</Tag></Option>)}
                 </Select>
               </Form.Item>
@@ -386,7 +407,7 @@ const UnifiedVisitLogModal = ({
           </Row>
 
           {(!selectedStudent || isEdit) && (
-            <Form.Item name="studentId" label="Student" rules={[{ required: isEdit, message: 'Please select student' }]} className="!mb-2">
+            <Form.Item name="studentId" label="Student" rules={[{ required: true, message: 'Please select student' }]} className="mb-2!">
               <Select placeholder="Select student" showSearch loading={loading} onChange={handleStudentSelect} disabled={isEdit}
                 filterOption={(input, option) => option.children?.toLowerCase().includes(input.toLowerCase())}>
                 {students?.map((student) => {
@@ -400,11 +421,11 @@ const UnifiedVisitLogModal = ({
           {selectedInternship && (
             <Alert message={<Space size="small"><Text strong>Company:</Text><Text>{selectedInternship.companyName}</Text>
               {selectedInternship.location && <><Text type="secondary">|</Text><EnvironmentOutlined /><Text type="secondary">{selectedInternship.location}</Text></>}
-            </Space>} type="info" className="!py-1" />
+            </Space>} type="info" className="py-1!" />
           )}
 
           {visitType === 'PHYSICAL' && (
-            <Form.Item name="visitLocation" label="Location" className="!mb-0 !mt-2">
+            <Form.Item name="visitLocation" label="Location" rules={[{ required: isCompletedStatus, message: 'Please enter visit location for physical visits' }]} className="mb-0! mt-2!">
               <Space.Compact className="w-full">
                 <Input placeholder="Location or GPS" prefix={<EnvironmentOutlined />} disabled={isEdit} />
                 <Tooltip title={isEdit ? 'Locked' : 'Capture GPS'}>
@@ -417,14 +438,14 @@ const UnifiedVisitLogModal = ({
             <Text type="success" className="text-xs">✓ GPS: {gpsLocation.latitude.toFixed(4)}, {gpsLocation.longitude.toFixed(4)} (±{gpsLocation.accuracy?.toFixed(0)}m)</Text>
           )}
 
-          <Row gutter={12} className="!mt-3">
+          <Row gutter={12} className="mt-3!">
             <Col span={12}>
-              <Form.Item name="nextVisitDate" label="Next Visit Date" className="!mb-0">
+              <Form.Item name="nextVisitDate" label="Next Visit Date" className="mb-0!">
                 <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="Schedule next visit" suffixIcon={<CalendarOutlined />} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="followUpRequired" label="Follow-up Required" valuePropName="checked" className="!mb-0">
+              <Form.Item name="followUpRequired" label="Follow-up Required" valuePropName="checked" className="mb-0!">
                 <Switch checkedChildren="Yes" unCheckedChildren="No" />
               </Form.Item>
             </Col>
@@ -432,53 +453,53 @@ const UnifiedVisitLogModal = ({
         </Card>
 
         {/* Project Info */}
-        <Card size="small" className="!mb-3">
+        <Card size="small" className="mb-3!">
           <SectionTitle>Project Information</SectionTitle>
           <Row gutter={12}>
             <Col span={12}>
-              <Form.Item name="titleOfProjectWork" label="Project Title" rules={[{ required: isEdit, message: 'Please enter project title' }]} className="!mb-2">
+              <Form.Item name="titleOfProjectWork" label="Project Title" rules={[{ required: isCompletedStatus, message: 'Please enter project title' }]} className="mb-2!">
                 <Input placeholder="Title of project/work" maxLength={200} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="assistanceRequiredFromInstitute" label="Assistance Required" rules={[{ required: isEdit, message: 'Please enter assistance details' }]} className="!mb-2">
+              <Form.Item name="assistanceRequiredFromInstitute" label="Assistance Required" rules={[{ required: isCompletedStatus, message: 'Please enter assistance details' }]} className="mb-2!">
                 <Input placeholder="Assistance from institute" maxLength={200} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={12}>
             <Col span={12}>
-              <Form.Item name="responseFromOrganisation" label="Org Response" rules={[{ required: isEdit, message: 'Please enter organisation response' }]} className="!mb-2">
+              <Form.Item name="responseFromOrganisation" label="Org Response" rules={[{ required: isCompletedStatus, message: 'Please enter organisation response' }]} className="mb-2!">
                 <Input placeholder="Response from organisation" maxLength={200} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="remarksOfOrganisationSupervisor" label="Supervisor Remarks" rules={[{ required: isEdit, message: 'Please enter supervisor remarks' }]} className="!mb-2">
+              <Form.Item name="remarksOfOrganisationSupervisor" label="Supervisor Remarks" rules={[{ required: isCompletedStatus, message: 'Please enter supervisor remarks' }]} className="mb-2!">
                 <Input placeholder="Supervisor remarks" maxLength={200} />
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="significantChangeInPlan" label="Changes in Plan" rules={[{ required: isEdit, message: 'Please describe changes in plan' }]} className="!mb-0">
+          <Form.Item name="significantChangeInPlan" label="Changes in Plan" rules={[{ required: isCompletedStatus, message: 'Please describe changes in plan' }]} className="mb-0!">
             <Input placeholder="Any significant changes to project plan" maxLength={300} />
           </Form.Item>
         </Card>
 
         {/* Observations */}
-        <Card size="small" className="!mb-3">
+        <Card size="small" className="mb-3!">
           <SectionTitle>Observations & Feedback</SectionTitle>
           <Form.Item
             name="observationsAboutStudent"
             label="Observations"
-            rules={[minWordsRule('Observations', isEdit)]}
-            className="!mb-2"
+            rules={[minWordsRule('Observations', isCompletedStatus)]}
+            className="mb-2!"
           >
             <TextArea rows={2} placeholder="Observations about student (min 100 words)" maxLength={2000} showCount />
           </Form.Item>
           <Form.Item
             name="feedbackSharedWithStudent"
             label="Feedback to Student"
-            rules={[minWordsRule('Feedback', isEdit)]}
-            className="!mb-0"
+            rules={[minWordsRule('Feedback', isCompletedStatus)]}
+            className="mb-0!"
           >
             <TextArea rows={1} placeholder="Feedback shared with student (min 100 words)" maxLength={2000} />
           </Form.Item>

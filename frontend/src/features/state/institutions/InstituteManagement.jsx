@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   Table,
@@ -19,6 +20,7 @@ import {
   SearchOutlined,
   ReloadOutlined,
   PlusOutlined,
+  EyeOutlined,
   EditOutlined,
   DeleteOutlined,
   CheckCircleOutlined,
@@ -45,6 +47,7 @@ const { Title, Paragraph, Text } = Typography;
 
 const InstituteManagement = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { token } = theme.useToken();
   
   // Redux State
@@ -104,6 +107,10 @@ const InstituteManagement = () => {
     setDeleteModalVisible(true);
   };
 
+  const handleViewInstitution = (record) => {
+    navigate(`/app/institutions-overview?id=${record.id}`);
+  };
+
   const handleDeleteConfirm = async () => {
     if (!instituteToDelete) return;
     
@@ -147,7 +154,7 @@ const InstituteManagement = () => {
             <Space size={4} className="text-xs" style={{ color: token.colorTextTertiary }}>
               <Tag variant="borderless" className="m-0 text-[10px]" style={{ backgroundColor: token.colorBgContainer, color: token.colorTextSecondary }}>{record.code}</Tag>
               <span>•</span>
-              <span>{record.city}, {record.state}</span>
+              <span>{record.address}</span>
             </Space>
           </div>
         </div>
@@ -230,10 +237,15 @@ const InstituteManagement = () => {
     {
       title: 'Actions',
       key: 'actions',
-      width: 100,
+      width: 140,
       fixed: 'right',
       render: (_, record) => (
         <Space>
+          <Button
+            type="text"
+            icon={<EyeOutlined />}
+            onClick={() => handleViewInstitution(record)}
+          />
           <Button
             type="text"
             icon={<EditOutlined />}

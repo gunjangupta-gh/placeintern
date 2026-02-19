@@ -3,6 +3,7 @@ import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { FileStorageService } from '../../../infrastructure/file-storage/file-storage.service';
 import { ApplicationStatus } from '../../../generated/prisma/client';
+import { add } from 'winston';
 
 export interface MonthlyComplianceParams {
   month: number;
@@ -317,6 +318,7 @@ export class StateComplianceService {
             shortName: true,
             contactEmail: true,
             contactPhone: true,
+            address: true,
           },
         });
 
@@ -493,6 +495,7 @@ export class StateComplianceService {
             shortName: institution.shortName,
             contactEmail: institution.contactEmail,
             contactPhone: institution.contactPhone,
+            address: institution.address,
           },
           summary: {
             studentsInTraining: students.length,
