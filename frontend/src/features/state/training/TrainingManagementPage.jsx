@@ -31,11 +31,11 @@ import {
   CalendarOutlined,
   UnorderedListOutlined,
   BankOutlined,
-  CheckOutlined,
+  CheckCircleOutlined,
   CheckCircleFilled,
   CloseCircleOutlined,
 } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import TrainingDateRange from "../../../components/training/TrainingDateRange";
 import DeliveryModeBadge from "../../../components/training/DeliveryModeBadge";
@@ -58,6 +58,7 @@ const { Text } = Typography;
 const TrainingManagementPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { trainings, feedbackForms, preTestForms, postTestForms, attendance } = useSelector(
     (state) => state.stateTraining,
   );
@@ -166,6 +167,23 @@ const TrainingManagementPage = () => {
     setStatsModalOpen(true);
   };
 
+  useEffect(() => {
+    const trainingIdToOpen = location.state?.openAttendanceTrainingId;
+    if (!trainingIdToOpen || !trainings.list?.length) return;
+
+    const trainingToOpen = (trainings.list || []).find(
+      (item) => String(item.id) === String(trainingIdToOpen),
+    );
+
+    if (!trainingToOpen) return;
+
+    setSelectedTraining(trainingToOpen);
+    dispatch(fetchStateTrainingAttendance({ trainingId: trainingToOpen.id }));
+    setStatsModalOpen(true);
+
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.state, location.pathname, trainings.list, dispatch, navigate]);
+
   const handleTogglePublish = async (training) => {
     try {
       if (training.isPublished) {
@@ -254,7 +272,7 @@ const TrainingManagementPage = () => {
       width: 100,
       render: (value) => (
         <Tag color={value ? "green" : "orange"} className="text-xs">
-          {value ? "Published / Active" : "Draft / Inactive"}
+          {value ? "Published" : "Draft"}
         </Tag>
       ),
     },
@@ -268,7 +286,7 @@ const TrainingManagementPage = () => {
             <Button
               type="text"
               size="small"
-              icon={<FileTextOutlined />}
+              icon={<EyeOutlined />}
               onClick={() => navigate(`/app/training/${record.id}`)}
             />
           </Tooltip>
@@ -276,7 +294,7 @@ const TrainingManagementPage = () => {
             <Button
               type="text"
               size="small"
-              icon={<EyeOutlined />}
+              icon={<CheckCircleOutlined />}
               onClick={() => handleViewAttendance(record)}
             />
           </Tooltip>

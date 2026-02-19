@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useEffect, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
   Avatar,
   Button,
@@ -13,8 +13,8 @@ import {
   Tooltip,
   Typography,
   message,
-} from 'antd';
-import { useParams, useNavigate } from 'react-router-dom';
+} from "antd";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   TeamOutlined,
   CheckCircleOutlined,
@@ -30,20 +30,20 @@ import {
   EnvironmentOutlined,
   LinkOutlined,
   ApartmentOutlined,
-} from '@ant-design/icons';
-import TrainingDateRange from '../../../components/training/TrainingDateRange';
-import DeliveryModeBadge from '../../../components/training/DeliveryModeBadge';
-import DifficultyBadge from '../../../components/training/DifficultyBadge';
-import LearningOutcomesList from '../../../components/training/LearningOutcomesList';
-import BranchTags from '../../../components/training/BranchTags';
-import DeadlineCountdown from '../../../components/training/DeadlineCountdown';
-import { TrainingDetailsSkeleton } from '../../../components/training/skeletons/TrainingSkeletons';
+} from "@ant-design/icons";
+import TrainingDateRange from "../../../components/training/TrainingDateRange";
+import DeliveryModeBadge from "../../../components/training/DeliveryModeBadge";
+import DifficultyBadge from "../../../components/training/DifficultyBadge";
+import LearningOutcomesList from "../../../components/training/LearningOutcomesList";
+import BranchTags from "../../../components/training/BranchTags";
+import DeadlineCountdown from "../../../components/training/DeadlineCountdown";
+import { TrainingDetailsSkeleton } from "../../../components/training/skeletons/TrainingSkeletons";
 import {
   fetchStateTrainingDetails,
   fetchStateTrainingStats,
   publishStateTraining,
   unpublishStateTraining,
-} from '../store/stateTrainingSlice';
+} from "../store/stateTrainingSlice";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -55,7 +55,10 @@ const InfoItem = ({ icon: Icon, label, children, tooltip }) => (
       </div>
     </Tooltip>
     <div className="flex-1 min-w-0">
-      <Text type="secondary" className="text-[10px] uppercase tracking-wider font-semibold block leading-tight">
+      <Text
+        type="secondary"
+        className="text-[10px] uppercase tracking-wider font-semibold block leading-tight"
+      >
         {label}
       </Text>
       <div className="mt-0">{children}</div>
@@ -65,20 +68,20 @@ const InfoItem = ({ icon: Icon, label, children, tooltip }) => (
 
 const STAT_TONES = {
   primary: {
-    icon: 'bg-blue-100 text-blue-700',
-    card: 'bg-gradient-to-br from-blue-50 via-white to-slate-50',
+    icon: "bg-blue-100 text-blue-700",
+    card: "bg-gradient-to-br from-blue-50 via-white to-slate-50",
   },
   success: {
-    icon: 'bg-emerald-100 text-emerald-700',
-    card: 'bg-gradient-to-br from-emerald-50 via-white to-slate-50',
+    icon: "bg-emerald-100 text-emerald-700",
+    card: "bg-gradient-to-br from-emerald-50 via-white to-slate-50",
   },
   warning: {
-    icon: 'bg-amber-100 text-amber-700',
-    card: 'bg-gradient-to-br from-amber-50 via-white to-slate-50',
+    icon: "bg-amber-100 text-amber-700",
+    card: "bg-gradient-to-br from-amber-50 via-white to-slate-50",
   },
   info: {
-    icon: 'bg-slate-100 text-slate-700',
-    card: 'bg-gradient-to-br from-slate-50 via-white to-blue-50',
+    icon: "bg-slate-100 text-slate-700",
+    card: "bg-gradient-to-br from-slate-50 via-white to-blue-50",
   },
 };
 
@@ -86,22 +89,24 @@ const StatCard = ({ icon: Icon, title, value, tone, trend, onClick }) => {
   const styles = STAT_TONES[tone] || STAT_TONES.primary;
   return (
     <Card
-      className={`rounded-xl border-border shadow-none h-full hover:shadow-soft transition-shadow ${styles.card} ${onClick ? 'cursor-pointer' : ''}`}
-      styles={{ body: { padding: '12px' } }}
+      className={`rounded-xl border-border shadow-none h-full hover:shadow-soft transition-shadow ${styles.card} ${onClick ? "cursor-pointer" : ""}`}
+      styles={{ body: { padding: "12px" } }}
       onClick={onClick}
-      role={onClick ? 'button' : undefined}
+      role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
-      aria-label={`${title}: ${value}${trend ? `, trend ${trend > 0 ? 'up' : 'down'} ${Math.abs(trend)}%` : ''}`}
+      aria-label={`${title}: ${value}${trend ? `, trend ${trend > 0 ? "up" : "down"} ${Math.abs(trend)}%` : ""}`}
     >
       <div className="flex items-start justify-between">
         <div>
           <Text className="text-text-secondary text-[10px] uppercase tracking-wider font-semibold opacity-80 block mb-0.5">
             {title}
           </Text>
-          <div className="text-xl font-bold text-text-primary leading-tight">{value}</div>
+          <div className="text-xl font-bold text-text-primary leading-tight">
+            {value}
+          </div>
           {trend !== undefined && trend !== null && (
             <div
-              className={`flex items-center gap-1 mt-0.5 text-[10px] ${trend > 0 ? 'text-emerald-600' : trend < 0 ? 'text-rose-600' : 'text-text-secondary'}`}
+              className={`flex items-center gap-1 mt-0.5 text-[10px] ${trend > 0 ? "text-emerald-600" : trend < 0 ? "text-rose-600" : "text-text-secondary"}`}
             >
               {trend > 0 ? (
                 <RiseOutlined className="text-[9px]" />
@@ -109,7 +114,7 @@ const StatCard = ({ icon: Icon, title, value, tone, trend, onClick }) => {
                 <FallOutlined className="text-[9px]" />
               ) : null}
               <span>
-                {trend > 0 ? '+' : ''}
+                {trend > 0 ? "+" : ""}
                 {trend}%
               </span>
             </div>
@@ -143,7 +148,7 @@ const StateTrainingDetailsPage = () => {
   const stats = currentTraining.stats;
 
   const capacityInfo = useMemo(() => {
-    if (training?.capacity && typeof training.capacity === 'object') {
+    if (training?.capacity && typeof training.capacity === "object") {
       return {
         available: training.capacity.available ?? 0,
         total: training.capacity.total ?? 0,
@@ -162,18 +167,18 @@ const StateTrainingDetailsPage = () => {
   const handlePublish = async () => {
     try {
       await dispatch(publishStateTraining(id)).unwrap();
-      message.success('Training published');
+      message.success("Training published");
     } catch (error) {
-      message.error(error || 'Failed to publish training');
+      message.error(error || "Failed to publish training");
     }
   };
 
   const handleUnpublish = async () => {
     try {
       await dispatch(unpublishStateTraining(id)).unwrap();
-      message.success('Training unpublished');
+      message.success("Training unpublished");
     } catch (error) {
-      message.error(error || 'Failed to unpublish training');
+      message.error(error || "Failed to unpublish training");
     }
   };
 
@@ -183,25 +188,25 @@ const StateTrainingDetailsPage = () => {
 
   const statCards = [
     {
-      title: 'Total Applications',
+      title: "Total Applications",
       value: stats?.applications?.total ?? 0,
       icon: FileTextOutlined,
-      tone: 'primary',
-      onClick: () => navigate(`/app/state/training/${id}/applications`),
+      tone: "primary",
+      onClick: () => navigate(`/app/training/${id}/applications`),
     },
     {
-      title: 'Approved',
+      title: "Approved",
       value: stats?.applications?.approved ?? 0,
       icon: CheckCircleOutlined,
-      tone: 'success',
-      onClick: () => navigate(`/app/state/training/${id}/applications`),
+      tone: "success",
+      onClick: () => navigate(`/app/training/${id}/applications`),
     },
     {
-      title: 'Attendance',
+      title: "Attendance",
       value: stats?.attendance?.uniqueAttendees ?? 0,
       icon: TeamOutlined,
-      tone: 'warning',
-      onClick: () => navigate(`/app/state/training/${id}/attendance`),
+      tone: "warning",
+      onClick: () => navigate(`/app/training/${id}/attendance`),
     },
   ];
 
@@ -221,31 +226,35 @@ const StateTrainingDetailsPage = () => {
       </div>
 
       {/* Hero Card */}
-      <Card 
-        className="rounded-2xl border-border shadow-none !mb-3 bg-gradient-to-br from-slate-50 via-white to-blue-50"
-        styles={{ body: { padding: '20px' } }}
+      <Card
+        className="rounded-xl border-border shadow-none mb-3! bg-gradient-to-br from-slate-50 via-white to-blue-50"
+        styles={{ body: { padding: "14px" } }}
       >
-        <Row gutter={[20, 16]} align="middle">
+        <Row gutter={[12, 12]} align="top">
           <Col xs={24}>
             <Space className="mb-2" wrap>
               <DeliveryModeBadge mode={training?.deliveryMode} />
               <DifficultyBadge level={training?.difficulty} />
-              <Tag size="small" color={training?.isPublished ? 'green' : 'orange'} className="text-[10px] leading-tight px-1.5">
-                {training?.isPublished ? 'Published' : 'Draft'}
+              <Tag
+                size="small"
+                color={training?.isPublished ? "green" : "orange"}
+                className="text-[10px] leading-tight px-1.5"
+              >
+                {training?.isPublished ? "Published" : "Draft"}
               </Tag>
             </Space>
-            <Title level={3} className="mb-1 mt-0">
-              {training?.title || 'Training'}
+            <Title level={4} className="mb-1! mt-0 leading-tight">
+              {training?.title || "Training"}
             </Title>
-            <Text type="secondary" className="text-sm">
-              {training?.providedBy || 'Training Provider'}
+            <Text type="secondary" className="text-xs sm:text-sm">
+              {training?.providedBy || "Training Provider"}
             </Text>
           </Col>
         </Row>
       </Card>
 
       {/* Statistics Cards */}
-      <Row gutter={[12, 12]} className="!mb-3">
+      <Row gutter={[12, 12]} className="mb-3">
         {statCards.map((stat) => (
           <Col xs={12} lg={8} key={stat.title}>
             <StatCard {...stat} />
@@ -256,9 +265,12 @@ const StateTrainingDetailsPage = () => {
       <Row gutter={[12, 12]}>
         <Col xs={24} lg={16}>
           {/* About Section */}
-          <Card 
-            className="rounded-xl border-border shadow-none !mb-3"
-            styles={{ header: { padding: '8px 16px', minHeight: 'auto' }, body: { padding: '16px' } }}
+          <Card
+            className="rounded-xl border-border shadow-none mb-3!"
+            styles={{
+              header: { padding: "8px 16px", minHeight: "auto" },
+              body: { padding: "16px" },
+            }}
             title={
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <InfoCircleOutlined className="text-blue-700" />
@@ -267,7 +279,7 @@ const StateTrainingDetailsPage = () => {
             }
           >
             <Paragraph className="text-sm text-text-secondary mb-3">
-              {training?.description || 'No description provided.'}
+              {training?.description || "No description provided."}
             </Paragraph>
 
             <Divider className="my-3" />
@@ -293,7 +305,7 @@ const StateTrainingDetailsPage = () => {
                   tooltip="Total training hours"
                 >
                   <Text className="text-sm">
-                    {training?.duration ? `${training.duration} hours` : 'TBD'}
+                    {training?.duration ? `${training.duration} hours` : "TBD"}
                   </Text>
                 </InfoItem>
               </Col>
@@ -303,9 +315,11 @@ const StateTrainingDetailsPage = () => {
                   label="Capacity"
                   tooltip="Maximum participants"
                 >
-                  <Text strong className="text-sm">{capacityInfo.total} participants</Text>
+                  <Text strong className="text-sm">
+                    {capacityInfo.total} participants
+                  </Text>
                   <div className="text-[10px] text-text-secondary mt-0">
-                    {capacityInfo.approved} approved, {capacityInfo.available}{' '}
+                    {capacityInfo.approved} approved, {capacityInfo.available}{" "}
                     available
                   </div>
                 </InfoItem>
@@ -320,12 +334,12 @@ const StateTrainingDetailsPage = () => {
                     {training?.applicationDeadline
                       ? new Date(
                           training.applicationDeadline,
-                        ).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
+                        ).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
                         })
-                      : 'TBD'}
+                      : "TBD"}
                   </span>
                 </InfoItem>
               </Col>
@@ -334,9 +348,12 @@ const StateTrainingDetailsPage = () => {
 
           {/* Target Branches */}
           {training?.targetBranches && training.targetBranches.length > 0 && (
-            <Card 
-              className="rounded-xl border-border shadow-none !mb-3"
-              styles={{ header: { padding: '8px 16px', minHeight: 'auto' }, body: { padding: '16px' } }}
+            <Card
+              className="rounded-xl border-border shadow-none mb-3!"
+              styles={{
+                header: { padding: "8px 16px", minHeight: "auto" },
+                body: { padding: "16px" },
+              }}
               title={
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <ApartmentOutlined className="text-blue-700" />
@@ -344,17 +361,22 @@ const StateTrainingDetailsPage = () => {
                 </div>
               }
             >
-              <Paragraph type="secondary" className="mb-2 text-xs">
-                Designed for faculty from:
-              </Paragraph>
-              <BranchTags branches={training.targetBranches} compact />
+              <div className="flex flex-wrap items-center gap-2">
+                <Text type="secondary" className="text-xs">
+                  Departments:
+                </Text>
+                <BranchTags branches={training.targetBranches} compact />
+              </div>
             </Card>
           )}
 
           {/* Learning Outcomes */}
-          <Card 
-            className="rounded-xl border-border shadow-none !mb-3"
-            styles={{ header: { padding: '8px 16px', minHeight: 'auto' }, body: { padding: '16px' } }}
+          <Card
+            className="rounded-xl border-border shadow-none mb-3!"
+            styles={{
+              header: { padding: "8px 16px", minHeight: "auto" },
+              body: { padding: "16px" },
+            }}
             title={
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <CheckCircleOutlined className="text-emerald-600" />
@@ -362,11 +384,14 @@ const StateTrainingDetailsPage = () => {
               </div>
             }
           >
-            <Paragraph type="secondary" className="!mb-2 text-xs">
+            <Paragraph type="secondary" className="mb-2 text-xs">
               By the end of this training, participants will be able to:
             </Paragraph>
             <div className="max-h-[200px] overflow-y-auto custom-scrollbar pr-1">
-              <LearningOutcomesList outcomes={training?.learningOutcomes || []} compact />
+              <LearningOutcomesList
+                outcomes={training?.learningOutcomes || []}
+                compact
+              />
             </div>
           </Card>
         </Col>
@@ -374,7 +399,7 @@ const StateTrainingDetailsPage = () => {
         <Col xs={24} lg={8}>
           {/* Deadline Countdown */}
           {training?.applicationDeadline && (
-            <div className="!mb-3">
+            <div className="mb-3">
               <DeadlineCountdown
                 deadline={training.applicationDeadline}
                 label="Application closes in"
@@ -385,9 +410,12 @@ const StateTrainingDetailsPage = () => {
           )}
 
           {/* Quick Actions */}
-          <Card 
-            className="rounded-xl border-border shadow-none !mb-3"
-            styles={{ header: { padding: '8px 16px', minHeight: 'auto' }, body: { padding: '16px' } }}
+          <Card
+            className="rounded-xl border-border shadow-none mb-3!"
+            styles={{
+              header: { padding: "8px 16px", minHeight: "auto" },
+              body: { padding: "16px" },
+            }}
             title={<span className="text-sm font-semibold">Quick Actions</span>}
           >
             <div className="space-y-2">
@@ -414,46 +442,42 @@ const StateTrainingDetailsPage = () => {
               <Button
                 block
                 size="middle"
-                onClick={() => navigate(`/app/state/training/${id}/applications`)}
+                onClick={() =>
+                  navigate("/app/training/manage", {
+                    state: { openAttendanceTrainingId: id },
+                  })
+                }
               >
-                View Applications
-              </Button>
-              <Button
-                block
-                size="middle"
-                onClick={() => navigate(`/app/state/training/${id}/attendance`)}
-              >
-                Manage Attendance
+                View Attendance
               </Button>
             </div>
           </Card>
 
           {/* Trainer & Venue Card */}
-          <Card 
+          <Card
             className="rounded-xl border-border shadow-none mb-3"
-            styles={{ header: { padding: '8px 16px', minHeight: 'auto' }, body: { padding: '16px' } }}
+            styles={{
+              header: { padding: "8px 16px", minHeight: "auto" },
+              body: { padding: "16px" },
+            }}
             title={
               <div className="flex items-center gap-2 text-sm font-semibold">
-                <UserOutlined className="text-blue-700" />
                 <span>Trainer & Venue</span>
               </div>
             }
           >
-
             <div className="space-y-3">
               {training?.trainerName && (
                 <div className="flex items-center gap-2.5">
-                  <Avatar
-                    size={40}
-                    icon={<UserOutlined />}
-                    className="bg-blue-100 text-blue-700"
-                  />
                   <div>
                     <Text strong className="block text-sm leading-tight">
                       {training.trainerName}
                     </Text>
                     {training?.trainerContact && (
-                      <Text type="secondary" className="text-[10px] block mt-0.5">
+                      <Text
+                        type="secondary"
+                        className="text-[10px] block mt-0.5"
+                      >
                         {training.trainerContact}
                       </Text>
                     )}
@@ -461,12 +485,16 @@ const StateTrainingDetailsPage = () => {
                 </div>
               )}
 
-              <Descriptions column={1} size="small" className="compact-descriptions">
+              <Descriptions
+                column={1}
+                size="small"
+                className="compact-descriptions"
+              >
                 <Descriptions.Item
                   label={<span className="text-xs">Venue</span>}
                 >
                   <div>
-                    <Text className="text-xs">{training?.venue || 'TBD'}</Text>
+                    <Text className="text-xs">{training?.venue || "TBD"}</Text>
                     {training?.city && training?.state && (
                       <div className="text-[10px] text-text-secondary mt-0">
                         {training.city}, {training.state}
@@ -496,6 +524,5 @@ const StateTrainingDetailsPage = () => {
     </div>
   );
 };
-
 
 export default StateTrainingDetailsPage;

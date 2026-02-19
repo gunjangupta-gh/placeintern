@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  Avatar,
   Button,
   Card,
   Col,
@@ -9,14 +8,12 @@ import {
   Divider,
   Row,
   Space,
-  Tag,
   Tooltip,
   Typography,
 } from "antd";
 import {
   TeamOutlined,
   CheckCircleOutlined,
-  SafetyCertificateOutlined,
   FileTextOutlined,
   RiseOutlined,
   FallOutlined,
@@ -24,11 +21,9 @@ import {
   CalendarOutlined,
   ClockCircleOutlined,
   InfoCircleOutlined,
-  UserOutlined,
   EnvironmentOutlined,
   LinkOutlined,
   ApartmentOutlined,
-  BookOutlined,
 } from "@ant-design/icons";
 import { useParams, useNavigate } from "react-router-dom";
 import TrainingDateRange from "../../../components/training/TrainingDateRange";
@@ -53,7 +48,10 @@ const InfoItem = ({ icon: Icon, label, children, tooltip }) => (
       </div>
     </Tooltip>
     <div className="flex-1 min-w-0">
-      <Text type="secondary" className="text-[10px] uppercase tracking-wider font-semibold block leading-tight">
+      <Text
+        type="secondary"
+        className="text-[10px] uppercase tracking-wider font-semibold block leading-tight"
+      >
         {label}
       </Text>
       <div className="mt-0">{children}</div>
@@ -96,7 +94,9 @@ const StatCard = ({ icon: Icon, title, value, tone, trend, onClick }) => {
           <Text className="text-text-secondary text-[10px] uppercase tracking-wider font-semibold opacity-80 block mb-0.5">
             {title}
           </Text>
-          <div className="text-xl font-bold text-text-primary leading-tight">{value}</div>
+          <div className="text-xl font-bold text-text-primary leading-tight">
+            {value}
+          </div>
           {trend !== undefined && trend !== null && (
             <div
               className={`flex items-center gap-1 mt-0.5 text-[10px] ${trend > 0 ? "text-emerald-600" : trend < 0 ? "text-rose-600" : "text-text-secondary"}`}
@@ -198,20 +198,20 @@ const PrincipalTrainingDetailsPage = () => {
       </div>
 
       {/* Hero Card */}
-      <Card 
-        className="rounded-2xl border-border shadow-none !mb-3 bg-gradient-to-br from-slate-50 via-white to-blue-50"
-        styles={{ body: { padding: '20px' } }}
+      <Card
+        className="rounded-xl border-border shadow-none mb-3! bg-gradient-to-br from-slate-50 via-white to-blue-50"
+        styles={{ body: { padding: "14px" } }}
       >
-        <Row gutter={[20, 16]} align="middle">
+        <Row gutter={[12, 12]} align="top">
           <Col xs={24}>
             <Space className="mb-2" wrap>
               <DeliveryModeBadge mode={training?.deliveryMode} />
               <DifficultyBadge level={training?.difficulty} />
             </Space>
-            <Title level={3} className="mb-1 mt-0">
+            <Title level={4} className="mb-1! mt-0 leading-tight">
               {training?.title || "Training"}
             </Title>
-            <Text type="secondary" className="text-sm">
+            <Text type="secondary" className="text-xs sm:text-sm">
               {training?.providedBy || "Training Provider"}
             </Text>
           </Col>
@@ -219,7 +219,7 @@ const PrincipalTrainingDetailsPage = () => {
       </Card>
 
       {/* Statistics Cards */}
-      <Row gutter={[12, 12]} className="!mb-3">
+      <Row gutter={[12, 12]} className="mb-3">
         {statCards.map((stat) => (
           <Col xs={12} lg={8} key={stat.title}>
             <StatCard {...stat} />
@@ -230,9 +230,12 @@ const PrincipalTrainingDetailsPage = () => {
       <Row gutter={[12, 12]}>
         <Col xs={24} lg={16}>
           {/* About Section */}
-          <Card 
-            className="rounded-xl border-border shadow-none !mb-3"
-            styles={{ header: { padding: '8px 16px', minHeight: 'auto' }, body: { padding: '16px' } }}
+          <Card
+            className="rounded-xl border-border shadow-none mb-3!"
+            styles={{
+              header: { padding: "8px 16px", minHeight: "auto" },
+              body: { padding: "16px" },
+            }}
             title={
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <InfoCircleOutlined className="text-blue-700" />
@@ -271,19 +274,21 @@ const PrincipalTrainingDetailsPage = () => {
                   </Text>
                 </InfoItem>
               </Col>
-              <Col xs={24} sm={12}>
+              {/* <Col xs={24} sm={12}>
                 <InfoItem
                   icon={TeamOutlined}
                   label="Capacity"
                   tooltip="Maximum participants"
                 >
-                  <Text strong className="text-sm">{capacityInfo.total} participants</Text>
+                  <Text strong className="text-sm">
+                    {capacityInfo.total} participants
+                  </Text>
                   <div className="text-[10px] text-text-secondary mt-0">
                     {capacityInfo.approved} approved, {capacityInfo.available}{" "}
                     available
                   </div>
                 </InfoItem>
-              </Col>
+              </Col> */}
               <Col xs={24} sm={12}>
                 <InfoItem
                   icon={CheckCircleOutlined}
@@ -308,9 +313,12 @@ const PrincipalTrainingDetailsPage = () => {
 
           {/* Target Branches */}
           {training?.targetBranches && training.targetBranches.length > 0 && (
-            <Card 
-              className="rounded-xl border-border shadow-none !mb-3"
-              styles={{ header: { padding: '8px 16px', minHeight: 'auto' }, body: { padding: '16px' } }}
+            <Card
+              className="rounded-xl border-border shadow-none mb-3!"
+              styles={{
+                header: { padding: "8px 16px", minHeight: "auto" },
+                body: { padding: "16px" },
+              }}
               title={
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <ApartmentOutlined className="text-blue-700" />
@@ -318,17 +326,22 @@ const PrincipalTrainingDetailsPage = () => {
                 </div>
               }
             >
-              <Paragraph type="secondary" className="mb-2 text-xs">
-                Designed for faculty from:
-              </Paragraph>
-              <BranchTags branches={training.targetBranches} compact />
+              <div className="flex flex-wrap items-center gap-2">
+                <Text type="secondary" className="text-xs">
+                  Departments:
+                </Text>
+                <BranchTags branches={training.targetBranches} compact />
+              </div>
             </Card>
           )}
 
           {/* Learning Outcomes */}
-          <Card 
-            className="rounded-xl border-border shadow-none !mb-3"
-            styles={{ header: { padding: '8px 16px', minHeight: 'auto' }, body: { padding: '16px' } }}
+          <Card
+            className="rounded-xl border-border shadow-none mb-3!"
+            styles={{
+              header: { padding: "8px 16px", minHeight: "auto" },
+              body: { padding: "16px" },
+            }}
             title={
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <CheckCircleOutlined className="text-emerald-600" />
@@ -336,17 +349,20 @@ const PrincipalTrainingDetailsPage = () => {
               </div>
             }
           >
-            <Paragraph type="secondary" className="!mb-2 text-xs">
+            <Paragraph type="secondary" className="mb-2 text-xs">
               By the end of this training, participants will be able to:
             </Paragraph>
-            <LearningOutcomesList outcomes={training?.learningOutcomes || []} compact />
+            <LearningOutcomesList
+              outcomes={training?.learningOutcomes || []}
+              compact
+            />
           </Card>
         </Col>
 
         <Col xs={24} lg={8}>
           {/* Deadline Countdown */}
           {training?.applicationDeadline && (
-            <div className="!mb-3">
+            <div className="mb-3">
               <DeadlineCountdown
                 deadline={training.applicationDeadline}
                 label="Application closes in"
@@ -357,31 +373,30 @@ const PrincipalTrainingDetailsPage = () => {
           )}
 
           {/* Trainer & Venue Card */}
-          <Card 
+          <Card
             className="rounded-xl border-border shadow-none mb-3"
-            styles={{ header: { padding: '8px 16px', minHeight: 'auto' }, body: { padding: '16px' } }}
+            styles={{
+              header: { padding: "8px 16px", minHeight: "auto" },
+              body: { padding: "16px" },
+            }}
             title={
               <div className="flex items-center gap-2 text-sm font-semibold">
-                <UserOutlined className="text-blue-700" />
                 <span>Trainer & Venue</span>
               </div>
             }
           >
-
             <div className="space-y-3">
               {training?.trainerName && (
                 <div className="flex items-center gap-2.5">
-                  <Avatar
-                    size={40}
-                    icon={<UserOutlined />}
-                    className="bg-blue-100 text-blue-700"
-                  />
                   <div>
                     <Text strong className="block text-sm leading-tight">
                       {training.trainerName}
                     </Text>
                     {training?.trainerContact && (
-                      <Text type="secondary" className="text-[10px] block mt-0.5">
+                      <Text
+                        type="secondary"
+                        className="text-[10px] block mt-0.5"
+                      >
                         {training.trainerContact}
                       </Text>
                     )}
@@ -389,7 +404,11 @@ const PrincipalTrainingDetailsPage = () => {
                 </div>
               )}
 
-              <Descriptions column={1} size="small" className="compact-descriptions">
+              <Descriptions
+                column={1}
+                size="small"
+                className="compact-descriptions"
+              >
                 <Descriptions.Item
                   label={
                     <span className="flex items-center gap-1 text-xs">
@@ -432,6 +451,5 @@ const PrincipalTrainingDetailsPage = () => {
     </div>
   );
 };
-
 
 export default PrincipalTrainingDetailsPage;
