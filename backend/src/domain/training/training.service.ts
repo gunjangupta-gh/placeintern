@@ -936,11 +936,13 @@ export class TrainingService {
     }
 
     if (training.targetBranches?.length > 0) {
-      if (!user.branchId) {
+      const userBranchId = await this.getUserBranchId(userId);
+
+      if (!userBranchId) {
         return { eligible: false, reason: 'Your profile is not mapped to a branch' };
       }
 
-      const isBranchAllowed = training.targetBranches.some((branch) => branch.id === user.branchId);
+      const isBranchAllowed = training.targetBranches.some((branch) => branch.id === userBranchId);
       if (!isBranchAllowed) {
         return { eligible: false, reason: 'This training is not available for your branch' };
       }
@@ -1043,9 +1045,34 @@ export class TrainingService {
   private async getUserBranchId(userId: string): Promise<string | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { branchId: true },
+      select: { branchId: true, branchName: true },
     });
-    return user?.branchId || null;
+
+    if (!user) {
+      return null;
+    }
+
+    if (user.branchId) {
+      return user.branchId;
+    }
+
+    const normalizedBranchName = user.branchName?.trim();
+    if (!normalizedBranchName) {
+      return null;
+    }
+
+    const matchedBranch = await this.prisma.branch.findFirst({
+      where: {
+        OR: [
+          { code: { equals: normalizedBranchName, mode: 'insensitive' } },
+          { shortName: { equals: normalizedBranchName, mode: 'insensitive' } },
+          { name: { equals: normalizedBranchName, mode: 'insensitive' } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    return matchedBranch?.id || null;
   }
 
   private getEffectiveBranchIds(requestedBranchIds?: string[], userBranchId?: string | null): string[] | undefined {

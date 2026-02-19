@@ -16,6 +16,39 @@ export class TrainingApplicationService {
     private readonly auditService: AuditService,
   ) {}
 
+  private async resolveUserBranchId(userId: string): Promise<string | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { branchId: true, branchName: true },
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    if (user.branchId) {
+      return user.branchId;
+    }
+
+    const normalizedBranchName = user.branchName?.trim();
+    if (!normalizedBranchName) {
+      return null;
+    }
+
+    const matchedBranch = await this.prisma.branch.findFirst({
+      where: {
+        OR: [
+          { code: { equals: normalizedBranchName, mode: 'insensitive' } },
+          { shortName: { equals: normalizedBranchName, mode: 'insensitive' } },
+          { name: { equals: normalizedBranchName, mode: 'insensitive' } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    return matchedBranch?.id || null;
+  }
+
   /**
    * Apply for a training (Faculty)
    */
@@ -49,16 +82,13 @@ export class TrainingApplicationService {
 
       // Enforce branch eligibility only when training is branch-targeted
       if (training.targetBranches?.length > 0) {
-        const user = await this.prisma.user.findUnique({
-          where: { id: userId },
-          select: { branchId: true },
-        });
+        const resolvedBranchId = await this.resolveUserBranchId(userId);
 
-        if (!user?.branchId) {
+        if (!resolvedBranchId) {
           throw new ForbiddenException('Your profile is not mapped to a branch');
         }
 
-        const isBranchAllowed = training.targetBranches.some((branch) => branch.id === user.branchId);
+        const isBranchAllowed = training.targetBranches.some((branch) => branch.id === resolvedBranchId);
         if (!isBranchAllowed) {
           throw new ForbiddenException('This training is not available for your branch');
         }

@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { TrainingService } from './training.service';
 import { CalendarFilterDto, TrainingFilterDto } from './dto';
@@ -13,10 +13,34 @@ export class FacultyTrainingService {
   private async getFacultyBranchId(userId: string): Promise<string | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { branchId: true },
+      select: { branchId: true, branchName: true },
     });
 
-    return user?.branchId || null;
+    if (!user) {
+      return null;
+    }
+
+    if (user.branchId) {
+      return user.branchId;
+    }
+
+    const normalizedBranchName = user.branchName?.trim();
+    if (!normalizedBranchName) {
+      return null;
+    }
+
+    const matchedBranch = await this.prisma.branch.findFirst({
+      where: {
+        OR: [
+          { code: { equals: normalizedBranchName, mode: 'insensitive' } },
+          { shortName: { equals: normalizedBranchName, mode: 'insensitive' } },
+          { name: { equals: normalizedBranchName, mode: 'insensitive' } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    return matchedBranch?.id || null;
   }
 
   async getTrainings(filters: TrainingFilterDto, userId: string) {
@@ -73,20 +97,10 @@ export class FacultyTrainingService {
   }
 
   async getTraining(id: string, userId: string) {
-    const branchId = await this.getFacultyBranchId(userId);
-    if (!branchId) {
-      throw new ForbiddenException('Your profile is not mapped to a branch');
-    }
-
     return this.trainingService.findOne(id, userId);
   }
 
   async checkEligibility(trainingId: string, userId: string) {
-    const branchId = await this.getFacultyBranchId(userId);
-    if (!branchId) {
-      return { eligible: false, reason: 'Your profile is not mapped to a branch' };
-    }
-
     return this.trainingService.checkUserEligibility(trainingId, userId);
   }
 }
