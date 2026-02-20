@@ -903,28 +903,35 @@ async function ensureFeedbackForms(createdById: string): Promise<Map<string, str
   const formIdMap = new Map<string, string>();
 
   for (const form of FEEDBACK_FORMS) {
-    const saved = await prisma.feedbackForm.upsert({
-      where: {
-        title: form.title,
-      },
-      update: {
-        description: form.description,
-        purpose: form.purpose,
-        questions: form.questions,
-        isActive: true,
-        isPublished: true,
-      },
-      create: {
-        title: form.title,
-        description: form.description,
-        purpose: form.purpose,
-        questions: form.questions,
-        isActive: true,
-        isPublished: true,
-        createdById,
-      },
+    const existing = await prisma.feedbackForm.findFirst({
+      where: { title: form.title },
       select: { id: true },
     });
+
+    const saved = existing
+      ? await prisma.feedbackForm.update({
+          where: { id: existing.id },
+          data: {
+            description: form.description,
+            purpose: form.purpose,
+            questions: form.questions,
+            isActive: true,
+            isPublished: true,
+          },
+          select: { id: true },
+        })
+      : await prisma.feedbackForm.create({
+          data: {
+            title: form.title,
+            description: form.description,
+            purpose: form.purpose,
+            questions: form.questions,
+            isActive: true,
+            isPublished: true,
+            createdById,
+          },
+          select: { id: true },
+        });
 
     formIdMap.set(form.title, saved.id);
     console.log(`  Upserted feedback form: ${form.title}`);
@@ -942,28 +949,37 @@ async function ensureTestForms(createdById: string): Promise<{
 
   // Create Pre-Test Forms
   for (const form of PRE_TEST_FORMS) {
-    const saved = await prisma.preTestForm.upsert({
+    const existing = await prisma.preTestForm.findFirst({
       where: { title: form.title },
-      update: {
-        description: form.description,
-        purpose: form.purpose,
-        passingScore: form.passingScore,
-        questions: form.questions,
-        isActive: true,
-        isPublished: true,
-      },
-      create: {
-        title: form.title,
-        description: form.description,
-        purpose: form.purpose,
-        passingScore: form.passingScore,
-        questions: form.questions,
-        isActive: true,
-        isPublished: true,
-        createdById,
-      },
       select: { id: true },
     });
+
+    const saved = existing
+      ? await prisma.preTestForm.update({
+          where: { id: existing.id },
+          data: {
+            description: form.description,
+            purpose: form.purpose,
+            passingScore: form.passingScore,
+            questions: form.questions,
+            isActive: true,
+            isPublished: true,
+          },
+          select: { id: true },
+        })
+      : await prisma.preTestForm.create({
+          data: {
+            title: form.title,
+            description: form.description,
+            purpose: form.purpose,
+            passingScore: form.passingScore,
+            questions: form.questions,
+            isActive: true,
+            isPublished: true,
+            createdById,
+          },
+          select: { id: true },
+        });
 
     preTestFormIdMap.set(form.title, saved.id);
     console.log(`  Upserted pre-test form: ${form.title}`);
@@ -971,28 +987,37 @@ async function ensureTestForms(createdById: string): Promise<{
 
   // Create Post-Test Forms
   for (const form of POST_TEST_FORMS) {
-    const saved = await prisma.postTestForm.upsert({
+    const existing = await prisma.postTestForm.findFirst({
       where: { title: form.title },
-      update: {
-        description: form.description,
-        purpose: form.purpose,
-        passingScore: form.passingScore,
-        questions: form.questions,
-        isActive: true,
-        isPublished: true,
-      },
-      create: {
-        title: form.title,
-        description: form.description,
-        purpose: form.purpose,
-        passingScore: form.passingScore,
-        questions: form.questions,
-        isActive: true,
-        isPublished: true,
-        createdById,
-      },
       select: { id: true },
     });
+
+    const saved = existing
+      ? await prisma.postTestForm.update({
+          where: { id: existing.id },
+          data: {
+            description: form.description,
+            purpose: form.purpose,
+            passingScore: form.passingScore,
+            questions: form.questions,
+            isActive: true,
+            isPublished: true,
+          },
+          select: { id: true },
+        })
+      : await prisma.postTestForm.create({
+          data: {
+            title: form.title,
+            description: form.description,
+            purpose: form.purpose,
+            passingScore: form.passingScore,
+            questions: form.questions,
+            isActive: true,
+            isPublished: true,
+            createdById,
+          },
+          select: { id: true },
+        });
 
     postTestFormIdMap.set(form.title, saved.id);
     console.log(`  Upserted post-test form: ${form.title}`);

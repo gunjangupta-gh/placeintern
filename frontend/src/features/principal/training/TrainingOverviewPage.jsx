@@ -1,50 +1,49 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Button, Card, Col, Input, Row, Statistic, Table, Tooltip, Typography } from 'antd';
+import { Button, Card, Input, Table, Tag, Tooltip, Typography } from 'antd';
 import {
   CalendarOutlined,
   TeamOutlined,
-  FileTextOutlined,
-  SearchOutlined,
-  ClockCircleOutlined,
   CheckCircleOutlined,
+  BarChartOutlined,
   EyeOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import TrainingGreeting from '../../../components/training/TrainingGreeting';
 import TrainingDateRange from '../../../components/training/TrainingDateRange';
 import DeliveryModeBadge from '../../../components/training/DeliveryModeBadge';
 import TrainingEmptyState from '../../../components/training/TrainingEmptyState';
-import { TrainingStatSkeleton, TableRowSkeleton } from '../../../components/training/skeletons/TrainingSkeletons';
-import { fetchPrincipalTrainings, fetchPrincipalTrainingDashboard, fetchPrincipalParticipationReport } from '../store/principalTrainingSlice';
+import { TableRowSkeleton } from '../../../components/training/skeletons/TrainingSkeletons';
+import { fetchPrincipalTrainings, fetchPrincipalTrainingDashboard } from '../store/principalTrainingSlice';
 
 const { Text } = Typography;
 
-const StatCard = ({ icon: Icon, title, value, color, onClick }) => {
-  const colorClasses = {
-    blue: { bg: 'bg-gradient-to-br from-blue-50 to-blue-100/50', icon: 'text-blue-600 bg-blue-100', border: 'border-blue-100', text: 'text-blue-700' },
-    emerald: { bg: 'bg-gradient-to-br from-emerald-50 to-emerald-100/50', icon: 'text-emerald-600 bg-emerald-100', border: 'border-emerald-100', text: 'text-emerald-700' },
-    amber: { bg: 'bg-gradient-to-br from-amber-50 to-amber-100/50', icon: 'text-amber-600 bg-amber-100', border: 'border-amber-100', text: 'text-amber-700' },
-    slate: { bg: 'bg-gradient-to-br from-slate-50 to-slate-100/50', icon: 'text-slate-600 bg-slate-100', border: 'border-slate-200', text: 'text-slate-700' },
-    violet: { bg: 'bg-gradient-to-br from-violet-50 to-violet-100/50', icon: 'text-violet-600 bg-violet-100', border: 'border-violet-100', text: 'text-violet-700' },
-  };
-  const styles = colorClasses[color] || colorClasses.blue;
-  
+const STAT_VARIANTS = {
+  blue:   { iconWrap: 'bg-blue-100',   iconColor: 'text-blue-700'   },
+  amber:  { iconWrap: 'bg-amber-100',  iconColor: 'text-amber-700'  },
+  purple: { iconWrap: 'bg-purple-100', iconColor: 'text-purple-700' },
+  emerald:{ iconWrap: 'bg-emerald-100',iconColor: 'text-emerald-700'},
+};
+
+const StatCard = ({ icon: Icon, title, value, valueLabel, subtitle, variant = 'blue', onClick }) => {
+  const s = STAT_VARIANTS[variant] || STAT_VARIANTS.blue;
   return (
     <div
-      className={`${styles.bg} rounded-xl p-2.5 h-full border ${styles.border} ${onClick ? 'cursor-pointer hover:shadow-sm transition-shadow' : ''}`}
+      className={`rounded-xl p-3 h-full border border-slate-200 bg-slate-50 ${onClick ? 'cursor-pointer hover:shadow-sm transition-all' : ''}`}
       onClick={onClick}
     >
-      <div className="flex items-center justify-between mb-1.5">
-        <span className={`${styles.icon} p-1.5 rounded-lg`}>
-          <Icon className="text-sm" />
+      <div className="flex items-center gap-2 mb-2">
+        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md ${s.iconWrap}`}>
+          <Icon className={`text-xs ${s.iconColor}`} />
         </span>
+        <Text className="text-[11px] text-slate-600 font-medium leading-tight">{title}</Text>
       </div>
-      <Statistic
-        title={<span className={`${styles.text} text-[10px] uppercase tracking-wider font-semibold opacity-80`}>{title}</span>}
-        value={value}
-        valueStyle={{ fontSize: 20, fontWeight: 700, lineHeight: 1.2 }}
-      />
+      <div className="flex items-baseline gap-1.5 mb-0.5">
+        <Text className="text-[26px] leading-none font-bold text-slate-800">{value}</Text>
+        {valueLabel && <Text className="text-[11px] text-slate-500 font-medium">{valueLabel}</Text>}
+      </div>
+      {subtitle && <Text className="block text-[11px] text-slate-500 leading-snug mt-1">{subtitle}</Text>}
     </div>
   );
 };
@@ -61,18 +60,48 @@ const TrainingOverviewPage = () => {
   useEffect(() => {
     dispatch(fetchPrincipalTrainings());
     dispatch(fetchPrincipalTrainingDashboard());
-    dispatch(fetchPrincipalParticipationReport());
   }, [dispatch]);
 
   const dashboard = reports?.dashboard || {};
-  const participation = reports?.participation || {};
 
-  const stats = [
-    { title: 'Available Trainings', value: trainings.list?.length || 0, icon: CalendarOutlined, color: 'blue', onClick: () => navigate('/app/training') },
-    { title: 'Total Applications', value: participation.totalApplications || 0, icon: FileTextOutlined, color: 'violet', onClick: () => navigate('/app/training/applications') },
-    { title: 'Approved', value: participation.byStatus?.APPROVED || 0, icon: CheckCircleOutlined, color: 'emerald', onClick: () => navigate('/app/training/applications') },
-    { title: 'Pending Review', value: (participation.byStatus?.PENDING || 0) + (participation.byStatus?.SUBMITTED || 0), icon: ClockCircleOutlined, color: 'amber', onClick: () => navigate('/app/training/applications') },
-    { title: 'Faculty Enrolled', value: dashboard.totalParticipants || 0, icon: TeamOutlined, color: 'slate', onClick: () => navigate('/app/training/reports') },
+  const trainingMetrics = dashboard.trainingMetrics || {};
+  const facultyMetrics = dashboard.facultyMetrics || {};
+  const completionMetrics = dashboard.completionMetrics || {};
+  const hoursDistribution = dashboard.hoursDistribution || {};
+
+  const statCards = [
+    {
+      title: 'Trainings',
+      icon: CalendarOutlined,
+      variant: 'blue',
+      value: trainingMetrics.totalTrainingsConducted ?? 0,
+      valueLabel: 'conducted',
+      subtitle: `Total Faculty: ${trainingMetrics.totalFacultyRegistered ?? 0} • Hours Delivered: ${trainingMetrics.totalTrainingHoursDelivered ?? 0} hrs`,
+    },
+    {
+      title: 'Faculty',
+      icon: TeamOutlined,
+      variant: 'amber',
+      value: facultyMetrics.facultyWithCompletedTrainings ?? 0,
+      valueLabel: 'completed',
+      subtitle: `Ongoing: ${facultyMetrics.facultyWithOngoingTrainings ?? 0} • Yet to Start: ${facultyMetrics.facultyYetToStart ?? 0}`,
+    },
+    {
+      title: 'Training Completion Metrics',
+      icon: CheckCircleOutlined,
+      variant: 'purple',
+      value: completionMetrics.facultyCompleted40Hours ?? 0,
+      valueLabel: 'completed ≥ 40 hrs',
+      subtitle: `Completed < 40 hrs: ${completionMetrics.facultyCompletedUnder40Hours ?? 0} faculty`,
+    },
+    {
+      title: 'Hours Distribution',
+      icon: BarChartOutlined,
+      variant: 'emerald',
+      value: hoursDistribution.averageHoursPerFaculty ?? 0,
+      valueLabel: 'hrs avg',
+      subtitle: `Highest: ${hoursDistribution.highestHoursSingleFaculty ?? 0} hrs • Lowest: ${hoursDistribution.lowestHoursSingleFaculty ?? 0} hrs`,
+    },
   ];
 
   const filteredTrainings = (trainings.list || []).filter(
@@ -120,6 +149,28 @@ const TrainingOverviewPage = () => {
       render: (mode) => <DeliveryModeBadge mode={mode} showIcon={false} />,
     },
     {
+      title: 'Enrolled Faculty',
+      key: 'enrolledFaculty',
+      render: (_, record) => {
+        const names = record.enrolledFaculty || [];
+        if (!names.length) return <Text className="text-xs text-slate-400">—</Text>;
+        const visible = names.slice(0, 3);
+        const rest = names.slice(3);
+        return (
+          <div className="flex flex-wrap gap-1 max-w-xs">
+            {visible.map((name) => (
+              <Tag key={name} className="text-[11px] m-0">{name}</Tag>
+            ))}
+            {rest.length > 0 && (
+              <Tooltip title={rest.join(', ')}>
+                <Tag className="text-[11px] m-0 cursor-pointer">+{rest.length} more</Tag>
+              </Tooltip>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       title: 'Actions',
       key: 'actions',
       width: 100,
@@ -136,18 +187,6 @@ const TrainingOverviewPage = () => {
     },
   ];
 
-  const renderStatSkeletons = () => (
-    <Row gutter={[12, 12]} className="mb-4">
-      {Array.from({ length: 4 }).map((_, idx) => (
-        <Col xs={24} sm={12} lg={6} key={idx}>
-          <TrainingStatSkeleton />
-        </Col>
-      ))}
-    </Row>
-  );
-
-
-
   return (
     <div className="p-4 training-ui">
       {/* Greeting Section */}
@@ -158,16 +197,12 @@ const TrainingOverviewPage = () => {
         />
       </div>
 
-      {/* Stats Grid */}
-      {isLoading ? renderStatSkeletons() : (
-        <Row gutter={[12, 12]} className="mb-4">
-          {stats.slice(0, 4).map((stat) => (
-            <Col xs={24} sm={12} lg={6} key={stat.title}>
-              <StatCard {...stat} />
-            </Col>
-          ))}
-        </Row>
-      )}
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-4">
+        {statCards.map((card) => (
+          <StatCard key={card.title} {...card} />
+        ))}
+      </div>
 
       <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: 0 } }}>
         <div className="p-4">

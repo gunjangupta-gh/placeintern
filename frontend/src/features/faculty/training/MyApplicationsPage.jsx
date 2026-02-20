@@ -35,6 +35,7 @@ import {
   submitFeedback,
   createLessonPlan,
   markSelfAttendance,
+  fetchTrainingAttendance,
 } from "../store/facultyTrainingSlice";
 
 const { Text, Title } = Typography;
@@ -42,7 +43,7 @@ const { Text, Title } = Typography;
 const MyApplicationsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { applications } = useSelector((state) => state.facultyTraining);
+  const { applications, attendance } = useSelector((state) => state.facultyTraining);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [searchText, setSearchText] = useState("");
   const [feedbackModal, setFeedbackModal] = useState({
@@ -69,6 +70,29 @@ const MyApplicationsPage = () => {
   useEffect(() => {
     dispatch(fetchMyApplications());
   }, [dispatch]);
+
+  useEffect(() => {
+    const approvedTrainingIds = (applications.list || [])
+      .filter((app) => app.status === "APPROVED")
+      .map((app) => app.trainingId || app.training?.id)
+      .filter(Boolean);
+
+    approvedTrainingIds.forEach((trainingId) => {
+      const hasData = Boolean(attendance?.byTraining?.[trainingId]);
+      const isLoading = Boolean(attendance?.loadingByTraining?.[trainingId]);
+      if (!hasData && !isLoading) {
+        dispatch(fetchTrainingAttendance(trainingId));
+      }
+    });
+  }, [applications.list, attendance?.byTraining, attendance?.loadingByTraining, dispatch]);
+
+  const getTodayDateString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
   const handleWithdraw = async (id) => {
     try {
@@ -210,15 +234,19 @@ const MyApplicationsPage = () => {
 
   const handleOpenAttendance = useCallback(
     (application) => {
+      const trainingId = application.trainingId || application.training?.id;
       setAttendanceModal({
         open: true,
         application,
       });
+      if (trainingId) {
+        dispatch(fetchTrainingAttendance(trainingId));
+      }
       setLocationState({ loading: false, error: null, data: null });
       // Auto-capture location when modal opens
       setTimeout(() => captureLocation(), 100);
     },
-    [captureLocation]
+    [captureLocation, dispatch]
   );
 
   const handleCloseAttendance = () => {
@@ -241,6 +269,7 @@ const MyApplicationsPage = () => {
       await dispatch(
         markSelfAttendance({
           trainingId,
+          attendanceDate: getTodayDateString(),
           latitude: locationState.data.latitude,
           longitude: locationState.data.longitude,
           locationAddress: locationState.data.locationAddress,
@@ -248,6 +277,7 @@ const MyApplicationsPage = () => {
       ).unwrap();
 
       message.success("Attendance marked successfully!");
+      dispatch(fetchTrainingAttendance(trainingId));
       handleCloseAttendance();
       dispatch(fetchMyApplications({ forceRefresh: true }));
     } catch (error) {
@@ -291,12 +321,26 @@ const MyApplicationsPage = () => {
     return result;
   }, [applications.list, searchText, statusFilter]);
 
+  const attendanceTrainingId =
+    attendanceModal.application?.trainingId ||
+    attendanceModal.application?.training?.id;
+  const attendanceProgress = attendanceTrainingId
+    ? attendance?.byTraining?.[attendanceTrainingId]
+    : null;
+
   const columns = [
     {
       title: "Training",
       dataIndex: ["training", "title"],
       key: "training",
-      render: (_, record) => (
+      render: (_, record) => {
+        const trainingId = record.trainingId || record.training?.id;
+        const progress = trainingId ? attendance?.byTraining?.[trainingId] : null;
+        const missingDays = progress?.totalDays
+          ? Math.max(0, progress.totalDays - (progress.attendedDays || 0))
+          : 0;
+
+        return (
         <div>
           <div className="font-medium text-sm text-slate-800">
             {record.training?.title || record.trainingTitle || "Training"}
@@ -311,8 +355,22 @@ const MyApplicationsPage = () => {
               />
             </div>
           )}
+          {record.status === "APPROVED" && progress?.totalDays > 0 && (
+            <div className="mt-1.5">
+              {missingDays > 0 ? (
+                <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-[10px] font-medium">
+                  {missingDays} day{missingDays > 1 ? "s" : ""} pending
+                </span>
+              ) : (
+                <span className="inline-flex items-center rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-[10px] font-medium">
+                  Full attendance
+                </span>
+              )}
+            </div>
+          )}
         </div>
-      ),
+      );
+    },
     },
     {
       title: "Status",
@@ -590,6 +648,7 @@ const MyApplicationsPage = () => {
             onClick={handleMarkAttendance}
             loading={submitting}
             icon={<CheckCircleOutlined />}
+            disabled={attendanceModal.application?.hasMarkedAttendanceToday === true}
           >
             Mark Attendance
           </Button>,
@@ -620,6 +679,16 @@ const MyApplicationsPage = () => {
           <div className="text-xs text-slate-500">
             Click mark attendance to submit your attendance for today.
           </div>
+          {attendanceProgress?.totalDays > 0 && (
+            <div className="text-xs text-slate-600 bg-slate-50 rounded-md px-3 py-2">
+              Attendance Progress: <Text strong>{attendanceProgress.attendedDays}</Text>/<Text strong>{attendanceProgress.totalDays}</Text> days
+            </div>
+          )}
+          {attendanceModal.application?.hasMarkedAttendanceToday === true && (
+            <div className="text-xs text-green-600">
+              Attendance already marked for today.
+            </div>
+          )}
         </div>
       </Modal>
     </div>

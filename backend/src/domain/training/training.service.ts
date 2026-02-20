@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException,
 import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
-import { AuditAction, AuditCategory, AuditSeverity, Prisma } from '../../generated/prisma/client';
+import { AuditAction, AuditCategory, AuditSeverity, Prisma, Role } from '../../generated/prisma/client';
 import { CreateTrainingDto, UpdateTrainingDto, TrainingFilterDto, CalendarFilterDto } from './dto';
 
 @Injectable()
@@ -316,7 +316,7 @@ export class TrainingService {
           ? {
               applications: {
                 some: {
-                  isActive: true,
+                  status: 'APPROVED',
                   user: { institutionId },
                 },
               },
@@ -388,22 +388,31 @@ export class TrainingService {
         this.prisma.training.count({ where }),
       ]);
 
-      // Calculate available seats for each training
+      // Calculate available seats and enrolled faculty for each training
       const trainingsWithCapacity = await Promise.all(
         trainings.map(async (training) => {
-          const approvedCount = await this.prisma.trainingApplication.count({
+          const approvedApps = await this.prisma.trainingApplication.findMany({
             where: {
               trainingId: training.id,
               status: 'APPROVED',
+              ...(institutionId ? { user: { institutionId } } : {}),
             },
+            select: { user: { select: { name: true } } },
           });
+
+          const approvedCount = institutionId
+            ? approvedApps.length
+            : await this.prisma.trainingApplication.count({
+                where: { trainingId: training.id, status: 'APPROVED' },
+              });
 
           return {
             ...training,
             availableSeats: training.capacity - approvedCount,
             isFull: approvedCount >= training.capacity,
+            enrolledFaculty: approvedApps.map((a) => a.user.name),
           };
-        })
+        }),
       );
 
       return {
@@ -820,36 +829,169 @@ export class TrainingService {
   async getDashboardStats() {
     try {
       const now = new Date();
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
 
-      const [
-        totalTrainings,
-        publishedTrainings,
-        upcomingTrainings,
-        ongoingTrainings,
-        completedTrainings,
-        totalApplications,
-        approvedApplications,
-        totalAttendance,
-        totalFeedback,
-        totalLessonPlans,
-        approvedLessonPlans,
-        totalCertificates,
-      ] = await Promise.all([
-        this.prisma.training.count({ where: { createdAt: { gte: startOfYear, lte: endOfYear } } }),
-        this.prisma.training.count({ where: { isPublished: true, createdAt: { gte: startOfYear, lte: endOfYear } } }),
-        this.prisma.training.count({ where: { isPublished: true, startDate: { gt: now } } }),
-        this.prisma.training.count({ where: { isPublished: true, startDate: { lte: now }, endDate: { gte: now } } }),
-        this.prisma.training.count({ where: { isPublished: true, endDate: { lt: now }, createdAt: { gte: startOfYear } } }),
-        this.prisma.trainingApplication.count({ where: { createdAt: { gte: startOfYear, lte: endOfYear } } }),
-        this.prisma.trainingApplication.count({ where: { status: 'APPROVED', createdAt: { gte: startOfYear, lte: endOfYear } } }),
-        this.prisma.trainingAttendance.count({ where: { createdAt: { gte: startOfYear, lte: endOfYear } } }),
-        this.prisma.feedbackResponse.count({ where: { trainingId: { not: null }, createdAt: { gte: startOfYear, lte: endOfYear } } }),
-        this.prisma.lessonPlan.count({ where: { createdAt: { gte: startOfYear, lte: endOfYear } } }),
-        this.prisma.lessonPlan.count({ where: { status: 'APPROVED', createdAt: { gte: startOfYear, lte: endOfYear } } }),
-        this.prisma.trainingCertificate.count({ where: { createdAt: { gte: startOfYear, lte: endOfYear } } }),
-      ]);
+      const [trainings, applications, attendanceAgg, teachers, totalFeedback, totalLessonPlans, approvedLessonPlans, totalCertificates] =
+        await Promise.all([
+          this.prisma.training.findMany({
+            select: {
+              id: true,
+              title: true,
+              isPublished: true,
+              startDate: true,
+              endDate: true,
+              duration: true,
+              targetBranches: { select: { id: true, name: true, shortName: true, code: true } },
+            },
+          }),
+          this.prisma.trainingApplication.findMany({
+            where: { isActive: true },
+            select: {
+              userId: true,
+              trainingId: true,
+              status: true,
+            },
+          }),
+          this.prisma.trainingAttendance.groupBy({
+            by: ['userId', 'trainingId'],
+            _count: { _all: true },
+          }),
+          this.prisma.user.findMany({
+            where: { role: 'TEACHER', active: true },
+            select: {
+              id: true,
+              branchId: true,
+              branchName: true,
+              branch: { select: { id: true, name: true, shortName: true, code: true } },
+            },
+          }),
+          this.prisma.feedbackResponse.count({ where: { trainingId: { not: null } } }),
+          this.prisma.lessonPlan.count(),
+          this.prisma.lessonPlan.count({ where: { status: 'APPROVED' } }),
+          this.prisma.trainingCertificate.count(),
+        ]);
+
+      const trainingById = new Map(trainings.map((training) => [training.id, training]));
+      const attendanceMap = new Map(
+        attendanceAgg.map((attendance) => [
+          `${attendance.userId}:${attendance.trainingId}`,
+          attendance._count._all,
+        ])
+      );
+
+      const totalTrainings = trainings.length;
+      const publishedTrainings = trainings.filter((training) => training.isPublished).length;
+      const upcomingTrainings = trainings.filter((training) => training.isPublished && training.startDate > now).length;
+      const ongoingTrainings = trainings.filter(
+        (training) => training.isPublished && training.startDate <= now && training.endDate >= now
+      ).length;
+      const completedTrainings = trainings.filter((training) => training.isPublished && training.endDate < now).length;
+
+      const totalApplications = applications.length;
+      const approvedApplications = applications.filter((application) => application.status === 'APPROVED').length;
+      const totalAttendance = attendanceAgg.reduce((sum, item) => sum + item._count._all, 0);
+
+      const totalFaculty = teachers.length;
+      const teacherIds = new Set(teachers.map((teacher) => teacher.id));
+
+      const courseWiseMap = new Map<string, { course: string; facultyCount: number }>();
+      for (const teacher of teachers) {
+        const courseName =
+          teacher.branch?.shortName ||
+          teacher.branch?.name ||
+          teacher.branchName ||
+          'Unassigned';
+        const existing = courseWiseMap.get(courseName);
+        if (existing) {
+          existing.facultyCount += 1;
+        } else {
+          courseWiseMap.set(courseName, { course: courseName, facultyCount: 1 });
+        }
+      }
+      const courseWiseFaculty = Array.from(courseWiseMap.values()).sort((a, b) => b.facultyCount - a.facultyCount);
+
+      const facultyHoursMap = new Map<string, number>();
+      for (const teacher of teachers) {
+        facultyHoursMap.set(teacher.id, 0);
+      }
+
+      const facultyWithCompletedTrainings = new Set<string>();
+      const facultyWithOngoingTrainings = new Set<string>();
+
+      for (const application of applications) {
+        if (application.status !== 'APPROVED') {
+          continue;
+        }
+
+        if (!teacherIds.has(application.userId)) {
+          continue;
+        }
+
+        const training = trainingById.get(application.trainingId);
+        if (!training) {
+          continue;
+        }
+
+        const startDateOnly = new Date(
+          training.startDate.getFullYear(),
+          training.startDate.getMonth(),
+          training.startDate.getDate()
+        );
+        const endDateOnly = new Date(
+          training.endDate.getFullYear(),
+          training.endDate.getMonth(),
+          training.endDate.getDate()
+        );
+        const trainingDays = Math.ceil((endDateOnly.getTime() - startDateOnly.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        const safeTrainingDays = Math.max(trainingDays, 1);
+
+        const totalHoursForTraining = training.duration ?? safeTrainingDays * 8;
+        const hoursPerDay = totalHoursForTraining / safeTrainingDays;
+
+        const attendedDays = attendanceMap.get(`${application.userId}:${application.trainingId}`) || 0;
+        const attendedHours = Math.min(attendedDays, safeTrainingDays) * hoursPerDay;
+
+        facultyHoursMap.set(application.userId, (facultyHoursMap.get(application.userId) || 0) + attendedHours);
+
+        if (training.endDate < now && attendedDays >= safeTrainingDays) {
+          facultyWithCompletedTrainings.add(application.userId);
+        }
+
+        if (training.startDate <= now && training.endDate >= now) {
+          facultyWithOngoingTrainings.add(application.userId);
+        }
+      }
+
+      const facultyHoursValues = Array.from(facultyHoursMap.values());
+      const totalFacultyHours = facultyHoursValues.reduce((sum, hours) => sum + hours, 0);
+      const averageHoursPerFaculty = totalFaculty > 0 ? totalFacultyHours / totalFaculty : 0;
+      const highestHoursSingleFaculty = facultyHoursValues.length > 0 ? Math.max(...facultyHoursValues) : 0;
+      const lowestHoursSingleFaculty = facultyHoursValues.length > 0 ? Math.min(...facultyHoursValues) : 0;
+
+      const facultyCompleted40Hours = facultyHoursValues.filter((hours) => hours >= 40).length;
+      const facultyCompletedUnder40Hours = Math.max(totalFaculty - facultyCompleted40Hours, 0);
+
+      const totalFacultyRegistered = new Set(applications.map((application) => application.userId)).size;
+
+      const completedPublishedTrainings = trainings.filter((training) => training.isPublished && training.endDate < now);
+      const totalTrainingHoursDelivered = completedPublishedTrainings.reduce((sum, training) => {
+        const startDateOnly = new Date(
+          training.startDate.getFullYear(),
+          training.startDate.getMonth(),
+          training.startDate.getDate()
+        );
+        const endDateOnly = new Date(
+          training.endDate.getFullYear(),
+          training.endDate.getMonth(),
+          training.endDate.getDate()
+        );
+        const days = Math.ceil((endDateOnly.getTime() - startDateOnly.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        const safeDays = Math.max(days, 1);
+        const hours = training.duration ?? safeDays * 8;
+        return sum + hours;
+      }, 0);
+
+      const peopleCompletedTraining = facultyWithCompletedTrainings.size;
+      const facultyYetToStart = Math.max(totalFaculty - facultyWithCompletedTrainings.size - facultyWithOngoingTrainings.size, 0);
 
       return {
         trainings: {
@@ -863,6 +1005,7 @@ export class TrainingService {
           total: totalApplications,
           approved: approvedApplications,
           approvalRate: totalApplications > 0 ? (approvedApplications / totalApplications) * 100 : 0,
+          nominations: totalApplications,
         },
         attendance: {
           total: totalAttendance,
@@ -874,9 +1017,39 @@ export class TrainingService {
           total: totalLessonPlans,
           approved: approvedLessonPlans,
           approvalRate: totalLessonPlans > 0 ? (approvedLessonPlans / totalLessonPlans) * 100 : 0,
+          created: totalLessonPlans,
         },
         certificates: {
           total: totalCertificates,
+        },
+        summary: {
+          totalTrainingsPublished: publishedTrainings,
+          completedTrainings,
+          totalFaculty,
+          facultyCompleted40Hours,
+          nominations: totalApplications,
+          peopleCompletedTraining,
+          lessonPlanCreated: totalLessonPlans,
+        },
+        courseWiseFaculty,
+        trainingMetrics: {
+          totalTrainingsConducted: completedTrainings,
+          totalFacultyRegistered,
+          totalTrainingHoursDelivered: Number(totalTrainingHoursDelivered.toFixed(2)),
+        },
+        facultyMetrics: {
+          facultyWithCompletedTrainings: facultyWithCompletedTrainings.size,
+          facultyWithOngoingTrainings: facultyWithOngoingTrainings.size,
+          facultyYetToStart,
+        },
+        completionMetrics: {
+          facultyCompleted40Hours,
+          facultyCompletedUnder40Hours,
+        },
+        hoursDistribution: {
+          averageHoursPerFaculty: Number(averageHoursPerFaculty.toFixed(2)),
+          highestHoursSingleFaculty: Number(highestHoursSingleFaculty.toFixed(2)),
+          lowestHoursSingleFaculty: Number(lowestHoursSingleFaculty.toFixed(2)),
         },
         year: now.getFullYear(),
       };
@@ -979,36 +1152,132 @@ export class TrainingService {
 
   // Get institution dashboard
   async getInstitutionDashboard(institutionId: string) {
-    const [totalTrainings, participations, upcomingTrainings, certificates] = await Promise.all([
-      this.prisma.training.count({
-        where: { isPublished: true },
-      }),
+    const now = new Date();
+
+    // ── base data ────────────────────────────────────────────────────────────
+    const [
+      totalTrainings,
+      participations,
+      upcomingTrainings,
+      certificates,
+      allFacultyInstitution,
+      approvedApps,
+    ] = await Promise.all([
+      this.prisma.training.count({ where: { isPublished: true } }),
       this.prisma.trainingApplication.count({
-        where: {
-          user: { institutionId },
-          status: 'APPROVED',
-        },
+        where: { user: { institutionId }, status: 'APPROVED' },
       }),
       this.prisma.training.findMany({
-        where: {
-          isPublished: true,
-          startDate: { gte: new Date() },
-        },
+        where: { isPublished: true, startDate: { gte: now } },
         take: 5,
         orderBy: { startDate: 'asc' },
       }),
-      this.prisma.trainingCertificate.count({
-        where: {
-          user: { institutionId },
-        },
+      this.prisma.trainingCertificate.count({ where: { user: { institutionId } } }),
+      // All faculty at this institution
+      this.prisma.user.findMany({
+        where: { institutionId, role: Role.TEACHER },
+        select: { id: true },
+      }),
+      // All approved applications for institution faculty (with training dates)
+      this.prisma.trainingApplication.findMany({
+        where: { user: { institutionId }, status: 'APPROVED' },
+        include: { training: true },
       }),
     ]);
 
+    const allFacultyIds = new Set(allFacultyInstitution.map((u) => u.id));
+    // Distinct faculty who actually enrolled (APPROVED) in at least one training
+    const totalFacultyRegistered = new Set(approvedApps.map((a) => a.userId)).size;
+
+    // ── Training Metrics ─────────────────────────────────────────────────────
+    // "Conducted" = trainings that have completed (endDate in past) and had ≥1 institution faculty
+    const conductedTrainingIds = new Set<string>();
+    let totalTrainingHoursDelivered = 0;
+
+    for (const app of approvedApps) {
+      const t = app.training;
+      if (t.endDate && t.endDate < now) {
+        conductedTrainingIds.add(t.id);
+      }
+    }
+
+    // Sum hours for conducted trainings (unique)
+    const conductedTrainings = await this.prisma.training.findMany({
+      where: { id: { in: Array.from(conductedTrainingIds) } },
+      select: { duration: true },
+    });
+    totalTrainingHoursDelivered = conductedTrainings.reduce(
+      (sum, t) => sum + (t.duration || 0),
+      0,
+    );
+
+    // ── Faculty Metrics ───────────────────────────────────────────────────────
+    const facultyWithCompletedSet = new Set<string>();
+    const facultyWithOngoingSet = new Set<string>();
+
+    for (const app of approvedApps) {
+      const t = app.training;
+      if (t.endDate && t.endDate < now) {
+        facultyWithCompletedSet.add(app.userId);
+      } else if (t.startDate && t.startDate <= now && (!t.endDate || t.endDate >= now)) {
+        facultyWithOngoingSet.add(app.userId);
+      }
+    }
+
+    const facultyWithCompleted = facultyWithCompletedSet.size;
+    const facultyWithOngoing = facultyWithOngoingSet.size;
+    // "Yet to start" = faculty at institution with NO approved application at all
+    const facultyWithAnyApp = new Set(approvedApps.map((a) => a.userId));
+    const facultyYetToStart = [...allFacultyIds].filter((id) => !facultyWithAnyApp.has(id)).length;
+
+    // ── Completion / Hours Metrics ────────────────────────────────────────────
+    // Per-faculty: sum hours of completed trainings
+    const facultyHoursMap = new Map<string, number>();
+    for (const app of approvedApps) {
+      const t = app.training;
+      if (t.endDate && t.endDate < now && t.duration) {
+        const prev = facultyHoursMap.get(app.userId) || 0;
+        facultyHoursMap.set(app.userId, prev + t.duration);
+      }
+    }
+
+    const hoursValues = Array.from(facultyHoursMap.values());
+    const facultyCompleted40Hours = hoursValues.filter((h) => h >= 40).length;
+    const facultyCompletedUnder40Hours = hoursValues.filter((h) => h > 0 && h < 40).length;
+
+    const averageHoursPerFaculty =
+      hoursValues.length > 0
+        ? Math.round(hoursValues.reduce((s, h) => s + h, 0) / hoursValues.length)
+        : 0;
+    const highestHoursSingleFaculty = hoursValues.length > 0 ? Math.max(...hoursValues) : 0;
+    const lowestHoursSingleFaculty = hoursValues.length > 0 ? Math.min(...hoursValues) : 0;
+
     return {
+      // legacy fields kept for backward compat
       totalTrainings,
-      participations,
+      totalParticipants: participations,
       certificates,
       upcomingTrainings,
+      // ── new structured blocks ──────────────────────────────────────────────
+      trainingMetrics: {
+        totalTrainingsConducted: conductedTrainingIds.size,
+        totalFacultyRegistered,
+        totalTrainingHoursDelivered,
+      },
+      facultyMetrics: {
+        facultyWithCompletedTrainings: facultyWithCompleted,
+        facultyWithOngoingTrainings: facultyWithOngoing,
+        facultyYetToStart,
+      },
+      completionMetrics: {
+        facultyCompleted40Hours,
+        facultyCompletedUnder40Hours,
+      },
+      hoursDistribution: {
+        averageHoursPerFaculty,
+        highestHoursSingleFaculty,
+        lowestHoursSingleFaculty,
+      },
     };
   }
 

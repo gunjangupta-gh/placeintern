@@ -208,9 +208,14 @@ const PrincipalTrainingDetailsPage = () => {
               <DeliveryModeBadge mode={training?.deliveryMode} />
               <DifficultyBadge level={training?.difficulty} />
             </Space>
-            <Title level={4} className="mb-1! mt-0 leading-tight">
-              {training?.title || "Training"}
-            </Title>
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <Title level={4} className="mb-0! mt-0 leading-tight">
+                {training?.title || "Training"}
+              </Title>
+              {training?.targetBranches && training.targetBranches.length > 0 && (
+                <BranchTags branches={training.targetBranches} compact />
+              )}
+            </div>
             <Text type="secondary" className="text-xs sm:text-sm">
               {training?.providedBy || "Training Provider"}
             </Text>
@@ -311,29 +316,7 @@ const PrincipalTrainingDetailsPage = () => {
             </Row>
           </Card>
 
-          {/* Target Branches */}
-          {training?.targetBranches && training.targetBranches.length > 0 && (
-            <Card
-              className="rounded-xl border-border shadow-none mb-3!"
-              styles={{
-                header: { padding: "8px 16px", minHeight: "auto" },
-                body: { padding: "16px" },
-              }}
-              title={
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <ApartmentOutlined className="text-blue-700" />
-                  <span>Target Departments</span>
-                </div>
-              }
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <Text type="secondary" className="text-xs">
-                  Departments:
-                </Text>
-                <BranchTags branches={training.targetBranches} compact />
-              </div>
-            </Card>
-          )}
+
 
           {/* Learning Outcomes */}
           <Card

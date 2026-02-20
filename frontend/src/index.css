@@ -480,6 +480,62 @@ body {
   background: rgba(var(--color-primary), 0.4);
 }
 
+/* Main layout scrollbar */
+.main-scrollbar {
+  scrollbar-gutter: stable;
+}
+
+.main-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.main-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f3;
+  border-radius: 0;
+}
+
+.main-scrollbar::-webkit-scrollbar-thumb {
+  background: #9ca0a5;
+  border-radius: 6px;
+  border: 2px solid #e5e7eb;
+}
+
+.main-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+.dark .main-scrollbar::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
+.dark .main-scrollbar::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-color: #1f2937;
+}
+
+.dark .main-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Sidebar (dark bg) scrollbar */
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 /* ============================================
    Ant Design Overrides
    ============================================ */

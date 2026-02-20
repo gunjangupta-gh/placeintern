@@ -39,6 +39,12 @@ export class FacultyLessonPlanController {
     return this.lessonPlanService.getByUser(req.user.userId, filters);
   }
 
+  @Get('pending')
+  @ApiOperation({ summary: 'Get pending lesson plans for dashboard' })
+  async getPendingLessonPlans(@Req() req) {
+    return this.lessonPlanService.getPendingForUser(req.user.userId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get lesson plan details' })
   async getLessonPlan(@Param('id') id: string, @Req() req) {

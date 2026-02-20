@@ -31,6 +31,7 @@
     "db:migration-pipeline": "ts-node scripts/migration-pipeline.ts",
     "db:migration-pipeline:dry": "cross-env DRY_RUN=true ts-node scripts/migration-pipeline.ts",
     "db:update-institutions": "ts-node scripts/update-institutions.ts",
+    "db:link-faculty-branches": "ts-node scripts/link-faculty-branches.ts",
     "db:migrate-to-postgres": "ts-node prisma/migrate-mongo-to-postgres.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

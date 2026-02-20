@@ -122,6 +122,13 @@ export class TrainingAttendanceService {
       const dateToMark = attendanceDate ? new Date(attendanceDate) : new Date();
       const dateOnly = new Date(dateToMark.getFullYear(), dateToMark.getMonth(), dateToMark.getDate());
 
+      const trainingStart = new Date(training.startDate.getFullYear(), training.startDate.getMonth(), training.startDate.getDate());
+      const trainingEnd = new Date(training.endDate.getFullYear(), training.endDate.getMonth(), training.endDate.getDate());
+
+      if (dateOnly < trainingStart || dateOnly > trainingEnd) {
+        throw new BadRequestException('Attendance can only be marked during the training period');
+      }
+
       // Verify all users have approved applications
       const applications = await this.prisma.trainingApplication.findMany({
         where: {
@@ -486,32 +493,68 @@ export class TrainingAttendanceService {
       where: { userId, status: 'APPROVED' },
       include: {
         training: {
-          select: { id: true, title: true, startDate: true, endDate: true },
+          select: { id: true, title: true, startDate: true, endDate: true, duration: true },
         },
       },
     });
 
-    const summaries = await Promise.all(
-      applications.map(async (app) => {
-        const attendance = await this.prisma.trainingAttendance.count({
-          where: { trainingId: app.trainingId, userId },
-        });
+    const trainingIds = applications.map((app) => app.trainingId);
 
-        const trainingDays = Math.ceil(
-          (app.training.endDate.getTime() - app.training.startDate.getTime()) / (1000 * 60 * 60 * 24)
-        ) + 1;
+    const attendanceByTraining = trainingIds.length > 0
+      ? await this.prisma.trainingAttendance.groupBy({
+          by: ['trainingId'],
+          where: { userId, trainingId: { in: trainingIds } },
+          _count: { _all: true },
+        })
+      : [];
 
-        return {
-          training: app.training,
-          attendedDays: attendance,
-          totalDays: trainingDays,
-          attendanceRate: (attendance / trainingDays) * 100,
-        };
-      })
+    const attendanceCountMap = new Map(
+      attendanceByTraining.map((entry) => [entry.trainingId, entry._count._all])
     );
+
+    const summaries = applications.map((app) => {
+      const attendedDays = attendanceCountMap.get(app.trainingId) || 0;
+
+      const trainingDays = Math.ceil(
+        (app.training.endDate.getTime() - app.training.startDate.getTime()) / (1000 * 60 * 60 * 24)
+      ) + 1;
+
+      const safeTrainingDays = Math.max(trainingDays, 1);
+      const totalHours = app.training.duration ?? safeTrainingDays * 8;
+      const hoursPerDay = totalHours / safeTrainingDays;
+      const completedHours = Math.min(attendedDays, safeTrainingDays) * hoursPerDay;
+
+      return {
+        training: app.training,
+        attendedDays,
+        totalDays: safeTrainingDays,
+        totalHours,
+        completedHours,
+        attendanceRate: (attendedDays / safeTrainingDays) * 100,
+      };
+    });
 
     const totalAttended = summaries.reduce((sum, s) => sum + s.attendedDays, 0);
     const totalDays = summaries.reduce((sum, s) => sum + s.totalDays, 0);
+    const totalCompletedHours = summaries.reduce((sum, s) => sum + s.completedHours, 0);
+    const attendedTrainings = summaries.filter((s) => s.attendedDays > 0);
+    const trainingsAttendedNames = [...new Set(attendedTrainings.map((s) => s.training.title))];
+    const trainingsAttended = attendedTrainings.map((s) => ({
+      id: s.training.id,
+      title: s.training.title,
+      attendedDays: s.attendedDays,
+      totalDays: s.totalDays,
+      completedHours: Number(s.completedHours.toFixed(2)),
+      totalHours: s.totalHours,
+    }));
+
+    const requiredHours = 40;
+    const requiredDays = 5;
+    const hoursCompleted = Number(totalCompletedHours.toFixed(2));
+    const daysCompleted = totalAttended;
+    const hoursCompletionPercent = Math.min(100, Math.round((hoursCompleted / requiredHours) * 100));
+    const daysCompletionPercent = Math.min(100, Math.round((daysCompleted / requiredDays) * 100));
+    const isMandatoryCompleted = hoursCompleted >= requiredHours && daysCompleted >= requiredDays;
 
     return {
       trainings: summaries,
@@ -519,7 +562,27 @@ export class TrainingAttendanceService {
         totalTrainings: summaries.length,
         totalAttendedDays: totalAttended,
         totalTrainingDays: totalDays,
+        totalCompletedHours: hoursCompleted,
+        trainingsAttendedCount: attendedTrainings.length,
+        trainingsCompleted: summaries.filter((s) => s.attendedDays >= s.totalDays).length,
+        certificatesEarned: summaries.filter((s) => s.attendedDays >= s.totalDays).length,
         overallAttendanceRate: totalDays > 0 ? (totalAttended / totalDays) * 100 : 0,
+      },
+      dashboard: {
+        mandatoryTraining: {
+          requiredHours,
+          requiredDays,
+          hoursCompleted,
+          daysCompleted,
+          hoursCompletionPercent,
+          daysCompletionPercent,
+          isCompleted: isMandatoryCompleted,
+          hoursRemaining: Math.max(0, Number((requiredHours - hoursCompleted).toFixed(2))),
+          daysRemaining: Math.max(0, requiredDays - daysCompleted),
+        },
+        trainingsAttendedCount: attendedTrainings.length,
+        trainingsAttendedNames,
+        trainingsAttended,
       },
     };
   }

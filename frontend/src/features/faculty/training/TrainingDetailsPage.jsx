@@ -20,6 +20,7 @@ import {
   Row,
   Select,
   Space,
+  Progress,
   Steps,
   Switch,
   Timeline,
@@ -65,6 +66,7 @@ import {
   fetchFeedbackStatus,
   fetchFeedbackForm,
   markSelfAttendance,
+  fetchTrainingAttendance,
   fetchPreTestForm,
   fetchPostTestForm,
   fetchTestStatuses,
@@ -105,6 +107,7 @@ const TrainingDetailsPage = () => {
     applications,
     preTest,
     postTest,
+    attendance,
   } = useSelector((state) => state.facultyTraining);
   const [applyOpen, setApplyOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -129,8 +132,17 @@ const TrainingDetailsPage = () => {
     dispatch(fetchFeedbackStatus(id));
     dispatch(fetchFeedbackForm(id));
     dispatch(fetchTestStatuses(id));
+    dispatch(fetchTrainingAttendance(id));
     dispatch(fetchUpcoming()); // For similar trainings
   }, [dispatch, id]);
+
+  const getTodayDateString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
   const training = currentTraining.data;
   const status = applicationStatus?.[id];
@@ -343,6 +355,7 @@ const TrainingDetailsPage = () => {
       await dispatch(
         markSelfAttendance({
           trainingId: id,
+          attendanceDate: getTodayDateString(),
           latitude,
           longitude,
         }),
@@ -351,6 +364,7 @@ const TrainingDetailsPage = () => {
       message.success("Attendance marked successfully!");
       dispatch(fetchMyApplications({ trainingId: id, forceRefresh: true }));
       dispatch(fetchApplicationStatus(id));
+      dispatch(fetchTrainingAttendance(id));
     } catch (error) {
       message.error(error || "Failed to mark attendance");
     } finally {
@@ -388,6 +402,10 @@ const TrainingDetailsPage = () => {
 
   const hasMarkedAttendanceToday =
     currentApplication?.hasMarkedAttendanceToday === true;
+  const trainingAttendance = attendance?.byTraining?.[id];
+  const attendedDays = trainingAttendance?.attendedDays || 0;
+  const totalDays = trainingAttendance?.totalDays || 0;
+  const attendancePercent = totalDays > 0 ? Math.round((attendedDays / totalDays) * 100) : 0;
 
   // Check if training has ended
   const trainingEnded =
@@ -735,7 +753,18 @@ const TrainingDetailsPage = () => {
                       ✓ Pre-test completed
                     </div>
                   )}
-                  {trainingOngoing && !hasMarkedAttendanceToday && (
+                  {totalDays > 0 && (
+                    <div className="bg-slate-50 rounded-md px-2 py-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] text-slate-600">Attendance</span>
+                        <span className="text-[10px] font-semibold text-slate-700">
+                          {attendedDays}/{totalDays} days
+                        </span>
+                      </div>
+                      <Progress percent={attendancePercent} size="small" showInfo={false} />
+                    </div>
+                  )}
+                  {trainingOngoing && !hasMarkedAttendanceToday && (totalDays === 0 || attendedDays < totalDays) && (
                     <Button
                       type="primary"
                       size="small"

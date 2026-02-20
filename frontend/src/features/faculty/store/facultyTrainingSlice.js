@@ -39,6 +39,9 @@ const initialState = {
   attendance: {
     list: [],
     summary: null,
+    byTraining: {},
+    loadingByTraining: {},
+    errorByTraining: {},
     loading: false,
     error: null,
   },
@@ -85,6 +88,11 @@ const initialState = {
     loading: false,
     error: null,
   },
+  pendingLessonPlans: {
+    list: [],
+    loading: false,
+    error: null,
+  },
   lastFetched: {
     trainings: null,
     trainingsKey: null,
@@ -99,6 +107,7 @@ const initialState = {
     certificates: null,
     recommendations: null,
     pendingTests: null,
+    pendingLessonPlans: null,
   },
 };
 
@@ -361,6 +370,21 @@ export const fetchAttendanceSummary = createAsyncThunk(
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch attendance summary');
+    }
+  }
+);
+
+export const fetchTrainingAttendance = createAsyncThunk(
+  'facultyTraining/fetchTrainingAttendance',
+  async (trainingId, { rejectWithValue }) => {
+    try {
+      const response = await trainingService.getTrainingAttendance(trainingId);
+      return { trainingId, data: response };
+    } catch (error) {
+      return rejectWithValue({
+        trainingId,
+        message: error.response?.data?.message || 'Failed to fetch training attendance',
+      });
     }
   }
 );
@@ -764,6 +788,31 @@ export const fetchPendingTests = createAsyncThunk(
   }
 );
 
+export const fetchPendingLessonPlans = createAsyncThunk(
+  'facultyTraining/fetchPendingLessonPlans',
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.facultyTraining.lastFetched.pendingLessonPlans;
+
+      if (isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
+        return { cached: true };
+      }
+
+      const response = await trainingService.getPendingLessonPlans();
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch pending lesson plans');
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      const state = getState().facultyTraining;
+      return !state.pendingLessonPlans.loading;
+    },
+  }
+);
+
 const facultyTrainingSlice = createSlice({
   name: 'facultyTraining',
   initialState,
@@ -977,6 +1026,40 @@ const facultyTrainingSlice = createSlice({
       .addCase(fetchAttendanceSummary.fulfilled, (state, action) => {
         state.attendance.summary = action.payload;
       })
+      .addCase(fetchTrainingAttendance.pending, (state, action) => {
+        const trainingId = action.meta.arg;
+        if (trainingId) {
+          state.attendance.loadingByTraining[trainingId] = true;
+          state.attendance.errorByTraining[trainingId] = null;
+        }
+      })
+      .addCase(fetchTrainingAttendance.fulfilled, (state, action) => {
+        const { trainingId, data } = action.payload;
+        if (trainingId) {
+          state.attendance.loadingByTraining[trainingId] = false;
+          state.attendance.byTraining[trainingId] = data;
+        }
+      })
+      .addCase(fetchTrainingAttendance.rejected, (state, action) => {
+        const trainingId = action.payload?.trainingId || action.meta.arg;
+        if (trainingId) {
+          state.attendance.loadingByTraining[trainingId] = false;
+          state.attendance.errorByTraining[trainingId] = action.payload?.message || action.payload;
+        }
+      })
+      .addCase(markSelfAttendance.fulfilled, (state, action) => {
+        const trainingId = action.meta?.arg?.trainingId;
+        if (!trainingId) return;
+
+        state.applications.list = state.applications.list.map((app) => {
+          const appTrainingId = app.trainingId || app.training?.id;
+          if (appTrainingId !== trainingId) return app;
+          return {
+            ...app,
+            hasMarkedAttendanceToday: true,
+          };
+        });
+      })
 
       // Feedback
       .addCase(fetchFeedbackForm.pending, (state) => {
@@ -1055,6 +1138,7 @@ const facultyTrainingSlice = createSlice({
         if (state.lessonPlans.current?.id === action.payload.id) {
           state.lessonPlans.current = action.payload;
         }
+        state.lastFetched.pendingLessonPlans = null;
       })
 
       // Certificates
@@ -1134,6 +1218,7 @@ const facultyTrainingSlice = createSlice({
         }
         // Invalidate pending tests cache
         state.lastFetched.pendingTests = null;
+        state.lastFetched.pendingLessonPlans = null;
       })
 
       // Post-Test
@@ -1163,6 +1248,7 @@ const facultyTrainingSlice = createSlice({
         }
         // Invalidate pending tests cache
         state.lastFetched.pendingTests = null;
+        state.lastFetched.pendingLessonPlans = null;
       })
 
       // Test Statuses
@@ -1201,6 +1287,23 @@ const facultyTrainingSlice = createSlice({
       .addCase(fetchPendingTests.rejected, (state, action) => {
         state.pendingTests.loading = false;
         state.pendingTests.error = action.payload;
+      })
+
+      // Pending Lesson Plans
+      .addCase(fetchPendingLessonPlans.pending, (state) => {
+        state.pendingLessonPlans.loading = true;
+        state.pendingLessonPlans.error = null;
+      })
+      .addCase(fetchPendingLessonPlans.fulfilled, (state, action) => {
+        state.pendingLessonPlans.loading = false;
+        if (!action.payload?.cached) {
+          state.pendingLessonPlans.list = action.payload?.pendingLessonPlans || [];
+          state.lastFetched.pendingLessonPlans = Date.now();
+        }
+      })
+      .addCase(fetchPendingLessonPlans.rejected, (state, action) => {
+        state.pendingLessonPlans.loading = false;
+        state.pendingLessonPlans.error = action.payload;
       });
   },
 });

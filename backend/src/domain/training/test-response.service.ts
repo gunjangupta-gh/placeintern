@@ -448,8 +448,8 @@ export class TestResponseService {
           },
         });
 
-        // Pre-test is pending if not submitted and training hasn't started yet or is ongoing
-        if (!preTestResponse && training.startDate >= now) {
+        // Pre-test is pending only if not submitted and training has not started yet
+        if (!preTestResponse && training.startDate > now) {
           pendingPreTests.push({
             trainingId: training.id,
             trainingTitle: training.title,

@@ -93,7 +93,20 @@ export class FacultyTrainingService {
   }
 
   async getMyTrainings(userId: string) {
-    return this.trainingService.getUserTrainings(userId);
+    const trainings = await this.trainingService.getUserTrainings(userId);
+    const branchId = await this.getFacultyBranchId(userId);
+
+    if (!branchId) {
+      return trainings;
+    }
+
+    return trainings.filter((item) => {
+      const branches = item.training?.targetBranches || [];
+      if (branches.length === 0) {
+        return true;
+      }
+      return branches.some((branch) => branch.id === branchId);
+    });
   }
 
   async getTraining(id: string, userId: string) {

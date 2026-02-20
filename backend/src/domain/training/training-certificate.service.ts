@@ -10,6 +10,12 @@ import { randomUUID } from 'crypto';
 export class TrainingCertificateService {
   private readonly logger = new Logger(TrainingCertificateService.name);
 
+  private getTrainingDays(startDate: Date, endDate: Date): number {
+    const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+    return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  }
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly cache: CacheService,
@@ -50,13 +56,17 @@ export class TrainingCertificateService {
         throw new BadRequestException('User does not have an approved application');
       }
 
-      // Check attendance
+      // Check attendance completeness
       const attendanceCount = await this.prisma.trainingAttendance.count({
         where: { userId, trainingId },
       });
 
-      if (attendanceCount === 0) {
-        throw new BadRequestException('User has no attendance records for this training');
+      const trainingDays = this.getTrainingDays(training.startDate, training.endDate);
+
+      if (attendanceCount < trainingDays) {
+        throw new BadRequestException(
+          `Incomplete attendance: ${attendanceCount}/${trainingDays} days marked. Full attendance is required.`
+        );
       }
 
       // Check if certificate already exists
@@ -112,7 +122,9 @@ export class TrainingCertificateService {
         throw new NotFoundException('Training not found');
       }
 
-      // Get users with approved applications and attendance
+      const trainingDays = this.getTrainingDays(training.startDate, training.endDate);
+
+      // Get users with approved applications and complete attendance
       const [applications, attendance, existingCerts] = await Promise.all([
         this.prisma.trainingApplication.findMany({
           where: { trainingId, userId: { in: userIds }, status: 'APPROVED' },
@@ -120,6 +132,7 @@ export class TrainingCertificateService {
         this.prisma.trainingAttendance.groupBy({
           by: ['userId'],
           where: { trainingId, userId: { in: userIds } },
+          _count: { _all: true },
         }),
         this.prisma.trainingCertificate.findMany({
           where: { trainingId, userId: { in: userIds } },
@@ -127,14 +140,18 @@ export class TrainingCertificateService {
       ]);
 
       const approvedUserIds = new Set(applications.map((a) => a.userId));
-      const attendedUserIds = new Set(attendance.map((a) => a.userId));
+      const completeAttendanceUserIds = new Set(
+        attendance
+          .filter((a) => a._count._all >= trainingDays)
+          .map((a) => a.userId)
+      );
       const existingCertUserIds = new Set(existingCerts.map((c) => c.userId));
 
       // Filter eligible users
       const eligibleUserIds = userIds.filter(
         (id) =>
           approvedUserIds.has(id) &&
-          attendedUserIds.has(id) &&
+          completeAttendanceUserIds.has(id) &&
           !existingCertUserIds.has(id)
       );
 
@@ -146,7 +163,7 @@ export class TrainingCertificateService {
           skipped: userIds.length,
           details: {
             notApproved: userIds.filter((id) => !approvedUserIds.has(id)).length,
-            noAttendance: userIds.filter((id) => !attendedUserIds.has(id)).length,
+            incompleteAttendance: userIds.filter((id) => !completeAttendanceUserIds.has(id)).length,
             alreadyIssued: existingCertUserIds.size,
           },
         };

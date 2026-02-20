@@ -464,6 +464,93 @@ export class LessonPlanService {
   }
 
   /**
+   * Get pending lesson plans for user dashboard (Faculty)
+   * Rules:
+   * - Applicable only after training completion
+   * - Pending if no lesson plan exists, or lesson plan exists in DRAFT/REVISION_REQUIRED
+   */
+  async getPendingForUser(userId: string) {
+    const now = new Date();
+
+    const approvedApplications = await this.prisma.trainingApplication.findMany({
+      where: {
+        userId,
+        status: 'APPROVED',
+        isActive: true,
+        training: {
+          endDate: { lt: now },
+        },
+      },
+      include: {
+        training: {
+          select: {
+            id: true,
+            title: true,
+            endDate: true,
+          },
+        },
+      },
+    });
+
+    if (approvedApplications.length === 0) {
+      return { pendingLessonPlans: [], totalPending: 0 };
+    }
+
+    const trainingIds = approvedApplications.map((application) => application.trainingId);
+    const lessonPlans = await this.prisma.lessonPlan.findMany({
+      where: {
+        userId,
+        trainingId: { in: trainingIds },
+      },
+      select: {
+        id: true,
+        trainingId: true,
+        status: true,
+        dueDate: true,
+      },
+    });
+
+    const lessonPlanByTrainingId = new Map(lessonPlans.map((lessonPlan) => [lessonPlan.trainingId, lessonPlan]));
+
+    const pendingLessonPlans = approvedApplications
+      .map((application) => {
+        const lessonPlan = lessonPlanByTrainingId.get(application.trainingId);
+
+        if (!lessonPlan) {
+          return {
+            type: 'CREATE_LESSON_PLAN',
+            trainingId: application.training.id,
+            trainingTitle: application.training.title,
+            endDate: application.training.endDate,
+          };
+        }
+
+        if (
+          lessonPlan.status === LessonPlanStatus.DRAFT ||
+          lessonPlan.status === LessonPlanStatus.REVISION_REQUIRED
+        ) {
+          return {
+            type: 'SUBMIT_LESSON_PLAN',
+            lessonPlanId: lessonPlan.id,
+            trainingId: application.training.id,
+            trainingTitle: application.training.title,
+            status: lessonPlan.status,
+            dueDate: lessonPlan.dueDate,
+            endDate: application.training.endDate,
+          };
+        }
+
+        return null;
+      })
+      .filter((item) => item !== null);
+
+    return {
+      pendingLessonPlans,
+      totalPending: pendingLessonPlans.length,
+    };
+  }
+
+  /**
    * Get lesson plans by user (Faculty)
    */
   async getByUser(userId: string, filters: LessonPlanFilterDto) {

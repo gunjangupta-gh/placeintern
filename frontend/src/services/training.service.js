@@ -228,6 +228,11 @@ const trainingService = {
     return response.data;
   },
 
+  async getPendingLessonPlans() {
+    const response = await API.get('/faculty/training/lesson-plans/pending');
+    return response.data;
+  },
+
   // Recommendations
   async getMyRecommendations(params = {}) {
     const queryParams = this.buildQueryParams(params);

@@ -1,34 +1,30 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Alert, Button, Card, Col, List, Row, Typography, message } from 'antd';
+import { Button, Card, Col, List, Row, Typography, message } from 'antd';
 import {
   CalendarOutlined,
   FileTextOutlined,
-  SafetyCertificateOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
-  RightOutlined,
   BellOutlined,
   ExclamationCircleOutlined,
   FormOutlined,
   SolutionOutlined,
 } from '@ant-design/icons';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import TrainingDateRange from '../../../components/training/TrainingDateRange';
-import DeliveryModeBadge from '../../../components/training/DeliveryModeBadge';
 import TrainingEmptyState from '../../../components/training/TrainingEmptyState';
 import TrainingGreeting from '../../../components/training/TrainingGreeting';
 import TrainingStatCard from '../../../components/training/TrainingStatCard';
-import TrainingBreadcrumb from '../../../components/training/TrainingBreadcrumb';
 import { DashboardSkeleton } from '../../../components/training/skeletons/TrainingSkeletons';
 import {
-  fetchUpcoming,
-  fetchMyTrainings,
   fetchPendingFeedback,
   fetchAttendanceSummary,
   fetchMyApplications,
   markSelfAttendance,
   fetchPendingTests,
+  fetchPendingLessonPlans,
+  fetchTrainingAttendance,
 } from '../store/facultyTrainingSlice';
 
 const { Title, Text } = Typography;
@@ -38,17 +34,16 @@ const TrainingDashboardPage = () => {
   const navigate = useNavigate();
   const [markingTrainingId, setMarkingTrainingId] = useState(null);
   const { user } = useSelector((state) => state.auth);
-  const { upcoming, myTrainings, feedback, attendance, applications, pendingTests } = useSelector(
+  const { feedback, attendance, applications, pendingTests, pendingLessonPlans } = useSelector(
     (state) => state.facultyTraining
   );
 
   useEffect(() => {
-    dispatch(fetchUpcoming());
-    dispatch(fetchMyTrainings());
     dispatch(fetchPendingFeedback());
     dispatch(fetchAttendanceSummary());
-    dispatch(fetchMyApplications());
+    dispatch(fetchMyApplications({ status: 'APPROVED' }));
     dispatch(fetchPendingTests());
+    dispatch(fetchPendingLessonPlans());
   }, [dispatch]);
 
   // Calculate stats with trends (mock trends for now - can be replaced with actual data)
@@ -60,55 +55,56 @@ const TrainingDashboardPage = () => {
     return pendingTestsList.length;
   }, [pendingTestsList]);
 
+  const pendingLessonPlansList = useMemo(() => {
+    return Array.isArray(pendingLessonPlans?.list) ? pendingLessonPlans.list : [];
+  }, [pendingLessonPlans?.list]);
+
+  const pendingActionsCount =
+    (feedback.pending?.length || 0) + pendingTestCount + pendingLessonPlansList.length;
+
+  const mandatoryTraining = attendance.summary?.dashboard?.mandatoryTraining;
+  const attendedTrainings = attendance.summary?.dashboard?.trainingsAttended || [];
+
   const stats = useMemo(() => {
-    const upcomingCount = upcoming.list?.length || 0;
-    const enrollmentCount = myTrainings.list?.length || 0;
-    const pendingFeedbackCount = feedback.pending?.length || 0;
-    const totalPendingActions = pendingFeedbackCount + pendingTestCount;
-    const certificatesCount = attendance.summary?.certificatesEarned || 0;
+    const requiredHours = mandatoryTraining?.requiredHours || 40;
+    const requiredDays = mandatoryTraining?.requiredDays || 5;
+    const hoursCompleted = mandatoryTraining?.hoursCompleted || 0;
+    const daysCompleted = mandatoryTraining?.daysCompleted || 0;
+    const trainingsAttendedCount = attendance.summary?.dashboard?.trainingsAttendedCount || 0;
+    const isCompleted = mandatoryTraining?.isCompleted === true;
+    const totalPendingActions = pendingActionsCount;
 
     return [
       {
-        title: 'Upcoming Trainings',
-        value: upcomingCount,
+        title: 'Mandatory Training (40h / 5d)',
+        value: `${hoursCompleted}h`,
         icon: CalendarOutlined,
-        variant: 'primary',
-        // trend: upcomingCount > 0 ? 12 : 0,
-        trendLabel: 'vs last month',
-        onClick: () => navigate('/app/training/calendar'),
+        variant: isCompleted ? 'success' : 'primary',
+        subtitle: `/ ${requiredHours}h`,
       },
       {
-        title: 'My Enrollments',
-        value: enrollmentCount,
+        title: 'Mandatory Days Completed',
+        value: daysCompleted,
         icon: CheckCircleOutlined,
-        variant: 'success',
-        subtitle: 'active',
-        onClick: () => navigate('/app/training/applications'),
+        variant: daysCompleted >= requiredDays ? 'success' : 'warning',
+        subtitle: `/ ${requiredDays} days`,
+      },
+      {
+        title: 'Trainings Attended',
+        value: trainingsAttendedCount,
+        icon: FileTextOutlined,
+        variant: 'purple',
+        subtitle: 'with attendance',
       },
       {
         title: 'Pending Actions',
         value: totalPendingActions,
-        icon: FileTextOutlined,
+        icon: BellOutlined,
         variant: 'warning',
-        trendInverse: true,
         subtitle: totalPendingActions > 0 ? 'action needed' : 'all done',
       },
     ];
-  }, [upcoming.list, myTrainings.list, feedback.pending, attendance.summary, pendingTestCount, navigate]);
-
-  // Calculate progress toward training goal
-  const trainingProgress = useMemo(() => {
-    const goal = 5; // Training goal per year
-    const completed = attendance.summary?.trainingsCompleted || 0;
-    return Math.min(100, Math.round((completed / goal) * 100));
-  }, [attendance.summary]);
-
-  // Get pending applications
-  const pendingApplications = useMemo(() => {
-    return (applications.list || []).filter(
-      (app) => ['PENDING', 'SUBMITTED'].includes(app.status)
-    );
-  }, [applications.list]);
+  }, [attendance.summary?.dashboard, mandatoryTraining, pendingActionsCount]);
 
   const todaysAttendanceApplications = useMemo(() => {
     const today = new Date();
@@ -128,18 +124,21 @@ const TrainingDashboardPage = () => {
     });
   }, [applications.list]);
 
-  // Check for deadline reminders (trainings starting in next 48 hours)
-  const upcomingReminders = useMemo(() => {
-    const now = new Date();
-    const twoDays = 48 * 60 * 60 * 1000;
-    return (myTrainings.list || []).filter((training) => {
-      const startDate = new Date(training.startDate);
-      const diff = startDate - now;
-      return diff > 0 && diff < twoDays;
-    });
-  }, [myTrainings.list]);
+  useEffect(() => {
+    const trainingIds = todaysAttendanceApplications
+      .map((app) => app.trainingId || app.training?.id)
+      .filter(Boolean);
 
-  const isLoading = upcoming.loading && myTrainings.loading && !upcoming.list;
+    trainingIds.forEach((trainingId) => {
+      const hasData = Boolean(attendance?.byTraining?.[trainingId]);
+      const isLoadingProgress = Boolean(attendance?.loadingByTraining?.[trainingId]);
+      if (!hasData && !isLoadingProgress) {
+        dispatch(fetchTrainingAttendance(trainingId));
+      }
+    });
+  }, [attendance?.byTraining, attendance?.loadingByTraining, dispatch, todaysAttendanceApplications]);
+
+  const isLoading = applications.loading && !(applications.list?.length > 0);
 
   const captureLocation = () => {
     return new Promise((resolve, reject) => {
@@ -177,6 +176,9 @@ const TrainingDashboardPage = () => {
     const trainingId = application.trainingId || application.training?.id;
     if (!trainingId) return;
 
+    const now = new Date();
+    const attendanceDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
     try {
       setMarkingTrainingId(trainingId);
       const { latitude, longitude } = await captureLocation();
@@ -184,13 +186,14 @@ const TrainingDashboardPage = () => {
       await dispatch(
         markSelfAttendance({
           trainingId,
+          attendanceDate,
           latitude,
           longitude,
         })
       ).unwrap();
 
       message.success('Attendance marked successfully!');
-      dispatch(fetchMyApplications({ forceRefresh: true }));
+      dispatch(fetchMyApplications({ status: 'APPROVED', forceRefresh: true }));
       dispatch(fetchAttendanceSummary());
     } catch (error) {
       message.error(error || 'Failed to mark attendance');
@@ -222,47 +225,11 @@ const TrainingDashboardPage = () => {
         </Button>
       </div>
 
-      {/* Reminder Banner */}
-      {upcomingReminders.length > 0 && (
-        <Alert
-          type="warning"
-          showIcon
-          icon={<BellOutlined />}
-          className="mb-4 rounded-xl"
-          message={
-            <span className="font-medium text-sm">
-              {upcomingReminders.length === 1
-                ? 'Training starting soon!'
-                : `${upcomingReminders.length} trainings starting soon!`}
-            </span>
-          }
-          description={
-            <div className="mt-0.5">
-              {upcomingReminders.slice(0, 2).map((training) => (
-                <div key={training.id} className="text-xs">
-                  <strong>{training.title}</strong> starts{' '}
-                  {new Date(training.startDate).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                </div>
-              ))}
-            </div>
-          }
-          action={
-            <Button size="small" onClick={() => navigate('/app/training/applications')}>
-              View
-            </Button>
-          }
-        />
-      )}
-
       {/* Stats Grid */}
       <Row gutter={[12, 12]} className="mb-4">
         {stats.map((stat) => (
-          <Col xs={24} sm={12} lg={8} key={stat.title}>
-            <TrainingStatCard {...stat} loading={upcoming.loading} />
+          <Col xs={24} sm={12} lg={6} key={stat.title}>
+            <TrainingStatCard {...stat} loading={applications.loading && !attendance.summary} />
           </Col>
         ))}
       </Row>
@@ -279,12 +246,16 @@ const TrainingDashboardPage = () => {
             </div>
           }
         >
-          <div className="custom-scrollbar overflow-y-auto max-h-[300px]">
+          <div className="custom-scrollbar overflow-y-auto max-h-75">
             <List
               dataSource={todaysAttendanceApplications.slice(0, 4)}
               renderItem={(app) => {
                 const trainingId = app.trainingId || app.training?.id;
                 const alreadyMarked = app.hasMarkedAttendanceToday === true;
+                const progress = trainingId ? attendance?.byTraining?.[trainingId] : null;
+                const missingDays = progress?.totalDays
+                  ? Math.max(0, progress.totalDays - (progress.attendedDays || 0))
+                  : 0;
                 return (
                   <List.Item
                     className="hover:bg-gray-50 rounded-lg px-2 -mx-2"
@@ -318,13 +289,26 @@ const TrainingDashboardPage = () => {
                         </span>
                       }
                       description={
-                        app.training?.startDate ? (
-                          <TrainingDateRange
-                            startDate={app.training.startDate}
-                            endDate={app.training.endDate}
-                            compact
-                          />
-                        ) : null
+                        <div className="space-y-1">
+                          {app.training?.startDate ? (
+                            <TrainingDateRange
+                              startDate={app.training.startDate}
+                              endDate={app.training.endDate}
+                              compact
+                            />
+                          ) : null}
+                          {progress?.totalDays > 0 && (
+                            missingDays > 0 ? (
+                              <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-[10px] font-medium">
+                                {missingDays} day{missingDays > 1 ? 's' : ''} pending
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-[10px] font-medium">
+                                Full attendance
+                              </span>
+                            )
+                          )}
+                        </div>
                       }
                     />
                   </List.Item>
@@ -335,73 +319,47 @@ const TrainingDashboardPage = () => {
         </Card>
       )}
 
-      <Row gutter={[12, 12]}>
-        {/* Upcoming Trainings */}
-        <Col xs={24} lg={14}>
+      <Row gutter={[12, 12]} className="mb-4">
+        {/* Trainings Attended */}
+        <Col xs={24} lg={12}>
           <Card
             className="rounded-xl border-border shadow-none h-full"
             styles={{ header: { padding: '8px 16px', minHeight: 'auto' }, body: { padding: '12px' } }}
             title={
               <div className="flex items-center gap-2 text-sm">
-                <ClockCircleOutlined className="text-blue-600" />
-                <span>Upcoming Trainings</span>
+                <CheckCircleOutlined className="text-green-600" />
+                <span>Trainings Attended</span>
               </div>
             }
-            extra={
-              <Link to="/app/training/calendar" className="text-primary flex items-center gap-1 text-xs">
-                View All <RightOutlined className="text-[10px]" />
-              </Link>
-            }
           >
-            {upcoming.list?.length ? (
-              <div className="custom-scrollbar overflow-y-auto max-h-[300px]">
-                <List
-                  dataSource={upcoming.list.slice(0, 4)}
-                  renderItem={(training) => (
-                    <List.Item
-                      className="hover:bg-gray-50 rounded-lg px-2 -mx-2"
-                      style={{ padding: '8px' }}
-                      actions={[
-                        <Button
-                          key="view"
-                          type="link"
-                          size="small"
-                          className="text-xs"
-                          onClick={() => navigate(`/app/training/${training.id}`)}
-                        >
-                          View
-                        </Button>,
-                      ]}
-                    >
-                      <List.Item.Meta
-                        title={<span className="font-medium text-xs truncate block">{training.title}</span>}
-                        description={
-                          <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                            <TrainingDateRange
-                              startDate={training.startDate}
-                              endDate={training.endDate}
-                              compact
-                            />
-                            <DeliveryModeBadge mode={training.deliveryMode} showIcon={false} />
-                          </div>
-                        }
-                      />
-                    </List.Item>
-                  )}
-                />
+            {attendedTrainings.length > 0 ? (
+              <div className="space-y-1.5 custom-scrollbar overflow-y-auto max-h-75 pr-1">
+                {attendedTrainings.map((training) => (
+                  <div
+                    key={training.id}
+                    className="p-2.5 rounded-lg bg-green-50 hover:bg-green-100 cursor-pointer border border-green-100"
+                    onClick={() => navigate(`/app/training/${training.id}`)}
+                  >
+                    <Text className="font-medium text-xs block truncate">{training.title}</Text>
+                    <Text className="text-[10px] text-green-700 block mt-0.5">
+                      {training.attendedDays}/{training.totalDays} days • {training.completedHours}h
+                    </Text>
+                  </div>
+                ))}
               </div>
             ) : (
               <TrainingEmptyState
                 type="calendar"
                 compact
-                onAction={() => navigate('/app/training/calendar')}
+                message="No attended trainings yet"
+                description="Mark attendance in your approved trainings to populate this list."
               />
             )}
           </Card>
         </Col>
 
         {/* Pending Actions */}
-        <Col xs={24} lg={10}>
+        <Col xs={24} lg={12}>
           <Card
             className="rounded-xl border-border shadow-none h-full"
             styles={{ header: { padding: '8px 16px', minHeight: 'auto' }, body: { padding: '12px' } }}
@@ -409,18 +367,17 @@ const TrainingDashboardPage = () => {
               <div className="flex items-center gap-2 text-sm">
                 <BellOutlined className="text-amber-600" />
                 <span>Pending Actions</span>
-                {(feedback.pending?.length > 0 || pendingApplications.length > 0 || pendingTestCount > 0) && (
+                {pendingActionsCount > 0 && (
                   <span className="ml-2 px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 rounded-full">
-                    {(feedback.pending?.length || 0) + pendingApplications.length + pendingTestCount}
+                    {pendingActionsCount}
                   </span>
                 )}
               </div>
             }
           >
-            {feedback.pending?.length > 0 || pendingApplications.length > 0 || pendingTestCount > 0 ? (
-              <div className="space-y-1.5 custom-scrollbar overflow-y-auto max-h-[300px] pr-1">
-                {/* Pending Tests - Pre-tests and Post-tests */}
-                {pendingTestsList.slice(0, 2).map((test) => {
+            {pendingActionsCount > 0 ? (
+              <div className="space-y-1.5 custom-scrollbar overflow-y-auto max-h-75 pr-1">
+                {pendingTestsList.map((test) => {
                   const isPreTest = test.type === 'PRE_TEST';
                   const trainingId = test.trainingId || test.training?.id;
                   return (
@@ -455,8 +412,7 @@ const TrainingDashboardPage = () => {
                   );
                 })}
 
-                {/* Pending Feedback */}
-                {feedback.pending?.slice(0, 2).map((item) => {
+                {feedback.pending?.map((item) => {
                   const trainingId = item.trainingId || item.training?.id || item.id;
                   return (
                     <div
@@ -482,21 +438,22 @@ const TrainingDashboardPage = () => {
                   );
                 })}
 
-                {/* Pending Applications */}
-                {pendingApplications.slice(0, 1).map((app) => (
+                {pendingLessonPlansList.map((plan) => (
                   <div
-                    key={app.id}
+                    key={`${plan.type}-${plan.trainingId}`}
                     className="flex items-center gap-2.5 p-2 rounded-lg bg-blue-50 hover:bg-blue-100 cursor-pointer"
-                    onClick={() => navigate('/app/training/applications')}
+                    onClick={() => navigate(`/app/training/${plan.trainingId}`)}
                   >
                     <div className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-200">
                       <ClockCircleOutlined className="text-blue-700 text-xs" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <Text className="font-medium text-xs block truncate">
-                        {app.training?.title || 'Training Application'}
+                        {plan.trainingTitle || 'Training'}
                       </Text>
-                      <Text className="text-[10px] text-blue-700">Awaiting approval</Text>
+                      <Text className="text-[10px] text-blue-700">
+                        {plan.type === 'CREATE_LESSON_PLAN' ? 'Create lesson plan' : 'Submit lesson plan'}
+                      </Text>
                     </div>
                     <ExclamationCircleOutlined className="text-blue-500 text-xs" />
                   </div>
@@ -508,6 +465,7 @@ const TrainingDashboardPage = () => {
           </Card>
         </Col>
       </Row>
+
     </div>
   );
 };
