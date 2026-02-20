@@ -146,7 +146,7 @@ const Layouts = () => {
         className={`
           transition-all duration-300 ease-in-out
           bg-background
-          min-h-screen
+          h-screen flex flex-col
         `}
       >
         {/* Header */
@@ -165,9 +165,9 @@ const Layouts = () => {
 
         {/* Main Content */}
         <Content
-          className="overflow-auto hide-scrollbar transition-colors duration-300"
+          className="flex-1 overflow-y-auto main-scrollbar transition-colors duration-300"
           style={{
-            minHeight: 'calc(100vh - 52px)',
+            height: 0,
           }}
         >
           <div className="max-w-[1600px] mx-auto animate-fade-in">

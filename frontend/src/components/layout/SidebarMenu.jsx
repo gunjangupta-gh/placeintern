@@ -72,7 +72,7 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
     <div className="flex flex-col flex-1 h-full min-h-0 relative overflow-hidden">
       {/* Menu Container */}
       <div
-        className="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar py-2"
+        className="flex-1 overflow-y-auto overflow-x-hidden sidebar-scrollbar py-2"
         style={{
           maxHeight: isMobile ? "calc(100vh - 180px)" : "calc(100vh - 160px)",
         }}
@@ -286,7 +286,7 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
                 lineHeight: 1.4,
               }}
             >
-              Made by {" "}
+              Made by
               <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>
                 Nikhil Kumar
               </span>
@@ -294,7 +294,7 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
               under the guidance of
               <br />
               <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>
-                SukeeratPal Singh Syan
+                Sukeerat Pal Singh Syan
               </span>
               <br />
               <span style={{ fontSize: 10 }}>
