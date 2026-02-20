@@ -170,6 +170,10 @@ export const useMonthlyReports = () => {
   const uploadReport = useCallback(async (applicationId, file, month, year) => {
     setUploading(true);
     try {
+      if (file?.size > 1 * 1024 * 1024) {
+        throw new Error('File must be smaller than 1MB');
+      }
+
       // Upload file first
       const formData = new FormData();
       formData.append('file', file);
@@ -177,22 +181,10 @@ export const useMonthlyReports = () => {
       formData.append('reportMonth', month.toString());
       formData.append('reportYear', year.toString());
 
-      // Try the upload endpoint first
-      let fileUrl = null;
-      try {
-        const uploadResponse = await API.post('/student/monthly-reports/upload', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        fileUrl = uploadResponse.data?.reportFileUrl || uploadResponse.data?.path || uploadResponse.data?.url;
-      } catch (uploadErr) {
-        // If upload endpoint fails, try shared documents upload
-        const genericFormData = new FormData();
-        genericFormData.append('file', file);
-        const genericUpload = await API.post('/shared/documents/upload', genericFormData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        fileUrl = genericUpload.data?.url || genericUpload.data?.path;
-      }
+      const uploadResponse = await API.post('/student/monthly-reports/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const fileUrl = uploadResponse.data?.reportFileUrl || uploadResponse.data?.path || uploadResponse.data?.url;
 
       // Submit report with file URL (auto-approved)
       const response = await API.post('/student/monthly-reports', {

@@ -196,8 +196,8 @@ const MonthlyReportsPage = () => {
   // Handle file change
   const handleFileChange = useCallback(({ fileList: newFileList }) => {
     const file = newFileList[0]?.originFileObj;
-    if (file && file.size > 5 * 1024 * 1024) {
-      toast.error('File must be smaller than 5MB');
+    if (file && file.size > 1 * 1024 * 1024) {
+      toast.error('File must be smaller than 1MB');
       return;
     }
     setFileList(newFileList.slice(-1));
@@ -236,6 +236,11 @@ const MonthlyReportsPage = () => {
     const file = fileList[0]?.originFileObj || fileList[0];
     if (!file) {
       toast.error('Invalid file');
+      return;
+    }
+
+    if (file.size > 1 * 1024 * 1024) {
+      toast.error('File must be smaller than 1MB');
       return;
     }
 
@@ -771,7 +776,7 @@ const MonthlyReportsPage = () => {
                 Click or drag PDF file to upload
               </p>
               <p className="ant-upload-hint text-xs" style={{ color: token.colorTextTertiary }}>
-                Maximum file size: 5MB
+                Maximum file size: 1MB
               </p>
             </Upload.Dragger>
           </div>

@@ -387,6 +387,11 @@ export class FacultyController {
       throw new BadRequestException('No file provided');
     }
 
+    const maxSizeInBytes = 1 * 1024 * 1024;
+    if (file.size > maxSizeInBytes) {
+      throw new BadRequestException('File size must be under 1MB');
+    }
+
     return this.facultyService.uploadMonthlyReport(file, body, req.user.userId, this.fileStorageService);
   }
 

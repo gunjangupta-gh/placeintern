@@ -35,7 +35,7 @@ const { Option } = Select;
 const { TextArea } = Input;
 const { Text } = Typography;
 
-const MIN_WORDS = 100;
+const MIN_WORDS = 25;
 const countWords = (value = '') => value.trim().split(/\s+/).filter(Boolean).length;
 const minWordsRule = (label, required) => ({
   validator: (_, value) => {
@@ -493,7 +493,7 @@ const UnifiedVisitLogModal = ({
             rules={[minWordsRule('Observations', isCompletedStatus)]}
             className="mb-2!"
           >
-            <TextArea rows={2} placeholder="Observations about student (min 100 words)" maxLength={2000} showCount />
+            <TextArea rows={2} placeholder="Observations about student (min 25 words)" maxLength={2000} showCount />
           </Form.Item>
           <Form.Item
             name="feedbackSharedWithStudent"
@@ -501,7 +501,7 @@ const UnifiedVisitLogModal = ({
             rules={[minWordsRule('Feedback', isCompletedStatus)]}
             className="mb-0!"
           >
-            <TextArea rows={1} placeholder="Feedback shared with student (min 100 words)" maxLength={2000} />
+            <TextArea rows={1} placeholder="Feedback shared with student (min 25 words)" maxLength={2000} />
           </Form.Item>
         </Card>
 

@@ -7,7 +7,7 @@ import { createVisitLog, updateVisitLog, fetchVisitLogById, fetchAssignedStudent
 import { fetchCompanies } from '../../../store/slices/companySlice';
 import dayjs from 'dayjs';
 
-const MIN_WORDS = 100;
+const MIN_WORDS = 25;
 const countWords = (value = '') => value.trim().split(/\s+/).filter(Boolean).length;
 const minWordsRule = (label, required) => ({
   validator: (_, value) => {
@@ -466,12 +466,12 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
           <Form.Item
             name="observationsAboutStudent"
             label="Observations about the Student"
-            extra="Please provide at least 100 words"
+            extra="Please provide at least 25 words"
             rules={[minWordsRule('Observations', isCompletedStatus)]}
           >
             <Input.TextArea
               rows={4}
-              placeholder="Enter your observations about the student (at least 100 words)..."
+              placeholder="Enter your observations about the student (at least 25 words)..."
               showCount
               maxLength={2000}
             />

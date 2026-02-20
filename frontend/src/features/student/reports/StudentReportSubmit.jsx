@@ -167,8 +167,8 @@ const StudentReportSubmit = () => {
   // Handle file change
   const handleFileChange = useCallback(({ fileList: newFileList }) => {
     const file = newFileList[0]?.originFileObj;
-    if (file && file.size > 5 * 1024 * 1024) {
-      toast.error('File must be smaller than 5MB');
+    if (file && file.size > 1 * 1024 * 1024) {
+      toast.error('File must be smaller than 1MB');
       return;
     }
     setFileList(newFileList.slice(-1));
@@ -214,6 +214,11 @@ const StudentReportSubmit = () => {
       return;
     }
 
+    if (file.size > 1 * 1024 * 1024) {
+      toast.error('File must be smaller than 1MB');
+      return;
+    }
+
     const monthValue = autoMonthSelection ? dayjs().month() + 1 : selectedMonth;
     const yearValue = autoMonthSelection ? dayjs().year() : selectedYear;
 
@@ -231,21 +236,10 @@ const StudentReportSubmit = () => {
       formData.append('reportMonth', monthValue.toString());
       formData.append('reportYear', yearValue.toString());
 
-      let fileUrl = null;
-      try {
-        const uploadResponse = await API.post('/student/monthly-reports/upload', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        fileUrl = uploadResponse.data?.reportFileUrl || uploadResponse.data?.url;
-      } catch (uploadErr) {
-        // Fallback to shared documents upload
-        const genericFormData = new FormData();
-        genericFormData.append('file', file);
-        const genericUpload = await API.post('/shared/documents/upload', genericFormData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        fileUrl = genericUpload.data?.url || genericUpload.data?.path;
-      }
+      const uploadResponse = await API.post('/student/monthly-reports/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const fileUrl = uploadResponse.data?.reportFileUrl || uploadResponse.data?.url;
 
       // Step 2: Submit report using Redux action
       await dispatch(createReport({
@@ -663,7 +657,7 @@ const StudentReportSubmit = () => {
                 Click or drag PDF file to upload
               </p>
               <p className="ant-upload-hint text-xs" style={{ color: token.colorTextTertiary }}>
-                Maximum file size: 5MB
+                Maximum file size: 1MB
               </p>
             </Upload.Dragger>
           </div>

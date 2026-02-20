@@ -291,10 +291,26 @@ export class StudentController {
       throw new BadRequestException('No file provided');
     }
 
-    // Get student info for proper file path
-    const profile = await this.studentService.getProfile(req.user.userId);
+    const maxSizeInBytes = 1 * 1024 * 1024;
+    if (file.size > maxSizeInBytes) {
+      throw new BadRequestException('File size must be under 1MB');
+    }
+
     const reportMonth = parseInt(reportDto.reportMonth, 10);
     const reportYear = parseInt(reportDto.reportYear, 10);
+
+    if (!reportDto.applicationId || Number.isNaN(reportMonth) || Number.isNaN(reportYear)) {
+      throw new BadRequestException('applicationId, reportMonth and reportYear are required');
+    }
+
+    await this.studentService.validateReportUploadEligibility(req.user.userId, {
+      applicationId: reportDto.applicationId,
+      reportMonth,
+      reportYear,
+    });
+
+    // Get student info for proper file path
+    const profile = await this.studentService.getProfile(req.user.userId);
 
     // Get institution name for folder structure (Student has direct Institution relation)
     const institutionName = (profile as any).Institution?.name || 'default';
@@ -312,12 +328,23 @@ export class StudentController {
       year: reportYear.toString(),
     });
 
-    return this.studentService.uploadReportFile(req.user.userId, {
-      applicationId: reportDto.applicationId,
-      reportMonth,
-      reportYear,
-      reportFileUrl: result.url,
-    });
+    try {
+      return await this.studentService.uploadReportFile(req.user.userId, {
+        applicationId: reportDto.applicationId,
+        reportMonth,
+        reportYear,
+        reportFileUrl: result.url,
+      });
+    } catch (error) {
+      if (result?.key) {
+        try {
+          await this.fileStorageService.deleteFile(result.key);
+        } catch {
+          // Best-effort cleanup only
+        }
+      }
+      throw error;
+    }
   }
 
   // Faculty Visits

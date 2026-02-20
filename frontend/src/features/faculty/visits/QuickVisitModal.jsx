@@ -28,7 +28,7 @@ import { createVisitLog, uploadVisitDocument, fetchVisitLogs } from '../store/fa
 const { Option } = Select;
 const { TextArea } = Input;
 
-const MIN_WORDS = 100;
+const MIN_WORDS = 25;
 const countWords = (value = '') => value.trim().split(/\s+/).filter(Boolean).length;
 const minWordsRule = (label, required) => ({
   validator: (_, value) => {
@@ -541,12 +541,12 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
         <Form.Item
           name="observationsAboutStudent"
           label="Observations about the Student"
-          extra="Please provide at least 100 words"
+          extra="Please provide at least 25 words"
           rules={[minWordsRule('Observations', isCompletedStatus)]}
         >
           <TextArea
             rows={4}
-            placeholder="Enter your observations about the student (at least 100 words)..."
+            placeholder="Enter your observations about the student (at least 25 words)..."
             maxLength={2000}
             showCount
           />

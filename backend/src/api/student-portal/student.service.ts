@@ -2272,13 +2272,12 @@ export class StudentService {
   /**
    * Upload report file and save as DRAFT (for cases where user wants to upload before submitting)
    */
-  async uploadReportFile(
+  private async validateMonthlyReportUploadPreconditions(
     userId: string,
     reportDto: {
       applicationId: string;
       reportMonth: number;
       reportYear: number;
-      reportFileUrl: string;
     }
   ) {
     const student = await this.prisma.student.findUnique({
@@ -2290,7 +2289,6 @@ export class StudentService {
       throw new NotFoundException("Student not found");
     }
 
-    // Verify application belongs to student
     const application = await this.prisma.internshipApplication.findFirst({
       where: {
         id: reportDto.applicationId,
@@ -2309,7 +2307,6 @@ export class StudentService {
       throw new NotFoundException("Application not found");
     }
 
-    // CRITICAL FIX 10.1: Validate report timing for upload as well
     const internshipStartDate =
       application.startDate || application.joiningDate;
     if (internshipStartDate) {
@@ -2353,7 +2350,6 @@ export class StudentService {
       }
     }
 
-    // Check if report exists
     const existingReport = await this.prisma.monthlyReport.findFirst({
       where: {
         applicationId: reportDto.applicationId,
@@ -2363,12 +2359,38 @@ export class StudentService {
       },
     });
 
-    if (existingReport) {
-      // Don't update if already approved
-      if (existingReport.status === MonthlyReportStatus.APPROVED) {
-        throw new BadRequestException("Approved reports cannot be modified");
-      }
+    if (existingReport?.status === MonthlyReportStatus.APPROVED) {
+      throw new BadRequestException("Approved reports cannot be modified");
+    }
 
+    return { student, existingReport };
+  }
+
+  async validateReportUploadEligibility(
+    userId: string,
+    reportDto: {
+      applicationId: string;
+      reportMonth: number;
+      reportYear: number;
+    }
+  ) {
+    await this.validateMonthlyReportUploadPreconditions(userId, reportDto);
+    return { valid: true };
+  }
+
+  async uploadReportFile(
+    userId: string,
+    reportDto: {
+      applicationId: string;
+      reportMonth: number;
+      reportYear: number;
+      reportFileUrl: string;
+    }
+  ) {
+    const { student, existingReport } =
+      await this.validateMonthlyReportUploadPreconditions(userId, reportDto);
+
+    if (existingReport) {
       // Update existing report with file
       const updated = await this.prisma.monthlyReport.update({
         where: { id: existingReport.id },

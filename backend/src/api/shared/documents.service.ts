@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nest
 import { PrismaService } from '../../core/database/prisma.service';
 import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
-import { AuditAction, AuditCategory, AuditSeverity, Role } from '../../generated/prisma/client';
+import { AuditAction, AuditCategory, AuditSeverity, DocumentType, Role } from '../../generated/prisma/client';
 
 interface PaginationParams {
   page?: number;
@@ -48,6 +48,11 @@ export class DocumentsService {
         throw new ForbiddenException('Only students can upload documents');
       }
 
+      const normalizedType = (metadata?.type || '').toString().trim().toUpperCase();
+      const resolvedType = Object.values(DocumentType).includes(normalizedType as DocumentType)
+        ? (normalizedType as DocumentType)
+        : DocumentType.OTHER;
+
       // Get institution name for folder structure
       const institution = student.user.institutionId
         ? await this.prisma.institution.findUnique({
@@ -68,7 +73,7 @@ export class DocumentsService {
       const document = await this.prisma.document.create({
         data: {
           studentId: student.id,
-          type: metadata.type as any,
+          type: resolvedType,
           fileName: metadata.fileName || file.originalname,
           fileUrl: uploadResult.url,
         },
@@ -82,7 +87,7 @@ export class DocumentsService {
         userId,
         userName: student.user.name,
         userRole: student.user.role,
-        description: `Document uploaded: ${document.fileName} (${metadata.type})`,
+        description: `Document uploaded: ${document.fileName} (${resolvedType})`,
         category: AuditCategory.PROFILE_MANAGEMENT,
         severity: AuditSeverity.MEDIUM,
         institutionId: student.user.institutionId || undefined,
