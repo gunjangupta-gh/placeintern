@@ -3,8 +3,6 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   Button,
   Card,
-  Col,
-  Row,
   Space,
   Table,
   Typography,
@@ -37,7 +35,7 @@ const STAT_VARIANTS = {
   },
 };
 
-const StatCard = ({ icon: Icon, title, value, valueLabel, onClick, subtitle, variant = "primary" }) => {
+const StatCard = ({ icon: Icon, title, lines = [], onClick, variant = "primary" }) => {
   const styles = STAT_VARIANTS[variant] || STAT_VARIANTS.primary;
 
   return (
@@ -54,19 +52,13 @@ const StatCard = ({ icon: Icon, title, value, valueLabel, onClick, subtitle, var
           {title}
         </Text>
       </div>
-      {/* Value + unit label inline */}
-      <div className="flex items-baseline gap-1.5 mb-0.5">
-        <Text className="text-[30px] leading-none font-bold text-slate-800">{value}</Text>
-        {valueLabel && (
-          <Text className="text-[11px] text-slate-500 font-medium">{valueLabel}</Text>
-        )}
+      <div className="space-y-1 mt-1">
+        {lines.map((line) => (
+          <Text key={line.label} className="block text-[12px] leading-snug text-slate-600">
+            {line.label}: <span className="font-semibold text-slate-800">{line.value}</span>
+          </Text>
+        ))}
       </div>
-      {/* Subtitle on its own line */}
-      {subtitle && (
-        <Text className="block text-[11px] text-slate-500 leading-snug mt-1">
-          {subtitle}
-        </Text>
-      )}
     </div>
   );
 };
@@ -96,69 +88,72 @@ const TrainingDashboardPage = () => {
   const stats = useMemo(
     () => [
       {
-        title: "Total Trainings",
-        value: summary.totalTrainingsPublished || trainings.published || 0,
-        valueLabel: "published",
+        title: "Trainings",
         icon: CalendarOutlined,
-        subtitle: `Completed Trainings: ${summary.completedTrainings || trainings.completed || 0}`,
+        lines: [
+          { label: "Published", value: summary.totalTrainingsPublished || trainings.published || 0 },
+          { label: "Conducted", value: trainingMetrics.totalTrainingsConducted || 0 },
+          { label: "Hours Delivered", value: trainingMetrics.totalTrainingHoursDelivered || 0 },
+        ],
         variant: "primary",
         onClick: () => navigate("/app/training/manage"),
       },
       {
-        title: "Faculty ",
-        value: summary.nominations || applications.nominations || applications.total || 0,
-        valueLabel: "nominations",
+        title: "Faculty",
         icon: PlusOutlined,
-        subtitle: `Completed 40 hrs: ${summary.facultyCompleted40Hours || completionMetrics.facultyCompleted40Hours || 0} faculty`,
+        lines: [
+          { label: "Nominations", value: summary.nominations || applications.nominations || applications.total || 0 },
+          { label: "Completed", value: facultyMetrics.facultyWithCompletedTrainings || 0 },
+          { label: "Ongoing", value: facultyMetrics.facultyWithOngoingTrainings || 0 },
+          { label: "Yet to Start", value: facultyMetrics.facultyYetToStart || 0 },
+        ],
         variant: "warning",
         onClick: () => navigate("/app/training/manage"),
       },
       {
         title: "Lesson Plan",
-        value: summary.peopleCompletedTraining || 0,
-        valueLabel: "people completed training",
         icon: BookOutlined,
-        subtitle: `Lesson Plans Created: ${summary.lessonPlanCreated || lessonPlans.created || lessonPlans.total || 0}`,
+        lines: [
+          { label: "People Completed Training", value: summary.peopleCompletedTraining || 0 },
+          { label: "Lesson Plans Created", value: summary.lessonPlanCreated || lessonPlans.created || lessonPlans.total || 0 },
+        ],
         variant: "purple",
         onClick: () => navigate("/app/training/lesson-plans"),
       },
+      {
+        title: "Completion Metrics",
+        icon: SettingOutlined,
+        lines: [
+          { label: "Faculty Completed ≥ 40 Hours", value: completionMetrics.facultyCompleted40Hours || 0 },
+          { label: "Faculty Completed < 40 Hours", value: completionMetrics.facultyCompletedUnder40Hours || 0 },
+        ],
+        variant: "warning",
+        onClick: () => navigate("/app/training/manage"),
+      },
+      {
+        title: "Hours Distribution",
+        icon: CalendarOutlined,
+        lines: [
+          { label: "Average Hours per Faculty", value: hoursDistribution.averageHoursPerFaculty || 0 },
+          { label: "Highest Hours (Single Faculty)", value: hoursDistribution.highestHoursSingleFaculty || 0 },
+          { label: "Lowest Hours", value: hoursDistribution.lowestHoursSingleFaculty || 0 },
+        ],
+        variant: "primary",
+        onClick: () => navigate("/app/training/manage"),
+      },
     ],
-    [trainings, applications, summary, completionMetrics, lessonPlans, navigate],
+    [
+      trainings,
+      applications,
+      summary,
+      completionMetrics,
+      lessonPlans,
+      trainingMetrics,
+      facultyMetrics,
+      hoursDistribution,
+      navigate,
+    ],
   );
-
-  const metricCards = [
-    {
-      section: "Trainings",
-      items: [
-        { label: "Total Trainings Conducted", value: trainingMetrics.totalTrainingsConducted || 0 },
-        { label: "Total Faculty Registered", value: trainingMetrics.totalFacultyRegistered || 0 },
-        { label: "Total Training Hours Delivered", value: trainingMetrics.totalTrainingHoursDelivered || 0 },
-      ],
-    },
-    {
-      section: "Faculty",
-      items: [
-        { label: "Faculty with Completed Trainings", value: facultyMetrics.facultyWithCompletedTrainings || 0 },
-        { label: "Faculty with Ongoing Trainings", value: facultyMetrics.facultyWithOngoingTrainings || 0 },
-        { label: "Faculty Yet to Start", value: facultyMetrics.facultyYetToStart || 0 },
-      ],
-    },
-    {
-      section: "Training Completion Metrics",
-      items: [
-        { label: "Faculty Completed ≥ 40 Hours", value: completionMetrics.facultyCompleted40Hours || 0 },
-        { label: "Faculty Completed < 40 Hours", value: completionMetrics.facultyCompletedUnder40Hours || 0 },
-      ],
-    },
-    {
-      section: "Hours Distribution",
-      items: [
-        { label: "Average Hours per Faculty", value: hoursDistribution.averageHoursPerFaculty || 0 },
-        { label: "Highest Hours (Single Faculty)", value: hoursDistribution.highestHoursSingleFaculty || 0 },
-        { label: "Lowest Hours", value: hoursDistribution.lowestHoursSingleFaculty || 0 },
-      ],
-    },
-  ];
 
   const courseColumns = [
     {
@@ -207,38 +202,13 @@ const TrainingDashboardPage = () => {
       </div>
 
       {/* Stats Cards */}
-      <Row gutter={[10, 10]} className="mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-3">
         {stats.map((stat) => (
-          <Col xs={24} sm={12} lg={8} key={stat.title}>
+          <div key={stat.title}>
             <StatCard {...stat} />
-          </Col>
+          </div>
         ))}
-      </Row>
-
-      <Row gutter={[12, 12]} className="mb-4">
-        {metricCards.map((section) => (
-          <Col xs={24} lg={12} key={section.section}>
-            <Card
-              className="rounded-xl border-border shadow-none h-full"
-              styles={{ body: { padding: "16px" } }}
-              title={
-                <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  {section.section}
-                </Text>
-              }
-            >
-              <div className="space-y-2">
-                {section.items.map((item) => (
-                  <div key={item.label} className="flex items-center justify-between">
-                    <Text className="text-xs text-slate-500">{item.label}</Text>
-                    <Text className="text-sm font-semibold text-slate-800">{item.value}</Text>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </Col>
-        ))}
-      </Row>
+      </div>
 
       <Card
         className="rounded-xl border-border shadow-none"

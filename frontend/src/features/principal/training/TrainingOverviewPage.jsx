@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Button, Card, Input, Table, Tag, Tooltip, Typography } from 'antd';
+import { Card, Input, Table, Tag, Tooltip, Typography } from 'antd';
 import {
   CalendarOutlined,
   TeamOutlined,
   CheckCircleOutlined,
   BarChartOutlined,
-  EyeOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -26,7 +25,7 @@ const STAT_VARIANTS = {
   emerald:{ iconWrap: 'bg-emerald-100',iconColor: 'text-emerald-700'},
 };
 
-const StatCard = ({ icon: Icon, title, value, valueLabel, subtitle, variant = 'blue', onClick }) => {
+const StatCard = ({ icon: Icon, title, lines = [], variant = 'blue', onClick }) => {
   const s = STAT_VARIANTS[variant] || STAT_VARIANTS.blue;
   return (
     <div
@@ -39,11 +38,13 @@ const StatCard = ({ icon: Icon, title, value, valueLabel, subtitle, variant = 'b
         </span>
         <Text className="text-[11px] text-slate-600 font-medium leading-tight">{title}</Text>
       </div>
-      <div className="flex items-baseline gap-1.5 mb-0.5">
-        <Text className="text-[26px] leading-none font-bold text-slate-800">{value}</Text>
-        {valueLabel && <Text className="text-[11px] text-slate-500 font-medium">{valueLabel}</Text>}
+      <div className="space-y-1 mt-1">
+        {lines.map((line) => (
+          <Text key={line.label} className="block text-[12px] leading-snug text-slate-600">
+            {line.label}: <span className="font-semibold text-slate-800">{line.value}</span>
+          </Text>
+        ))}
       </div>
-      {subtitle && <Text className="block text-[11px] text-slate-500 leading-snug mt-1">{subtitle}</Text>}
     </div>
   );
 };
@@ -74,39 +75,54 @@ const TrainingOverviewPage = () => {
       title: 'Trainings',
       icon: CalendarOutlined,
       variant: 'blue',
-      value: trainingMetrics.totalTrainingsConducted ?? 0,
-      valueLabel: 'conducted',
-      subtitle: `Total Faculty: ${trainingMetrics.totalFacultyRegistered ?? 0} • Hours Delivered: ${trainingMetrics.totalTrainingHoursDelivered ?? 0} hrs`,
+      lines: [
+        { label: 'Trainings Conducted', value: trainingMetrics.totalTrainingsConducted ?? 0 },
+        { label: 'Total Faculty Registered', value: trainingMetrics.totalFacultyRegistered ?? 0 },
+        { label: 'Hours Delivered', value: trainingMetrics.totalTrainingHoursDelivered ?? 0 },
+      ],
     },
     {
       title: 'Faculty',
       icon: TeamOutlined,
       variant: 'amber',
-      value: facultyMetrics.facultyWithCompletedTrainings ?? 0,
-      valueLabel: 'completed',
-      subtitle: `Ongoing: ${facultyMetrics.facultyWithOngoingTrainings ?? 0} • Yet to Start: ${facultyMetrics.facultyYetToStart ?? 0}`,
+      lines: [
+        { label: 'Completed', value: facultyMetrics.facultyWithCompletedTrainings ?? 0 },
+        { label: 'Ongoing', value: facultyMetrics.facultyWithOngoingTrainings ?? 0 },
+        { label: 'Yet to Start', value: facultyMetrics.facultyYetToStart ?? 0 },
+      ],
     },
     {
-      title: 'Training Completion Metrics',
+      title: 'Completion Metrics',
       icon: CheckCircleOutlined,
       variant: 'purple',
-      value: completionMetrics.facultyCompleted40Hours ?? 0,
-      valueLabel: 'completed ≥ 40 hrs',
-      subtitle: `Completed < 40 hrs: ${completionMetrics.facultyCompletedUnder40Hours ?? 0} faculty`,
+      lines: [
+        { label: 'Faculty Completed ≥ 40 Hours', value: completionMetrics.facultyCompleted40Hours ?? 0 },
+        { label: 'Faculty Completed < 40 Hours', value: completionMetrics.facultyCompletedUnder40Hours ?? 0 },
+      ],
     },
     {
       title: 'Hours Distribution',
       icon: BarChartOutlined,
       variant: 'emerald',
-      value: hoursDistribution.averageHoursPerFaculty ?? 0,
-      valueLabel: 'hrs avg',
-      subtitle: `Highest: ${hoursDistribution.highestHoursSingleFaculty ?? 0} hrs • Lowest: ${hoursDistribution.lowestHoursSingleFaculty ?? 0} hrs`,
+      lines: [
+        { label: 'Average Hours per Faculty', value: hoursDistribution.averageHoursPerFaculty ?? 0 },
+        { label: 'Highest Hours (Single Faculty)', value: hoursDistribution.highestHoursSingleFaculty ?? 0 },
+        { label: 'Lowest Hours', value: hoursDistribution.lowestHoursSingleFaculty ?? 0 },
+      ],
     },
   ];
 
-  const filteredTrainings = (trainings.list || []).filter(
-    (t) => !searchText || t.title?.toLowerCase().includes(searchText.toLowerCase())
-  );
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const filteredTrainings = (trainings.list || [])
+    .filter((t) => {
+      const enrolledFaculty = Array.isArray(t.enrolledFaculty) ? t.enrolledFaculty : [];
+      const isEnrolledTraining = enrolledFaculty.length > 0;
+      const isNotPastTraining = !t.endDate || new Date(t.endDate) >= today;
+      return isEnrolledTraining && isNotPastTraining;
+    })
+    .filter((t) => !searchText || t.title?.toLowerCase().includes(searchText.toLowerCase()));
 
   const trainingColumns = [
     {
@@ -169,21 +185,6 @@ const TrainingOverviewPage = () => {
           </div>
         );
       },
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 100,
-      render: (_, record) => (
-        <Tooltip title="View">
-          <Button
-            type="text"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => navigate(`/app/training/${record.id}`)}
-          />
-        </Tooltip>
-      ),
     },
   ];
 

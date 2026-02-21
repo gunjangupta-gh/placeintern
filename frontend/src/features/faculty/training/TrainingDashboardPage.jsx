@@ -66,35 +66,23 @@ const TrainingDashboardPage = () => {
   const attendedTrainings = attendance.summary?.dashboard?.trainingsAttended || [];
 
   const stats = useMemo(() => {
-    const requiredHours = mandatoryTraining?.requiredHours || 40;
-    const requiredDays = mandatoryTraining?.requiredDays || 5;
     const hoursCompleted = mandatoryTraining?.hoursCompleted || 0;
-    const daysCompleted = mandatoryTraining?.daysCompleted || 0;
     const trainingsAttendedCount = attendance.summary?.dashboard?.trainingsAttendedCount || 0;
     const isCompleted = mandatoryTraining?.isCompleted === true;
     const totalPendingActions = pendingActionsCount;
 
     return [
       {
-        title: 'Mandatory Training (40h / 5d)',
+        title: 'Training Hours Completed',
         value: `${hoursCompleted}h`,
         icon: CalendarOutlined,
         variant: isCompleted ? 'success' : 'primary',
-        subtitle: `/ ${requiredHours}h`,
-      },
-      {
-        title: 'Mandatory Days Completed',
-        value: daysCompleted,
-        icon: CheckCircleOutlined,
-        variant: daysCompleted >= requiredDays ? 'success' : 'warning',
-        subtitle: `/ ${requiredDays} days`,
       },
       {
         title: 'Trainings Attended',
         value: trainingsAttendedCount,
         icon: FileTextOutlined,
         variant: 'purple',
-        subtitle: 'with attendance',
       },
       {
         title: 'Pending Actions',
@@ -228,7 +216,7 @@ const TrainingDashboardPage = () => {
       {/* Stats Grid */}
       <Row gutter={[12, 12]} className="mb-4">
         {stats.map((stat) => (
-          <Col xs={24} sm={12} lg={6} key={stat.title}>
+          <Col xs={24} sm={12} lg={8} key={stat.title}>
             <TrainingStatCard {...stat} loading={applications.loading && !attendance.summary} />
           </Col>
         ))}
