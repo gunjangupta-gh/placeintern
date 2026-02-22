@@ -30,6 +30,44 @@ export class FacultyService {
     return normalized === 'PHONE' ? 'TELEPHONIC' : normalized;
   }
 
+  private isMonthlyReportUniqueConstraintError(error: unknown): boolean {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+      return false;
+    }
+
+    if (error.code !== 'P2002') {
+      return false;
+    }
+
+    const target = (error.meta as { target?: string[] } | undefined)?.target;
+    if (!Array.isArray(target)) {
+      return false;
+    }
+
+    return (
+      target.includes('applicationId') &&
+      target.includes('reportMonth') &&
+      target.includes('reportYear')
+    );
+  }
+
+  private async deleteSoftDeletedMonthlyReportConflicts(params: {
+    applicationId: string;
+    reportMonth: number;
+    reportYear: number;
+  }) {
+    const { applicationId, reportMonth, reportYear } = params;
+
+    await this.prisma.monthlyReport.deleteMany({
+      where: {
+        applicationId,
+        reportMonth,
+        reportYear,
+        isDeleted: true,
+      },
+    });
+  }
+
   /**
    * Build optional fields object using only valid Prisma FacultyVisitLog schema fields
    * This ensures type safety and prevents unknown field errors
@@ -2596,6 +2634,12 @@ export class FacultyService {
     // Use application.id for consistency (handles both applicationId and studentId cases)
     const appId = application.id;
 
+    await this.deleteSoftDeletedMonthlyReportConflicts({
+      applicationId: appId,
+      reportMonth,
+      reportYear,
+    });
+
     // Check if report already exists for this month
     const existingReport = await this.prisma.monthlyReport.findFirst({
       where: {
@@ -2646,18 +2690,64 @@ export class FacultyService {
       }
     }
 
-    const report = await this.prisma.monthlyReport.create({
-      data: {
+    let report;
+
+    try {
+      report = await this.prisma.monthlyReport.create({
+        data: {
+          applicationId: appId,
+          studentId: application.studentId,
+          reportMonth,
+          reportYear,
+          monthName: monthNames[reportMonth - 1] || `Month ${reportMonth}`,
+          status: 'APPROVED', // Auto-approve when faculty uploads on behalf of student
+          isApproved: true,
+          approvedAt: new Date(),
+          approvedBy: facultyId,
+          submittedAt: new Date(),
+          reportFileUrl: reportFileKey, // Store the key, not the full URL
+        },
+      });
+    } catch (error) {
+      if (!this.isMonthlyReportUniqueConstraintError(error)) {
+        throw error;
+      }
+
+      await this.deleteSoftDeletedMonthlyReportConflicts({
         applicationId: appId,
-        studentId: application.studentId,
         reportMonth,
         reportYear,
-        monthName: monthNames[reportMonth - 1] || `Month ${reportMonth}`,
-        status: 'SUBMITTED',
-        submittedAt: new Date(),
-        reportFileUrl: reportFileKey, // Store the key, not the full URL
-      },
-    });
+      });
+
+      const conflictingActiveReport = await this.prisma.monthlyReport.findFirst({
+        where: {
+          applicationId: appId,
+          reportMonth,
+          reportYear,
+          isDeleted: false,
+        },
+      });
+
+      if (conflictingActiveReport) {
+        throw new BadRequestException(`Report for ${month}/${year} already exists`);
+      }
+
+      report = await this.prisma.monthlyReport.create({
+        data: {
+          applicationId: appId,
+          studentId: application.studentId,
+          reportMonth,
+          reportYear,
+          monthName: monthNames[reportMonth - 1] || `Month ${reportMonth}`,
+          status: 'APPROVED',
+          isApproved: true,
+          approvedAt: new Date(),
+          approvedBy: facultyId,
+          submittedAt: new Date(),
+          reportFileUrl: reportFileKey,
+        },
+      });
+    }
 
     // Increment report count for the application
     await this.expectedCycleService.incrementReportCount(appId);

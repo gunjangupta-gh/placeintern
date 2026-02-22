@@ -66,6 +66,44 @@ export class StudentService {
     private readonly expectedCycleService: ExpectedCycleService
   ) {}
 
+  private isMonthlyReportUniqueConstraintError(error: unknown): boolean {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+      return false;
+    }
+
+    if (error.code !== "P2002") {
+      return false;
+    }
+
+    const target = (error.meta as { target?: string[] } | undefined)?.target;
+    if (!Array.isArray(target)) {
+      return false;
+    }
+
+    return (
+      target.includes("applicationId") &&
+      target.includes("reportMonth") &&
+      target.includes("reportYear")
+    );
+  }
+
+  private async deleteSoftDeletedMonthlyReportConflicts(params: {
+    applicationId: string;
+    reportMonth: number;
+    reportYear: number;
+  }) {
+    const { applicationId, reportMonth, reportYear } = params;
+
+    await this.prisma.monthlyReport.deleteMany({
+      where: {
+        applicationId,
+        reportMonth,
+        reportYear,
+        isDeleted: true,
+      },
+    });
+  }
+
   // REMOVED: calculateExpectedReportPeriods function - was used by removed generateExpectedReports
   // Expected counts are now calculated via ExpectedCycleService using getTotalExpectedCount()
 
@@ -1468,27 +1506,108 @@ export class StudentService {
     );
 
     // Create new report with AUTO-APPROVAL
-    const report = await this.prisma.monthlyReport.create({
-      data: {
+    let report;
+    let shouldIncrementReportCount = true;
+
+    await this.deleteSoftDeletedMonthlyReportConflicts({
+      applicationId: reportDto.applicationId,
+      reportMonth: reportDto.reportMonth,
+      reportYear: reportDto.reportYear,
+    });
+
+    try {
+      report = await this.prisma.monthlyReport.create({
+        data: {
+          applicationId: reportDto.applicationId,
+          studentId,
+          reportMonth: reportDto.reportMonth,
+          reportYear: reportDto.reportYear,
+          reportFileUrl: reportDto.reportFileUrl,
+          monthName:
+            reportDto.monthName || MONTH_NAMES[reportDto.reportMonth - 1],
+          status: MonthlyReportStatus.APPROVED, // AUTO-APPROVAL
+          isApproved: true,
+          approvedAt: now,
+          submittedAt: now,
+          submissionWindowStart,
+          submissionWindowEnd,
+          dueDate: submissionWindowEnd,
+          periodStartDate,
+          periodEndDate,
+          isOverdue,
+        },
+      });
+    } catch (error) {
+      if (!this.isMonthlyReportUniqueConstraintError(error)) {
+        throw error;
+      }
+
+      await this.deleteSoftDeletedMonthlyReportConflicts({
         applicationId: reportDto.applicationId,
-        studentId,
         reportMonth: reportDto.reportMonth,
         reportYear: reportDto.reportYear,
-        reportFileUrl: reportDto.reportFileUrl,
-        monthName:
-          reportDto.monthName || MONTH_NAMES[reportDto.reportMonth - 1],
-        status: MonthlyReportStatus.APPROVED, // AUTO-APPROVAL
-        isApproved: true,
-        approvedAt: now,
-        submittedAt: now,
-        submissionWindowStart,
-        submissionWindowEnd,
-        dueDate: submissionWindowEnd,
-        periodStartDate,
-        periodEndDate,
-        isOverdue,
-      },
-    });
+      });
+
+      const conflictingReport = await this.prisma.monthlyReport.findFirst({
+        where: {
+          applicationId: reportDto.applicationId,
+          reportMonth: reportDto.reportMonth,
+          reportYear: reportDto.reportYear,
+          isDeleted: false,
+        },
+      });
+
+      if (!conflictingReport) {
+        report = await this.prisma.monthlyReport.create({
+          data: {
+            applicationId: reportDto.applicationId,
+            studentId,
+            reportMonth: reportDto.reportMonth,
+            reportYear: reportDto.reportYear,
+            reportFileUrl: reportDto.reportFileUrl,
+            monthName:
+              reportDto.monthName || MONTH_NAMES[reportDto.reportMonth - 1],
+            status: MonthlyReportStatus.APPROVED,
+            isApproved: true,
+            approvedAt: now,
+            submittedAt: now,
+            submissionWindowStart,
+            submissionWindowEnd,
+            dueDate: submissionWindowEnd,
+            periodStartDate,
+            periodEndDate,
+            isOverdue,
+          },
+        });
+        shouldIncrementReportCount = true;
+      } else if (conflictingReport.status === MonthlyReportStatus.APPROVED) {
+        report = conflictingReport;
+        shouldIncrementReportCount = false;
+      } else {
+        report = await this.prisma.monthlyReport.update({
+          where: { id: conflictingReport.id },
+          data: {
+            reportFileUrl: reportDto.reportFileUrl,
+            monthName:
+              reportDto.monthName || MONTH_NAMES[reportDto.reportMonth - 1],
+            status: MonthlyReportStatus.APPROVED,
+            isApproved: true,
+            approvedAt: now,
+            submittedAt: now,
+            submissionWindowStart:
+              conflictingReport.submissionWindowStart || submissionWindowStart,
+            submissionWindowEnd:
+              conflictingReport.submissionWindowEnd || submissionWindowEnd,
+            dueDate: conflictingReport.dueDate || submissionWindowEnd,
+            periodStartDate: conflictingReport.periodStartDate || periodStartDate,
+            periodEndDate: conflictingReport.periodEndDate || periodEndDate,
+            isOverdue,
+          },
+        });
+
+        shouldIncrementReportCount = true;
+      }
+    }
 
     // Audit monthly report submission (create)
     this.auditService
@@ -1517,9 +1636,11 @@ export class StudentService {
     await this.cache.invalidateByTags(["reports", `student:${studentId}`, `student:dashboard:${studentId}`]);
 
     // Increment submitted reports counter for new report
-    await this.expectedCycleService.incrementReportCount(
-      reportDto.applicationId
-    );
+    if (shouldIncrementReportCount) {
+      await this.expectedCycleService.incrementReportCount(
+        reportDto.applicationId
+      );
+    }
 
     return {
       ...report,
@@ -2454,22 +2575,77 @@ export class StudentService {
     );
 
     // Create new DRAFT report with file
-    const report = await this.prisma.monthlyReport.create({
-      data: {
+    let report;
+
+    await this.deleteSoftDeletedMonthlyReportConflicts({
+      applicationId: reportDto.applicationId,
+      reportMonth: reportDto.reportMonth,
+      reportYear: reportDto.reportYear,
+    });
+
+    try {
+      report = await this.prisma.monthlyReport.create({
+        data: {
+          applicationId: reportDto.applicationId,
+          studentId: student.id,
+          reportMonth: reportDto.reportMonth,
+          reportYear: reportDto.reportYear,
+          reportFileUrl: reportDto.reportFileUrl,
+          monthName: MONTH_NAMES[reportDto.reportMonth - 1],
+          status: MonthlyReportStatus.DRAFT,
+          submissionWindowStart,
+          submissionWindowEnd,
+          dueDate: submissionWindowEnd,
+          periodStartDate,
+          periodEndDate,
+        },
+      });
+    } catch (error) {
+      if (!this.isMonthlyReportUniqueConstraintError(error)) {
+        throw error;
+      }
+
+      await this.deleteSoftDeletedMonthlyReportConflicts({
         applicationId: reportDto.applicationId,
-        studentId: student.id,
         reportMonth: reportDto.reportMonth,
         reportYear: reportDto.reportYear,
-        reportFileUrl: reportDto.reportFileUrl,
-        monthName: MONTH_NAMES[reportDto.reportMonth - 1],
-        status: MonthlyReportStatus.DRAFT,
-        submissionWindowStart,
-        submissionWindowEnd,
-        dueDate: submissionWindowEnd,
-        periodStartDate,
-        periodEndDate,
-      },
-    });
+      });
+
+      const conflictingReport = await this.prisma.monthlyReport.findFirst({
+        where: {
+          applicationId: reportDto.applicationId,
+          reportMonth: reportDto.reportMonth,
+          reportYear: reportDto.reportYear,
+          isDeleted: false,
+        },
+      });
+
+      if (!conflictingReport) {
+        report = await this.prisma.monthlyReport.create({
+          data: {
+            applicationId: reportDto.applicationId,
+            studentId: student.id,
+            reportMonth: reportDto.reportMonth,
+            reportYear: reportDto.reportYear,
+            reportFileUrl: reportDto.reportFileUrl,
+            monthName: MONTH_NAMES[reportDto.reportMonth - 1],
+            status: MonthlyReportStatus.DRAFT,
+            submissionWindowStart,
+            submissionWindowEnd,
+            dueDate: submissionWindowEnd,
+            periodStartDate,
+            periodEndDate,
+          },
+        });
+      } else if (conflictingReport.status === MonthlyReportStatus.APPROVED) {
+        throw new BadRequestException("Approved reports cannot be modified");
+      } else {
+        report = await this.prisma.monthlyReport.update({
+          where: { id: conflictingReport.id },
+          data: { reportFileUrl: reportDto.reportFileUrl },
+        });
+      }
+    }
 
     // Audit report file upload (create draft)
     this.auditService
