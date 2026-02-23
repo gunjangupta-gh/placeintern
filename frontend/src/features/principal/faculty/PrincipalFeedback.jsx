@@ -503,90 +503,90 @@ const PrincipalFeedback = () => {
       style={{ backgroundColor: token.colorBgLayout }}
     >
       <div className="max-w-7xl mx-auto space-y-4">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <FileDoneOutlined className="text-primary text-lg" />
-            <Title level={4} style={{ marginBottom: 0 }}>
+            <Title level={4} className="!mb-0 text-base sm:text-lg">
               Principal Feedback
             </Title>
           </div>
-          <Space>
+          <Space wrap className="w-full sm:w-auto">
             <Button
               icon={<ReloadOutlined />}
               loading={loading}
               onClick={() =>
                 fetchReports({ page: 1, limit: pagination.pageSize })
               }
+              className="flex-1 sm:flex-none"
             >
-              Refresh
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
             <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={openCreateModal}
+              className="flex-1 sm:flex-none"
             >
-              Add Feedback
+              <span className="hidden xs:inline">Add</span> Feedback
             </Button>
           </Space>
         </div>
 
-        <Row gutter={12}>
-          <Col xs={24} md={12}>
-            <Card size="small">
-              <Text type="secondary">Total Visits</Text>
-              <div className="text-2xl font-bold">{stats.totalVisits || 0}</div>
+        <Row gutter={[12, 12]}>
+          <Col xs={12} sm={12} md={12}>
+            <Card size="small" className="h-full">
+              <Text type="secondary" className="text-xs sm:text-sm">Total Visits</Text>
+              <div className="text-xl sm:text-2xl font-bold">{stats.totalVisits || 0}</div>
             </Card>
           </Col>
-          <Col xs={24} md={12}>
-            <Card size="small">
-              <Text type="secondary">Visits This Month</Text>
-              <div className="text-2xl font-bold">
+          <Col xs={12} sm={12} md={12}>
+            <Card size="small" className="h-full">
+              <Text type="secondary" className="text-xs sm:text-sm">This Month</Text>
+              <div className="text-xl sm:text-2xl font-bold">
                 {stats.visitsThisMonth || 0}
               </div>
             </Card>
           </Col>
-          {/* <Col xs={24} md={8}>
-            <Card size="small">
-              <Text type="secondary">Average Rating</Text>
-              <div className="text-2xl font-bold">{stats.avgRating || 0}</div>
-            </Card>
-          </Col> */}
         </Row>
 
-        <Card>
-          <Space wrap className="mb-3">
-            <Input
-              placeholder="Search principal/student/roll/type"
-              prefix={<SearchOutlined />}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              allowClear
-              style={{ width: 280 }}
-            />
-            <Select
-              placeholder="Filter by student"
-              value={selectedStudentId}
-              onChange={setSelectedStudentId}
-              allowClear
-              style={{ width: 260 }}
-              options={studentOptions}
-              showSearch
-              optionFilterProp="label"
-            />
-            <RangePicker
-              value={dateRange}
-              onChange={setDateRange}
-              format="DD/MM/YYYY"
-            />
-            <Button
-              type="primary"
-              onClick={() =>
-                fetchReports({ page: 1, limit: pagination.pageSize })
-              }
-            >
-              Apply
-            </Button>
-          </Space>
+        <Card className="overflow-hidden">
+          <div className="flex flex-col gap-3 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <Input
+                placeholder="Search..."
+                prefix={<SearchOutlined />}
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                allowClear
+                className="w-full"
+              />
+              <Select
+                placeholder="Filter by student"
+                value={selectedStudentId}
+                onChange={setSelectedStudentId}
+                allowClear
+                className="w-full"
+                options={studentOptions}
+                showSearch
+                optionFilterProp="label"
+              />
+              <RangePicker
+                value={dateRange}
+                onChange={setDateRange}
+                format="DD/MM/YYYY"
+                className="w-full"
+              />
+              <Button
+                type="primary"
+                onClick={() =>
+                  fetchReports({ page: 1, limit: pagination.pageSize })
+                }
+                className="w-full sm:w-auto"
+              >
+                Apply
+              </Button>
+            </div>
+          </div>
 
           <Table
             rowKey="id"
@@ -614,7 +614,8 @@ const PrincipalFeedback = () => {
         open={!!selectedReport}
         onCancel={() => setSelectedReport(null)}
         footer={<Button onClick={() => setSelectedReport(null)}>Close</Button>}
-        width={760}
+        width="90%"
+        style={{ maxWidth: 760 }}
       >
         {selectedReport && (
           <Space direction="vertical" size={10} className="w-full">
@@ -694,10 +695,11 @@ const PrincipalFeedback = () => {
         title={isEditMode ? "Edit Principal Feedback" : "Add Principal Feedback"}
         open={createOpen}
         onCancel={closeCreateModal}
-        width={760}
+        width="90%"
+        style={{ maxWidth: 760 }}
         destroyOnHidden
         styles={{
-          body: { maxHeight: "70vh", overflowY: "auto", padding: "12px 24px" },
+          body: { maxHeight: "70vh", overflowY: "auto", padding: "12px 16px" },
         }}
         footer={
           <Space>
@@ -731,8 +733,8 @@ const PrincipalFeedback = () => {
             >
               Visit Details
             </Text>
-            <Row gutter={12}>
-              <Col span={8}>
+            <Row gutter={[12, 0]}>
+              <Col xs={24} sm={8}>
                 <Form.Item label="Filter by Company" className="mb-2!">
                   <Select
                     placeholder="Select company (optional)"
@@ -752,7 +754,7 @@ const PrincipalFeedback = () => {
                   />
                 </Form.Item>
               </Col>
-              <Col span={16}>
+              <Col xs={24} sm={16}>
                 <Form.Item label="Students" className="mb-2!">
                   <Select
                     mode="multiple"
@@ -807,8 +809,8 @@ const PrincipalFeedback = () => {
               </Card>
             )}
 
-            <Row gutter={12}>
-              <Col span={8}>
+            <Row gutter={[12, 0]}>
+              <Col xs={24} sm={8}>
                 <Form.Item
                   name="visitDate"
                   label="Date & Time"
@@ -824,7 +826,7 @@ const PrincipalFeedback = () => {
                   />
                 </Form.Item>
               </Col>
-              <Col span={8}>
+              <Col xs={12} sm={8}>
                 <Form.Item
                   name="visitType"
                   label="Type"
@@ -839,7 +841,7 @@ const PrincipalFeedback = () => {
                   />
                 </Form.Item>
               </Col>
-              <Col span={8}>
+              <Col xs={12} sm={8}>
                 <Form.Item name="status" label="Status" className="mb-2!">
                   <Select
                     options={STATUS_OPTIONS.map((entry) => ({
@@ -852,8 +854,8 @@ const PrincipalFeedback = () => {
               </Col>
             </Row>
 
-            <Row gutter={12}>
-              <Col span={8}>
+            <Row gutter={[12, 0]}>
+              <Col xs={24} sm={8}>
                 <Form.Item
                   name="visitDuration"
                   label="Visit Duration"
@@ -862,7 +864,7 @@ const PrincipalFeedback = () => {
                   <Input placeholder="e.g. 2 hours" maxLength={50} />
                 </Form.Item>
               </Col>
-              <Col span={16}>
+              <Col xs={24} sm={16}>
                 <Form.Item
                   name="visitLocation"
                   label="Visit Location"
@@ -894,7 +896,7 @@ const PrincipalFeedback = () => {
                 </Form.Item>
                 {gpsLocation && (
                   <Text type="success" className="text-xs">
-                    ✓ GPS: {gpsLocation.latitude.toFixed(4)},{" "}
+                    GPS: {gpsLocation.latitude.toFixed(4)},{" "}
                     {gpsLocation.longitude.toFixed(4)} (±
                     {gpsLocation.accuracy?.toFixed(0)}m)
                   </Text>
@@ -902,17 +904,17 @@ const PrincipalFeedback = () => {
               </Col>
             </Row>
 
-            <Row gutter={12}>
-              <Col span={12}>
+            <Row gutter={[12, 0]}>
+              <Col xs={24} sm={12}>
                 <Form.Item
                   name="nextVisitDate"
                   label="Next Visit Date"
-                  className="mb-0!"
+                  className="mb-2! sm:mb-0!"
                 >
                   <DatePicker className="w-full" format="DD/MM/YYYY" />
                 </Form.Item>
               </Col>
-              <Col span={12}>
+              <Col xs={24} sm={12}>
                 <Form.Item
                   name="followUpRequired"
                   label="Follow-up Required"
