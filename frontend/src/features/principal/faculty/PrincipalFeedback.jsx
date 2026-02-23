@@ -18,6 +18,7 @@ import {
   Tag,
   Typography,
   theme,
+  Popover,
 } from "antd";
 import {
   DeleteOutlined,
@@ -30,6 +31,7 @@ import {
   ReloadOutlined,
   SaveOutlined,
   SearchOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import dayjs from "dayjs";
@@ -935,7 +937,26 @@ const PrincipalFeedback = () => {
 
             <Form.Item
               name="responseFromOrganisation"
-              label="Response From Organisation About The Students"
+              label={
+                <span>
+                  Response From Organisation About The Students
+                  <Popover
+                    content={
+                      <div style={{ maxWidth: 360 }}>
+                        <div>
+                          Evaluate student professionalism (punctuality, workplace behaviour), and identify specific technical and soft skills they are developing.
+                        </div>
+                        <div style={{ marginTop: 8 }}>
+                          Note shortcomings (e.g., lack of initiative), areas for academic improvement, and positive aspects such as mentorship quality, tool access, and whether the internship helps bridge to employment.
+                        </div>
+                      </div>
+                    }
+                    trigger={["hover", "click"]}
+                  >
+                    <InfoCircleOutlined style={{ marginLeft: 8, color: token.colorPrimary, cursor: "pointer" }} />
+                  </Popover>
+                </span>
+              }
               rules={[
                 {
                   required: true,
@@ -954,7 +975,26 @@ const PrincipalFeedback = () => {
 
             <Form.Item
               name="observationsAboutIndustry"
-              label="Observations About Industry"
+              label={
+                <span>
+                  Observations About Industry
+                  <Popover
+                    content={
+                      <div style={{ maxWidth: 360 }}>
+                        <div>
+                          Is the industry mentor providing real guidance or just assigning busy work? Describe the level of mentorship.
+                        </div>
+                        <div style={{ marginTop: 8 }}>
+                          Confirm whether students have adequate workstations and tools, and note if they seem under- or over-utilised.
+                        </div>
+                      </div>
+                    }
+                    trigger={["hover", "click"]}
+                  >
+                    <InfoCircleOutlined style={{ marginLeft: 8, color: token.colorPrimary, cursor: "pointer" }} />
+                  </Popover>
+                </span>
+              }
               rules={[
                 {
                   required: true,
