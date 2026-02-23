@@ -2078,6 +2078,9 @@ export class ReportGeneratorService {
       where.active = true;
     }
 
+    this.logger.log(`[MentorListReport] Query filters: ${JSON.stringify(filters)}`);
+    this.logger.log(`[MentorListReport] Where clause: ${JSON.stringify(where)}`);
+
     const mentors = await this.prisma.user.findMany({
       where,
       include: {
@@ -2112,6 +2115,7 @@ export class ReportGeneratorService {
       orderBy: { name: 'asc' },
     });
 
+    this.logger.log(`[MentorListReport] Found ${mentors.length} mentors`);
     this.warnOnLargeResultSet(mentors.length, 'MentorListReport');
 
     // Apply hasAssignments filter if specified

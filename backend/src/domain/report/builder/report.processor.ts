@@ -504,10 +504,17 @@ export class ReportProcessor extends WorkerHost {
       //   { field: 'nextVisitDate', header: 'Next Visit', type: 'date' as const, width: 12 },
       // ],
       'mentor_list': [
-        { field: 'facultyName', header: 'Faculty Name', type: 'string' as const, width: 20 },
-        { field: 'facultyDesignation', header: 'Designation', type: 'string' as const, width: 15 },
-        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
-        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'name', header: 'Name', type: 'string' as const, width: 20 },
+        { field: 'email', header: 'Email', type: 'string' as const, width: 25 },
+        { field: 'phoneNumber', header: 'Phone', type: 'string' as const, width: 15 },
+        { field: 'designation', header: 'Designation', type: 'string' as const, width: 15 },
+        { field: 'department', header: 'Department', type: 'string' as const, width: 15 },
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
+        { field: 'role', header: 'Role', type: 'string' as const, width: 12 },
+        { field: 'assignedStudents', header: 'Assigned Students', type: 'number' as const, width: 15 },
+        { field: 'activeInternships', header: 'Active Internships', type: 'number' as const, width: 15 },
+        { field: 'visitsCompleted', header: 'Visits Completed', type: 'number' as const, width: 15 },
+        { field: 'isActive', header: 'Active', type: 'boolean' as const, width: 10 },
       ],
       // Monthly reports - matches generateMonthlyReport output
       'monthly': [
