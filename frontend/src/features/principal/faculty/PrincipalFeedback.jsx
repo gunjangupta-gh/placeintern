@@ -254,45 +254,44 @@ const PrincipalFeedback = () => {
         title: "Visit Date",
         dataIndex: "visitDate",
         key: "visitDate",
-        width: 140,
+        width: 120,
         render: (value) => (value ? dayjs(value).format("DD MMM YYYY") : "-"),
+      },
+      {
+        title: "Industry",
+        dataIndex: "industry",
+        key: "industry",
+        width: 180,
+        render: (_, record) => {
+          // Try to get industry/company from first student or a dedicated field
+          const students = record.students || [];
+          const company = students[0]?.companyName || record.industry || record.companyName || "-";
+          return company || "-";
+        },
       },
       {
         title: "Students",
         key: "students",
-        width: 320,
+        width: 220,
         render: (_, record) => {
           const list = record.students || [];
           if (list.length === 0) return "-";
-
-          return (
-            <Space wrap size={[4, 4]}>
-              {list.slice(0, 2).map((student) => (
-                <Tag
-                  key={`${record.id}-${student.id}`}
-                  color={student.isPresent === false ? "red" : "blue"}
-                >
-                  {student.name || "-"} ({student.rollNumber || "-"})
-                  {student.isPresent === false && " - Absent"}
-                </Tag>
-              ))}
-              {list.length > 2 && <Tag>+{list.length - 2} more</Tag>}
-            </Space>
-          );
+          // Comma separated names (with roll)
+          return list.map((student) => `${student.name || "-"} (${student.rollNumber || "-"})`).join(", ");
         },
       },
       {
-        title: "Type",
+        title: "Visit Type",
         dataIndex: "visitType",
         key: "visitType",
-        width: 120,
+        width: 110,
         render: (value) => <Tag color="purple">{value || "-"}</Tag>,
       },
       {
         title: "Status",
         dataIndex: "status",
         key: "status",
-        width: 140,
+        width: 100,
         render: (value) => {
           // Normalize to uppercase for mapping
           const status = (value || "").toUpperCase();
@@ -300,7 +299,6 @@ const PrincipalFeedback = () => {
           return <Tag color={statusColorMap[status] || "default"}>{label}</Tag>;
         },
       },
-
       {
         title: "Action",
         key: "action",
@@ -654,10 +652,10 @@ const PrincipalFeedback = () => {
                 {selectedReport.status || "-"}
               </Tag>
             </div>
-            <div>
+            {/* <div>
               <Text strong>Location:</Text>{" "}
               <Text>{selectedReport.location || "-"}</Text>
-            </div>
+            </div> */}
             <div>
               <Text strong>Duration:</Text>{" "}
               <Text>{selectedReport.duration || "-"}</Text>
