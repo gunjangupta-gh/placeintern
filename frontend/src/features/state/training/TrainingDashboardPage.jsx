@@ -114,7 +114,7 @@ const TrainingDashboardPage = () => {
         title: "Lesson Plan",
         icon: BookOutlined,
         lines: [
-          { label: "People Completed Training", value: summary.peopleCompletedTraining || 0 },
+          { label: "Faculty Completed Training", value: summary.peopleCompletedTraining || 0 },
           { label: "Lesson Plans Created", value: summary.lessonPlanCreated || lessonPlans.created || lessonPlans.total || 0 },
         ],
         variant: "purple",
@@ -124,8 +124,8 @@ const TrainingDashboardPage = () => {
         title: "Completion Metrics",
         icon: SettingOutlined,
         lines: [
-          { label: "Faculty Completed ≥ 40 Hours", value: completionMetrics.facultyCompleted40Hours || 0 },
-          { label: "Faculty Completed < 40 Hours", value: completionMetrics.facultyCompletedUnder40Hours || 0 },
+          { label: "Completed ≥ 40 Hours", value: completionMetrics.facultyCompleted40Hours || 0 },
+          { label: "Completed < 40 Hours", value: completionMetrics.facultyCompletedUnder40Hours || 0 },
         ],
         variant: "warning",
         onClick: () => navigate("/app/training/manage"),
@@ -134,7 +134,7 @@ const TrainingDashboardPage = () => {
         title: "Hours Distribution",
         icon: CalendarOutlined,
         lines: [
-          { label: "Average Hours per Faculty", value: hoursDistribution.averageHoursPerFaculty || 0 },
+          { label: "Avg. Hours per Faculty", value: hoursDistribution.averageHoursPerFaculty || 0 },
           { label: "Highest Hours (Single Faculty)", value: hoursDistribution.highestHoursSingleFaculty || 0 },
           { label: "Lowest Hours", value: hoursDistribution.lowestHoursSingleFaculty || 0 },
         ],
