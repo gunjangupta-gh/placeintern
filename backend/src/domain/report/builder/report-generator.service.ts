@@ -2012,6 +2012,12 @@ export class ReportGeneratorService {
       case 'top-institutes-per-industry':
         return this.generateTopInstitutesPerIndustryReport(filters, pagination);
 
+      // ==================== Principal Reports (2) ====================
+      case 'principal-visit-logs':
+        return this.generatePrincipalVisitLogsReport(filters, pagination);
+      case 'principal-visit-summary':
+        return this.generatePrincipalVisitSummaryReport(filters, pagination);
+
       // ==================== Legacy Support ====================
       // Support for legacy enum values
       case ReportType.STUDENT_PROGRESS:
@@ -3982,6 +3988,283 @@ export class ReportGeneratorService {
     this.warnOnLargeResultSet(results.length, 'TopInstitutesPerIndustryReport');
 
     this.logger.log(`[TopInstitutesPerIndustry] Returning ${results.length} records`);
+
+    return results;
+  }
+
+  // ==================== Principal Report Generators ====================
+
+  /**
+   * Generate Principal Visit Logs Report
+   * Detailed report of all principal visit logs with student feedback
+   */
+  async generatePrincipalVisitLogsReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {
+      isDeleted: false,
+    };
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
+    }
+
+    if (filters?.principalId) {
+      where.principalId = filters.principalId;
+    }
+
+    if (filters?.status) {
+      where.status = filters.status;
+    }
+
+    if (filters?.visitType) {
+      where.visitType = filters.visitType;
+    }
+
+    if (filters?.followUpRequired !== undefined) {
+      const followUpRequired = this.parseBooleanLike(filters.followUpRequired);
+      if (followUpRequired !== undefined) {
+        where.followUpRequired = followUpRequired;
+      }
+    }
+
+    // Handle date range filter
+    if (filters?.dateRange) {
+      const [startDate, endDate] = filters.dateRange;
+      if (startDate || endDate) {
+        where.visitDate = {};
+        if (startDate) {
+          (where.visitDate as any).gte = new Date(startDate);
+        }
+        if (endDate) {
+          (where.visitDate as any).lte = new Date(endDate);
+        }
+      }
+    }
+
+    const visitLogs = await this.prisma.principalFeedback.findMany({
+      where,
+      include: {
+        principal: {
+          select: { id: true, name: true, email: true },
+        },
+        institution: {
+          select: { id: true, name: true },
+        },
+        students: {
+          include: {
+            student: {
+              select: {
+                id: true,
+                user: { select: { name: true, rollNumber: true } },
+                internshipApplications: {
+                  where: { isActive: true },
+                  select: { companyName: true },
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
+      },
+      take,
+      skip,
+      orderBy: { visitDate: 'desc' },
+    });
+
+    this.warnOnLargeResultSet(visitLogs.length, 'PrincipalVisitLogsReport');
+
+    const visitTypeMap: Record<string, string> = {
+      PHYSICAL: 'Physical',
+      VIRTUAL: 'Virtual',
+      TELEPHONIC: 'Telephonic',
+      PHONE: 'Telephonic',
+    };
+
+    const statusMap: Record<string, string> = {
+      DRAFT: 'Draft',
+      SCHEDULED: 'Scheduled',
+      IN_PROGRESS: 'In Progress',
+      COMPLETED: 'Completed',
+      CANCELLED: 'Cancelled',
+    };
+
+    return visitLogs.map((log) => {
+      const studentNames = log.students
+        .map((s) => s.student?.user?.name || 'Unknown')
+        .join(', ');
+      const studentRollNumbers = log.students
+        .map((s) => s.student?.user?.rollNumber || '-')
+        .join(', ');
+      const companyNames = log.students
+        .map((s) => s.student?.internshipApplications?.[0]?.companyName || '-')
+        .filter((name, index, arr) => arr.indexOf(name) === index)
+        .join(', ');
+
+      // Build attendance status
+      const presentCount = log.students.filter((s) => s.isPresent !== false).length;
+      const absentCount = log.students.filter((s) => s.isPresent === false).length;
+      const attendanceStatus = `${presentCount} Present, ${absentCount} Absent`;
+
+      return {
+        visitDate: log.visitDate,
+        institutionName: log.institution?.name ?? 'N/A',
+        principalName: log.principal?.name ?? 'N/A',
+        studentNames,
+        studentRollNumbers,
+        companyNames,
+        visitType: visitTypeMap[log.visitType] || log.visitType,
+        visitLocation: log.visitLocation ?? 'N/A',
+        visitDuration: log.visitDuration ?? 'N/A',
+        status: statusMap[log.status] || log.status,
+        responseFromOrganisation: log.responseFromOrganisation ?? '',
+        observationsAboutIndustry: log.observationsAboutIndustry ?? '',
+        followUpRequired: log.followUpRequired,
+        nextVisitDate: log.nextVisitDate,
+        attendanceStatus,
+        createdAt: log.createdAt,
+      };
+    });
+  }
+
+  /**
+   * Generate Principal Visit Summary Report
+   * Summary statistics of principal visits by institution
+   */
+  async generatePrincipalVisitSummaryReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {
+      isDeleted: false,
+    };
+
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
+    }
+
+    // Handle date range filter
+    if (filters?.dateRange) {
+      const [startDate, endDate] = filters.dateRange;
+      if (startDate || endDate) {
+        where.visitDate = {};
+        if (startDate) {
+          (where.visitDate as any).gte = new Date(startDate);
+        }
+        if (endDate) {
+          (where.visitDate as any).lte = new Date(endDate);
+        }
+      }
+    }
+
+    const visitLogs = await this.prisma.principalFeedback.findMany({
+      where,
+      include: {
+        principal: {
+          select: { id: true, name: true },
+        },
+        institution: {
+          select: { id: true, name: true },
+        },
+        students: {
+          select: { studentId: true },
+        },
+      },
+      orderBy: { visitDate: 'desc' },
+    });
+
+    // Group by institution and principal
+    const summaryMap = new Map<string, {
+      institutionId: string;
+      institutionName: string;
+      principalId: string;
+      principalName: string;
+      totalVisits: number;
+      physicalVisits: number;
+      virtualVisits: number;
+      telephonicVisits: number;
+      completedVisits: number;
+      draftVisits: number;
+      ratings: number[];
+      studentsVisited: Set<string>;
+      followUpsRequired: number;
+      lastVisitDate: Date | null;
+    }>();
+
+    visitLogs.forEach((log) => {
+      const key = `${log.institutionId}-${log.principalId}`;
+
+      if (!summaryMap.has(key)) {
+        summaryMap.set(key, {
+          institutionId: log.institutionId ?? '',
+          institutionName: log.institution?.name ?? 'N/A',
+          principalId: log.principalId,
+          principalName: log.principal?.name ?? 'N/A',
+          totalVisits: 0,
+          physicalVisits: 0,
+          virtualVisits: 0,
+          telephonicVisits: 0,
+          completedVisits: 0,
+          draftVisits: 0,
+          ratings: [],
+          studentsVisited: new Set(),
+          followUpsRequired: 0,
+          lastVisitDate: null,
+        });
+      }
+
+      const summary = summaryMap.get(key)!;
+      summary.totalVisits++;
+
+      // Count by visit type
+      if (log.visitType === 'PHYSICAL') summary.physicalVisits++;
+      else if (log.visitType === 'VIRTUAL') summary.virtualVisits++;
+      else if (log.visitType === 'TELEPHONIC' || log.visitType === 'PHONE') summary.telephonicVisits++;
+
+      // Count by status
+      if (log.status === 'COMPLETED') summary.completedVisits++;
+      else if (log.status === 'DRAFT') summary.draftVisits++;
+
+      // Track ratings
+      if (log.overallSatisfactionRating) {
+        summary.ratings.push(log.overallSatisfactionRating);
+      }
+
+      // Track unique students
+      log.students.forEach((s) => summary.studentsVisited.add(s.studentId));
+
+      // Count follow-ups
+      if (log.followUpRequired) summary.followUpsRequired++;
+
+      // Track last visit date
+      if (log.visitDate && (!summary.lastVisitDate || log.visitDate > summary.lastVisitDate)) {
+        summary.lastVisitDate = log.visitDate;
+      }
+    });
+
+    const results = Array.from(summaryMap.values()).map((summary) => ({
+      institutionName: summary.institutionName,
+      principalName: summary.principalName,
+      totalVisits: summary.totalVisits,
+      physicalVisits: summary.physicalVisits,
+      virtualVisits: summary.virtualVisits,
+      telephonicVisits: summary.telephonicVisits,
+      completedVisits: summary.completedVisits,
+      draftVisits: summary.draftVisits,
+      avgSatisfactionRating: summary.ratings.length > 0
+        ? Math.round((summary.ratings.reduce((a, b) => a + b, 0) / summary.ratings.length) * 10) / 10
+        : 0,
+      studentsVisited: summary.studentsVisited.size,
+      followUpsRequired: summary.followUpsRequired,
+      lastVisitDate: summary.lastVisitDate,
+    }));
+
+    // Sort by total visits descending
+    results.sort((a, b) => b.totalVisits - a.totalVisits);
+
+    this.warnOnLargeResultSet(results.length, 'PrincipalVisitSummaryReport');
 
     return results;
   }

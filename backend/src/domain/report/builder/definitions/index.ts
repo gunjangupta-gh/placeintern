@@ -11,6 +11,7 @@ export * from './institute-reports.definition';
 export * from './pending-reports.definition';
 export * from './user-activity-reports.definition';
 export * from './industry-reports.definition';
+export * from './principal-reports.definition';
 
 import { studentReportDefinitions } from './student-reports.definition';
 import { mentorReportDefinitions } from './mentor-reports.definition';
@@ -20,6 +21,7 @@ import { instituteReportDefinitions } from './institute-reports.definition';
 import { pendingReportDefinitions } from './pending-reports.definition';
 import { userActivityReportDefinitions } from './user-activity-reports.definition';
 import { industryReportDefinitions } from './industry-reports.definition';
+import { principalReportDefinitions } from './principal-reports.definition';
 
 export const allReportDefinitions = {
   ...studentReportDefinitions,
@@ -30,6 +32,7 @@ export const allReportDefinitions = {
   ...pendingReportDefinitions,
   ...userActivityReportDefinitions,
   ...industryReportDefinitions,
+  ...principalReportDefinitions,
 };
 
 export const reportCategories = {
@@ -80,5 +83,11 @@ export const reportCategories = {
     label: 'Industry Reports',
     icon: 'shop',
     reports: Object.keys(industryReportDefinitions),
+  },
+  PRINCIPAL: {
+    key: 'principal',
+    label: 'Principal Reports',
+    icon: 'audit',
+    reports: Object.keys(principalReportDefinitions),
   },
 };
