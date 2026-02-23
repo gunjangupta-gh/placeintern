@@ -2051,10 +2051,16 @@ export class ReportGeneratorService {
     filters: any,
     pagination?: ReportPaginationOptions,
   ): Promise<any[]> {
-    const where: Record<string, unknown> = {
-      role: Role.TEACHER,
-    };
+    const where: Record<string, unknown> = {};
     const { take, skip } = this.getPaginationParams(pagination);
+
+    // Handle includePrincipal filter - by default only show TEACHER role
+    const includePrincipal = this.parseBooleanLike(filters?.includePrincipal);
+    if (includePrincipal === true) {
+      where.role = { in: [Role.TEACHER, Role.PRINCIPAL] };
+    } else {
+      where.role = Role.TEACHER;
+    }
 
     if (filters?.institutionId) {
       where.institutionId = filters.institutionId;
@@ -2138,6 +2144,7 @@ export class ReportGeneratorService {
         designation: mentor.designation,
         department: mentor.branchName ?? 'N/A',
         institutionName: mentor.Institution?.name ?? 'N/A',
+        role: mentor.role,
         assignedStudents: mentor._count.mentorAssignments,
         activeInternships,
         visitsCompleted,

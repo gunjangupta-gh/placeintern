@@ -222,6 +222,11 @@ export class MentorListFilterDto extends BaseReportFilterDto {
   @TransformBoolean()
   @IsBoolean({ message: 'hasAssignedStudents must be a boolean value' })
   hasAssignedStudents?: boolean;
+
+  @IsOptional()
+  @TransformBoolean()
+  @IsBoolean({ message: 'includePrincipal must be a boolean value' })
+  includePrincipal?: boolean;
 }
 
 // ============================================

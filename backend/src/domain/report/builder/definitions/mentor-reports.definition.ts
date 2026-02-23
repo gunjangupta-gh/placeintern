@@ -15,6 +15,7 @@ export const mentorReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'designation', label: 'Designation', type: 'string', default: true },
       { id: 'department', label: 'Department', type: 'string', default: true, sortable: true },
       { id: 'institutionName', label: 'Institution', type: 'string', default: true, sortable: true },
+      { id: 'role', label: 'Role', type: 'string', default: false },
       { id: 'assignedStudents', label: 'Assigned Students', type: 'number', default: true, sortable: true },
       { id: 'activeInternships', label: 'Active Internships', type: 'number', default: true },
       { id: 'visitsCompleted', label: 'Visits Completed', type: 'number', default: true },
@@ -24,6 +25,10 @@ export const mentorReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'department', label: 'Department', type: 'select', dynamic: true, required: false },
       { id: 'hasAssignments', label: 'Has Assignments', type: 'select', required: false, options: [
+        { label: 'Yes', value: true },
+        { label: 'No', value: false },
+      ]},
+      { id: 'includePrincipal', label: 'Include Principal', type: 'select', required: false, options: [
         { label: 'Yes', value: true },
         { label: 'No', value: false },
       ]},
