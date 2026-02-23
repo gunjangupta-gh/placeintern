@@ -12,8 +12,12 @@ export class PrincipalVisitLogsService {
   constructor(private readonly prisma: PrismaService) {}
 
   private async getInstitutionId(principalId: string) {
-    const principal = await this.prisma.user.findUnique({
-      where: { id: principalId },
+    const principal = await this.prisma.user.findFirst({
+      where: {
+        id: principalId,
+        role: Role.PRINCIPAL,
+        active: true,
+      },
       select: { institutionId: true },
     });
 
@@ -29,6 +33,44 @@ export class PrincipalVisitLogsService {
     return visitType === 'PHONE' ? 'TELEPHONIC' : visitType;
   }
 
+  private async validateStudentsInInstitution(
+    institutionId: string,
+    students: { studentId: string; isPresent?: boolean }[],
+  ) {
+    if (!students || students.length === 0) {
+      throw new BadRequestException('At least one student is required');
+    }
+
+    const studentIds = students.map((s) => s.studentId);
+    const uniqueStudentIds = [...new Set(studentIds)];
+
+    const dbStudents = await this.prisma.student.findMany({
+      where: {
+        id: { in: uniqueStudentIds },
+        institutionId,
+        user: { active: true },
+      },
+      select: { id: true },
+    });
+
+    if (dbStudents.length !== uniqueStudentIds.length) {
+      throw new BadRequestException('One or more studentIds are invalid for your institution');
+    }
+
+    // Return unique students with attendance info
+    const studentMap = new Map<string, boolean>();
+    for (const s of students) {
+      if (!studentMap.has(s.studentId)) {
+        studentMap.set(s.studentId, s.isPresent ?? true);
+      }
+    }
+
+    return Array.from(studentMap.entries()).map(([studentId, isPresent]) => ({
+      studentId,
+      isPresent,
+    }));
+  }
+
   private toReport(log: any) {
     const visitTypeMap: Record<string, string> = {
       PHYSICAL: 'In-Person',
@@ -37,19 +79,29 @@ export class PrincipalVisitLogsService {
       PHONE: 'Phone',
     };
 
-    let status = 'Pending';
-    if (log.reportSubmittedTo) {
-      status = log.followUpRequired ? 'Under Review' : 'Approved';
-    }
+    const statusMap: Record<string, string> = {
+      DRAFT: 'Draft',
+      SCHEDULED: 'Scheduled',
+      IN_PROGRESS: 'In Progress',
+      COMPLETED: 'Completed',
+      CANCELLED: 'Cancelled',
+    };
+
+    const status = statusMap[log.status] || log.status || 'Pending';
 
     return {
       id: log.id,
-      facultyId: log.faculty?.id,
-      facultyName: log.faculty?.name,
-      studentId: log.application?.student?.id,
-      studentName: log.application?.student?.user?.name,
-      studentRollNumber: log.application?.student?.user?.rollNumber,
-      internshipTitle: log.application?.jobProfile || 'N/A',
+      principalId: log.principal?.id,
+      principalName: log.principal?.name,
+      studentIds: log.students?.map((entry: any) => entry.student.id) || [],
+      students:
+        log.students?.map((entry: any) => ({
+          id: entry.student.id,
+          name: entry.student.user?.name,
+          rollNumber: entry.student.user?.rollNumber,
+          isPresent: entry.isPresent ?? true,
+          companyName: entry.student.internshipApplications?.[0]?.companyName || null,
+        })) || [],
       visitDate: log.visitDate,
       visitType: visitTypeMap[log.visitType] || log.visitType,
       status,
@@ -69,6 +121,9 @@ export class PrincipalVisitLogsService {
       recommendations: log.recommendations || 'No recommendations',
       issuesIdentified: log.issuesIdentified,
       actionRequired: log.actionRequired,
+      responseFromOrganisation: log.responseFromOrganisation,
+      observationsAboutStudent: log.observationsAboutStudent,
+      observationsAboutIndustry: log.observationsAboutIndustry,
     };
   }
 
@@ -79,22 +134,21 @@ export class PrincipalVisitLogsService {
     const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.FacultyVisitLogWhereInput = {
+    const where: Prisma.PrincipalFeedbackWhereInput = {
       isDeleted: false,
-      application: {
-        student: {
-          institutionId,
-          user: { active: true },
-        },
-      },
+      institutionId,
     };
 
-    if (query.facultyId) {
-      where.facultyId = query.facultyId;
+    if (query.studentId) {
+      where.students = {
+        some: {
+          studentId: query.studentId,
+        },
+      };
     }
 
     if (query.status) {
-      where.status = query.status;
+      where.status = query.status as any;
     }
 
     if (query.startDate || query.endDate) {
@@ -107,25 +161,33 @@ export class PrincipalVisitLogsService {
       }
     }
 
-    const [logs, total, thisMonthCount, allRatings, facultyList] = await Promise.all([
-      this.prisma.facultyVisitLog.findMany({
+    const [logs, total, thisMonthCount, allRatings] = await Promise.all([
+      this.prisma.principalFeedback.findMany({
         where,
         skip,
         take: limit,
         orderBy: { visitDate: 'desc' },
         include: {
-          faculty: { select: { id: true, name: true, email: true } },
-          application: {
+          principal: { select: { id: true, name: true, email: true } },
+          students: {
             include: {
               student: {
-                select: { id: true, user: { select: { name: true, rollNumber: true } } },
+                select: {
+                  id: true,
+                  user: { select: { name: true, rollNumber: true } },
+                  internshipApplications: {
+                    select: { companyName: true },
+                    where: { isActive: true },
+                    take: 1,
+                  },
+                },
               },
             },
           },
         },
       }),
-      this.prisma.facultyVisitLog.count({ where }),
-      this.prisma.facultyVisitLog.count({
+      this.prisma.principalFeedback.count({ where }),
+      this.prisma.principalFeedback.count({
         where: {
           ...where,
           visitDate: {
@@ -133,21 +195,12 @@ export class PrincipalVisitLogsService {
           },
         },
       }),
-      this.prisma.facultyVisitLog.findMany({
+      this.prisma.principalFeedback.findMany({
         where,
         select: {
           overallSatisfactionRating: true,
           studentProgressRating: true,
         },
-      }),
-      this.prisma.user.findMany({
-        where: {
-          institutionId,
-          role: { in: [Role.TEACHER] },
-          active: true,
-        },
-        select: { id: true, name: true },
-        orderBy: { name: 'asc' },
       }),
     ]);
 
@@ -167,7 +220,6 @@ export class PrincipalVisitLogsService {
         avgRating,
         visitsThisMonth: thisMonthCount,
       },
-      facultyList,
       pagination: {
         total,
         page,
@@ -180,23 +232,26 @@ export class PrincipalVisitLogsService {
   async getVisitLogById(principalId: string, visitLogId: string) {
     const institutionId = await this.getInstitutionId(principalId);
 
-    const visitLog = await this.prisma.facultyVisitLog.findFirst({
+    const visitLog = await this.prisma.principalFeedback.findFirst({
       where: {
         id: visitLogId,
         isDeleted: false,
-        application: {
-          student: {
-            institutionId,
-            user: { active: true },
-          },
-        },
+        institutionId,
       },
       include: {
-        faculty: { select: { id: true, name: true, email: true } },
-        application: {
+        principal: { select: { id: true, name: true, email: true } },
+        students: {
           include: {
             student: {
-              select: { id: true, user: { select: { name: true, rollNumber: true } } },
+              select: {
+                id: true,
+                user: { select: { name: true, rollNumber: true } },
+                internshipApplications: {
+                  select: { companyName: true },
+                  where: { isActive: true },
+                  take: 1,
+                },
+              },
             },
           },
         },
@@ -211,8 +266,11 @@ export class PrincipalVisitLogsService {
       ...this.toReport(visitLog),
       raw: {
         id: visitLog.id,
-        applicationId: visitLog.applicationId,
-        facultyId: visitLog.facultyId,
+        principalId: visitLog.principalId,
+        students: visitLog.students.map((entry) => ({
+          studentId: entry.studentId,
+          isPresent: entry.isPresent,
+        })),
         visitLocation: visitLog.visitLocation,
         visitDate: visitLog.visitDate,
         visitType: visitLog.visitType,
@@ -223,7 +281,9 @@ export class PrincipalVisitLogsService {
         skillsDevelopment: visitLog.skillsDevelopment,
         attendanceStatus: visitLog.attendanceStatus,
         workQuality: visitLog.workQuality,
+        responseFromOrganisation: visitLog.responseFromOrganisation,
         observationsAboutStudent: visitLog.observationsAboutStudent,
+        observationsAboutIndustry: visitLog.observationsAboutIndustry,
         recommendations: visitLog.recommendations,
         issuesIdentified: visitLog.issuesIdentified,
         actionRequired: visitLog.actionRequired,
@@ -233,6 +293,7 @@ export class PrincipalVisitLogsService {
         nextVisitDate: visitLog.nextVisitDate,
         visitPhotos: visitLog.visitPhotos,
         attendeesList: visitLog.attendeesList,
+        filesUrl: visitLog.filesUrl,
       },
     };
   }
@@ -240,57 +301,24 @@ export class PrincipalVisitLogsService {
   async createVisitLog(principalId: string, dto: CreatePrincipalVisitLogDto) {
     const institutionId = await this.getInstitutionId(principalId);
 
-    const application = await this.prisma.internshipApplication.findFirst({
-      where: {
-        id: dto.applicationId,
-        student: {
-          institutionId,
-          user: { active: true },
-        },
-      },
-      select: {
-        id: true,
-        startDate: true,
-      },
-    });
-
-    if (!application) {
-      throw new NotFoundException('Application not found for your institution');
-    }
-
     const normalizedType = this.normalizeVisitType(dto.visitType);
-
     const visitDate = dto.visitDate ? new Date(dto.visitDate) : new Date();
-    if (application.startDate && visitDate < application.startDate) {
-      throw new BadRequestException('Visit date cannot be before internship start date');
+    // Only allow 'DRAFT' or 'COMPLETED' as status
+    let status = (dto.status || 'COMPLETED').toUpperCase();
+    if (status !== 'DRAFT' && status !== 'COMPLETED') {
+      status = 'COMPLETED';
     }
 
-    const status = dto.status || 'COMPLETED';
     if (normalizedType === 'PHYSICAL' && !dto.visitLocation && status !== 'DRAFT') {
       throw new BadRequestException('visitLocation is required for physical visits');
     }
 
-    let facultyId = dto.facultyId;
-    if (facultyId) {
-      const faculty = await this.prisma.user.findFirst({
-        where: {
-          id: facultyId,
-          institutionId,
-          role: Role.TEACHER,
-          active: true,
-        },
-        select: { id: true },
-      });
+    const validatedStudents = await this.validateStudentsInInstitution(institutionId, dto.students);
 
-      if (!faculty) {
-        throw new BadRequestException('Invalid facultyId for your institution');
-      }
-    }
-
-    const created = await this.prisma.facultyVisitLog.create({
+    const created = await this.prisma.principalFeedback.create({
       data: {
-        applicationId: dto.applicationId,
-        facultyId,
+        principalId,
+        institutionId,
         visitType: normalizedType as any,
         visitLocation: dto.visitLocation,
         visitDate,
@@ -301,7 +329,9 @@ export class PrincipalVisitLogsService {
         skillsDevelopment: dto.skillsDevelopment,
         attendanceStatus: dto.attendanceStatus,
         workQuality: dto.workQuality,
+        responseFromOrganisation: dto.responseFromOrganisation,
         observationsAboutStudent: dto.observationsAboutStudent,
+        observationsAboutIndustry: dto.observationsAboutIndustry,
         recommendations: dto.recommendations,
         issuesIdentified: dto.issuesIdentified,
         actionRequired: dto.actionRequired,
@@ -311,17 +341,14 @@ export class PrincipalVisitLogsService {
         nextVisitDate: dto.nextVisitDate ? new Date(dto.nextVisitDate) : undefined,
         visitPhotos: dto.visitPhotos || [],
         attendeesList: dto.attendeesList || [],
+        filesUrl: dto.filesUrl,
         visitMonth: visitDate.getMonth() + 1,
         visitYear: visitDate.getFullYear(),
-      },
-      include: {
-        faculty: { select: { id: true, name: true, email: true } },
-        application: {
-          include: {
-            student: {
-              select: { id: true, user: { select: { name: true, rollNumber: true } } },
-            },
-          },
+        students: {
+          create: validatedStudents.map((s) => ({
+            studentId: s.studentId,
+            isPresent: s.isPresent,
+          })),
         },
       },
     });
@@ -332,16 +359,11 @@ export class PrincipalVisitLogsService {
   async updateVisitLog(principalId: string, visitLogId: string, dto: UpdatePrincipalVisitLogDto) {
     const institutionId = await this.getInstitutionId(principalId);
 
-    const existing = await this.prisma.facultyVisitLog.findFirst({
+    const existing = await this.prisma.principalFeedback.findFirst({
       where: {
         id: visitLogId,
         isDeleted: false,
-        application: {
-          student: {
-            institutionId,
-            user: { active: true },
-          },
-        },
+        institutionId,
       },
       select: {
         id: true,
@@ -355,43 +377,32 @@ export class PrincipalVisitLogsService {
       throw new NotFoundException('Visit log not found');
     }
 
-    if (dto.facultyId) {
-      const faculty = await this.prisma.user.findFirst({
-        where: {
-          id: dto.facultyId,
-          institutionId,
-          role: Role.TEACHER,
-          active: true,
-        },
-        select: { id: true },
-      });
-
-      if (!faculty) {
-        throw new BadRequestException('Invalid facultyId for your institution');
-      }
-    }
-
     const nextVisitType = this.normalizeVisitType(dto.visitType) || existing.visitType;
-    const nextStatus = dto.status || existing.status;
+    // Only allow 'DRAFT' or 'COMPLETED' as status in update
+    let nextStatus = (dto.status || existing.status || 'COMPLETED').toUpperCase();
+    if (nextStatus !== 'DRAFT' && nextStatus !== 'COMPLETED') {
+      nextStatus = 'COMPLETED';
+    }
     const nextLocation = dto.visitLocation !== undefined ? dto.visitLocation : existing.visitLocation;
 
     if (nextVisitType === 'PHYSICAL' && !nextLocation && nextStatus !== 'DRAFT') {
       throw new BadRequestException('visitLocation is required for physical visits');
     }
 
-    const updateData: Prisma.FacultyVisitLogUpdateInput = {
-      faculty: dto.facultyId ? { connect: { id: dto.facultyId } } : undefined,
+    const updateData: Prisma.PrincipalFeedbackUpdateInput = {
       visitType: dto.visitType ? (this.normalizeVisitType(dto.visitType) as any) : undefined,
       visitLocation: dto.visitLocation,
       visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
-      status: dto.status as any,
+      status: nextStatus as any,
       visitDuration: dto.visitDuration,
       studentPerformance: dto.studentPerformance,
       workEnvironment: dto.workEnvironment,
       skillsDevelopment: dto.skillsDevelopment,
       attendanceStatus: dto.attendanceStatus,
       workQuality: dto.workQuality,
+      responseFromOrganisation: dto.responseFromOrganisation,
       observationsAboutStudent: dto.observationsAboutStudent,
+      observationsAboutIndustry: dto.observationsAboutIndustry,
       recommendations: dto.recommendations,
       issuesIdentified: dto.issuesIdentified,
       actionRequired: dto.actionRequired,
@@ -401,29 +412,119 @@ export class PrincipalVisitLogsService {
       nextVisitDate: dto.nextVisitDate ? new Date(dto.nextVisitDate) : undefined,
       visitPhotos: dto.visitPhotos ? dto.visitPhotos : undefined,
       attendeesList: dto.attendeesList ? dto.attendeesList : undefined,
+      filesUrl: dto.filesUrl,
     };
 
-    await this.prisma.facultyVisitLog.update({
+    await this.prisma.principalFeedback.update({
       where: { id: visitLogId },
       data: updateData,
     });
 
+    if (dto.students) {
+      const validatedStudents = await this.validateStudentsInInstitution(institutionId, dto.students);
+
+      await this.prisma.principalFeedbackStudent.deleteMany({
+        where: { principalFeedbackId: visitLogId },
+      });
+
+      await this.prisma.principalFeedbackStudent.createMany({
+        data: validatedStudents.map((s) => ({
+          principalFeedbackId: visitLogId,
+          studentId: s.studentId,
+          isPresent: s.isPresent,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
     return this.getVisitLogById(principalId, visitLogId);
+  }
+
+  async getCompanies(principalId: string) {
+    const institutionId = await this.getInstitutionId(principalId);
+
+    // Get unique company names from internship applications for students in this institution
+    const applications = await this.prisma.internshipApplication.findMany({
+      where: {
+        isActive: true,
+        companyName: { not: null },
+        student: {
+          institutionId,
+          user: { active: true },
+        },
+      },
+      select: {
+        companyName: true,
+      },
+      distinct: ['companyName'],
+      orderBy: { companyName: 'asc' },
+    });
+
+    return {
+      companies: applications
+        .map((a) => a.companyName)
+        .filter((name): name is string => !!name && name.trim() !== ''),
+    };
+  }
+
+  async getStudentsByCompany(principalId: string, companyName?: string) {
+    const institutionId = await this.getInstitutionId(principalId);
+
+    const where: Prisma.StudentWhereInput = {
+      institutionId,
+      user: { active: true },
+    };
+
+    // If companyName is provided, filter students who have internships at that company
+    if (companyName) {
+      where.internshipApplications = {
+        some: {
+          isActive: true,
+          companyName: {
+            equals: companyName,
+            mode: 'insensitive',
+          },
+        },
+      };
+    }
+
+    const students = await this.prisma.student.findMany({
+      where,
+      select: {
+        id: true,
+        user: {
+          select: {
+            name: true,
+            rollNumber: true,
+          },
+        },
+        internshipApplications: {
+          where: { isActive: true },
+          select: { companyName: true },
+          take: 1,
+        },
+      },
+      orderBy: { user: { name: 'asc' } },
+    });
+
+    return {
+      students: students.map((s) => ({
+        id: s.id,
+        name: s.user?.name || 'Unknown',
+        rollNumber: s.user?.rollNumber || '-',
+        companyName: s.internshipApplications?.[0]?.companyName || null,
+      })),
+    };
   }
 
   async deleteVisitLog(principalId: string, visitLogId: string) {
     const institutionId = await this.getInstitutionId(principalId);
 
-    const existing = await this.prisma.facultyVisitLog.findFirst({
+    const existing = await this.prisma.principalFeedback.findFirst({
       where: {
         id: visitLogId,
         isDeleted: false,
-        application: {
-          student: {
-            institutionId,
-            user: { active: true },
-          },
-        },
+        institutionId,
       },
       select: { id: true },
     });
@@ -432,7 +533,7 @@ export class PrincipalVisitLogsService {
       throw new NotFoundException('Visit log not found');
     }
 
-    await this.prisma.facultyVisitLog.update({
+    await this.prisma.principalFeedback.update({
       where: { id: visitLogId },
       data: {
         isDeleted: true,

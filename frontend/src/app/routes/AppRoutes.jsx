@@ -73,6 +73,7 @@ import MentorAssignment from '../../features/principal/mentors/MentorAssignment'
 import BulkUpload from '../../features/principal/bulk/BulkUpload';
 import FacultyProgress from '../../features/principal/faculty/FacultyProgress';
 import PrincipalVisitLogs from '../../features/principal/faculty/PrincipalVisitLogs';
+import PrincipalFeedback from '../../features/principal/faculty/PrincipalFeedback';
 import Grievances from '../../features/principal/grievances/Grievances';
 import SelfIdentifiedInternships from '../../features/principal/internships/SelfIdentifiedInternships';
 import BulkSelfInternshipUpload from '../../features/principal/bulk/BulkSelfInternshipUpload';
@@ -402,6 +403,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
               <PrincipalVisitLogs />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="principal-feedback"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
+              <PrincipalFeedback />
             </ProtectedRoute>
           }
         />

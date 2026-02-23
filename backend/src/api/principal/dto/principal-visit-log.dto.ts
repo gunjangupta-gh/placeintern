@@ -29,15 +29,21 @@ export enum PrincipalVisitStatus {
   CANCELLED = 'CANCELLED',
 }
 
-export class CreatePrincipalVisitLogDto {
-  @ApiProperty({ description: 'Application ID' })
+export class StudentAttendanceDto {
+  @ApiProperty({ description: 'Student ID' })
   @IsUUID()
-  applicationId: string;
+  studentId: string;
 
-  @ApiPropertyOptional({ description: 'Faculty user ID (teacher) to attribute this visit to' })
+  @ApiPropertyOptional({ description: 'Whether student was present', default: true })
   @IsOptional()
-  @IsUUID()
-  facultyId?: string;
+  @IsBoolean()
+  isPresent?: boolean;
+}
+
+export class CreatePrincipalVisitLogDto {
+  @ApiProperty({ description: 'Students with attendance info', type: [StudentAttendanceDto] })
+  @IsArray()
+  students: StudentAttendanceDto[];
 
   @ApiProperty({ description: 'Type of visit', enum: PrincipalVisitType })
   @IsEnum(PrincipalVisitType)
@@ -89,10 +95,20 @@ export class CreatePrincipalVisitLogDto {
   @IsString()
   workQuality?: string;
 
+  @ApiPropertyOptional({ description: 'Response from the organisation' })
+  @IsOptional()
+  @IsString()
+  responseFromOrganisation?: string;
+
   @ApiPropertyOptional({ description: 'General observations about student' })
   @IsOptional()
   @IsString()
   observationsAboutStudent?: string;
+
+  @ApiPropertyOptional({ description: 'Observations about the industry' })
+  @IsOptional()
+  @IsString()
+  observationsAboutIndustry?: string;
 
   @ApiPropertyOptional({ description: 'Recommendations' })
   @IsOptional()
@@ -146,13 +162,18 @@ export class CreatePrincipalVisitLogDto {
   @IsArray()
   @IsString({ each: true })
   attendeesList?: string[];
+
+  @ApiPropertyOptional({ description: 'Files URL' })
+  @IsOptional()
+  @IsString()
+  filesUrl?: string;
 }
 
 export class UpdatePrincipalVisitLogDto {
-  @ApiPropertyOptional({ description: 'Faculty user ID (teacher) to attribute this visit to' })
+  @ApiPropertyOptional({ description: 'Students with attendance info', type: [StudentAttendanceDto] })
   @IsOptional()
-  @IsUUID()
-  facultyId?: string;
+  @IsArray()
+  students?: StudentAttendanceDto[];
 
   @ApiPropertyOptional({ description: 'Type of visit', enum: PrincipalVisitType })
   @IsOptional()
@@ -205,10 +226,20 @@ export class UpdatePrincipalVisitLogDto {
   @IsString()
   workQuality?: string;
 
+  @ApiPropertyOptional({ description: 'Response from the organisation' })
+  @IsOptional()
+  @IsString()
+  responseFromOrganisation?: string;
+
   @ApiPropertyOptional({ description: 'General observations about student' })
   @IsOptional()
   @IsString()
   observationsAboutStudent?: string;
+
+  @ApiPropertyOptional({ description: 'Observations about the industry' })
+  @IsOptional()
+  @IsString()
+  observationsAboutIndustry?: string;
 
   @ApiPropertyOptional({ description: 'Recommendations' })
   @IsOptional()
@@ -262,6 +293,11 @@ export class UpdatePrincipalVisitLogDto {
   @IsArray()
   @IsString({ each: true })
   attendeesList?: string[];
+
+  @ApiPropertyOptional({ description: 'Files URL' })
+  @IsOptional()
+  @IsString()
+  filesUrl?: string;
 }
 
 export class PrincipalVisitLogQueryDto {
@@ -280,10 +316,15 @@ export class PrincipalVisitLogQueryDto {
   @Max(100)
   limit?: number;
 
-  @ApiPropertyOptional({ description: 'Filter by faculty id' })
+  @ApiPropertyOptional({ description: 'Filter by student id' })
   @IsOptional()
   @IsUUID()
-  facultyId?: string;
+  studentId?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by company name' })
+  @IsOptional()
+  @IsString()
+  companyName?: string;
 
   @ApiPropertyOptional({ description: 'Filter by visit status', enum: PrincipalVisitStatus })
   @IsOptional()

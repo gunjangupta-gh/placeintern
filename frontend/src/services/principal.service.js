@@ -271,6 +271,39 @@ export const principalService = {
     return response.data;
   },
 
+  async getPrincipalVisitReportById(id) {
+    const response = await API.get(`/principal/visit-logs/${id}`);
+    return response.data;
+  },
+
+  async createPrincipalFeedback(data) {
+    const response = await API.post('/principal/visit-logs', data);
+    return response.data;
+  },
+
+  async updatePrincipalFeedback(id, data) {
+    const response = await API.put(`/principal/visit-logs/${id}`, data);
+    return response.data;
+  },
+
+  async deletePrincipalFeedback(id) {
+    const response = await API.delete(`/principal/visit-logs/${id}`);
+    return response.data;
+  },
+
+  async getCompaniesForFeedback() {
+    const response = await API.get('/principal/visit-logs/companies');
+    return response.data;
+  },
+
+  async getStudentsByCompany(companyName) {
+    const url = companyName
+      ? `/principal/visit-logs/students-by-company?companyName=${encodeURIComponent(companyName)}`
+      : '/principal/visit-logs/students-by-company';
+    const response = await API.get(url);
+    return response.data;
+  },
+
   // Internship Management
   async getInternshipById(applicationId) {
     // STUBBED: Industry/internship functionality removed

@@ -43,6 +43,7 @@ model User {
   mentorAssignments   MentorAssignment[]      @relation("AssignedMentor")
   assignedBy          MentorAssignment[]      @relation("AssignedBy")
   facultyVisitLogs    FacultyVisitLog[]       @relation("FacultyVisits")
+  principalFeedbacks  PrincipalFeedback[]     @relation("PrincipalFeedbackAuthor")
   auditLogs           AuditLog[]              @relation("AuditUser")
 
   // Notification relations
@@ -182,6 +183,7 @@ model Student {
   mentorAssignments      MentorAssignment[]
   monthlyReports         MonthlyReport[]
   grievances             Grievance[]
+  principalFeedbacks     PrincipalFeedbackStudent[]
 
   // Performance Indexes
   @@index([institutionId])
@@ -325,6 +327,9 @@ model Institution {
 
   // Help & Support
   supportTickets SupportTicket[]
+
+  // Principal Feedback
+  principalFeedbacks PrincipalFeedback[]
 }
 
 enum InstitutionType {
@@ -881,6 +886,102 @@ model FacultyVisitLog {
   @@index([visitMonth, visitYear, status])
   @@index([applicationId, isMonthlyVisit, status])
   @@map("faculty_visit_logs")
+}
+
+// Principal Feedback Log (supports multiple students per visit)
+model PrincipalFeedback {
+  id String @id @default(uuid())
+
+  // Principal & institution context
+  principalId String
+  principal   User   @relation("PrincipalFeedbackAuthor", fields: [principalId], references: [id])
+
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id])
+
+  // Linked students for this feedback/visit
+  students PrincipalFeedbackStudent[]
+
+  // Visit details
+  visitLocation String?
+  visitDate     DateTime?
+  visitDuration String?
+  visitType     VisitType      @default(PHYSICAL)
+  status        VisitLogStatus @default(SCHEDULED)
+
+  // Observations
+  studentPerformance         String?
+  workEnvironment            String?
+  skillsDevelopment          String?
+  attendanceStatus           String?
+  workQuality                String?
+  responseFromOrganisation   String?
+  observationsAboutStudent   String?
+  observationsAboutIndustry  String?
+
+  // Ratings (1-5 scale)
+  studentProgressRating     Int?
+  industryCooperationRating Int?
+  workEnvironmentRating     Int?
+  mentoringSupportRating    Int?
+  overallSatisfactionRating Int?
+
+  // Issues and recommendations
+  issuesIdentified String?
+  recommendations  String?
+  actionRequired   String?
+
+  // Documentation
+  visitPhotos    String[]
+  meetingMinutes String?
+  attendeesList  String[]
+  filesUrl       String?
+
+  // Administrative
+  reportSubmittedTo String?
+  followUpRequired  Boolean   @default(false)
+  nextVisitDate     DateTime?
+
+  // Month tracking
+  visitMonth Int?
+  visitYear  Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Soft delete
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+
+  @@index([principalId])
+  @@index([institutionId])
+  @@index([status])
+  @@index([visitDate])
+  @@index([isDeleted])
+  @@index([principalId, isDeleted])
+  @@index([institutionId, status])
+  @@index([visitMonth, visitYear])
+  @@map("principal_feedbacks")
+}
+
+model PrincipalFeedbackStudent {
+  id String @id @default(uuid())
+
+  principalFeedbackId String
+  principalFeedback   PrincipalFeedback @relation(fields: [principalFeedbackId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  // Attendance tracking
+  isPresent Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  @@unique([principalFeedbackId, studentId])
+  @@index([studentId])
+  @@index([principalFeedbackId])
+  @@map("principal_feedback_students")
 }
 
 enum InternshipStatus {

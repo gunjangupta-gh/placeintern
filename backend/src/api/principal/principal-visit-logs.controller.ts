@@ -37,6 +37,20 @@ export class PrincipalVisitLogsController {
     return this.principalVisitLogsService.getVisitLogs(req.user.userId, query);
   }
 
+  @Get('companies')
+  @ApiOperation({ summary: 'Get unique company names from internship applications' })
+  @ApiResponse({ status: 200, description: 'Company names fetched successfully' })
+  async getCompanies(@Request() req) {
+    return this.principalVisitLogsService.getCompanies(req.user.userId);
+  }
+
+  @Get('students-by-company')
+  @ApiOperation({ summary: 'Get students filtered by company name' })
+  @ApiResponse({ status: 200, description: 'Students fetched successfully' })
+  async getStudentsByCompany(@Request() req, @Query('companyName') companyName?: string) {
+    return this.principalVisitLogsService.getStudentsByCompany(req.user.userId, companyName);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get principal visit log by id' })
   @ApiResponse({ status: 200, description: 'Principal visit log fetched successfully' })

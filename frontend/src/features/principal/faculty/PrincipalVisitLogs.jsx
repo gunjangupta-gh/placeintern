@@ -48,6 +48,7 @@ const PrincipalVisitLogs = () => {
   const [dateRange, setDateRange] = useState(null);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
 
+  // Restore to fetch faculty visit logs
   const fetchReports = useCallback(async ({ page = 1, limit = pagination.pageSize } = {}) => {
     try {
       setLoading(true);
@@ -60,7 +61,8 @@ const PrincipalVisitLogs = () => {
         endDate: dateRange?.[1] ? dateRange[1].endOf("day").toISOString() : undefined,
       };
 
-      const response = await principalService.getPrincipalVisitReports(params);
+      // Use the correct faculty visit logs API
+      const response = await principalService.getFacultyVisitReports(params);
       const apiReports = response?.reports || [];
 
       const filteredReports = searchText
@@ -85,7 +87,7 @@ const PrincipalVisitLogs = () => {
         total: response?.pagination?.total || 0,
       }));
     } catch (error) {
-      toast.error(error?.message || "Failed to load principal visit logs");
+      toast.error(error?.message || "Failed to load faculty visit logs");
     } finally {
       setLoading(false);
     }
@@ -136,13 +138,6 @@ const PrincipalVisitLogs = () => {
       render: (value) => <Tag color={statusColorMap[value] || "default"}>{value || "-"}</Tag>,
     },
     {
-      title: "Rating",
-      dataIndex: "rating",
-      key: "rating",
-      width: 100,
-      render: (value) => (value ? `${value}/5` : "-"),
-    },
-    {
       title: "Action",
       key: "action",
       width: 90,
@@ -159,7 +154,7 @@ const PrincipalVisitLogs = () => {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <FileDoneOutlined className="text-primary text-lg" />
-            <Title level={4} style={{ marginBottom: 0 }}>Principal Visit Logs</Title>
+            <Title level={4} style={{ marginBottom: 0 }}>Faculty Visit Logs</Title>
           </div>
           <Button icon={<ReloadOutlined />} loading={loading} onClick={() => fetchReports({ page: 1, limit: pagination.pageSize })}>
             Refresh
@@ -167,9 +162,9 @@ const PrincipalVisitLogs = () => {
         </div>
 
         <Row gutter={12}>
-          <Col xs={24} md={8}><Card size="small"><Text type="secondary">Total Visits</Text><div className="text-2xl font-bold">{stats.totalVisits || 0}</div></Card></Col>
-          <Col xs={24} md={8}><Card size="small"><Text type="secondary">Visits This Month</Text><div className="text-2xl font-bold">{stats.visitsThisMonth || 0}</div></Card></Col>
-          <Col xs={24} md={8}><Card size="small"><Text type="secondary">Average Rating</Text><div className="text-2xl font-bold">{stats.avgRating || 0}</div></Card></Col>
+          <Col xs={24} md={12}><Card size="small"><Text type="secondary">Total Visits</Text><div className="text-2xl font-bold">{stats.totalVisits || 0}</div></Card></Col>
+          <Col xs={24} md={12}><Card size="small"><Text type="secondary">Visits This Month</Text><div className="text-2xl font-bold">{stats.visitsThisMonth || 0}</div></Card></Col>
+          {/* <Col xs={24} md={8}><Card size="small"><Text type="secondary">Average Rating</Text><div className="text-2xl font-bold">{stats.avgRating || 0}</div></Card></Col> */}
         </Row>
 
         <Card>

@@ -219,11 +219,17 @@ export const menuConfig = {
         icon: <CarOutlined />,
         path: "/app/faculty-progress",
       },
+      // {
+      //   key: "principal-visit-logs",
+      //   label: "Visit Logs",
+      //   icon: <FileDoneOutlined />,
+      //   path: "/app/principal-visit-logs",
+      // },
       {
-        key: "principal-visit-logs",
-        label: "Visit Logs",
-        icon: <FileDoneOutlined />,
-        path: "/app/principal-visit-logs",
+        key: "principal-feedback",
+        label: "Principal Feedback",
+        icon: <FileTextOutlined />,
+        path: "/app/principal-feedback",
       },
       {
         key: "student-grievances",
