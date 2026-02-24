@@ -28,7 +28,7 @@ import {
 @ApiBearerAuth()
 @Controller('faculty/training/recommendations')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.TEACHER)
+@Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
 export class FacultyRecommendationController {
   constructor(private readonly recommendationService: TrainingRecommendationService) {}
 

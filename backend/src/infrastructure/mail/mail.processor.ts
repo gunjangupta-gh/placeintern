@@ -42,7 +42,7 @@ export class MailProcessor extends WorkerHost {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get('MAIL_HOST'),
       port: this.configService.get('MAIL_PORT'),
-      secure: this.configService.get('MAIL_SECURE', false),
+      secure: this.configService.get<string>('MAIL_SECURE') === 'true',
       auth: {
         user: this.configService.get('MAIL_USER'),
         pass: this.configService.get('MAIL_PASSWORD'),

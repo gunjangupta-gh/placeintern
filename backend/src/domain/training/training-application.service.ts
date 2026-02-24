@@ -226,7 +226,9 @@ export class TrainingApplicationService {
    */
   async getMyApplications(userId: string, filters: ApplicationFilterDto) {
     try {
-      const { status, trainingId, page = 1, limit = 20 } = filters;
+      const { status, trainingId } = filters;
+      const page = Number(filters.page) || 1;
+      const limit = Number(filters.limit) || 20;
 
       const where: Prisma.TrainingApplicationWhereInput = {
         userId,
@@ -419,7 +421,9 @@ export class TrainingApplicationService {
    */
   async getByTraining(trainingId: string, filters: ApplicationFilterDto, institutionId?: string) {
     try {
-      const { status, search, page = 1, limit = 20 } = filters;
+      const { status, search } = filters;
+      const page = Number(filters.page) || 1;
+      const limit = Number(filters.limit) || 20;
 
       const where: Prisma.TrainingApplicationWhereInput = {
         trainingId,
@@ -485,7 +489,9 @@ export class TrainingApplicationService {
    */
   async getByInstitution(institutionId: string, filters: ApplicationFilterDto) {
     try {
-      const { status, trainingId, search, page = 1, limit = 20 } = filters;
+      const { status, trainingId, search } = filters;
+      const page = Number(filters.page) || 1;
+      const limit = Number(filters.limit) || 20;
 
       const where: Prisma.TrainingApplicationWhereInput = {
         user: { institutionId },

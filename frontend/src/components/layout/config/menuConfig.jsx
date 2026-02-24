@@ -449,6 +449,128 @@ export const menuConfig = {
   },
 
   // ==========================================
+  // FACULTY COORDINATOR MENUS
+  // ==========================================
+  COORDINATOR_HOME: {
+    key: "coordinator-home",
+    title: "Home",
+    icon: <DashboardOutlined />,
+    items: [
+      {
+        key: "coordinator-dashboard",
+        label: "Dashboard",
+        icon: <DashboardOutlined />,
+        path: "/app/dashboard",
+      },
+      {
+        key: "assigned-students",
+        label: "My Students",
+        icon: <TeamOutlined />,
+        path: "/app/assigned-students",
+      },
+    ],
+  },
+  COORDINATOR_SUPERVISION: {
+    key: "coordinator-supervision",
+    title: "Supervision",
+    icon: <SolutionOutlined />,
+    items: [
+      {
+        key: "visit-logs",
+        label: "Visit Logs",
+        icon: <FileDoneOutlined />,
+        path: "/app/visit-logs",
+      },
+      {
+        key: "monthly-reports",
+        label: "Monthly Reports",
+        icon: <FileTextOutlined />,
+        path: "/app/monthly-reports",
+      },
+      {
+        key: "joining-letters",
+        label: "Joining Letters",
+        icon: <SafetyCertificateOutlined />,
+        path: "/app/joining-letters",
+      },
+    ],
+  },
+  COORDINATOR_TRAINING: {
+    key: "coordinator-training",
+    title: "My Training",
+    icon: <CalendarOutlined />,
+    items: [
+      {
+        key: "coordinator-training-dashboard",
+        label: "Dashboard",
+        icon: <DashboardOutlined />,
+        path: "/app/training",
+      },
+      {
+        key: "coordinator-training-calendar",
+        label: "Calendar",
+        icon: <CalendarOutlined />,
+        path: "/app/training/calendar",
+      },
+      {
+        key: "coordinator-training-applications",
+        label: "My Applications",
+        icon: <FileTextOutlined />,
+        path: "/app/training/applications",
+      },
+      {
+        key: "coordinator-training-lesson-plans",
+        label: "My Lesson Plans",
+        icon: <FileDoneOutlined />,
+        path: "/app/training/lesson-plans",
+      },
+      {
+        key: "coordinator-training-recommend",
+        label: "Recommend Training",
+        icon: <BulbOutlined />,
+        path: "/app/training/recommend",
+      },
+    ],
+  },
+  COORDINATOR_MANAGEMENT: {
+    key: "coordinator-management",
+    title: "Coordination",
+    icon: <TeamOutlined />,
+    items: [
+      {
+        key: "coordinator-review-applications",
+        label: "Review Applications",
+        icon: <FileTextOutlined />,
+        path: "/app/coordinator/applications",
+      },
+      {
+        key: "coordinator-review-lesson-plans",
+        label: "Review Lesson Plans",
+        icon: <FileDoneOutlined />,
+        path: "/app/coordinator/lesson-plans",
+      },
+      {
+        key: "coordinator-test-responses",
+        label: "Test Responses",
+        icon: <FileSyncOutlined />,
+        path: "/app/coordinator/test-responses",
+      },
+      {
+        key: "coordinator-recommendations",
+        label: "Recommendations",
+        icon: <BulbOutlined />,
+        path: "/app/coordinator/recommendations",
+      },
+      {
+        key: "coordinator-reminders",
+        label: "Send Reminders",
+        icon: <SendOutlined />,
+        path: "/app/coordinator/reminders",
+      },
+    ],
+  },
+
+  // ==========================================
   // STUDENT MENUS
   // ==========================================
   STUDENT_HOME: {
@@ -721,6 +843,14 @@ export const getMenuSectionsForRole = (role) => {
       sections.push(menuConfig.FACULTY_HOME);
       sections.push(menuConfig.FACULTY_SUPERVISION);
       sections.push(menuConfig.FACULTY_TRAINING);
+      sections.push(menuConfig.FACULTY_COMMUNICATION);
+      break;
+
+    case "FACULTY_COORDINATOR":
+      sections.push(menuConfig.COORDINATOR_HOME);
+      sections.push(menuConfig.COORDINATOR_SUPERVISION);
+      sections.push(menuConfig.COORDINATOR_TRAINING);
+      sections.push(menuConfig.COORDINATOR_MANAGEMENT);
       sections.push(menuConfig.FACULTY_COMMUNICATION);
       break;
 

@@ -19,7 +19,7 @@ import { MarkSelfAttendanceDto } from '../../../domain/training/dto';
 @ApiBearerAuth()
 @Controller('faculty/training/attendance')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.TEACHER)
+@Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
 export class FacultyAttendanceController {
   constructor(private readonly attendanceService: TrainingAttendanceService) {}
 

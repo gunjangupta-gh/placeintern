@@ -20,7 +20,7 @@ import { SubmitTestResponseDto } from '../../../domain/training/dto';
 @ApiBearerAuth()
 @Controller('faculty/training')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.TEACHER)
+@Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
 export class FacultyTestController {
   constructor(
     private readonly testFormService: TestFormService,

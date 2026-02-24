@@ -54,7 +54,7 @@ export class FacultyController {
   ) {}
 
   @Get('dashboard')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Get faculty dashboard data' })
   @ApiResponse({ status: 200, description: 'Dashboard data retrieved successfully' })
   async getDashboard(@Req() req) {
@@ -62,7 +62,7 @@ export class FacultyController {
   }
 
   @Get('dashboard/monthly-stats')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Get current month compliance stats (uses monthly inclusion rules)' })
   @ApiResponse({ status: 200, description: 'Monthly stats retrieved successfully' })
   async getCurrentMonthStats(@Req() req) {
@@ -70,7 +70,7 @@ export class FacultyController {
   }
 
   @Get('profile')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Get faculty profile' })
   @ApiResponse({ status: 200, description: 'Profile retrieved successfully' })
   async getProfile(@Req() req) {
@@ -78,7 +78,7 @@ export class FacultyController {
   }
 
   @Get('students')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Get assigned students list' })
   @ApiResponse({ status: 200, description: 'Students list retrieved successfully' })
   async getAssignedStudents(
@@ -91,7 +91,7 @@ export class FacultyController {
   }
 
   @Get('students/:id')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Get student detail' })
   @ApiResponse({ status: 200, description: 'Student detail retrieved successfully' })
   async getStudentDetail(@Param('id') studentId: string, @Req() req) {
@@ -99,7 +99,7 @@ export class FacultyController {
   }
 
   @Get('students/:id/progress')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Get student progress' })
   @ApiResponse({ status: 200, description: 'Student progress retrieved successfully' })
   async getStudentProgress(@Param('id') studentId: string, @Req() req) {
@@ -107,7 +107,7 @@ export class FacultyController {
   }
 
   @Get('students/:id/unmasked-contact')
-  @Roles(Role.TEACHER, Role.PRINCIPAL)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR, Role.PRINCIPAL)
   @ApiOperation({ summary: 'Get unmasked contact details for a student (requires verification)' })
   @ApiResponse({ status: 200, description: 'Unmasked contact details retrieved successfully' })
   async getUnmaskedContactDetails(@Param('id') studentId: string, @Req() req) {
@@ -116,7 +116,7 @@ export class FacultyController {
 
   // Visit Logs
   @Get('visit-logs')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Get all visit logs' })
   @ApiResponse({ status: 200, description: 'Visit logs retrieved successfully' })
   async getVisitLogs(
@@ -129,7 +129,7 @@ export class FacultyController {
   }
 
   @Get('visit-logs/:id')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Get visit log by ID' })
   @ApiResponse({ status: 200, description: 'Visit log retrieved successfully' })
   async getVisitLogById(@Param('id') id: string, @Req() req) {
@@ -137,7 +137,7 @@ export class FacultyController {
   }
 
   @Post('visit-logs')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({
     summary: 'Create visit log (supports quick visit logging)',
     description: 'Required fields: (applicationId OR studentId), visitType, visitLocation. All other fields are optional. Auto-sets visitDate to now and status to COMPLETED if not provided.',
@@ -148,7 +148,7 @@ export class FacultyController {
   }
 
   @Put('visit-logs/:id')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Update visit log' })
   @ApiResponse({ status: 200, description: 'Visit log updated successfully' })
   async updateVisitLog(@Param('id') id: string, @Body() updateVisitLogDto: UpdateVisitLogDto, @Req() req) {
@@ -156,7 +156,7 @@ export class FacultyController {
   }
 
   @Delete('visit-logs/:id')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Delete visit log' })
   @ApiResponse({ status: 200, description: 'Visit log deleted successfully' })
   async deleteVisitLog(@Param('id') id: string, @Req() req) {
@@ -165,7 +165,7 @@ export class FacultyController {
 
   // Monthly Reports
   @Get('monthly-reports')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Get monthly reports for review' })
   @ApiResponse({ status: 200, description: 'Monthly reports retrieved successfully' })
   async getMonthlyReports(
@@ -178,7 +178,7 @@ export class FacultyController {
   }
 
   @Put('monthly-reports/:id/review')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Review monthly report' })
   @ApiResponse({ status: 200, description: 'Monthly report reviewed successfully' })
   async reviewMonthlyReport(@Param('id') id: string, @Body() reviewDto: ReviewMonthlyReportDto, @Req() req) {
@@ -191,7 +191,7 @@ export class FacultyController {
 
   // Approvals
   @Get('approvals/self-identified')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Get self-identified internship approvals' })
   @ApiResponse({ status: 200, description: 'Self-identified approvals retrieved successfully' })
   async getSelfIdentifiedApprovals(
@@ -204,7 +204,7 @@ export class FacultyController {
   }
 
   @Put('approvals/self-identified/:id')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Approve or reject self-identified internship' })
   @ApiResponse({ status: 200, description: 'Self-identified internship approval updated successfully' })
   async updateSelfIdentifiedApproval(@Param('id') id: string, @Body() approvalDto: UpdateSelfIdentifiedApprovalDto, @Req() req) {
@@ -217,7 +217,7 @@ export class FacultyController {
 
   // Feedback
   @Post('feedback/monthly')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Submit monthly feedback for student' })
   @ApiResponse({ status: 201, description: 'Monthly feedback submitted successfully' })
   async submitMonthlyFeedback(@Req() req, @Body() feedbackDto: SubmitMonthlyFeedbackDto) {
@@ -225,7 +225,7 @@ export class FacultyController {
   }
 
   @Get('feedback/history')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Get feedback history' })
   @ApiResponse({ status: 200, description: 'Feedback history retrieved successfully' })
   async getFeedbackHistory(
@@ -240,7 +240,7 @@ export class FacultyController {
   // ==================== Internship Management ====================
 
   @Get('students/:id/internships')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Get student internships' })
   @ApiResponse({ status: 200, description: 'Student internships retrieved successfully' })
   async getStudentInternships(@Param('id') studentId: string, @Req() req) {
@@ -248,7 +248,7 @@ export class FacultyController {
   }
 
   @Put('internships/:id')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Update internship application' })
   @ApiResponse({ status: 200, description: 'Internship updated successfully' })
   async updateInternship(@Param('id') id: string, @Body() updateDto: UpdateInternshipDto, @Req() req) {
@@ -256,7 +256,7 @@ export class FacultyController {
   }
 
   @Delete('internships/:id')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Delete internship application' })
   @ApiResponse({ status: 200, description: 'Internship deleted successfully' })
   async deleteInternship(@Param('id') id: string, @Req() req) {
@@ -266,7 +266,7 @@ export class FacultyController {
   // ==================== Monthly Report Actions ====================
 
   @Put('monthly-reports/:id/approve')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Approve monthly report' })
   @ApiResponse({ status: 200, description: 'Monthly report approved successfully' })
   async approveMonthlyReport(@Param('id') id: string, @Body() body: ApproveMonthlyReportDto, @Req() req) {
@@ -274,7 +274,7 @@ export class FacultyController {
   }
 
   @Put('monthly-reports/:id/reject')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Reject monthly report' })
   @ApiResponse({ status: 200, description: 'Monthly report rejected successfully' })
   async rejectMonthlyReport(@Param('id') id: string, @Body() body: RejectMonthlyReportDto, @Req() req) {
@@ -282,7 +282,7 @@ export class FacultyController {
   }
 
   @Delete('monthly-reports/:id')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Delete monthly report' })
   @ApiResponse({ status: 200, description: 'Monthly report deleted successfully' })
   async deleteMonthlyReport(@Param('id') id: string, @Req() req) {
@@ -292,7 +292,7 @@ export class FacultyController {
   // ==================== Joining Letter Management ====================
 
   @Get('joining-letters')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Get joining letters for review' })
   @ApiResponse({ status: 200, description: 'Joining letters retrieved successfully' })
   async getJoiningLetters(
@@ -305,7 +305,7 @@ export class FacultyController {
   }
 
   @Put('joining-letters/:id/verify')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Verify joining letter' })
   @ApiResponse({ status: 200, description: 'Joining letter verified successfully' })
   async verifyJoiningLetter(@Param('id') id: string, @Body() body: VerifyJoiningLetterDto, @Req() req) {
@@ -313,7 +313,7 @@ export class FacultyController {
   }
 
   @Put('joining-letters/:id/reject')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Reject joining letter' })
   @ApiResponse({ status: 200, description: 'Joining letter rejected successfully' })
   async rejectJoiningLetter(@Param('id') id: string, @Body() body: RejectJoiningLetterDto, @Req() req) {
@@ -321,7 +321,7 @@ export class FacultyController {
   }
 
   @Delete('joining-letters/:id')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Delete joining letter' })
   @ApiResponse({ status: 200, description: 'Joining letter deleted successfully' })
   async deleteJoiningLetter(@Param('id') id: string, @Req() req) {
@@ -329,7 +329,7 @@ export class FacultyController {
   }
 
   @Post('joining-letters/:id/upload')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   @ApiOperation({ summary: 'Upload joining letter for a student' })
   @ApiResponse({ status: 200, description: 'Joining letter uploaded successfully' })
@@ -366,7 +366,7 @@ export class FacultyController {
   }
 
   @Get('monthly-reports/:id/download')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Download monthly report file' })
   @ApiResponse({ status: 200, description: 'Monthly report file downloaded successfully' })
   async downloadMonthlyReport(@Param('id') id: string, @Req() req) {
@@ -374,7 +374,7 @@ export class FacultyController {
   }
 
   @Post('monthly-reports/upload')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   @ApiOperation({ summary: 'Upload monthly report for a student' })
   @ApiResponse({ status: 200, description: 'Monthly report uploaded successfully' })
@@ -391,7 +391,7 @@ export class FacultyController {
   }
 
   @Get('monthly-reports/:id/view')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Get presigned URL to view monthly report' })
   @ApiResponse({ status: 200, description: 'Presigned URL generated successfully' })
   async viewMonthlyReport(@Param('id') id: string, @Req() req) {
@@ -399,7 +399,7 @@ export class FacultyController {
   }
 
   @Post('assignments')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Create assignment for student' })
   @ApiResponse({ status: 201, description: 'Assignment created successfully' })
   async createAssignment(@Req() req, @Body() assignmentData: any) {
@@ -407,7 +407,7 @@ export class FacultyController {
   }
 
   @Post('visit-logs/upload-document')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   @ApiOperation({ summary: 'Upload a document for visit log (photo or signed document)' })
   @ApiResponse({ status: 200, description: 'Document uploaded successfully' })
@@ -491,7 +491,7 @@ export class FacultyController {
   // ==================== Student Management ====================
 
   @Put('students/:id')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Update student profile' })
   @ApiResponse({ status: 200, description: 'Student updated successfully' })
   async updateStudent(
@@ -503,7 +503,7 @@ export class FacultyController {
   }
 
   @Post('students/:id/documents')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   @ApiOperation({ summary: 'Upload student document' })
   @ApiResponse({ status: 200, description: 'Document uploaded successfully' })
@@ -538,7 +538,7 @@ export class FacultyController {
   }
 
   @Patch('students/:id/toggle-status')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Toggle student active status (also toggles mentor assignments and internship applications)' })
   @ApiResponse({ status: 200, description: 'Student status toggled successfully' })
   async toggleStudentStatus(

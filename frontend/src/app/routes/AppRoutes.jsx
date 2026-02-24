@@ -11,7 +11,8 @@ import Layouts from '../../components/Layout';
 const ROLES = {
   STATE: 'STATE_DIRECTORATE',
   PRINCIPAL: 'PRINCIPAL',
-  FACULTY: ['FACULTY', 'TEACHER', 'FACULTY_SUPERVISOR'],
+  FACULTY: ['FACULTY', 'TEACHER', 'FACULTY_SUPERVISOR', 'FACULTY_COORDINATOR'],
+  COORDINATOR: 'FACULTY_COORDINATOR',
   STUDENT: 'STUDENT',
   INDUSTRY: ['INDUSTRY', 'INDUSTRY_PARTNER', 'INDUSTRY_SUPERVISOR'],
   SYSTEM_ADMIN: 'SYSTEM_ADMIN',
@@ -109,6 +110,14 @@ import FacultyMyLessonPlansPage from '../../features/faculty/training/MyLessonPl
 import FacultyLessonPlanEditorPage from '../../features/faculty/training/LessonPlanEditorPage';
 import FacultyMyCertificatesPage from '../../features/faculty/training/MyCertificatesPage';
 import FacultyRecommendTrainingPage from '../../features/faculty/training/RecommendTrainingPage';
+
+// Coordinator
+import CoordinatorDashboard from '../../features/coordinator/dashboard/CoordinatorDashboard';
+import CoordinatorApplicationReviewPage from '../../features/coordinator/training/ApplicationReviewPage';
+import CoordinatorLessonPlanReviewPage from '../../features/coordinator/training/LessonPlanReviewPage';
+import CoordinatorTestResponsesPage from '../../features/coordinator/training/TestResponsesPage';
+import CoordinatorRecommendationsPage from '../../features/coordinator/training/RecommendationsPage';
+import CoordinatorRemindersPage from '../../features/coordinator/training/RemindersPage';
 
 // Student
 import StudentDashboard from '../../features/student/dashboard/StudentDashboard';
@@ -519,6 +528,48 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL, ...ROLES.FACULTY]}>
               <TrainingDetailsRouter />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Coordinator Routes */}
+        <Route
+          path="coordinator/applications"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <CoordinatorApplicationReviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="coordinator/lesson-plans"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <CoordinatorLessonPlanReviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="coordinator/test-responses"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <CoordinatorTestResponsesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="coordinator/recommendations"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <CoordinatorRecommendationsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="coordinator/reminders"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <CoordinatorRemindersPage />
             </ProtectedRoute>
           }
         />
@@ -954,7 +1005,7 @@ const DashboardRouter = () => {
   if (role === ROLES.PRINCIPAL) {
     return <PrincipalDashboard />;
   }
-  // Faculty (includes TEACHER, FACULTY_SUPERVISOR)
+  // Faculty (includes TEACHER, FACULTY_SUPERVISOR, FACULTY_COORDINATOR)
   if (ROLES.FACULTY.includes(role)) {
     return <FacultyDashboard />;
   }

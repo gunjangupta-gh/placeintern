@@ -262,7 +262,9 @@ export class LessonPlanService {
    */
   async getMyLessonPlans(userId: string, filters: LessonPlanFilterDto) {
     try {
-      const { status, trainingId, page = 1, limit = 20 } = filters;
+      const { status, trainingId } = filters;
+      const page = Number(filters.page) || 1;
+      const limit = Number(filters.limit) || 20;
 
       const where: Prisma.LessonPlanWhereInput = {
         userId,
@@ -306,7 +308,9 @@ export class LessonPlanService {
    */
   async getForReview(filters: LessonPlanFilterDto, institutionId?: string) {
     try {
-      const { status, trainingId, search, page = 1, limit = 20 } = filters;
+      const { status, trainingId, search } = filters;
+      const page = Number(filters.page) || 1;
+      const limit = Number(filters.limit) || 20;
 
       const where: Prisma.LessonPlanWhereInput = {
         status: status || { in: [LessonPlanStatus.SUBMITTED, LessonPlanStatus.UNDER_REVIEW] },
@@ -554,7 +558,9 @@ export class LessonPlanService {
    * Get lesson plans by user (Faculty)
    */
   async getByUser(userId: string, filters: LessonPlanFilterDto) {
-    const { status, trainingId, page = 1, limit = 20 } = filters;
+    const { status, trainingId } = filters;
+    const page = Number(filters.page) || 1;
+    const limit = Number(filters.limit) || 20;
 
     const where: Prisma.LessonPlanWhereInput = {
       userId,
@@ -667,7 +673,9 @@ export class LessonPlanService {
    * Get lesson plans by institution (Principal)
    */
   async getByInstitution(institutionId: string, filters: LessonPlanFilterDto) {
-    const { status, trainingId, page = 1, limit = 20 } = filters;
+    const { status, trainingId } = filters;
+    const page = Number(filters.page) || 1;
+    const limit = Number(filters.limit) || 20;
 
     const where: Prisma.LessonPlanWhereInput = {
       user: { institutionId },

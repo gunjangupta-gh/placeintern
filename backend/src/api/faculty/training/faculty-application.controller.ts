@@ -23,7 +23,7 @@ import { ApplyForTrainingDto, ApplicationFilterDto } from '../../../domain/train
 @ApiBearerAuth()
 @Controller('faculty/training/applications')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.TEACHER)
+@Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
 export class FacultyApplicationController {
   constructor(private readonly applicationService: TrainingApplicationService) {}
 

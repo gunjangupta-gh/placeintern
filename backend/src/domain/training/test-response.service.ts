@@ -565,4 +565,171 @@ export class TestResponseService {
         return userAnswer === correctAnswer;
     }
   }
+
+  // ==================== INSTITUTION-SCOPED METHODS (Coordinator/Principal) ====================
+
+  /**
+   * Get pre-test responses for a training filtered by institution
+   */
+  async getPreTestResponsesByTrainingAndInstitution(trainingId: string, institutionId: string) {
+    const responses = await this.prisma.preTestResponse.findMany({
+      where: {
+        trainingId,
+        user: { institutionId },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            branchName: true,
+            designation: true,
+          },
+        },
+        preTestForm: { select: { id: true, title: true, passingScore: true } },
+      },
+      orderBy: { submittedAt: 'desc' },
+    });
+
+    const stats = {
+      total: responses.length,
+      passed: responses.filter(r => r.passed === true).length,
+      failed: responses.filter(r => r.passed === false).length,
+      averageScore: responses.length > 0
+        ? Math.round((responses.reduce((sum, r) => sum + (r.score || 0), 0) / responses.length) * 100) / 100
+        : 0,
+    };
+
+    return { responses, stats };
+  }
+
+  /**
+   * Get post-test responses for a training filtered by institution
+   */
+  async getPostTestResponsesByTrainingAndInstitution(trainingId: string, institutionId: string) {
+    const responses = await this.prisma.postTestResponse.findMany({
+      where: {
+        trainingId,
+        user: { institutionId },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            branchName: true,
+            designation: true,
+          },
+        },
+        postTestForm: { select: { id: true, title: true, passingScore: true } },
+      },
+      orderBy: { submittedAt: 'desc' },
+    });
+
+    const stats = {
+      total: responses.length,
+      passed: responses.filter(r => r.passed === true).length,
+      failed: responses.filter(r => r.passed === false).length,
+      averageScore: responses.length > 0
+        ? Math.round((responses.reduce((sum, r) => sum + (r.score || 0), 0) / responses.length) * 100) / 100
+        : 0,
+    };
+
+    return { responses, stats };
+  }
+
+  /**
+   * Get institution test completion summary
+   */
+  async getInstitutionTestSummary(institutionId: string) {
+    // Get all trainings that have pre/post test forms and have faculty from this institution enrolled
+    const trainingsWithTests = await this.prisma.training.findMany({
+      where: {
+        isActive: true,
+        isPublished: true,
+        OR: [
+          { preTestFormId: { not: null } },
+          { postTestFormId: { not: null } },
+        ],
+        applications: {
+          some: {
+            status: 'APPROVED',
+            isActive: true,
+            user: { institutionId },
+          },
+        },
+      },
+      select: {
+        id: true,
+        title: true,
+        startDate: true,
+        endDate: true,
+        preTestFormId: true,
+        postTestFormId: true,
+        applications: {
+          where: {
+            status: 'APPROVED',
+            isActive: true,
+            user: { institutionId },
+          },
+          select: { userId: true },
+        },
+      },
+    });
+
+    const summary = [];
+
+    for (const training of trainingsWithTests) {
+      const enrolledCount = training.applications.length;
+      const enrolledUserIds = training.applications.map(a => a.userId);
+
+      let preTestStats = null;
+      let postTestStats = null;
+
+      if (training.preTestFormId) {
+        const preTestResponses = await this.prisma.preTestResponse.count({
+          where: {
+            trainingId: training.id,
+            userId: { in: enrolledUserIds },
+          },
+        });
+        preTestStats = {
+          submitted: preTestResponses,
+          pending: enrolledCount - preTestResponses,
+          completionRate: enrolledCount > 0 ? Math.round((preTestResponses / enrolledCount) * 100) : 0,
+        };
+      }
+
+      if (training.postTestFormId) {
+        const postTestResponses = await this.prisma.postTestResponse.count({
+          where: {
+            trainingId: training.id,
+            userId: { in: enrolledUserIds },
+          },
+        });
+        postTestStats = {
+          submitted: postTestResponses,
+          pending: enrolledCount - postTestResponses,
+          completionRate: enrolledCount > 0 ? Math.round((postTestResponses / enrolledCount) * 100) : 0,
+        };
+      }
+
+      summary.push({
+        trainingId: training.id,
+        trainingTitle: training.title,
+        startDate: training.startDate,
+        endDate: training.endDate,
+        enrolledCount,
+        preTest: preTestStats,
+        postTest: postTestStats,
+      });
+    }
+
+    return {
+      trainings: summary,
+      totalTrainings: summary.length,
+    };
+  }
 }

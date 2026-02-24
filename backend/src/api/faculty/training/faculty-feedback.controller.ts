@@ -20,7 +20,7 @@ import { SubmitFeedbackDto } from '../../../domain/feedback/dto';
 @ApiBearerAuth()
 @Controller('faculty/training/feedback')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.TEACHER)
+@Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
 export class FacultyFeedbackController {
   constructor(
     private readonly feedbackFormService: FeedbackFormService,

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Post-Test Reminder</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #059669; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+    .content { background: #f7fafc; padding: 20px; border: 1px solid #e2e8f0; }
+    .button { display: inline-block; background: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin-top: 15px; }
+    .footer { text-align: center; padding: 20px; color: #718096; font-size: 12px; }
+    .info-box { background: #d1fae5; padding: 15px; border-radius: 5px; margin: 15px 0; }
+    .warning-box { background: #fef3c7; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #f59e0b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Post-Test Reminder</h1>
+    </div>
+    <div class="content">
+      <p>Dear {{name}},</p>
+
+      <div class="info-box">
+        <strong>Training:</strong> {{trainingTitle}}<br>
+        <strong>Training Ended:</strong> {{endDate}}
+      </div>
+
+      {{#if customMessage}}
+      <p>{{customMessage}}</p>
+      {{else}}
+      <p>Congratulations on completing the training! Please complete the post-test to finalize your training completion.</p>
+      {{/if}}
+
+      <div class="warning-box">
+        <strong>Important:</strong> The post-test is required to receive your training completion certificate.
+      </div>
+
+      <p>Why complete the post-test?</p>
+      <ul>
+        <li>Demonstrates your learning from the training</li>
+        <li>Required for completion certificate</li>
+        <li>Helps measure training effectiveness</li>
+        <li>Provides feedback for future trainings</li>
+      </ul>
+
+      <p>Best regards,<br>Training Coordinator</p>
+    </div>
+    <div class="footer">
+      <p>This is an automated reminder from your Training Coordinator.</p>
+    </div>
+  </div>
+</body>
+</html>

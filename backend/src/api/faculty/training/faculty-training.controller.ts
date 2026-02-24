@@ -20,7 +20,7 @@ import { TrainingFilterDto, CalendarFilterDto } from '../../../domain/training/d
 @ApiBearerAuth()
 @Controller('faculty/training')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.TEACHER)
+@Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
 export class FacultyTrainingController {
   constructor(private readonly facultyTrainingService: FacultyTrainingService) {}
 

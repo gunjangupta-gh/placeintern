@@ -157,7 +157,9 @@ export class TrainingRecommendationService {
    */
   async getMyRecommendations(userId: string, filters: RecommendationFilterDto) {
     try {
-      const { status, priority, search, page = 1, limit = 20 } = filters;
+      const { status, priority, search } = filters;
+      const page = Number(filters.page) || 1;
+      const limit = Number(filters.limit) || 20;
 
       const where: Prisma.TrainingRecommendationWhereInput = {
         userId,
@@ -233,7 +235,9 @@ export class TrainingRecommendationService {
    */
   async getAll(filters: RecommendationFilterDto) {
     try {
-      const { status, priority, search, page = 1, limit = 20 } = filters;
+      const { status, priority, search } = filters;
+      const page = Number(filters.page) || 1;
+      const limit = Number(filters.limit) || 20;
 
       const where: Prisma.TrainingRecommendationWhereInput = {
         ...(status ? { status } : {}),
@@ -293,7 +297,9 @@ export class TrainingRecommendationService {
    */
   async getByInstitution(institutionId: string, filters: RecommendationFilterDto) {
     try {
-      const { status, priority, search, page = 1, limit = 20 } = filters;
+      const { status, priority, search } = filters;
+      const page = Number(filters.page) || 1;
+      const limit = Number(filters.limit) || 20;
 
       const where: Prisma.TrainingRecommendationWhereInput = {
         user: { institutionId },
