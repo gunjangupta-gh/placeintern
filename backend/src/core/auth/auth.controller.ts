@@ -8,6 +8,7 @@ import {
   HttpCode,
   HttpStatus,
   Headers,
+  Param,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { Throttle } from '@nestjs/throttler';
@@ -40,6 +41,42 @@ export class AuthController {
     private authService: AuthService,
     private tokenService: TokenService,
   ) {}
+
+  /**
+   * Verify reset token (used by frontend to validate token before showing reset form)
+   */
+  @Public()
+  @Get('verify-reset-token/:token')
+  @HttpCode(HttpStatus.OK)
+  async verifyResetToken(@Param('token') token: string) {
+    // Verify token signature and expiry
+    let payload: any;
+    try {
+      payload = this.tokenService.verifyToken(token);
+    } catch (err) {
+      return { valid: false, message: 'Invalid or expired token' };
+    }
+
+    if (payload.type !== 'reset') {
+      return { valid: false, message: 'Invalid token type' };
+    }
+
+    // Confirm token matches the stored reset token and hasn't expired
+    const user = await this.authService['prisma'].user.findFirst({
+      where: { id: payload.sub, resetPasswordToken: token },
+      select: { id: true, email: true, resetPasswordExpiry: true },
+    });
+
+    if (!user) {
+      return { valid: false, message: 'Invalid token' };
+    }
+
+    if (!user.resetPasswordExpiry || user.resetPasswordExpiry < new Date()) {
+      return { valid: false, message: 'Token has expired' };
+    }
+
+    return { valid: true, email: user.email };
+  }
 
   /**
    * Login endpoint
