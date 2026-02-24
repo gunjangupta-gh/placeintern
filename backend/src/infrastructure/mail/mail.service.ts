@@ -30,7 +30,7 @@ export class MailService {
       secure: this.configService.get('MAIL_SECURE', false),
       auth: {
         user: this.configService.get('MAIL_USER'),
-        pass: this.configService.get('MAIL_PASSWORD'),
+        pass: this.configService.get('MAIL_PASS'),
       },
     });
   }
