@@ -203,6 +203,27 @@ const FacultyVisitsSection = ({
                 </Card>
               </div>
             )}
+            {selectedVisit.responseFromOrganisation && (
+              <div className="mt-4">
+                <Text strong className="block mb-2">Response From Organisation</Text>
+                <Card className="bg-gray-50" size="small">
+                  <Text className="text-sm whitespace-pre-wrap">
+                    {selectedVisit.responseFromOrganisation}
+                  </Text>
+                </Card>
+              </div>
+            )}
+
+            {selectedVisit.feedbackSharedWithStudent && (
+              <div className="mt-4">
+                <Text strong className="block mb-2">Feedback Shared With Student</Text>
+                <Card className="bg-gray-50" size="small">
+                  <Text className="text-sm whitespace-pre-wrap">
+                    {selectedVisit.feedbackSharedWithStudent}
+                  </Text>
+                </Card>
+              </div>
+            )}
           </div>
         )}
       </Modal>

@@ -481,6 +481,8 @@ export class FacultyVisitService {
               visitType: visit.visitType,
               visitLocation: visit.visitLocation,
               meetingMinutes: visit.meetingMinutes,
+              responseFromOrganisation: visit.responseFromOrganisation,
+              feedbackSharedWithStudent: visit.feedbackSharedWithStudent,
             };
           });
 
