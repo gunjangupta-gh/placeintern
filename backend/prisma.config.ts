@@ -1,5 +1,11 @@
 /// <reference types="node" />
-import 'dotenv/config';
+// Load dotenv if available, but don't fail if it's missing in certain CI/build contexts
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  require('dotenv/config');
+} catch (e) {
+  // ignore - dotenv may not be installed in minimal build environments
+}
 import { defineConfig } from 'prisma/config';
 
 // Use process.env directly with fallback for CI/build environments
