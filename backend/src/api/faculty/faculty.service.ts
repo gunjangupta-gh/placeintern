@@ -952,6 +952,7 @@ export class FacultyService {
     } = createVisitLogDto;
 
     const normalizedVisitType = this.normalizeVisitType(visitType);
+    const normalizedVisitLocation = typeof visitLocation === 'string' ? visitLocation.trim() : visitLocation;
 
     // Filter to only valid Prisma schema fields (excludes unknown fields like 'notes')
     const filteredVisitData = this.buildVisitLogFields(createVisitLogDto);
@@ -961,8 +962,8 @@ export class FacultyService {
       throw new BadRequestException('visitType is required');
     }
 
-    // Location is required only for PHYSICAL visits (unless saving as draft)
-    if (normalizedVisitType === 'PHYSICAL' && !visitLocation && status !== 'DRAFT') {
+    // Location is required for all PHYSICAL visits (including DRAFT)
+    if (normalizedVisitType === 'PHYSICAL' && !normalizedVisitLocation) {
       throw new BadRequestException('visitLocation is required for physical visits');
     }
 
@@ -1090,7 +1091,7 @@ export class FacultyService {
       // Auto-set status to COMPLETED for quick logs if not provided (unless DRAFT)
       status: status || 'COMPLETED',
       // Include location if provided
-      ...(visitLocation && { visitLocation }),
+      ...(normalizedVisitLocation && { visitLocation: normalizedVisitLocation }),
       // Include GPS coordinates if provided
       ...(latitude !== undefined && { latitude: parseFloat(String(latitude)) }),
       ...(longitude !== undefined && { longitude: parseFloat(String(longitude)) }),

@@ -50,6 +50,15 @@ const normalizeVisitType = (value) => {
   return visitType === 'TELEPHONIC' ? 'PHONE' : visitType;
 };
 
+const physicalLocationRule = {
+  validator: (_, value) => {
+    const trimmed = (value || '').trim();
+    return trimmed
+      ? Promise.resolve()
+      : Promise.reject(new Error('Please enter location or capture GPS coordinates'));
+  },
+};
+
 // Constant styles outside component
 const UPLOAD_BUTTON_STYLE = { marginTop: 8 };
 const SPACE_COMPACT_STYLE = { width: '100%' };
@@ -434,17 +443,13 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
             <Form.Item
               name="visitLocation"
               label="Location"
-              rules={[
-                {
-                  required: isCompletedStatus,
-                  message: 'Please enter location or capture GPS coordinates',
-                },
-              ]}
+              rules={[physicalLocationRule]}
             >
               <Space.Compact style={SPACE_COMPACT_STYLE}>
                 <Input
-                  placeholder="Enter location or use GPS"
+                  placeholder="Use GPS button to capture location"
                   prefix={<EnvironmentOutlined />}
+                  readOnly
                 />
                 <Button
                   type="primary"

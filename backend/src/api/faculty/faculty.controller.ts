@@ -430,7 +430,7 @@ export class FacultyController {
 
     // Get faculty for determining storage path
     const faculty = await this.facultyService.getProfile(req.user.userId);
-    const docType = body.documentType || 'visit-photo';
+    const docType = this.normalizeVisitDocumentType(body.documentType);
 
     // Get institution name for folder structure
     const institutionName = faculty?.Institution?.name || 'default';
@@ -486,6 +486,27 @@ export class FacultyController {
     }
 
     return { url: result.url, documentType: docType };
+  }
+
+  /**
+   * Normalize visit document type to canonical storage folders
+   */
+  private normalizeVisitDocumentType(documentType?: string): string {
+    const normalized = (documentType || 'visit-photo').toLowerCase().trim();
+
+    if (['visit-photo', 'photo', 'visitphoto'].includes(normalized)) {
+      return 'visit-photo';
+    }
+
+    if (['visit-signed-document', 'signed-visit-document', 'signed-document', 'signed'].includes(normalized)) {
+      return 'visit-signed-document';
+    }
+
+    if (['visit-document', 'document'].includes(normalized)) {
+      return 'visit-document';
+    }
+
+    return normalized;
   }
 
   /**

@@ -63,6 +63,15 @@ const VISIT_TYPES = [
   { value: 'PHONE', label: 'Phone' },
 ];
 
+const physicalLocationRule = {
+  validator: (_, value) => {
+    const trimmed = (value || '').trim();
+    return trimmed
+      ? Promise.resolve()
+      : Promise.reject(new Error('Please enter visit location for physical visits'));
+  },
+};
+
 const STATUS_OPTIONS = [
   { value: 'COMPLETED', label: 'Completed', color: 'green' },
   { value: 'DRAFT', label: 'Draft', color: 'orange' },
@@ -258,7 +267,7 @@ const UnifiedVisitLogModal = ({
     if (signedDocList.length > 0 && signedDocList[0].originFileObj) {
       setUploadingSignedDoc(true);
       try {
-        const result = await dispatch(uploadVisitDocument({ file: signedDocList[0].originFileObj, type: 'signed-visit-document' })).unwrap();
+        const result = await dispatch(uploadVisitDocument({ file: signedDocList[0].originFileObj, type: 'visit-signed-document' })).unwrap();
         signedDocUrl = result.url;
       } catch (error) {
         console.error('Signed doc upload error:', error);
@@ -425,9 +434,9 @@ const UnifiedVisitLogModal = ({
           )}
 
           {visitType === 'PHYSICAL' && (
-            <Form.Item name="visitLocation" label="Location" rules={[{ required: isCompletedStatus, message: 'Please enter visit location for physical visits' }]} className="mb-0! mt-2!">
+            <Form.Item name="visitLocation" label="Location" rules={[physicalLocationRule]} className="mb-0! mt-2!">
               <Space.Compact className="w-full">
-                <Input placeholder="Location or GPS" prefix={<EnvironmentOutlined />} disabled={isEdit} />
+                <Input placeholder="Use GPS button to capture location" prefix={<EnvironmentOutlined />} readOnly disabled={isEdit} />
                 <Tooltip title={isEdit ? 'Locked' : 'Capture GPS'}>
                   <Button type="primary" icon={<EnvironmentOutlined />} onClick={captureGpsLocation} loading={capturing} disabled={isEdit} />
                 </Tooltip>

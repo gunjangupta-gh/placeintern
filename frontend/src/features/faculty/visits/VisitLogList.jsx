@@ -14,7 +14,7 @@ dayjs.extend(relativeTime);
 const { RangePicker } = DatePicker;
 const { Title, Text, Paragraph } = Typography;
 
-const MIN_WORDS = 100;
+const MIN_WORDS = 25;
 const countWords = (value = '') => value.trim().split(/\s+/).filter(Boolean).length;
 const hasValue = (value) => value !== null && value !== undefined && String(value).trim() !== '';
 const isVisitLogComplete = (log) => {
