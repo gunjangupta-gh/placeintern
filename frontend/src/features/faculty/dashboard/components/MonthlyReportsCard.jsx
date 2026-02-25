@@ -7,7 +7,6 @@ import {
   RightOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
-  DownloadOutlined,
   EyeOutlined,
   ClockCircleOutlined,
   UserOutlined,
@@ -15,7 +14,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { approveMonthlyReport, rejectMonthlyReport, downloadMonthlyReport, viewMonthlyReport, deleteMonthlyReport } from '../../store/facultySlice';
+import { approveMonthlyReport, rejectMonthlyReport, viewMonthlyReport, deleteMonthlyReport } from '../../store/facultySlice';
 import ProfileAvatar from '../../../../components/common/ProfileAvatar';
 
 const { TextArea } = Input;
@@ -70,23 +69,6 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
       toast.error(errorMessage);
     } finally {
       setActionLoading(false);
-    }
-  };
-
-  const handleDownload = async (report) => {
-    try {
-      const blob = await dispatch(downloadMonthlyReport(report.id)).unwrap();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `monthly_report_${report.student?.user?.name || report.student?.name || 'report'}_${report.reportMonth}_${report.reportYear}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to download report';
-      toast.error(errorMessage);
     }
   };
 
@@ -195,14 +177,6 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
                                 size="small"
                                 icon={<EyeOutlined />}
                                 onClick={() => handleViewReport(report)}
-                              />
-                            </Tooltip>
-                            <Tooltip title="Download">
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<DownloadOutlined />}
-                                onClick={() => handleDownload(report)}
                               />
                             </Tooltip>
                           </>

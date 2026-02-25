@@ -28,7 +28,6 @@ import {
   FileTextOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
-  DownloadOutlined,
   EyeOutlined,
   SearchOutlined,
   ReloadOutlined,
@@ -45,7 +44,6 @@ import dayjs from 'dayjs';
 import {
   fetchMonthlyReports,
   selectMonthlyReports,
-  downloadMonthlyReport,
   uploadMonthlyReport,
   fetchAssignedStudents,
   selectStudents,
@@ -143,23 +141,6 @@ const MonthlyReportsPage = () => {
       setIsRefreshing(false);
     }
   }, [dispatch]);
-
-  const handleDownload = async (report) => {
-    try {
-      const blob = await dispatch(downloadMonthlyReport(report.id)).unwrap();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `monthly_report_${report.application?.student?.user?.name || report.application?.student?.name || 'report'}_${report.reportMonth}_${report.reportYear}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to download report';
-      toast.error(errorMessage);
-    }
-  };
 
   // Handle view report with presigned URL
   const handleViewReport = async (report) => {
@@ -400,33 +381,23 @@ const MonthlyReportsPage = () => {
       width: '20%',
       render: (_, record) => (
         <Space size="small">
-          <Tooltip title="View Details">
+          {/* <Tooltip title="View Details">
             <Button
               type="text"
               size="small"
-              icon={<EyeOutlined />}
+              icon={<FileTextOutlined />}
               onClick={() => handleViewDetails(record)}
             />
-          </Tooltip>
+          </Tooltip> */}
           {record.reportFileUrl && (
-            <>
-              <Tooltip title="View Report">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<FileTextOutlined />}
-                  onClick={() => handleViewReport(record)}
-                />
-              </Tooltip>
-              <Tooltip title="Download">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<DownloadOutlined />}
-                  onClick={() => handleDownload(record)}
-                />
-              </Tooltip>
-            </>
+            <Tooltip title="View Report">
+              <Button
+                type="text"
+                size="small"
+                icon={<EyeOutlined />}
+                onClick={() => handleViewReport(record)}
+              />
+            </Tooltip>
           )}
           <Popconfirm
             title="Delete Report"
@@ -690,11 +661,11 @@ const MonthlyReportsPage = () => {
             <div className="pt-4 flex justify-end gap-3 border-t" style={{ borderColor: token.colorBorder }}>
               {selectedReport.reportFileUrl && (
                 <Button
-                  icon={<DownloadOutlined />}
-                  onClick={() => handleDownload(selectedReport)}
+                  icon={<EyeOutlined />}
+                  onClick={() => handleViewReport(selectedReport)}
                   className="rounded-lg"
                 >
-                  Download Report
+                  View Report
                 </Button>
               )}
             </div>

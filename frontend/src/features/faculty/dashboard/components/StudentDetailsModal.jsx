@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   Tabs,
@@ -51,7 +51,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   updateInternship,
   uploadJoiningLetter,
@@ -59,6 +59,7 @@ import {
   deleteMonthlyReport,
   uploadMonthlyReport,
   viewMonthlyReport,
+  selectStudents,
 } from '../../store/facultySlice';
 import { openFileWithPresignedUrl } from '../../../../utils/imageUtils';
 import ProfileAvatar from '../../../../components/common/ProfileAvatar';
@@ -94,6 +95,8 @@ const StudentDetailsModal = ({
   const [uploadingJoiningLetter, setUploadingJoiningLetter] = useState(false);
   const [uploadingReport, setUploadingReport] = useState(false);
   const [unmaskedData, setUnmaskedData] = useState(null);
+  const [deletedReportIds, setDeletedReportIds] = useState([]);
+  const { list: studentsList = [] } = useSelector(selectStudents);
 
   // Report upload modal states
   const [reportUploadModalVisible, setReportUploadModalVisible] = useState(false);
@@ -167,13 +170,26 @@ const StudentDetailsModal = ({
       setActiveTab('overview');
       setIsEditingInternship(false);
       setUnmaskedData(null); // Reset unmasked data cache
+      setDeletedReportIds([]);
     }
   }, [visible, student?.id, student?.student?.id]);
 
+  const currentStudentId = student?.student?.id || student?.id;
+
+  const liveStudentFromStore = useMemo(() => {
+    if (!currentStudentId) return null;
+    const matched = studentsList.find((item) => {
+      const itemStudent = item?.student || item;
+      return itemStudent?.id === currentStudentId || item?.id === currentStudentId;
+    });
+    return matched || null;
+  }, [studentsList, currentStudentId]);
+
   // Helper to get nested data
   const getStudentData = () => {
-    if (!student) return null;
-    return student.student || student;
+    const source = liveStudentFromStore || student;
+    if (!source) return null;
+    return source.student || source;
   };
 
   const getInternshipApp = () => {
@@ -194,9 +210,12 @@ const StudentDetailsModal = ({
                  [];
 
   // Get monthly reports from nested structure
-  const monthlyReports = internshipApp?.monthlyReports ||
-                         student?.monthlyReports ||
-                         [];
+  const rawMonthlyReports = internshipApp?.monthlyReports ||
+                            studentData?.monthlyReports ||
+                            student?.monthlyReports ||
+                            [];
+
+  const monthlyReports = rawMonthlyReports.filter((report) => !deletedReportIds.includes(report.id));
 
   // Get status color
   const getStatusColor = (status) => {
@@ -412,6 +431,7 @@ const StudentDetailsModal = ({
   const handleDeleteReport = async (reportId) => {
     try {
       await dispatch(deleteMonthlyReport(reportId)).unwrap();
+      setDeletedReportIds((prev) => (prev.includes(reportId) ? prev : [...prev, reportId]));
       toast.success('Report deleted successfully');
       onRefresh?.();
     } catch (error) {
