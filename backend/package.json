@@ -32,6 +32,8 @@
     "db:migration-pipeline:dry": "cross-env DRY_RUN=true ts-node scripts/migration-pipeline.ts",
     "db:update-institutions": "ts-node scripts/update-institutions.ts",
     "db:migrate-to-postgres": "ts-node prisma/migrate-mongo-to-postgres.ts",
+    "report:jan-feb": "ts-node scripts/generate-jan-feb-report.ts",
+    "report:approve-monthly-status": "ts-node scripts/approve-monthly-report-statuses.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",

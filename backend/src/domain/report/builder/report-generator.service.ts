@@ -1330,10 +1330,21 @@ export class ReportGeneratorService {
       where.active = accountActive;
       // For students, also check that Student record exists
       if (accountActive === true) {
-        where.OR = [
+        const activeAccountOr = [
           { role: { not: 'STUDENT' } }, // Non-students just need User.active
           { role: 'STUDENT', Student: { isNot: null } }, // Students need User.active AND Student record
         ];
+
+        if (where.OR) {
+          const existingOr = where.OR;
+          delete where.OR;
+          where.AND = [
+            { OR: existingOr },
+            { OR: activeAccountOr },
+          ];
+        } else {
+          where.OR = activeAccountOr;
+        }
       }
     }
 

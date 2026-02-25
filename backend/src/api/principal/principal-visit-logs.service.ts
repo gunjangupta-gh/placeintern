@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, Role } from '../../generated/prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
+import { AuditService } from '../../infrastructure/audit/audit.service';
+import { AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
 import {
   CreatePrincipalVisitLogDto,
   PrincipalVisitLogQueryDto,
@@ -9,7 +11,10 @@ import {
 
 @Injectable()
 export class PrincipalVisitLogsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   private async getInstitutionId(principalId: string) {
     const principal = await this.prisma.user.findFirst({
@@ -353,6 +358,24 @@ export class PrincipalVisitLogsService {
       },
     });
 
+    this.auditService.log({
+      action: AuditAction.VISIT_LOG_CREATE,
+      entityType: 'PrincipalFeedback',
+      entityId: created.id,
+      userId: principalId,
+      userRole: Role.PRINCIPAL,
+      description: `Principal visit log created: ${created.id}`,
+      category: AuditCategory.FEEDBACK_SYSTEM,
+      severity: AuditSeverity.MEDIUM,
+      institutionId,
+      newValues: {
+        visitType: created.visitType,
+        status: created.status,
+        visitDate: created.visitDate,
+        studentCount: validatedStudents.length,
+      },
+    }).catch(() => {});
+
     return this.getVisitLogById(principalId, created.id);
   }
 
@@ -436,6 +459,30 @@ export class PrincipalVisitLogsService {
         skipDuplicates: true,
       });
     }
+
+    this.auditService.log({
+      action: AuditAction.VISIT_LOG_UPDATE,
+      entityType: 'PrincipalFeedback',
+      entityId: visitLogId,
+      userId: principalId,
+      userRole: Role.PRINCIPAL,
+      description: `Principal visit log updated: ${visitLogId}`,
+      category: AuditCategory.FEEDBACK_SYSTEM,
+      severity: AuditSeverity.MEDIUM,
+      institutionId,
+      oldValues: {
+        visitType: existing.visitType,
+        visitLocation: existing.visitLocation,
+        status: existing.status,
+      },
+      newValues: {
+        visitType: nextVisitType,
+        visitLocation: nextLocation,
+        status: nextStatus,
+        studentsUpdated: !!dto.students,
+      },
+      changedFields: Object.keys(dto || {}),
+    }).catch(() => {});
 
     return this.getVisitLogById(principalId, visitLogId);
   }
@@ -540,6 +587,21 @@ export class PrincipalVisitLogsService {
         deletedAt: new Date(),
       },
     });
+
+    this.auditService.log({
+      action: AuditAction.VISIT_LOG_DELETE,
+      entityType: 'PrincipalFeedback',
+      entityId: visitLogId,
+      userId: principalId,
+      userRole: Role.PRINCIPAL,
+      description: `Principal visit log soft-deleted: ${visitLogId}`,
+      category: AuditCategory.FEEDBACK_SYSTEM,
+      severity: AuditSeverity.HIGH,
+      institutionId,
+      newValues: {
+        isDeleted: true,
+      },
+    }).catch(() => {});
 
     return { message: 'Visit log deleted successfully' };
   }

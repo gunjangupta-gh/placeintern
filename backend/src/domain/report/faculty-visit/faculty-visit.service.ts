@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
-import { Role, VisitType, VisitLogStatus } from '../../../generated/prisma/client';
+import { Role, VisitType, VisitLogStatus, AuditAction, AuditCategory, AuditSeverity } from '../../../generated/prisma/client';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { CacheService } from '../../../core/cache/cache.service';
 import { ExpectedCycleService } from '../../internship/expected-cycle/expected-cycle.service';
+import { AuditService } from '../../../infrastructure/audit/audit.service';
 import {
   calculateExpectedMonths,
   MonthlyCycle,
@@ -128,6 +129,7 @@ export class FacultyVisitService {
     private readonly prisma: PrismaService,
     private readonly cache: CacheService,
     private readonly expectedCycleService: ExpectedCycleService,
+    private readonly auditService: AuditService,
   ) {}
 
   async createVisitLog(
@@ -211,6 +213,25 @@ export class FacultyVisitService {
 
       // Increment the completed visits counter
       await this.expectedCycleService.incrementVisitCount(applicationId);
+
+      this.auditService.log({
+        action: AuditAction.VISIT_LOG_CREATE,
+        entityType: 'FacultyVisitLog',
+        entityId: visitLog.id,
+        userId: facultyId,
+        userRole: faculty.role || Role.TEACHER,
+        userName: faculty.name,
+        description: `Faculty visit log created: ${visitLog.id}`,
+        category: AuditCategory.FEEDBACK_SYSTEM,
+        severity: AuditSeverity.MEDIUM,
+        institutionId: faculty.institutionId || undefined,
+        newValues: {
+          applicationId,
+          status: visitLog.status,
+          visitDate: visitLog.visitDate,
+          visitType: visitLog.visitType,
+        },
+      }).catch(() => {});
 
       // Invalidate cache (parallel)
       await Promise.all([
@@ -331,6 +352,23 @@ export class FacultyVisitService {
         },
       });
 
+      this.auditService.log({
+        action: AuditAction.VISIT_LOG_UPDATE,
+        entityType: 'FacultyVisitLog',
+        entityId: id,
+        userId: visitLog.facultyId || undefined,
+        userRole: Role.TEACHER,
+        description: `Faculty visit log updated: ${id}`,
+        category: AuditCategory.FEEDBACK_SYSTEM,
+        severity: AuditSeverity.MEDIUM,
+        newValues: {
+          status: updated.status,
+          visitDate: updated.visitDate,
+          visitType: updated.visitType,
+        },
+        changedFields: Object.keys(data || {}),
+      }).catch(() => {});
+
       // Invalidate cache (parallel)
       await Promise.all([
         this.cache.del(`visits:faculty:${visitLog.facultyId}`),
@@ -365,6 +403,20 @@ export class FacultyVisitService {
           deletedAt: new Date(),
         },
       });
+
+      this.auditService.log({
+        action: AuditAction.VISIT_LOG_DELETE,
+        entityType: 'FacultyVisitLog',
+        entityId: id,
+        userId: visitLog.facultyId || undefined,
+        userRole: Role.TEACHER,
+        description: `Faculty visit log soft-deleted: ${id}`,
+        category: AuditCategory.FEEDBACK_SYSTEM,
+        severity: AuditSeverity.HIGH,
+        newValues: {
+          isDeleted: true,
+        },
+      }).catch(() => {});
 
       // Decrement counter only if this was a completed visit
       if (visitLog.status === VisitLogStatus.COMPLETED) {
@@ -559,6 +611,23 @@ export class FacultyVisitService {
           },
         },
       });
+
+      this.auditService.log({
+        action: AuditAction.VISIT_LOG_UPDATE,
+        entityType: 'FacultyVisitLog',
+        entityId: visitId,
+        userId: visit.facultyId || undefined,
+        userRole: Role.TEACHER,
+        description: `Faculty monthly visit completed: ${visitId}`,
+        category: AuditCategory.FEEDBACK_SYSTEM,
+        severity: AuditSeverity.MEDIUM,
+        newValues: {
+          status: VisitLogStatus.COMPLETED,
+          visitDate: updated.visitDate,
+          visitType: updated.visitType,
+        },
+        changedFields: Object.keys(data || {}),
+      }).catch(() => {});
 
       // Increment counter only if visit wasn't already completed
       if (!wasAlreadyCompleted) {

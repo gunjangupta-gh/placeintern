@@ -15,7 +15,7 @@ import { AccountLockoutService } from './account-lockout.service';
 import { MfaService } from './mfa.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { MailService } from '../../../infrastructure/mail/mail.service';
-import { User, AuditAction, AuditCategory, AuditSeverity, Role } from '../../../generated/prisma/client';
+import { User, AuditAction, AuditCategory, AuditSeverity, Role, Prisma } from '../../../generated/prisma/client';
 
 // SECURITY: Bcrypt salt rounds for password hashing
 export const BCRYPT_SALT_ROUNDS = 10;
@@ -152,11 +152,6 @@ export class AuthService {
     // Reset failed attempts on successful login
     await this.accountLockoutService.resetFailedAttempts(user.id);
 
-    // Update login tracking (non-blocking - don't fail login if this fails)
-    this.updateLoginTracking(user.id).catch((err) => {
-      this.logger.warn(`Failed to update login tracking for user ${user.id}: ${err.message}`);
-    });
-
     // Flatten institution data for easier frontend access
     const { password: _, Institution, ...result } = user;
     return {
@@ -246,11 +241,6 @@ export class AuthService {
       }).catch(() => {});
       throw new UnauthorizedException('Invalid credentials');
     }
-
-    // Update login tracking
-    this.updateLoginTracking(user.id).catch((err) => {
-      this.logger.warn(`Failed to update login tracking for student ${user.id}: ${err.message}`);
-    });
 
     // Flatten institution data
     const { password: _, Institution, ...result } = user;
@@ -343,10 +333,16 @@ export class AuthService {
    * Called after password validation (and MFA if enabled)
    */
   private async completeLogin(user: any, ipAddress?: string, userAgent?: string) {
+    const loginTracking = await this.updateLoginTracking(user.id, ipAddress);
+    const loggedInUser = {
+      ...user,
+      ...loginTracking,
+    };
+
     const payload = {
-      sub: user.id,
-      email: user.email,
-      roles: user.role ? [user.role] : [],
+      sub: loggedInUser.id,
+      email: loggedInUser.email,
+      roles: loggedInUser.role ? [loggedInUser.role] : [],
     };
 
     const accessToken = this.tokenService.generateAccessToken(payload);
@@ -361,36 +357,36 @@ export class AuthService {
       ipAddress,
       userAgent,
     ).catch((err) => {
-      this.logger.warn(`Failed to create session for user ${user.id}: ${err.message}`);
+      this.logger.warn(`Failed to create session for user ${loggedInUser.id}: ${err.message}`);
     });
 
     // Log successful login
     this.auditService.log({
       action: AuditAction.USER_LOGIN,
       entityType: 'User',
-      entityId: user.id,
-      userId: user.id,
-      userName: user.name,
-      userRole: user.role || Role.STUDENT,
-      description: `User logged in successfully: ${user.email}`,
+      entityId: loggedInUser.id,
+      userId: loggedInUser.id,
+      userName: loggedInUser.name,
+      userRole: loggedInUser.role || Role.STUDENT,
+      description: `User logged in successfully: ${loggedInUser.email}`,
       category: AuditCategory.AUTHENTICATION,
       severity: AuditSeverity.LOW,
-      institutionId: user.institutionId || undefined,
+      institutionId: loggedInUser.institutionId || undefined,
       ipAddress,
       userAgent,
       newValues: {
-        email: user.email,
-        role: user.role,
-        loginCount: user.loginCount,
-        mfaUsed: user.mfaEnabled || false,
+        email: loggedInUser.email,
+        role: loggedInUser.role,
+        loginCount: loggedInUser.loginCount,
+        mfaUsed: loggedInUser.mfaEnabled || false,
       },
     }).catch(() => {}); // Non-blocking
 
     return {
       access_token: accessToken,
       refresh_token: refreshToken,
-      user,
-      needsPasswordChange: !user.hasChangedDefaultPassword,
+      user: loggedInUser,
+      needsPasswordChange: !loggedInUser.hasChangedDefaultPassword,
     };
   }
 
@@ -913,20 +909,31 @@ export class AuthService {
   /**
    * Update login tracking information
    */
-  private async updateLoginTracking(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { lastLoginAt: true, loginCount: true },
-    });
+  private async updateLoginTracking(userId: string, ipAddress?: string) {
+    const now = new Date();
 
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        previousLoginAt: user?.lastLoginAt || null,
-        lastLoginAt: new Date(),
-        loginCount: (user?.loginCount || 0) + 1,
-      },
-    });
+    const updatedRows = await this.prisma.$queryRaw<Array<{
+      lastLoginAt: Date | null;
+      previousLoginAt: Date | null;
+      loginCount: number;
+      lastLoginIp: string | null;
+    }>>(Prisma.sql`
+      UPDATE "User"
+      SET
+        "previousLoginAt" = "lastLoginAt",
+        "lastLoginAt" = ${now},
+        "lastLoginIp" = ${ipAddress || null},
+        "loginCount" = COALESCE("loginCount", 0) + 1
+      WHERE "id" = ${userId}
+      RETURNING "lastLoginAt", "previousLoginAt", "loginCount", "lastLoginIp"
+    `);
+
+    const updated = updatedRows[0];
+    if (!updated) {
+      throw new NotFoundException('User not found');
+    }
+
+    return updated;
   }
 
   /**
