@@ -547,12 +547,13 @@ export class FileStorageService implements OnModuleInit {
    */
   async getFile(key: string): Promise<Buffer> {
     await this.ensureConnectedAsync();
+    const normalizedKey = this.normalizeObjectKey(key);
 
     try {
-      this.logger.log(`Fetching file from MinIO - Bucket: ${this.bucket}, Key: ${key}`);
+      this.logger.log(`Fetching file from MinIO - Bucket: ${this.bucket}, Key: ${normalizedKey}`);
 
       const response = await this.s3Client.send(
-        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+        new GetObjectCommand({ Bucket: this.bucket, Key: normalizedKey }),
       );
 
       if (!response.Body) {
@@ -565,14 +566,14 @@ export class FileStorageService implements OnModuleInit {
         chunks.push(Buffer.from(chunk));
       }
       const buffer = Buffer.concat(chunks);
-      this.logger.log(`File fetched successfully: ${key} (${buffer.length} bytes)`);
+      this.logger.log(`File fetched successfully: ${normalizedKey} (${buffer.length} bytes)`);
       return buffer;
     } catch (error) {
-      this.logger.error(`Failed to get file - Bucket: ${this.bucket}, Key: ${key}`);
+      this.logger.error(`Failed to get file - Bucket: ${this.bucket}, Key: ${normalizedKey}`);
       this.logger.error(`Error details: ${error.name} - ${error.message}`);
 
       if (error.name === 'NoSuchKey' || error.Code === 'NoSuchKey') {
-        throw new Error(`File not found in storage: ${key}`);
+        throw new Error(`File not found in storage: ${normalizedKey}`);
       }
 
       throw new Error(`Failed to retrieve file from storage: ${error.message}`);
@@ -591,12 +592,13 @@ export class FileStorageService implements OnModuleInit {
     contentLength?: number;
   }> {
     await this.ensureConnectedAsync();
+    const normalizedKey = this.normalizeObjectKey(key);
 
     try {
-      this.logger.log(`Opening stream for file: ${key}`);
+      this.logger.log(`Opening stream for file: ${normalizedKey}`);
 
       const response = await this.s3Client.send(
-        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+        new GetObjectCommand({ Bucket: this.bucket, Key: normalizedKey }),
       );
 
       if (!response.Body) {
@@ -609,11 +611,11 @@ export class FileStorageService implements OnModuleInit {
         contentLength: response.ContentLength,
       };
     } catch (error) {
-      this.logger.error(`Failed to open stream for file: ${key}`);
+      this.logger.error(`Failed to open stream for file: ${normalizedKey}`);
       this.logger.error(`Error details: ${error.name} - ${error.message}`);
 
       if (error.name === 'NoSuchKey' || error.Code === 'NoSuchKey') {
-        throw new Error(`File not found in storage: ${key}`);
+        throw new Error(`File not found in storage: ${normalizedKey}`);
       }
 
       throw new Error(`Failed to retrieve file stream from storage: ${error.message}`);
@@ -669,10 +671,11 @@ export class FileStorageService implements OnModuleInit {
    * Delete a file
    */
   async deleteFile(key: string): Promise<void> {
+    const normalizedKey = this.normalizeObjectKey(key);
     await this.s3Client.send(
-      new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
+      new DeleteObjectCommand({ Bucket: this.bucket, Key: normalizedKey }),
     );
-    this.logger.log(`Deleted: ${key}`);
+    this.logger.log(`Deleted: ${normalizedKey}`);
   }
 
   // SECURITY: Maximum presigned URL expiry time (1 hour)
@@ -683,9 +686,10 @@ export class FileStorageService implements OnModuleInit {
    * SECURITY: Expiry time is capped at 1 hour maximum
    */
   async getSignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
+    const normalizedKey = this.normalizeObjectKey(key);
     // Cap expiry time at maximum allowed value
     const cappedExpiry = Math.min(expiresIn, this.MAX_PRESIGNED_EXPIRY);
-    const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
+    const command = new GetObjectCommand({ Bucket: this.bucket, Key: normalizedKey });
     return getSignedUrl(this.s3Client, command, { expiresIn: cappedExpiry });
   }
 
@@ -771,6 +775,57 @@ export class FileStorageService implements OnModuleInit {
       zip: 'application/zip',
     };
     return types[ext] || 'application/octet-stream';
+  }
+
+  /**
+   * Normalize a stored file reference into a MinIO object key.
+   * Supports:
+   * - raw key: institution/reports/file.pdf
+   * - full URL: https://files.placeintern.com/bucket/key
+   * - malformed URL: https:/files.placeintern.com/bucket/key
+   * - path value: /bucket/key
+   */
+  private normalizeObjectKey(input: string): string {
+    if (!input) {
+      return input;
+    }
+
+    const trimmed = input.trim();
+
+    const repaired = trimmed
+      .replace(/^https:\/(?!\/)/i, 'https://')
+      .replace(/^http:\/(?!\/)/i, 'http://');
+
+    // Handle plain path values such as /bucket/key
+    if (repaired.startsWith('/')) {
+      const pathParts = repaired.split('/').filter(Boolean);
+      if (pathParts.length > 1 && pathParts[0] === this.bucket) {
+        return pathParts.slice(1).join('/');
+      }
+      return pathParts.join('/');
+    }
+
+    // Fast path for already-clean keys
+    if (!repaired.includes('://')) {
+      return repaired;
+    }
+
+    try {
+      const url = new URL(repaired);
+      const pathParts = url.pathname.split('/').filter(Boolean);
+
+      if (pathParts.length > 1 && pathParts[0] === this.bucket) {
+        return pathParts.slice(1).join('/');
+      }
+
+      if (pathParts.length > 1) {
+        return pathParts.slice(1).join('/');
+      }
+
+      return pathParts[0] || repaired;
+    } catch {
+      return repaired.replace(/^\/+/, '');
+    }
   }
 
   // ============================================
