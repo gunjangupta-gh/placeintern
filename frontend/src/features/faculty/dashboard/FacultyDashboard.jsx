@@ -5,6 +5,7 @@ import { SyncOutlined, CameraOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
+import { useNotifications } from '../../common/notifications';
 
 import { useFacultyDashboard } from '../hooks/useFacultyDashboard';
 import {
@@ -22,6 +23,12 @@ import UnifiedVisitLogModal from '../visits/UnifiedVisitLogModal';
 dayjs.extend(isBetween);
 
 const FacultyDashboard = () => {
+  useNotifications({
+    showToasts: false,
+    showInitialToasts: true,
+    maxInitialToasts: 3,
+  });
+
   const navigate = useNavigate();
   const { token } = theme.useToken();
 

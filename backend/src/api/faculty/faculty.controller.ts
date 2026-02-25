@@ -434,6 +434,9 @@ export class FacultyController {
 
     // Get institution name for folder structure
     const institutionName = faculty?.Institution?.name || 'default';
+    const sanitizedInstitution = this.sanitizeFolderName(institutionName);
+    const sanitizedDocType = this.sanitizeFolderName(docType);
+    const fileExtension = file.originalname.split('.').pop()?.toLowerCase() || 'bin';
 
     // Check if file is an image that should be optimized
     const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
@@ -454,10 +457,10 @@ export class FacultyController {
       // Upload the optimized image
       result = await this.fileStorageService.uploadBuffer(
         optimized.buffer,
-        `${docType}_${Date.now()}.webp`,
+        `${sanitizedDocType}_${Date.now()}.webp`,
         {
-          folder: this.sanitizeFolderName(institutionName),
-          subfolder: 'visit-logs',
+          folder: sanitizedInstitution,
+          subfolder: `visit-logs/${sanitizedDocType}`,
           contentType: optimized.contentType,
           metadata: {
             originalName: file.originalname,
@@ -467,12 +470,19 @@ export class FacultyController {
       );
     } else {
       // Non-image files (PDFs, etc.) - upload as-is
-      result = await this.fileStorageService.uploadStudentDocument(file, {
-        institutionName,
-        rollNumber: 'visit-logs',
-        documentType: 'other',
-        customName: docType,
-      });
+      result = await this.fileStorageService.uploadBuffer(
+        file.buffer,
+        `${sanitizedDocType}_${Date.now()}.${fileExtension}`,
+        {
+          folder: sanitizedInstitution,
+          subfolder: `visit-logs/${sanitizedDocType}`,
+          contentType: file.mimetype || 'application/octet-stream',
+          metadata: {
+            originalName: file.originalname,
+            documentType: docType,
+          },
+        },
+      );
     }
 
     return { url: result.url, documentType: docType };
@@ -491,6 +501,43 @@ export class FacultyController {
       .replace(/-+/g, '_')
       .replace(/_+/g, '_')
       .substring(0, 100);
+  }
+
+  private mapDocumentTypeForStorage(type?: string): {
+    documentType: 'profile' | 'joining-letter' | 'monthly-report' | 'completion-certificate' | 'offer-letter' | 'noc' | 'document' | 'other';
+    customName?: string;
+  } {
+    const rawType = (type || 'document').toString().trim();
+    const normalized = rawType.toLowerCase().replace(/[_\s]+/g, '-');
+
+    if (['profile', 'profile-image', 'profile-photo', 'photo'].includes(normalized)) {
+      return { documentType: 'profile' };
+    }
+
+    if (['joining-letter', 'joiningletter', 'joining'].includes(normalized)) {
+      return { documentType: 'joining-letter' };
+    }
+
+    if (['monthly-report', 'monthlyreport', 'report'].includes(normalized)) {
+      return { documentType: 'monthly-report' };
+    }
+
+    if (['completion-certificate', 'certificate'].includes(normalized)) {
+      return { documentType: 'completion-certificate' };
+    }
+
+    if (['offer-letter', 'offerletter'].includes(normalized)) {
+      return { documentType: 'offer-letter' };
+    }
+
+    if (normalized === 'noc') {
+      return { documentType: 'noc' };
+    }
+
+    return {
+      documentType: 'document',
+      customName: rawType,
+    };
   }
 
   // ==================== Student Management ====================
@@ -531,12 +578,14 @@ export class FacultyController {
 
     // Get institution name for folder structure
     const institutionName = student.Institution?.name || 'default';
+    const storageType = this.mapDocumentTypeForStorage(body.type);
 
     // Upload to MinIO with organized folder structure
     const result = await this.fileStorageService.uploadStudentDocument(file, {
       institutionName,
       rollNumber: student.user?.rollNumber || studentId,
-      documentType: (body.type || 'other') as 'profile' | 'joining-letter' | 'monthly-report' | 'completion-certificate' | 'offer-letter' | 'noc' | 'document' | 'other',
+      documentType: storageType.documentType,
+      ...(storageType.customName ? { customName: storageType.customName } : {}),
     });
 
     return this.facultyService.saveStudentDocument(studentId, result.url, body.type, req.user.userId);

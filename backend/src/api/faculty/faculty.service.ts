@@ -3,6 +3,7 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { LruCacheService } from '../../core/cache/lru-cache.service';
 import { Prisma, ApplicationStatus, MonthlyReportStatus, AuditAction, AuditCategory, AuditSeverity, Role, InternshipPhase } from '../../generated/prisma/client';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
 import { ExpectedCycleService } from '../../domain/internship/expected-cycle/expected-cycle.service';
 import {
   calculateExpectedMonths,
@@ -2509,7 +2510,7 @@ export class FacultyService {
     file: Express.Multer.File,
     body: { applicationId?: string; month: string; year: string; studentId?: string },
     facultyId: string,
-    fileStorageService?: any,
+    fileStorageService?: FileStorageService,
   ) {
     const { applicationId, month, year, studentId } = body;
 
@@ -2658,32 +2659,24 @@ export class FacultyService {
       'July', 'August', 'September', 'October', 'November', 'December'];
 
     // Upload file to MinIO if fileStorageService is provided
-    let reportFileUrl = null;
     let reportFileKey = null;
 
     if (fileStorageService && file) {
       try {
-        // Create folder structure: monthly-reports/{institutionId}/{studentId}/{year}/{month}/
-        const institutionId = application.student?.Institution?.id || 'unknown';
-        const studentIdForPath = application.studentId;
-        const folder = `monthly-reports/${institutionId}/${studentIdForPath}/${reportYear}`;
-        const filename = `report_${reportMonth}_${Date.now()}.pdf`;
+        const monthNames = [
+          'january', 'february', 'march', 'april', 'may', 'june',
+          'july', 'august', 'september', 'october', 'november', 'december',
+        ];
 
-        const uploadResult = await fileStorageService.uploadFile(file.buffer, {
-          folder,
-          filename,
-          contentType: file.mimetype || 'application/pdf',
-          metadata: {
-            studentId: application.studentId,
-            applicationId: appId,
-            reportMonth: reportMonth.toString(),
-            reportYear: reportYear.toString(),
-            uploadedBy: facultyId,
-          },
+        const uploadResult = await fileStorageService.uploadStudentDocument(file, {
+          institutionName: application.student?.Institution?.name || 'default',
+          rollNumber: application.student?.user?.rollNumber || application.studentId,
+          documentType: 'monthly-report',
+          month: monthNames[reportMonth - 1],
+          year: reportYear.toString(),
         });
 
         reportFileKey = uploadResult.key;
-        reportFileUrl = uploadResult.url;
       } catch (uploadError) {
         console.error('Failed to upload report file to storage:', uploadError);
         // Continue without file URL - report will still be created

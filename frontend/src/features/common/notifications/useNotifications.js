@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, createElement } from 'react';
 import { useSelector } from 'react-redux';
+import { Modal } from 'antd';
 import { apiClient } from '../../../services/api';
 import { API_ENDPOINTS } from '../../../utils/constants';
 import toast from 'react-hot-toast';
@@ -20,6 +21,8 @@ export const useNotifications = (options = {}) => {
   const {
     autoFetch = true,
     showToasts = true,
+    showInitialToasts = false,
+    maxInitialToasts = 3,
     maxRetries = 3,
     retryDelay = 1000,
   } = options;
@@ -38,7 +41,26 @@ export const useNotifications = (options = {}) => {
   const retryTimeoutRef = useRef(null);
 
   // Get auth token from Redux store
-  const { token } = useSelector((state) => state.auth);
+  const { token, user } = useSelector((state) => state.auth);
+
+  // Session key for one-time initial floating notifications
+  // Supports different auth payload shapes across login flows.
+  const resolvedUserId = (() => {
+    if (user?.id) return user.id;
+    if (user?.userId) return user.userId;
+    if (user?.sub) return user.sub;
+
+    try {
+      const loginResponse = JSON.parse(localStorage.getItem('loginResponse') || '{}');
+      return loginResponse?.user?.id || loginResponse?.user?.userId || loginResponse?.userId || null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const initialToastSessionKey = resolvedUserId
+    ? `floatingNotificationsShown:v3:${resolvedUserId}`
+    : null;
 
   // Use the shared WebSocket hook with new features
   const { isConnected, connectionState, on, off, emit, emitWithAck, reconnect } = useWebSocket();
@@ -70,10 +92,109 @@ export const useNotifications = (options = {}) => {
       if (mountedRef.current) {
         // API returns { data: [...], unreadCount: N, pagination: {...} }
         const result = response.data;
-        setNotifications(result?.data || []);
+        const fetchedNotifications = result?.data || [];
+        setNotifications(fetchedNotifications);
         setUnreadCount(result?.unreadCount || 0);
         setLastSyncTime(new Date());
         retryCountRef.current = 0; // Reset retry count on success
+
+        // Phase 2: Show role-aware login-time floating notifications once per session
+        if (showInitialToasts && initialToastSessionKey) {
+          const alreadyShown = sessionStorage.getItem(initialToastSessionKey) === '1';
+
+          if (!alreadyShown) {
+            let floatingNotifications = [];
+
+            // Try role-aware floating endpoint first
+            try {
+              const floatingResponse = await apiClient.get(`${API_ENDPOINTS.NOTIFICATIONS}/floating`, {
+                params: { limit: Math.max(1, maxInitialToasts) },
+              });
+              floatingNotifications = floatingResponse?.data?.data || [];
+            } catch (floatingErr) {
+              // Silent fallback to unread notification list
+              console.debug('[Notifications] Floating endpoint unavailable, falling back to unread list');
+            }
+
+            const initialNotifications = Array.isArray(floatingNotifications) && floatingNotifications.length > 0
+              ? floatingNotifications
+              : fetchedNotifications
+                  .filter((notification) => !notification.read)
+                  .slice(0, Math.max(1, maxInitialToasts));
+
+            if (initialNotifications.length > 0) {
+              const listItems = initialNotifications.map((notification, index) => {
+                const icon = notification.type === 'error'
+                  ? '⚠️'
+                  : notification.type === 'success'
+                    ? '✅'
+                    : notification.type === 'warning'
+                      ? '🟡'
+                      : '🔔';
+
+                return createElement(
+                  'div',
+                  {
+                    key: notification.id || index,
+                    className: 'leading-relaxed',
+                    style: {
+                      paddingBottom: index === initialNotifications.length - 1 ? 0 : 12,
+                      marginBottom: index === initialNotifications.length - 1 ? 0 : 12,
+                      borderBottom: index === initialNotifications.length - 1 ? 'none' : '1px solid #f0f0f0',
+                    },
+                  },
+                  [
+                    createElement(
+                      'div',
+                      {
+                        className: 'font-medium',
+                        key: `title-${notification.id || index}`,
+                        style: { display: 'flex', alignItems: 'center', gap: 8 },
+                      },
+                      [
+                        createElement(
+                          'span',
+                          {
+                            key: `idx-${notification.id || index}`,
+                            style: { minWidth: 20, color: '#666', fontWeight: 600 },
+                          },
+                          `${index + 1}.`,
+                        ),
+                        createElement('span', { key: `icon-${notification.id || index}` }, icon),
+                        notification.title,
+                      ],
+                    ),
+                    notification.body
+                      ? createElement(
+                          'div',
+                          {
+                            className: 'mt-1 text-[13px] text-gray-600',
+                            key: `body-${notification.id || index}`,
+                            style: { marginLeft: 28 },
+                          },
+                          notification.body,
+                        )
+                      : null,
+                  ],
+                );
+              });
+
+              Modal.info({
+                title: 'Important Notifications',
+                content: createElement('div', null, listItems),
+                centered: true,
+                closable: true,
+                maskClosable: true,
+                okText: 'Close',
+                width: 560,
+              });
+            }
+
+            if (initialNotifications.length > 0) {
+              sessionStorage.setItem(initialToastSessionKey, '1');
+            }
+          }
+        }
       }
     } catch (err) {
       if (mountedRef.current) {
@@ -102,7 +223,15 @@ export const useNotifications = (options = {}) => {
         setLoading(false);
       }
     }
-  }, [token, maxRetries, retryDelay, showToasts]);
+  }, [
+    token,
+    maxRetries,
+    retryDelay,
+    showToasts,
+    showInitialToasts,
+    maxInitialToasts,
+    initialToastSessionKey,
+  ]);
 
   // Resync notifications when connection is restored
   useEffect(() => {
@@ -133,11 +262,24 @@ export const useNotifications = (options = {}) => {
         setNotifications((prev) => [notification, ...prev]);
         setUnreadCount((prev) => prev + 1);
 
-        // Show toast for new notification
+        // Show centered modal for new notification
         if (showToasts) {
-          toast(notification.title || 'New notification', {
-            icon: 'info',
-            duration: 4000,
+          const icon = notification.type === 'error'
+            ? '⚠️'
+            : notification.type === 'success'
+              ? '✅'
+              : notification.type === 'warning'
+                ? '🟡'
+                : '🔔';
+
+          Modal.info({
+            title: `${icon} ${notification.title || 'New notification'}`,
+            content: notification.body || 'You have received a new notification.',
+            centered: true,
+            closable: true,
+            maskClosable: true,
+            okText: 'Close',
+            width: 520,
           });
         }
       }
@@ -206,8 +348,13 @@ export const useNotifications = (options = {}) => {
       setNotifications([]);
       setUnreadCount(0);
       initialFetchDoneRef.current = false;
+
+      // Reset session marker key on logout/no-token
+      if (initialToastSessionKey) {
+        sessionStorage.removeItem(initialToastSessionKey);
+      }
     }
-  }, [token, autoFetch, fetchNotifications]);
+  }, [token, autoFetch, fetchNotifications, initialToastSessionKey]);
 
   // Mark notification as read
   const markAsRead = useCallback(async (notificationId) => {

@@ -47,6 +47,7 @@ import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import toast from "react-hot-toast";
 
 import { useStudentDashboard } from "../hooks/useStudentDashboard";
+import { useNotifications } from "../../common/notifications";
 import { selectInstitute } from "../../../store/slices/instituteSlice";
 import studentService from "../../../services/student.service";
 import {
@@ -390,6 +391,12 @@ IndustrySupervisorCard.displayName = "IndustrySupervisorCard";
 
 // Main Dashboard Component
 const StudentDashboard = () => {
+  useNotifications({
+    showToasts: false,
+    showInitialToasts: true,
+    maxInitialToasts: 3,
+  });
+
   const navigate = useNavigate();
   const institute = useSelector(selectInstitute);
   const { token } = theme.useToken();

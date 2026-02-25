@@ -1,5 +1,13 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
-import { Role, AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
+import {
+  Role,
+  AuditAction,
+  AuditCategory,
+  AuditSeverity,
+  MonthlyReportStatus,
+  ApplicationStatus,
+  InternshipPhase,
+} from '../../generated/prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { NotificationSenderService } from '../../infrastructure/notification/notification-sender.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
@@ -31,6 +39,23 @@ interface UserContext {
   userId: string;
   role: Role;
   institutionId?: string;
+}
+
+export interface FloatingNotificationItem {
+  id: string;
+  title: string;
+  body: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  priority: number;
+  source: 'role-generated' | 'unread';
+  link?: string;
+  createdAt?: Date;
+}
+
+export interface FloatingNotificationsResponse {
+  data: FloatingNotificationItem[];
+  role: Role;
+  generatedAt: Date;
 }
 
 @Injectable()
@@ -400,6 +425,430 @@ export class NotificationsService {
       this.logger.error(`Failed to get unread count for user ${userId}`, error.stack);
       throw error;
     }
+  }
+
+  /**
+   * Get role-aware floating notifications for login/dashboard entry.
+   * Phase 2: combines role-generated action alerts + existing unread notifications.
+   */
+  async getFloatingNotifications(userId: string, limit = 3): Promise<FloatingNotificationsResponse> {
+    const safeLimit = Math.min(Math.max(limit || 3, 1), 5);
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, institutionId: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    let roleAlerts: FloatingNotificationItem[] = [];
+
+    if (user.role === Role.STUDENT) {
+      roleAlerts = await this.getStudentFloatingAlerts(userId);
+    } else if (user.role === Role.TEACHER) {
+      roleAlerts = await this.getFacultyFloatingAlerts(userId);
+    } else if (user.role === Role.PRINCIPAL) {
+      roleAlerts = await this.getPrincipalFloatingAlerts(user.institutionId);
+    }
+
+    const unreadNotifications = await this.prisma.notification.findMany({
+      where: { userId, read: false },
+      orderBy: { createdAt: 'desc' },
+      take: safeLimit,
+      select: {
+        id: true,
+        title: true,
+        body: true,
+        type: true,
+        createdAt: true,
+      },
+    });
+
+    const unreadAlerts: FloatingNotificationItem[] = unreadNotifications.map((item) => ({
+      id: `unread-${item.id}`,
+      title: item.title,
+      body: item.body,
+      type: 'info',
+      priority: 60,
+      source: 'unread',
+      link: '/app/dashboard',
+      createdAt: item.createdAt,
+    }));
+
+    const merged = [...roleAlerts, ...unreadAlerts]
+      .sort((a, b) => {
+        if (b.priority !== a.priority) return b.priority - a.priority;
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bTime - aTime;
+      })
+      .filter((item, index, arr) => {
+        const duplicateIndex = arr.findIndex(
+          (x) => x.title === item.title && x.body === item.body,
+        );
+        return duplicateIndex === index;
+      })
+      .slice(0, safeLimit);
+
+    return {
+      data: merged,
+      role: user.role,
+      generatedAt: new Date(),
+    };
+  }
+
+  private async getStudentFloatingAlerts(userId: string): Promise<FloatingNotificationItem[]> {
+    const student = await this.prisma.student.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!student) return [];
+
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    const [pendingReportsCount, submittedThisMonthCount, latestVisitWithFeedback] = await Promise.all([
+      this.prisma.monthlyReport.count({
+        where: {
+          studentId: student.id,
+          isDeleted: false,
+          status: { in: [MonthlyReportStatus.DRAFT, MonthlyReportStatus.REVISION_REQUIRED] },
+        },
+      }),
+      this.prisma.monthlyReport.count({
+        where: {
+          studentId: student.id,
+          isDeleted: false,
+          reportMonth: currentMonth,
+          reportYear: currentYear,
+          status: { in: [MonthlyReportStatus.SUBMITTED, MonthlyReportStatus.APPROVED] },
+        },
+      }),
+      this.prisma.facultyVisitLog.findFirst({
+        where: {
+          application: { studentId: student.id },
+          isDeleted: false,
+          OR: [
+            { observationsAboutStudent: { not: null } },
+            { feedbackSharedWithStudent: { not: null } },
+          ],
+        },
+        orderBy: { visitDate: 'desc' },
+        select: {
+          id: true,
+          visitDate: true,
+          observationsAboutStudent: true,
+          feedbackSharedWithStudent: true,
+        },
+      }),
+    ]);
+
+    const alerts: FloatingNotificationItem[] = [];
+
+    if (pendingReportsCount > 0) {
+      alerts.push({
+        id: 'student-pending-reports',
+        title: 'Monthly Progress Report Pending',
+        body: `You have ${pendingReportsCount} pending monthly report(s). Please submit soon.`,
+        type: 'warning',
+        priority: 95,
+        source: 'role-generated',
+        link: '/app/dashboard',
+      });
+    } else if (submittedThisMonthCount > 0) {
+      alerts.push({
+        id: 'student-reports-submitted',
+        title: 'Monthly Report Updated',
+        body: 'Your monthly progress submission is up to date for this month.',
+        type: 'success',
+        priority: 65,
+        source: 'role-generated',
+        link: '/app/dashboard',
+      });
+    }
+
+    const latestFeedbackText = latestVisitWithFeedback?.feedbackSharedWithStudent?.trim();
+    const latestObservationText = latestVisitWithFeedback?.observationsAboutStudent?.trim();
+
+    if (latestFeedbackText) {
+      alerts.push({
+        id: 'student-feedback-shared',
+        title: 'New Feedback Shared',
+        body: latestFeedbackText.length > 140
+          ? `${latestFeedbackText.slice(0, 140)}...`
+          : latestFeedbackText,
+        type: 'info',
+        priority: 90,
+        source: 'role-generated',
+        link: '/app/dashboard',
+        createdAt: latestVisitWithFeedback?.visitDate || undefined,
+      });
+    } else if (latestObservationText) {
+      alerts.push({
+        id: 'student-observation-shared',
+        title: 'New Observation Available',
+        body: latestObservationText.length > 140
+          ? `${latestObservationText.slice(0, 140)}...`
+          : latestObservationText,
+        type: 'info',
+        priority: 85,
+        source: 'role-generated',
+        link: '/app/dashboard',
+        createdAt: latestVisitWithFeedback?.visitDate || undefined,
+      });
+    }
+
+    return alerts;
+  }
+
+  private async getFacultyFloatingAlerts(userId: string): Promise<FloatingNotificationItem[]> {
+    const assignments = await this.prisma.mentorAssignment.findMany({
+      where: { mentorId: userId, isActive: true },
+      select: { studentId: true },
+    });
+
+    const studentIds = assignments.map((item) => item.studentId);
+    if (studentIds.length === 0) return [];
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [pendingReportReviews, draftVisitReports, visitsMissingFeedback] = await Promise.all([
+      this.prisma.monthlyReport.count({
+        where: {
+          isDeleted: false,
+          application: {
+            studentId: { in: studentIds },
+            isActive: true,
+            status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
+          },
+          status: MonthlyReportStatus.SUBMITTED,
+        },
+      }),
+      this.prisma.facultyVisitLog.count({
+        where: {
+          facultyId: userId,
+          isDeleted: false,
+          status: 'DRAFT',
+        },
+      }),
+      this.prisma.facultyVisitLog.count({
+        where: {
+          facultyId: userId,
+          isDeleted: false,
+          status: 'COMPLETED',
+          visitDate: { gte: monthStart },
+          OR: [
+            { observationsAboutStudent: null },
+            { observationsAboutStudent: '' },
+            { feedbackSharedWithStudent: null },
+            { feedbackSharedWithStudent: '' },
+          ],
+        },
+      }),
+    ]);
+
+    const alerts: FloatingNotificationItem[] = [];
+
+    if (pendingReportReviews > 0) {
+      alerts.push({
+        id: 'faculty-pending-report-reviews',
+        title: 'Pending Report Submissions',
+        body: `${pendingReportReviews} monthly report(s) are waiting for your review.`,
+        type: 'warning',
+        priority: 95,
+        source: 'role-generated',
+        link: '/app/dashboard',
+      });
+    }
+
+    if (draftVisitReports > 0) {
+      alerts.push({
+        id: 'faculty-draft-visit-reports',
+        title: 'Visit Reports In Draft',
+        body: `${draftVisitReports} visit report(s) are saved as draft and need submission completion.`,
+        type: 'warning',
+        priority: 88,
+        source: 'role-generated',
+        link: '/app/dashboard',
+      });
+    }
+
+    if (visitsMissingFeedback > 0) {
+      alerts.push({
+        id: 'faculty-missing-feedback',
+        title: 'Feedback Details Missing',
+        body: `${visitsMissingFeedback} recent visit report(s) need observation/feedback details updated.`,
+        type: 'info',
+        priority: 80,
+        source: 'role-generated',
+        link: '/app/dashboard',
+      });
+    }
+
+    return alerts;
+  }
+
+  private async getPrincipalFloatingAlerts(institutionId?: string): Promise<FloatingNotificationItem[]> {
+    if (!institutionId) return [];
+
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    const startOfCurrentMonth = new Date(currentYear, currentMonth - 1, 1);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const [
+      activeStudents,
+      studentsWithActiveMentors,
+      activeInternships,
+      joiningLettersUploaded,
+      overdueReportsCount,
+      missingVisitsCount,
+    ] = await Promise.all([
+      this.prisma.student.count({ where: { institutionId, user: { active: true } } }),
+      this.prisma.student.count({
+        where: {
+          institutionId,
+          user: { active: true },
+          mentorAssignments: { some: { isActive: true } },
+        },
+      }),
+      this.prisma.internshipApplication.count({
+        where: {
+          student: { institutionId, user: { active: true } },
+          isSelfIdentified: true,
+          isActive: true,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
+        },
+      }),
+      this.prisma.internshipApplication.count({
+        where: {
+          student: { institutionId, user: { active: true } },
+          isSelfIdentified: true,
+          isActive: true,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
+          joiningLetterUrl: { not: null, notIn: [''] },
+        },
+      }),
+      this.prisma.student.count({
+        where: {
+          institutionId,
+          user: { active: true },
+          internshipApplications: {
+            some: {
+              isSelfIdentified: true,
+              status: ApplicationStatus.JOINED,
+              internshipPhase: InternshipPhase.ACTIVE,
+              startDate: { lt: startOfCurrentMonth },
+            },
+          },
+          monthlyReports: {
+            none: {
+              reportMonth: currentMonth,
+              reportYear: currentYear,
+              status: { in: [MonthlyReportStatus.SUBMITTED, MonthlyReportStatus.APPROVED] },
+            },
+          },
+        },
+      }),
+      this.prisma.student.count({
+        where: {
+          institutionId,
+          user: { active: true },
+          internshipApplications: {
+            some: {
+              isSelfIdentified: true,
+              status: ApplicationStatus.JOINED,
+              internshipPhase: InternshipPhase.ACTIVE,
+              startDate: { lte: thirtyDaysAgo },
+              facultyVisitLogs: {
+                none: {
+                  visitDate: { gte: thirtyDaysAgo },
+                },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const mentorRate = activeStudents > 0
+      ? Math.round((studentsWithActiveMentors / activeStudents) * 100)
+      : null;
+    const joiningRate = activeInternships > 0
+      ? Math.round((joiningLettersUploaded / activeInternships) * 100)
+      : null;
+
+    const overallScore = mentorRate !== null && joiningRate !== null
+      ? Math.round((mentorRate + joiningRate) / 2)
+      : null;
+
+    const alerts: FloatingNotificationItem[] = [];
+
+    if (overallScore !== null && overallScore < 75) {
+      alerts.push({
+        id: 'principal-overall-compliance-low',
+        title: 'Compliance Score Needs Attention',
+        body: `Overall compliance is ${overallScore}%. Please review mentor and joining-letter status.`,
+        type: 'error',
+        priority: 98,
+        source: 'role-generated',
+        link: '/app/principal-overview',
+      });
+    } else if (overallScore !== null) {
+      alerts.push({
+        id: 'principal-overall-compliance-status',
+        title: 'Current Compliance Snapshot',
+        body: `Overall compliance is ${overallScore}% (Mentor: ${mentorRate ?? 0}%, Joining Letter: ${joiningRate ?? 0}%).`,
+        type: 'info',
+        priority: 70,
+        source: 'role-generated',
+        link: '/app/principal-overview',
+      });
+    }
+
+    if (overdueReportsCount > 0) {
+      alerts.push({
+        id: 'principal-overdue-reports',
+        title: 'Monthly Report Compliance Pending',
+        body: `${overdueReportsCount} student(s) have not submitted this month’s report.`,
+        type: 'warning',
+        priority: 94,
+        source: 'role-generated',
+        link: '/app/principal-overview',
+      });
+    }
+
+    if (missingVisitsCount > 0) {
+      alerts.push({
+        id: 'principal-missing-visits',
+        title: 'Visit Follow-up Required',
+        body: `${missingVisitsCount} student(s) have no faculty visit recorded in the last 30 days.`,
+        type: 'warning',
+        priority: 90,
+        source: 'role-generated',
+        link: '/app/principal-overview',
+      });
+    }
+
+    if (overdueReportsCount === 0 && missingVisitsCount === 0 && overallScore !== null && overallScore >= 90) {
+      alerts.push({
+        id: 'principal-compliance-healthy',
+        title: 'Compliance On Track',
+        body: 'No critical compliance gaps detected right now. Keep monitoring regularly.',
+        type: 'success',
+        priority: 65,
+        source: 'role-generated',
+        link: '/app/principal-overview',
+      });
+    }
+
+    return alerts;
   }
 
   /**

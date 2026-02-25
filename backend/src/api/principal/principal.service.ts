@@ -5823,12 +5823,14 @@ export class PrincipalService {
       throw new NotFoundException('Student not found in your institution');
     }
 
+    const storageType = this.fileStorageService.resolveStudentDocumentType(type);
+
     // Upload to MinIO
     const uploadResult = await this.fileStorageService.uploadStudentDocument(file, {
       institutionName: principal.Institution?.name || 'default',
       rollNumber: student.user?.rollNumber || student.id,
-      documentType: 'document',
-      customName: type,
+      documentType: storageType.documentType,
+      ...(storageType.customName ? { customName: storageType.customName } : {}),
     });
 
     // Save document record to database

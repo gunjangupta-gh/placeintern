@@ -25,6 +25,7 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
+import { useNotifications } from '../../common/notifications';
 import {
   fetchPrincipalDashboard,
   fetchMentorCoverage,
@@ -75,6 +76,12 @@ const SectionTitle = ({ title }) => (
 );
 
 const PrincipalDashboard = () => {
+  useNotifications({
+    showToasts: false,
+    showInitialToasts: true,
+    maxInitialToasts: 3,
+  });
+
   const navigate = useNavigate();
   const dispatch = useDispatch();
 

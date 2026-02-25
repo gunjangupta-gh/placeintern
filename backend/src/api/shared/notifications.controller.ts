@@ -23,6 +23,7 @@ import {
   SendInstitutionAnnouncementDto,
   SendSystemAnnouncementDto,
 } from './dto';
+import type { FloatingNotificationsResponse } from './notifications.service';
 
 @Controller('shared/notifications')
 @UseGuards(JwtAuthGuard)
@@ -53,6 +54,18 @@ export class NotificationsController {
   @Get('settings')
   async getNotificationSettings(@Request() req) {
     return this.notificationsService.getNotificationSettings(req.user.userId);
+  }
+
+  @Throttle({ default: THROTTLE_PRESETS.lightweight })
+  @Get('floating')
+  async getFloatingNotifications(
+    @Request() req,
+    @Query('limit') limit?: string,
+  ): Promise<FloatingNotificationsResponse> {
+    return this.notificationsService.getFloatingNotifications(
+      req.user.userId,
+      limit ? parseInt(limit, 10) : undefined,
+    );
   }
 
   // Parameterized GET route MUST come AFTER specific GET routes
