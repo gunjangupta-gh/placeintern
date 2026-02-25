@@ -282,6 +282,43 @@ export class FileStorageService implements OnModuleInit {
     return `${folderPath}/${filename}`;
   }
 
+  resolveStudentDocumentType(type?: string): {
+    documentType: StudentDocumentOptions['documentType'];
+    customName?: string;
+  } {
+    const rawType = (type || 'document').toString().trim();
+    const normalized = rawType.toLowerCase().replace(/[_\s]+/g, '-');
+
+    if (['profile', 'profile-image', 'profile-photo', 'photo'].includes(normalized)) {
+      return { documentType: 'profile' };
+    }
+
+    if (['joining-letter', 'joiningletter', 'joining'].includes(normalized)) {
+      return { documentType: 'joining-letter' };
+    }
+
+    if (['monthly-report', 'monthlyreport', 'report'].includes(normalized)) {
+      return { documentType: 'monthly-report' };
+    }
+
+    if (['completion-certificate', 'certificate'].includes(normalized)) {
+      return { documentType: 'completion-certificate' };
+    }
+
+    if (['offer-letter', 'offerletter'].includes(normalized)) {
+      return { documentType: 'offer-letter' };
+    }
+
+    if (normalized === 'noc') {
+      return { documentType: 'noc' };
+    }
+
+    return {
+      documentType: 'document',
+      customName: rawType,
+    };
+  }
+
   /**
    * Build report path
    * Structure: {institutionName}/reports/{reportType}/{filename}
