@@ -792,9 +792,34 @@ export class FileStorageService implements OnModuleInit {
 
     const trimmed = input.trim();
 
-    const repaired = trimmed
+    // Decode once when key was accidentally stored as encoded URL/path
+    let normalizedInput = trimmed;
+    if (/%[0-9A-Fa-f]{2}/.test(normalizedInput)) {
+      try {
+        normalizedInput = decodeURIComponent(normalizedInput);
+      } catch {
+        normalizedInput = trimmed;
+      }
+    }
+
+    const repaired = normalizedInput
       .replace(/^https:\/(?!\/)/i, 'https://')
       .replace(/^http:\/(?!\/)/i, 'http://');
+
+    // Handle raw values that still include bucket prefix
+    if (repaired.startsWith(`${this.bucket}/`)) {
+      return repaired.slice(this.bucket.length + 1);
+    }
+
+    if (repaired.startsWith(`/${this.bucket}/`)) {
+      return repaired.slice(this.bucket.length + 2);
+    }
+
+    // Handle host+bucket strings without protocol (e.g. files.domain.com/bucket/key)
+    const bucketMarkerIndex = repaired.indexOf(`${this.bucket}/`);
+    if (bucketMarkerIndex > 0) {
+      return repaired.slice(bucketMarkerIndex + this.bucket.length + 1);
+    }
 
     // Handle plain path values such as /bucket/key
     if (repaired.startsWith('/')) {

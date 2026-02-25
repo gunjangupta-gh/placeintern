@@ -31,6 +31,61 @@ export class FacultyService {
     return normalized === 'PHONE' ? 'TELEPHONIC' : normalized;
   }
 
+  private normalizeMonthlyReportFileKey(fileKey: string): string {
+    if (!fileKey) return fileKey;
+
+    const trimmed = fileKey.trim();
+    let normalizedInput = trimmed;
+
+    if (/%[0-9A-Fa-f]{2}/.test(normalizedInput)) {
+      try {
+        normalizedInput = decodeURIComponent(normalizedInput);
+      } catch {
+        normalizedInput = trimmed;
+      }
+    }
+
+    const repaired = normalizedInput
+      .replace(/^https:\/(?!\/)/i, 'https://')
+      .replace(/^http:\/(?!\/)/i, 'http://');
+
+    const bucketName = 'placeintern-uploads';
+
+    if (repaired.startsWith(`${bucketName}/`)) {
+      return repaired.slice(bucketName.length + 1);
+    }
+
+    if (repaired.startsWith(`/${bucketName}/`)) {
+      return repaired.slice(bucketName.length + 2);
+    }
+
+    const bucketMarkerIndex = repaired.indexOf(`${bucketName}/`);
+    if (bucketMarkerIndex > 0) {
+      return repaired.slice(bucketMarkerIndex + bucketName.length + 1);
+    }
+
+    if (!repaired.includes('://')) {
+      return repaired.replace(/^\/+/, '');
+    }
+
+    try {
+      const url = new URL(repaired);
+      const pathParts = url.pathname.split('/').filter(Boolean);
+
+      if (pathParts.length > 1 && pathParts[0] === bucketName) {
+        return pathParts.slice(1).join('/');
+      }
+
+      if (pathParts.length > 1) {
+        return pathParts.slice(1).join('/');
+      }
+
+      return pathParts[0] || repaired;
+    } catch {
+      return repaired.replace(/^\/+/, '');
+    }
+  }
+
   private isMonthlyReportUniqueConstraintError(error: unknown): boolean {
     if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
       return false;
@@ -2796,9 +2851,23 @@ export class FacultyService {
       throw new BadRequestException('No file attached to this report');
     }
 
+    const normalizedReportKey = this.normalizeMonthlyReportFileKey(report.reportFileUrl);
+
+    // Auto-heal malformed legacy values so future requests work without re-normalizing.
+    if (normalizedReportKey && normalizedReportKey !== report.reportFileUrl) {
+      try {
+        await this.prisma.monthlyReport.update({
+          where: { id: report.id },
+          data: { reportFileUrl: normalizedReportKey },
+        });
+      } catch {
+        // Non-blocking: continue with normalized key for this request.
+      }
+    }
+
     // Generate presigned URL (valid for 1 hour)
     try {
-      const presignedUrl = await fileStorageService.getSignedUrl(report.reportFileUrl, 3600);
+      const presignedUrl = await fileStorageService.getSignedUrl(normalizedReportKey, 3600);
       return {
         success: true,
         url: presignedUrl,
