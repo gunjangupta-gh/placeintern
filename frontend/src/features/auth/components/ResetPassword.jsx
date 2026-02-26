@@ -52,24 +52,39 @@ const ResetPassword = () => {
     }
   };
 
+  const getErrorMessage = (error, fallback = 'Failed to reset password') => {
+    const message = error?.response?.data?.message;
+    if (Array.isArray(message)) {
+      return message.join(', ');
+    }
+    return message || fallback;
+  };
+
   const handleSubmit = async (values) => {
     setLoading(true);
     try {
-      const response = await API.post('/auth/reset-password', {
+      await API.post('/auth/reset-password', {
         token: token,
-        newPassword: values.newPassword,
+        password: values.newPassword,
       });
 
-      if (response.data.success) {
-        setResetSuccess(true);
-        toast.success('Password reset successfully!');
-        setTimeout(() => navigate('/login'), 3000);
-      }
+      setResetSuccess(true);
+      toast.success('Password reset successfully!');
+      setTimeout(() => navigate('/login'), 3000);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to reset password');
-      if (error.response?.status === 400) {
+      const errorMessage = getErrorMessage(error);
+      toast.error(errorMessage);
+
+      const status = error?.response?.status;
+      const normalizedMessage = errorMessage.toLowerCase();
+      const isTokenError =
+        status === 401 ||
+        normalizedMessage.includes('token') ||
+        normalizedMessage.includes('expired');
+
+      if (isTokenError) {
         setTokenValid(false);
-        setTokenError(error.response?.data?.message || 'Token has expired');
+        setTokenError(errorMessage || 'Token has expired');
       }
     } finally {
       setLoading(false);
