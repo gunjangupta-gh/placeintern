@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Modal,
@@ -78,10 +78,11 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
   const [internshipDateError, setInternshipDateError] = useState(null);
   const [visitStatus, setVisitStatus] = useState('COMPLETED');
   const isCompletedStatus = visitStatus === 'COMPLETED';
+  const wasVisibleRef = useRef(false);
 
   // Reset form when modal opens/closes
   useEffect(() => {
-    if (visible) {
+    if (visible && !wasVisibleRef.current) {
       form.resetFields();
       setVisitType(null);
       setLocation(null);
@@ -91,6 +92,8 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
       setVisitStatus('COMPLETED');
       form.setFieldsValue({ status: 'COMPLETED' });
     }
+
+    wasVisibleRef.current = visible;
   }, [visible, form]);
 
   const handleStatusChange = useCallback((value) => {

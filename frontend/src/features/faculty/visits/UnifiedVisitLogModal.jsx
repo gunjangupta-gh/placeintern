@@ -107,75 +107,92 @@ const UnifiedVisitLogModal = ({
   const isCompletedStatus = visitStatus === 'COMPLETED';
 
   useEffect(() => {
-    if (visible) {
-      form.resetFields();
-      setVisitType(null);
-      setGpsLocation(null);
-      setPhotoList([]);
-      setSignedDocList([]);
-      setSelectedInternship(null);
-      setSelectedApplicationId(null);
-      setVisitStatus('COMPLETED');
+    if (!visible) return;
 
-      if (selectedStudent) {
-        const studentId = (selectedStudent.student || selectedStudent).id;
-        form.setFieldsValue({ studentId });
-        const found = students.find(s => s.student?.id === studentId || s.id === studentId);
-        if (found) {
-          const applications = found.internshipApplications || found.student?.internshipApplications || [];
-          if (applications.length > 0) {
-            setSelectedApplicationId(applications[0].id);
-            setSelectedInternship({
-              companyName: applications[0].companyName || applications[0].internship?.industry?.companyName || 'N/A',
-              location: applications[0].companyAddress || applications[0].internship?.industry?.address || '',
-            });
-          }
-        }
-      }
+    form.resetFields();
+    setVisitType(null);
+    setGpsLocation(null);
+    setPhotoList([]);
+    setSignedDocList([]);
+    setSelectedInternship(null);
+    setSelectedApplicationId(null);
+    setVisitStatus('COMPLETED');
 
-      if (existingData) {
-        const studentId = existingData.application?.student?.id;
-        const normalizedVisitType = normalizeVisitType(existingData.visitType);
-        form.setFieldsValue({
-          studentId,
-          visitDate: existingData.visitDate ? dayjs(existingData.visitDate) : dayjs(),
-          visitType: normalizedVisitType,
-          visitLocation: existingData.visitLocation,
-          titleOfProjectWork: existingData.titleOfProjectWork,
-          assistanceRequiredFromInstitute: existingData.assistanceRequiredFromInstitute,
-          responseFromOrganisation: existingData.responseFromOrganisation,
-          remarksOfOrganisationSupervisor: existingData.remarksOfOrganisationSupervisor,
-          significantChangeInPlan: existingData.significantChangeInPlan,
-          observationsAboutStudent: existingData.observationsAboutStudent,
-          feedbackSharedWithStudent: existingData.feedbackSharedWithStudent,
-          status: existingData.status || 'COMPLETED',
-          nextVisitDate: existingData.nextVisitDate ? dayjs(existingData.nextVisitDate) : null,
-          followUpRequired: existingData.followUpRequired || false,
-        });
-        setVisitStatus(existingData.status || 'COMPLETED');
-        setVisitType(normalizedVisitType);
-        if (existingData.latitude && existingData.longitude) {
-          setGpsLocation({ latitude: existingData.latitude, longitude: existingData.longitude, accuracy: existingData.gpsAccuracy });
-        }
-        if (existingData.applicationId) setSelectedApplicationId(existingData.applicationId);
-        if (existingData.application?.internship?.industry) {
+    if (selectedStudent) {
+      const studentId = (selectedStudent.student || selectedStudent).id;
+      form.setFieldsValue({ studentId });
+      const found = students.find(s => s.student?.id === studentId || s.id === studentId);
+      if (found) {
+        const applications = found.internshipApplications || found.student?.internshipApplications || [];
+        if (applications.length > 0) {
+          setSelectedApplicationId(applications[0].id);
           setSelectedInternship({
-            companyName: existingData.application.internship.industry.companyName || 'N/A',
-            location: existingData.application.internship.industry.address || existingData.application.internship.industry.city || '',
+            companyName: applications[0].companyName || applications[0].internship?.industry?.companyName || 'N/A',
+            location: applications[0].companyAddress || applications[0].internship?.industry?.address || '',
           });
         }
-        if (existingData.visitPhotos?.length > 0) {
-          setPhotoList(existingData.visitPhotos.map((url, idx) => ({ uid: `existing-${idx}`, name: `Photo ${idx + 1}`, status: 'done', url })));
-        }
-        if (existingData.signedDocumentUrl) {
-          setSignedDocList([{ uid: 'existing-signed-doc', name: 'Signed Document', status: 'done', url: existingData.signedDocumentUrl }]);
-        }
-      } else {
-        form.setFieldsValue({ visitDate: dayjs(), status: 'COMPLETED' });
-        setVisitStatus('COMPLETED');
       }
     }
-  }, [visible, selectedStudent, existingData, form, students]);
+
+    if (existingData) {
+      const studentId = existingData.application?.student?.id;
+      const normalizedVisitType = normalizeVisitType(existingData.visitType);
+      form.setFieldsValue({
+        studentId,
+        visitDate: existingData.visitDate ? dayjs(existingData.visitDate) : dayjs(),
+        visitType: normalizedVisitType,
+        visitLocation: existingData.visitLocation,
+        titleOfProjectWork: existingData.titleOfProjectWork,
+        assistanceRequiredFromInstitute: existingData.assistanceRequiredFromInstitute,
+        responseFromOrganisation: existingData.responseFromOrganisation,
+        remarksOfOrganisationSupervisor: existingData.remarksOfOrganisationSupervisor,
+        significantChangeInPlan: existingData.significantChangeInPlan,
+        observationsAboutStudent: existingData.observationsAboutStudent,
+        feedbackSharedWithStudent: existingData.feedbackSharedWithStudent,
+        status: existingData.status || 'COMPLETED',
+        nextVisitDate: existingData.nextVisitDate ? dayjs(existingData.nextVisitDate) : null,
+        followUpRequired: existingData.followUpRequired || false,
+      });
+      setVisitStatus(existingData.status || 'COMPLETED');
+      setVisitType(normalizedVisitType);
+      if (existingData.latitude && existingData.longitude) {
+        setGpsLocation({ latitude: existingData.latitude, longitude: existingData.longitude, accuracy: existingData.gpsAccuracy });
+      }
+      if (existingData.applicationId) setSelectedApplicationId(existingData.applicationId);
+      if (existingData.application?.internship?.industry) {
+        setSelectedInternship({
+          companyName: existingData.application.internship.industry.companyName || 'N/A',
+          location: existingData.application.internship.industry.address || existingData.application.internship.industry.city || '',
+        });
+      }
+      if (existingData.visitPhotos?.length > 0) {
+        setPhotoList(existingData.visitPhotos.map((url, idx) => ({ uid: `existing-${idx}`, name: `Photo ${idx + 1}`, status: 'done', url })));
+      }
+      if (existingData.signedDocumentUrl) {
+        setSignedDocList([{ uid: 'existing-signed-doc', name: 'Signed Document', status: 'done', url: existingData.signedDocumentUrl }]);
+      }
+    } else {
+      form.setFieldsValue({ visitDate: dayjs(), status: 'COMPLETED' });
+      setVisitStatus('COMPLETED');
+    }
+  }, [visible, selectedStudent, existingData, form]);
+
+  useEffect(() => {
+    if (!visible || existingData || !selectedStudent || selectedApplicationId) return;
+
+    const studentId = (selectedStudent.student || selectedStudent).id;
+    const found = students.find(s => s.student?.id === studentId || s.id === studentId);
+    if (!found) return;
+
+    const applications = found.internshipApplications || found.student?.internshipApplications || [];
+    if (applications.length > 0) {
+      setSelectedApplicationId(applications[0].id);
+      setSelectedInternship({
+        companyName: applications[0].companyName || applications[0].internship?.industry?.companyName || 'N/A',
+        location: applications[0].companyAddress || applications[0].internship?.industry?.address || '',
+      });
+    }
+  }, [visible, existingData, selectedStudent, selectedApplicationId, students]);
 
   const handleStatusChange = useCallback((value) => {
     setVisitStatus(value || 'COMPLETED');
