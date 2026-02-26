@@ -214,6 +214,7 @@ export class TrainingRecommendationService {
             email: true,
             designation: true,
             branchName: true,
+            branchId: true,
             Institution: { select: { id: true, name: true, shortName: true } },
           },
         },
@@ -293,28 +294,41 @@ export class TrainingRecommendationService {
   }
 
   /**
-   * Get recommendations from faculty of an institution (Principal)
+   * Get recommendations from faculty of an institution (Principal/Coordinator)
+   * If institutionId is undefined and branchName/branchId provided, fetches across all institutions for that branch
    */
-  async getByInstitution(institutionId: string, filters: RecommendationFilterDto, branchName?: string) {
+  async getByInstitution(institutionId: string | undefined, filters: RecommendationFilterDto, branchName?: string, branchId?: string) {
     try {
       const { status, priority, search } = filters;
       const page = Number(filters.page) || 1;
       const limit = Number(filters.limit) || 20;
 
+      // Build user filter - if no institutionId, filter by branch across all institutions
+      const userFilter: Prisma.UserWhereInput = institutionId
+        ? {
+            institutionId,
+            ...(branchName ? { branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } } : {}),
+          }
+        : branchName || branchId
+          ? {
+              OR: [
+                ...(branchName ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }] : []),
+                ...(branchId ? [{ branchId }] : []),
+              ],
+            }
+          : {};
+
       const where: Prisma.TrainingRecommendationWhereInput = {
-        user: {
-          institutionId,
-          ...(branchName ? { branchName: { equals: branchName, mode: 'insensitive' } } : {}),
-        },
+        user: userFilter,
         ...(status ? { status } : {}),
         ...(priority ? { priority } : {}),
         ...(search
           ? {
               OR: [
-                { title: { contains: search, mode: 'insensitive' } },
-                { description: { contains: search, mode: 'insensitive' } },
-                { user: { name: { contains: search, mode: 'insensitive' } } },
-                { user: { email: { contains: search, mode: 'insensitive' } } },
+                { title: { contains: search, mode: Prisma.QueryMode.insensitive } },
+                { description: { contains: search, mode: Prisma.QueryMode.insensitive } },
+                { user: { name: { contains: search, mode: Prisma.QueryMode.insensitive } } },
+                { user: { email: { contains: search, mode: Prisma.QueryMode.insensitive } } },
               ],
             }
           : {}),
@@ -330,6 +344,7 @@ export class TrainingRecommendationService {
                 name: true,
                 email: true,
                 branchName: true,
+                branchId: true,
                 designation: true,
                 Institution: { select: { id: true, name: true, shortName: true } },
               },
@@ -363,31 +378,40 @@ export class TrainingRecommendationService {
   }
 
   /**
-   * Get recommendation by ID with institution access check (Principal)
+   * Get recommendation by ID with institution access check (Principal/Coordinator)
+   * If institutionId is undefined and branchName/branchId provided, verifies access by branch
    */
-  async getByIdForInstitution(id: string, institutionId: string, branchName?: string) {
+  async getByIdForInstitution(id: string, institutionId: string | undefined, branchName?: string, branchId?: string) {
     const recommendation = await this.getById(id);
 
-    if (recommendation.user?.Institution?.id !== institutionId) {
+    if (institutionId && recommendation.user?.Institution?.id !== institutionId) {
       throw new ForbiddenException('You do not have access to this recommendation');
     }
 
-    if (branchName && recommendation.user?.branchName?.toLowerCase() !== branchName.toLowerCase()) {
-      throw new ForbiddenException('You do not have access to this recommendation');
+    // Check branch access - either by branchName or branchId
+    if (branchName || branchId) {
+      const hasAccess =
+        (branchName && recommendation.user?.branchName?.toLowerCase() === branchName.toLowerCase()) ||
+        (branchId && recommendation.user?.branchId === branchId);
+
+      if (!hasAccess) {
+        throw new ForbiddenException('You do not have access to this recommendation');
+      }
     }
 
     return recommendation;
   }
 
   /**
-   * Review recommendation by principal for their institution only
+   * Review recommendation by principal for their institution only (Principal/Coordinator)
    */
   async reviewForInstitution(
     id: string,
     dto: ReviewRecommendationDto,
     reviewerId: string,
-    institutionId: string,
+    institutionId: string | undefined,
     branchName?: string,
+    branchId?: string,
   ) {
     const allowedStatuses: TrainingRecommendationStatus[] = [
       TrainingRecommendationStatus.UNDER_REVIEW,
@@ -411,6 +435,7 @@ export class TrainingRecommendationService {
             id: true,
             institutionId: true,
             branchName: true,
+            branchId: true,
             name: true,
           },
         },
@@ -421,12 +446,19 @@ export class TrainingRecommendationService {
       throw new NotFoundException('Recommendation not found');
     }
 
-    if (existing.user.institutionId !== institutionId) {
+    if (institutionId && existing.user.institutionId !== institutionId) {
       throw new ForbiddenException('You can only review recommendations from your institution');
     }
 
-    if (branchName && existing.user.branchName?.toLowerCase() !== branchName.toLowerCase()) {
-      throw new ForbiddenException('You can only review recommendations from your branch');
+    // Check branch access - either by branchName or branchId
+    if (branchName || branchId) {
+      const hasAccess =
+        (branchName && existing.user.branchName?.toLowerCase() === branchName.toLowerCase()) ||
+        (branchId && existing.user.branchId === branchId);
+
+      if (!hasAccess) {
+        throw new ForbiddenException('You can only review recommendations from your branch');
+      }
     }
 
     const recommendation = await this.prisma.trainingRecommendation.update({

@@ -212,12 +212,13 @@ export class LessonPlanService {
     reviewerId: string,
     institutionId?: string,
     branchName?: string,
+    branchId?: string,
   ) {
     try {
       const lessonPlan = await this.prisma.lessonPlan.findUnique({
         where: { id },
         include: {
-          user: { select: { id: true, name: true, institutionId: true, branchName: true } },
+          user: { select: { id: true, name: true, institutionId: true, branchName: true, branchId: true } },
           training: { select: { id: true, title: true } },
         },
       });
@@ -230,8 +231,15 @@ export class LessonPlanService {
         throw new ForbiddenException('You can only review lesson plans from your institution');
       }
 
-      if (branchName && lessonPlan.user.branchName?.toLowerCase() !== branchName.toLowerCase()) {
-        throw new ForbiddenException('You can only review lesson plans from your branch');
+      // Check branch access - either by branchName or branchId
+      if (branchName || branchId) {
+        const hasAccess =
+          (branchName && lessonPlan.user.branchName?.toLowerCase() === branchName.toLowerCase()) ||
+          (branchId && lessonPlan.user.branchId === branchId);
+
+        if (!hasAccess) {
+          throw new ForbiddenException('You can only review lesson plans from your branch');
+        }
       }
 
       if (lessonPlan.status === LessonPlanStatus.DRAFT) {
@@ -691,18 +699,31 @@ export class LessonPlanService {
   }
 
   /**
-   * Get lesson plans by institution (Principal)
+   * Get lesson plans by institution (Principal/Coordinator)
+   * If institutionId is undefined and branchName/branchId provided, fetches across all institutions for that branch
    */
-  async getByInstitution(institutionId: string, filters: LessonPlanFilterDto, branchName?: string) {
+  async getByInstitution(institutionId: string | undefined, filters: LessonPlanFilterDto, branchName?: string, branchId?: string) {
     const { status, trainingId } = filters;
     const page = Number(filters.page) || 1;
     const limit = Number(filters.limit) || 20;
 
+    // Build user filter - if no institutionId, filter by branch across all institutions
+    const userFilter: Prisma.UserWhereInput = institutionId
+      ? {
+          institutionId,
+          ...(branchName ? { branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } } : {}),
+        }
+      : branchName || branchId
+        ? {
+            OR: [
+              ...(branchName ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }] : []),
+              ...(branchId ? [{ branchId }] : []),
+            ],
+          }
+        : {};
+
     const where: Prisma.LessonPlanWhereInput = {
-      user: {
-        institutionId,
-        ...(branchName ? { branchName: { equals: branchName, mode: 'insensitive' } } : {}),
-      },
+      user: userFilter,
       ...(status ? { status } : {}),
       ...(trainingId ? { trainingId } : {}),
     };
@@ -711,7 +732,14 @@ export class LessonPlanService {
       this.prisma.lessonPlan.findMany({
         where,
         include: {
-          user: { select: { id: true, name: true, branchName: true } },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              branchName: true,
+              Institution: { select: { id: true, name: true, shortName: true } },
+            },
+          },
           training: { select: { id: true, title: true } },
           reviewedBy: { select: { id: true, name: true } },
         },
@@ -729,26 +757,47 @@ export class LessonPlanService {
   }
 
   /**
-   * Get lesson plans by training and institution (Principal)
+   * Get lesson plans by training and institution (Principal/Coordinator)
+   * If institutionId is undefined and branchName/branchId provided, fetches across all institutions for that branch
    */
-  async getByTrainingAndInstitution(trainingId: string, institutionId: string, branchName?: string) {
+  async getByTrainingAndInstitution(trainingId: string, institutionId: string | undefined, branchName?: string, branchId?: string) {
     return this.getByTraining(trainingId, institutionId, branchName);
   }
 
   /**
-   * Get pending lesson plans for institution (Principal)
+   * Get pending lesson plans for institution (Principal/Coordinator)
+   * If institutionId is undefined and branchName/branchId provided, fetches across all institutions for that branch
    */
-  async getPendingForInstitution(institutionId: string, branchName?: string) {
+  async getPendingForInstitution(institutionId: string | undefined, branchName?: string, branchId?: string) {
+    // Build user filter - if no institutionId, filter by branch across all institutions
+    const userFilter: Prisma.UserWhereInput = institutionId
+      ? {
+          institutionId,
+          ...(branchName ? { branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } } : {}),
+        }
+      : branchName || branchId
+        ? {
+            OR: [
+              ...(branchName ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }] : []),
+              ...(branchId ? [{ branchId }] : []),
+            ],
+          }
+        : {};
+
     return this.prisma.lessonPlan.findMany({
       where: {
-        user: {
-          institutionId,
-          ...(branchName ? { branchName: { equals: branchName, mode: 'insensitive' } } : {}),
-        },
+        user: userFilter,
         status: LessonPlanStatus.SUBMITTED,
       },
       include: {
-        user: { select: { id: true, name: true, branchName: true } },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            branchName: true,
+            Institution: { select: { id: true, name: true, shortName: true } },
+          },
+        },
         training: { select: { id: true, title: true } },
       },
       orderBy: { submittedAt: 'asc' },
@@ -756,13 +805,24 @@ export class LessonPlanService {
   }
 
   /**
-   * Get institution lesson plan statistics (Principal)
+   * Get institution lesson plan statistics (Principal/Coordinator)
+   * If institutionId is undefined and branchName/branchId provided, fetches across all institutions for that branch
    */
-  async getInstitutionStats(institutionId: string, branchName?: string) {
-    const userFilter: Prisma.UserWhereInput = {
-      institutionId,
-      ...(branchName ? { branchName: { equals: branchName, mode: 'insensitive' } } : {}),
-    };
+  async getInstitutionStats(institutionId: string | undefined, branchName?: string, branchId?: string) {
+    // Build user filter - if no institutionId, filter by branch across all institutions
+    const userFilter: Prisma.UserWhereInput = institutionId
+      ? {
+          institutionId,
+          ...(branchName ? { branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } } : {}),
+        }
+      : branchName || branchId
+        ? {
+            OR: [
+              ...(branchName ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }] : []),
+              ...(branchId ? [{ branchId }] : []),
+            ],
+          }
+        : {};
 
     const [total, statusCounts] = await Promise.all([
       this.prisma.lessonPlan.count({

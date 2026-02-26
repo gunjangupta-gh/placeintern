@@ -570,16 +570,29 @@ export class TestResponseService {
   // ==================== INSTITUTION-SCOPED METHODS (Coordinator/Principal) ====================
 
   /**
-   * Get pre-test responses for a training filtered by institution
+   * Get pre-test responses for a training filtered by institution (Principal/Coordinator)
+   * If institutionId is undefined and branchName/branchId provided, fetches across all institutions for that branch
    */
-  async getPreTestResponsesByTrainingAndInstitution(trainingId: string, institutionId: string, branchName?: string) {
+  async getPreTestResponsesByTrainingAndInstitution(trainingId: string, institutionId: string | undefined, branchName?: string, branchId?: string) {
+    // Build user filter - if no institutionId, filter by branch across all institutions
+    const userFilter: Prisma.UserWhereInput = institutionId
+      ? {
+          institutionId,
+          ...(branchName ? { branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } } : {}),
+        }
+      : branchName || branchId
+        ? {
+            OR: [
+              ...(branchName ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }] : []),
+              ...(branchId ? [{ branchId }] : []),
+            ],
+          }
+        : {};
+
     const responses = await this.prisma.preTestResponse.findMany({
       where: {
         trainingId,
-        user: {
-          institutionId,
-          ...(branchName ? { branchName: { equals: branchName, mode: 'insensitive' } } : {}),
-        },
+        user: userFilter,
       },
       include: {
         user: {
@@ -589,6 +602,7 @@ export class TestResponseService {
             email: true,
             branchName: true,
             designation: true,
+            Institution: { select: { id: true, name: true, shortName: true } },
           },
         },
         preTestForm: { select: { id: true, title: true, passingScore: true } },
@@ -609,16 +623,29 @@ export class TestResponseService {
   }
 
   /**
-   * Get post-test responses for a training filtered by institution
+   * Get post-test responses for a training filtered by institution (Principal/Coordinator)
+   * If institutionId is undefined and branchName/branchId provided, fetches across all institutions for that branch
    */
-  async getPostTestResponsesByTrainingAndInstitution(trainingId: string, institutionId: string, branchName?: string) {
+  async getPostTestResponsesByTrainingAndInstitution(trainingId: string, institutionId: string | undefined, branchName?: string, branchId?: string) {
+    // Build user filter - if no institutionId, filter by branch across all institutions
+    const userFilter: Prisma.UserWhereInput = institutionId
+      ? {
+          institutionId,
+          ...(branchName ? { branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } } : {}),
+        }
+      : branchName || branchId
+        ? {
+            OR: [
+              ...(branchName ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }] : []),
+              ...(branchId ? [{ branchId }] : []),
+            ],
+          }
+        : {};
+
     const responses = await this.prisma.postTestResponse.findMany({
       where: {
         trainingId,
-        user: {
-          institutionId,
-          ...(branchName ? { branchName: { equals: branchName, mode: 'insensitive' } } : {}),
-        },
+        user: userFilter,
       },
       include: {
         user: {
@@ -628,6 +655,7 @@ export class TestResponseService {
             email: true,
             branchName: true,
             designation: true,
+            Institution: { select: { id: true, name: true, shortName: true } },
           },
         },
         postTestForm: { select: { id: true, title: true, passingScore: true } },
@@ -648,13 +676,24 @@ export class TestResponseService {
   }
 
   /**
-   * Get institution test completion summary
+   * Get institution test completion summary (Principal/Coordinator)
+   * If institutionId is undefined and branchName/branchId provided, fetches across all institutions for that branch
    */
-  async getInstitutionTestSummary(institutionId: string, branchName?: string) {
-    const userFilter: Prisma.UserWhereInput = {
-      institutionId,
-      ...(branchName ? { branchName: { equals: branchName, mode: 'insensitive' } } : {}),
-    };
+  async getInstitutionTestSummary(institutionId: string | undefined, branchName?: string, branchId?: string) {
+    // Build user filter - if no institutionId, filter by branch across all institutions
+    const userFilter: Prisma.UserWhereInput = institutionId
+      ? {
+          institutionId,
+          ...(branchName ? { branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } } : {}),
+        }
+      : branchName || branchId
+        ? {
+            OR: [
+              ...(branchName ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }] : []),
+              ...(branchId ? [{ branchId }] : []),
+            ],
+          }
+        : {};
 
     // Get all trainings that have pre/post test forms and have faculty from this institution enrolled
     const trainingsWithTests = await this.prisma.training.findMany({
