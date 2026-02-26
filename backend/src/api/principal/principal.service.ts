@@ -93,7 +93,7 @@ export class PrincipalService {
           partnerCompanyNames,
           unassignedStudentsCount,
         ] = await Promise.all([
-          this.prisma.student.count({ where: { institutionId } }),
+          this.prisma.student.count({ where: { institutionId, user: { active: true } } }),
           this.prisma.student.count({ where: { institutionId, user: { active: true } } }),
           this.prisma.user.count({ where: { institutionId, role: { in: [Role.TEACHER, Role.PRINCIPAL] } } }),
           this.prisma.user.count({
@@ -153,6 +153,7 @@ export class PrincipalService {
             where: {
               student: { institutionId, user: { active: true } },
               isSelfIdentified: true,
+              isActive: true,
               status: { notIn: [ApplicationStatus.REJECTED, ApplicationStatus.WITHDRAWN] },
             },
             select: {
@@ -164,14 +165,14 @@ export class PrincipalService {
           // Pending grievances (PENDING or UNDER_REVIEW)
           this.prisma.grievance.count({
             where: {
-              student: { institutionId },
+              student: { institutionId, user: { active: true } },
               status: { in: ['PENDING', 'UNDER_REVIEW'] },
             }
           }),
           // Total grievances for the institution
           this.prisma.grievance.count({
             where: {
-              student: { institutionId },
+              student: { institutionId, user: { active: true } },
             }
           }),
           // Aggregate counter fields from active internship applications (for cumulative totals)
@@ -180,6 +181,7 @@ export class PrincipalService {
             where: {
               student: { institutionId, user: { active: true } },
               isSelfIdentified: true,
+              isActive: true,
               status: { notIn: [ApplicationStatus.REJECTED, ApplicationStatus.WITHDRAWN] },
             },
             _sum: {
@@ -191,7 +193,7 @@ export class PrincipalService {
           }),
           // Students grouped by branch with internship counts - query students directly
           this.prisma.student.findMany({
-            where: { institutionId },
+            where: { institutionId, user: { active: true } },
             select: {
               id: true,
               branchId: true,
@@ -224,6 +226,7 @@ export class PrincipalService {
             where: {
               student: { institutionId, user: { active: true } },
               isSelfIdentified: true,
+              isActive: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED] },
               companyName: { not: null, notIn: [''] },
             },
@@ -930,7 +933,7 @@ export class PrincipalService {
       // Get all mentor assignments to count unique students per mentor
       this.prisma.mentorAssignment.findMany({
         where: {
-          student: { institutionId: principal.institutionId },
+          student: { institutionId: principal.institutionId, user: { active: true } },
           isActive: true,
         },
         select: { mentorId: true, studentId: true },
@@ -3965,16 +3968,21 @@ export class PrincipalService {
       // Only filter by isSelfIdentified - date overlap check will determine if counted
       this.prisma.mentorAssignment.findMany({
         where: {
-          student: { institutionId: principal.institutionId },
+          student: { institutionId: principal.institutionId, user: { active: true } },
           isActive: true,
         },
+        orderBy: {
+          assignmentDate: 'desc',
+        },
         select: {
+          assignmentDate: true,
           mentorId: true,
           studentId: true,
           student: {
             select: {
               internshipApplications: {
                 where: {
+                  isActive: true,
                   isSelfIdentified: true,
                   // Exclude rejected/withdrawn - only include active applications
                   status: { notIn: [ApplicationStatus.REJECTED, ApplicationStatus.WITHDRAWN] },
@@ -3995,6 +4003,9 @@ export class PrincipalService {
         where: {
           isDeleted: false,
           faculty: { institutionId: principal.institutionId },
+          application: {
+            student: { institutionId: principal.institutionId, user: { active: true } },
+          },
         },
         _count: { id: true },
       }),
@@ -4003,7 +4014,9 @@ export class PrincipalService {
         where: {
           isDeleted: false,
           application: {
-            student: { institutionId: principal.institutionId },
+            isActive: true,
+            isSelfIdentified: true,
+            student: { institutionId: principal.institutionId, user: { active: true } },
           },
         },
         select: {
@@ -4015,7 +4028,8 @@ export class PrincipalService {
       // Exclude rejected/withdrawn - include all active applications
       this.prisma.internshipApplication.findMany({
         where: {
-          student: { institutionId: principal.institutionId },
+          student: { institutionId: principal.institutionId, user: { active: true } },
+          isSelfIdentified: true,
           status: { notIn: [ApplicationStatus.REJECTED, ApplicationStatus.WITHDRAWN] },
           isActive: true,
         },
@@ -4031,6 +4045,9 @@ export class PrincipalService {
         where: {
           isDeleted: false,
           faculty: { institutionId: principal.institutionId },
+          application: {
+            student: { institutionId: principal.institutionId, user: { active: true } },
+          },
           visitDate: {
             gte: selectedMonthStart,
             lte: selectedMonthEnd,
@@ -4043,7 +4060,9 @@ export class PrincipalService {
         where: {
           isDeleted: false,
           application: {
-            student: { institutionId: principal.institutionId },
+            isActive: true,
+            isSelfIdentified: true,
+            student: { institutionId: principal.institutionId, user: { active: true } },
           },
           reportMonth: selectedMonth,
           reportYear: selectedYear,
@@ -4055,9 +4074,22 @@ export class PrincipalService {
       }),
     ]);
 
+    // Deduplicate to a single active assignment per student (latest assignment wins)
+    const uniqueAssignmentsMap = new Map<string, (typeof mentorAssignmentsList)[number]>();
+    for (const assignment of mentorAssignmentsList) {
+      if (!uniqueAssignmentsMap.has(assignment.studentId)) {
+        uniqueAssignmentsMap.set(assignment.studentId, assignment);
+      }
+    }
+    const effectiveAssignments = Array.from(uniqueAssignmentsMap.values());
+
+    const effectiveAssignmentsWithInternship = effectiveAssignments.filter(
+      (assignment) => (assignment.student?.internshipApplications?.length || 0) > 0,
+    );
+
     // Compute unique students per mentor
     const mentorStudentMap = new Map<string, Set<string>>();
-    for (const { mentorId, studentId } of mentorAssignmentsList) {
+    for (const { mentorId, studentId } of effectiveAssignmentsWithInternship) {
       if (!mentorStudentMap.has(mentorId)) {
         mentorStudentMap.set(mentorId, new Set());
       }
@@ -4066,7 +4098,7 @@ export class PrincipalService {
 
     // Build student -> mentor map for report lookup
     const studentToMentorMap = new Map<string, string>();
-    for (const { mentorId, studentId } of mentorAssignmentsList) {
+    for (const { mentorId, studentId } of effectiveAssignmentsWithInternship) {
       studentToMentorMap.set(studentId, mentorId);
     }
 
@@ -4122,7 +4154,7 @@ export class PrincipalService {
     // Build selected month EXPECTED counts per mentor
     // Uses monthly inclusion rules (first >15, last any, middle >10)
     const selectedMonthExpectedMap = new Map<string, { expectedReports: number; expectedVisits: number }>();
-    for (const assignment of mentorAssignmentsList) {
+    for (const assignment of effectiveAssignmentsWithInternship) {
       const { mentorId, student } = assignment;
       const app = student.internshipApplications?.[0];
       if (!app || !app.startDate || !app.endDate) continue;
@@ -4584,7 +4616,7 @@ export class PrincipalService {
       // Get all active mentor assignments to compute unique students per mentor
       this.prisma.mentorAssignment.findMany({
         where: {
-          student: { institutionId },
+          student: { institutionId, user: { active: true } },
           isActive: true,
         },
         select: {
@@ -4744,7 +4776,7 @@ export class PrincipalService {
         // Students with ongoing internships (for informational visit/report metrics)
         this.prisma.internshipApplication.count({
           where: {
-            student: { institutionId },
+            student: { institutionId, user: { active: true } },
             isSelfIdentified: true,
             status: ApplicationStatus.JOINED,
             internshipPhase: InternshipPhase.ACTIVE,
@@ -4757,7 +4789,7 @@ export class PrincipalService {
             isDeleted: false,
             status: 'COMPLETED',
             application: {
-              student: { institutionId },
+              student: { institutionId, user: { active: true } },
               isSelfIdentified: true,
               status: ApplicationStatus.JOINED,
               internshipPhase: InternshipPhase.ACTIVE,
@@ -4770,7 +4802,7 @@ export class PrincipalService {
         this.prisma.monthlyReport.count({
           where: {
             isDeleted: false,
-            student: { institutionId },
+            student: { institutionId, user: { active: true } },
             reportMonth: month,
             reportYear: year,
             status: { in: ['SUBMITTED', 'APPROVED'] },

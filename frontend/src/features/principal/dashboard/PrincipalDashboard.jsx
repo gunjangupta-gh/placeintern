@@ -450,7 +450,7 @@ const PrincipalDashboard = () => {
               <TeamOutlined className="text-primary" />
               <span>Students by Course</span>
               <Badge
-                count={stats?.students?.total || 0}
+                count={stats?.students?.active || 0}
                 showZero
                 style={{ backgroundColor: '#3b82f6' }}
                 overflowCount={99999}
