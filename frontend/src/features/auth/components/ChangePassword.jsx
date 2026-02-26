@@ -17,8 +17,8 @@ function ChangePassword() {
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      await API.put("/auth/change-password", {
-        currentPassword: values.currentPassword,
+      await API.post("/auth/change-password", {
+        oldPassword: values.currentPassword,
         newPassword: values.newPassword,
       });
 
