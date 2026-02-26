@@ -537,6 +537,12 @@ export const menuConfig = {
     title: "Coordination",
     icon: <TeamOutlined />,
     items: [
+         {
+        key: "coordinator-training-manage",
+        label: "Manage Trainings",
+        icon: <SettingOutlined />,
+        path: "/app/training/manage",
+      },
       {
         key: "coordinator-review-applications",
         label: "Review Applications",

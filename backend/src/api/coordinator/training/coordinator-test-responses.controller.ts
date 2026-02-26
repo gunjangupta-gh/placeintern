@@ -26,7 +26,7 @@ export class CoordinatorTestResponsesController {
   @Get('summary')
   @ApiOperation({ summary: 'Get test completion summary for institution' })
   async getTestSummary(@Req() req) {
-    return this.testResponseService.getInstitutionTestSummary(req.user.institutionId);
+    return this.testResponseService.getInstitutionTestSummary(undefined, req.user.branchName, req.user.branchId);
   }
 
   @Get('pre-test/:trainingId')
@@ -34,7 +34,9 @@ export class CoordinatorTestResponsesController {
   async getPreTestResponses(@Param('trainingId') trainingId: string, @Req() req) {
     return this.testResponseService.getPreTestResponsesByTrainingAndInstitution(
       trainingId,
-      req.user.institutionId,
+      undefined,
+      req.user.branchName,
+      req.user.branchId,
     );
   }
 
@@ -43,7 +45,9 @@ export class CoordinatorTestResponsesController {
   async getPostTestResponses(@Param('trainingId') trainingId: string, @Req() req) {
     return this.testResponseService.getPostTestResponsesByTrainingAndInstitution(
       trainingId,
-      req.user.institutionId,
+      undefined,
+      req.user.branchName,
+      req.user.branchId,
     );
   }
 }

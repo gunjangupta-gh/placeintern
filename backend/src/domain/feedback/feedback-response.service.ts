@@ -15,6 +15,18 @@ export class FeedbackResponseService {
     private readonly auditService: AuditService,
   ) {}
 
+  private getUserBranchScope(branchId?: string, branchName?: string): Prisma.UserWhereInput {
+    if (branchId) {
+      return { branchId };
+    }
+
+    if (branchName?.trim()) {
+      return { branchName: { equals: branchName.trim(), mode: Prisma.QueryMode.insensitive } };
+    }
+
+    return {};
+  }
+
   /**
    * Submit feedback (Faculty)
    */
@@ -343,11 +355,29 @@ export class FeedbackResponseService {
   }
 
   /**
-   * Get institution feedback summary (Principal)
+   * Get institution feedback summary (Principal/Coordinator)
+   * If institutionId is undefined and branchName/branchId provided, fetches across all institutions for that branch
    */
-  async getInstitutionFeedbackSummary(institutionId: string, trainingId?: string) {
+  async getInstitutionFeedbackSummary(institutionId: string | undefined, trainingId?: string, branchName?: string, branchId?: string) {
+    // Build user filter - if no institutionId, filter by branch across all institutions
+    const userFilter: Prisma.UserWhereInput = institutionId
+      ? {
+          institutionId,
+          ...this.getUserBranchScope(branchId, branchName),
+        }
+      : branchName || branchId
+        ? {
+            OR: [
+              ...(branchName
+                ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }]
+                : []),
+              ...(branchId ? [{ branchId }] : []),
+            ],
+          }
+        : {};
+
     const where: Prisma.FeedbackResponseWhereInput = {
-      user: { institutionId },
+      user: userFilter,
       ...(trainingId ? { trainingId } : {}),
     };
 

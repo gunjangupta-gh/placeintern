@@ -23,7 +23,7 @@ import { CreateTestFormDto, UpdateTestFormDto, TestFormFilterDto } from '../../.
 @ApiBearerAuth()
 @Controller('state/test-forms')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.STATE_DIRECTORATE)
+@Roles(Role.STATE_DIRECTORATE, Role.FACULTY_COORDINATOR)
 export class StateTestFormController {
   constructor(
     private readonly testFormService: TestFormService,

@@ -295,14 +295,17 @@ export class TrainingRecommendationService {
   /**
    * Get recommendations from faculty of an institution (Principal)
    */
-  async getByInstitution(institutionId: string, filters: RecommendationFilterDto) {
+  async getByInstitution(institutionId: string, filters: RecommendationFilterDto, branchName?: string) {
     try {
       const { status, priority, search } = filters;
       const page = Number(filters.page) || 1;
       const limit = Number(filters.limit) || 20;
 
       const where: Prisma.TrainingRecommendationWhereInput = {
-        user: { institutionId },
+        user: {
+          institutionId,
+          ...(branchName ? { branchName: { equals: branchName, mode: 'insensitive' } } : {}),
+        },
         ...(status ? { status } : {}),
         ...(priority ? { priority } : {}),
         ...(search
@@ -362,10 +365,14 @@ export class TrainingRecommendationService {
   /**
    * Get recommendation by ID with institution access check (Principal)
    */
-  async getByIdForInstitution(id: string, institutionId: string) {
+  async getByIdForInstitution(id: string, institutionId: string, branchName?: string) {
     const recommendation = await this.getById(id);
 
     if (recommendation.user?.Institution?.id !== institutionId) {
+      throw new ForbiddenException('You do not have access to this recommendation');
+    }
+
+    if (branchName && recommendation.user?.branchName?.toLowerCase() !== branchName.toLowerCase()) {
       throw new ForbiddenException('You do not have access to this recommendation');
     }
 
@@ -380,6 +387,7 @@ export class TrainingRecommendationService {
     dto: ReviewRecommendationDto,
     reviewerId: string,
     institutionId: string,
+    branchName?: string,
   ) {
     const allowedStatuses: TrainingRecommendationStatus[] = [
       TrainingRecommendationStatus.UNDER_REVIEW,
@@ -402,6 +410,7 @@ export class TrainingRecommendationService {
           select: {
             id: true,
             institutionId: true,
+            branchName: true,
             name: true,
           },
         },
@@ -414,6 +423,10 @@ export class TrainingRecommendationService {
 
     if (existing.user.institutionId !== institutionId) {
       throw new ForbiddenException('You can only review recommendations from your institution');
+    }
+
+    if (branchName && existing.user.branchName?.toLowerCase() !== branchName.toLowerCase()) {
+      throw new ForbiddenException('You can only review recommendations from your branch');
     }
 
     const recommendation = await this.prisma.trainingRecommendation.update({

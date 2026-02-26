@@ -17,6 +17,7 @@ import {
   Col,
   Segmented,
   Calendar,
+  Select,
   Form,
   message,
 } from "antd";
@@ -384,6 +385,32 @@ const TrainingManagementPage = () => {
     [selectedDate, filteredTrainings],
   );
 
+  const calendarYearOptions = useMemo(() => {
+    const currentYear = selectedDate.year();
+    return Array.from({ length: 11 }, (_, index) => {
+      const year = currentYear - 5 + index;
+      return { value: year, label: String(year) };
+    });
+  }, [selectedDate]);
+
+  const calendarMonthOptions = useMemo(
+    () => [
+      { value: 0, label: "January" },
+      { value: 1, label: "February" },
+      { value: 2, label: "March" },
+      { value: 3, label: "April" },
+      { value: 4, label: "May" },
+      { value: 5, label: "June" },
+      { value: 6, label: "July" },
+      { value: 7, label: "August" },
+      { value: 8, label: "September" },
+      { value: 9, label: "October" },
+      { value: 10, label: "November" },
+      { value: 11, label: "December" },
+    ],
+    [],
+  );
+
   return (
     <div className="p-4 training-ui">
       {/* Header */}
@@ -496,11 +523,42 @@ const TrainingManagementPage = () => {
                 .training-calendar .ant-picker-cell {
                   padding: 2px;
                 }
+                .training-calendar .ant-picker-calendar-header {
+                  padding: 0 0 12px 0;
+                }
+                .training-calendar .ant-picker-content {
+                  min-height: 400px;
+                }
+                .training-calendar .ant-picker-cell-in-view {
+                  min-height: 60px;
+                }
               `}</style>
               <Calendar
                 className="training-calendar"
                 value={selectedDate}
                 onSelect={setSelectedDate}
+                headerRender={({ value }) => (
+                  <div className="flex items-center justify-end gap-2 px-2 pb-2">
+                    <Select
+                      size="small"
+                      className="w-28"
+                      value={value.year()}
+                      options={calendarYearOptions}
+                      onChange={(year) => setSelectedDate(value.clone().year(year))}
+                      getPopupContainer={() => document.body}
+                      dropdownStyle={{ zIndex: 2000 }}
+                    />
+                    <Select
+                      size="small"
+                      className="w-32"
+                      value={value.month()}
+                      options={calendarMonthOptions}
+                      onChange={(month) => setSelectedDate(value.clone().month(month))}
+                      getPopupContainer={() => document.body}
+                      dropdownStyle={{ zIndex: 2000 }}
+                    />
+                  </div>
+                )}
                 fullCellRender={(dateValue, info) => {
                   // Handle month view
                   if (info.type === "month") {

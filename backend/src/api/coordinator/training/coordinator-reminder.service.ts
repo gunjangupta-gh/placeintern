@@ -7,7 +7,9 @@ import { SendReminderDto, PendingActionsFilterDto, PendingActionType } from './d
 
 interface CoordinatorUser {
   userId: string;
-  institutionId: string;
+  institutionId?: string;
+  branchId?: string;
+  branchName?: string;
   name: string;
 }
 
@@ -20,6 +22,18 @@ export class CoordinatorReminderService {
     private readonly notificationSender: NotificationSenderService,
     private readonly auditService: AuditService,
   ) {}
+
+  private getUserBranchScope(branchId?: string, branchName?: string) {
+    if (branchId) {
+      return { branchId };
+    }
+
+    if (branchName?.trim()) {
+      return { branchName: { equals: branchName.trim(), mode: 'insensitive' as const } };
+    }
+
+    return {};
+  }
 
   /**
    * Send enrollment reminder to faculty who haven't enrolled for a training
@@ -40,9 +54,10 @@ export class CoordinatorReminderService {
     // Get faculty in institution who haven't enrolled for this training
     const targetUsers = await this.prisma.user.findMany({
       where: {
-        institutionId: coordinator.institutionId,
+        ...(coordinator.institutionId ? { institutionId: coordinator.institutionId } : {}),
         role: Role.TEACHER,
         active: true,
+        ...this.getUserBranchScope(coordinator.branchId, coordinator.branchName),
         ...(dto.userIds?.length ? { id: { in: dto.userIds } } : {}),
         trainingApplications: {
           none: { trainingId: dto.trainingId },
@@ -127,7 +142,10 @@ export class CoordinatorReminderService {
         trainingId: dto.trainingId,
         status: 'APPROVED',
         isActive: true,
-        user: { institutionId: coordinator.institutionId },
+        user: {
+          ...(coordinator.institutionId ? { institutionId: coordinator.institutionId } : {}),
+          ...this.getUserBranchScope(coordinator.branchId, coordinator.branchName),
+        },
         ...(dto.userIds?.length ? { userId: { in: dto.userIds } } : {}),
       },
       select: { userId: true, user: { select: { id: true, name: true, email: true } } },
@@ -215,7 +233,10 @@ export class CoordinatorReminderService {
         trainingId: dto.trainingId,
         status: 'APPROVED',
         isActive: true,
-        user: { institutionId: coordinator.institutionId },
+        user: {
+          ...(coordinator.institutionId ? { institutionId: coordinator.institutionId } : {}),
+          ...this.getUserBranchScope(coordinator.branchId, coordinator.branchName),
+        },
         ...(dto.userIds?.length ? { userId: { in: dto.userIds } } : {}),
       },
       select: { userId: true, user: { select: { id: true, name: true, email: true } } },
@@ -299,7 +320,10 @@ export class CoordinatorReminderService {
         trainingId: dto.trainingId,
         status: 'APPROVED',
         isActive: true,
-        user: { institutionId: coordinator.institutionId },
+        user: {
+          ...(coordinator.institutionId ? { institutionId: coordinator.institutionId } : {}),
+          ...this.getUserBranchScope(coordinator.branchId, coordinator.branchName),
+        },
         ...(dto.userIds?.length ? { userId: { in: dto.userIds } } : {}),
       },
       select: { userId: true, user: { select: { id: true, name: true, email: true } } },
@@ -361,13 +385,19 @@ export class CoordinatorReminderService {
   /**
    * Get faculty with pending actions (for targeted reminders)
    */
-  async getFacultyWithPendingActions(institutionId: string, filters: PendingActionsFilterDto) {
+  async getFacultyWithPendingActions(
+    institutionId: string | undefined,
+    filters: PendingActionsFilterDto,
+    branchId?: string,
+    branchName?: string,
+  ) {
     // Get all faculty from institution
     const faculty = await this.prisma.user.findMany({
       where: {
-        institutionId,
+        ...(institutionId ? { institutionId } : {}),
         role: Role.TEACHER,
         active: true,
+        ...this.getUserBranchScope(branchId, branchName),
       },
       select: {
         id: true,
@@ -394,7 +424,10 @@ export class CoordinatorReminderService {
         postTestForm: true,
         applications: {
           where: {
-            user: { institutionId },
+            user: {
+              ...(institutionId ? { institutionId } : {}),
+              ...this.getUserBranchScope(branchId, branchName),
+            },
             status: 'APPROVED',
             isActive: true,
           },

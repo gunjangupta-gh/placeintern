@@ -382,7 +382,7 @@ const AppRoutes = () => {
         <Route
           path="training/manage"
           element={
-            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.COORDINATOR]}>
               <StateTrainingManagementPage />
             </ProtectedRoute>
           }
@@ -390,7 +390,7 @@ const AppRoutes = () => {
         <Route
           path="training/create"
           element={
-            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.COORDINATOR]}>
               <StateTrainingManageFormPage />
             </ProtectedRoute>
           }
@@ -398,7 +398,7 @@ const AppRoutes = () => {
         <Route
           path="training/:id/edit"
           element={
-            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.COORDINATOR]}>
               <StateTrainingManageFormPage />
             </ProtectedRoute>
           }
@@ -1074,6 +1074,7 @@ function TrainingDetailsRouter() {
   const role = user?.role;
 
   if (role === ROLES.STATE) return <StateTrainingDetailsPage />;
+  if (role === ROLES.COORDINATOR) return <StateTrainingDetailsPage />;
   if (role === ROLES.PRINCIPAL) return <PrincipalTrainingDetailsPage />;
   if (ROLES.FACULTY.includes(role)) return <FacultyTrainingDetailsPage />;
 

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { Prisma } from '../../generated/prisma/client';
 import { AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
 import { SubmitTestResponseDto } from './dto';
 
@@ -571,11 +572,14 @@ export class TestResponseService {
   /**
    * Get pre-test responses for a training filtered by institution
    */
-  async getPreTestResponsesByTrainingAndInstitution(trainingId: string, institutionId: string) {
+  async getPreTestResponsesByTrainingAndInstitution(trainingId: string, institutionId: string, branchName?: string) {
     const responses = await this.prisma.preTestResponse.findMany({
       where: {
         trainingId,
-        user: { institutionId },
+        user: {
+          institutionId,
+          ...(branchName ? { branchName: { equals: branchName, mode: 'insensitive' } } : {}),
+        },
       },
       include: {
         user: {
@@ -607,11 +611,14 @@ export class TestResponseService {
   /**
    * Get post-test responses for a training filtered by institution
    */
-  async getPostTestResponsesByTrainingAndInstitution(trainingId: string, institutionId: string) {
+  async getPostTestResponsesByTrainingAndInstitution(trainingId: string, institutionId: string, branchName?: string) {
     const responses = await this.prisma.postTestResponse.findMany({
       where: {
         trainingId,
-        user: { institutionId },
+        user: {
+          institutionId,
+          ...(branchName ? { branchName: { equals: branchName, mode: 'insensitive' } } : {}),
+        },
       },
       include: {
         user: {
@@ -643,7 +650,12 @@ export class TestResponseService {
   /**
    * Get institution test completion summary
    */
-  async getInstitutionTestSummary(institutionId: string) {
+  async getInstitutionTestSummary(institutionId: string, branchName?: string) {
+    const userFilter: Prisma.UserWhereInput = {
+      institutionId,
+      ...(branchName ? { branchName: { equals: branchName, mode: 'insensitive' } } : {}),
+    };
+
     // Get all trainings that have pre/post test forms and have faculty from this institution enrolled
     const trainingsWithTests = await this.prisma.training.findMany({
       where: {
@@ -657,7 +669,7 @@ export class TestResponseService {
           some: {
             status: 'APPROVED',
             isActive: true,
-            user: { institutionId },
+            user: { is: userFilter },
           },
         },
       },
@@ -672,7 +684,7 @@ export class TestResponseService {
           where: {
             status: 'APPROVED',
             isActive: true,
-            user: { institutionId },
+            user: { is: userFilter },
           },
           select: { userId: true },
         },

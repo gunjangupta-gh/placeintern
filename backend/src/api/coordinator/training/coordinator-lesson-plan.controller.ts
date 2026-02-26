@@ -30,19 +30,24 @@ export class CoordinatorLessonPlanController {
   @Get()
   @ApiOperation({ summary: 'Get lesson plans from institution faculty' })
   async getLessonPlans(@Query() filters: LessonPlanFilterDto, @Req() req) {
-    return this.lessonPlanService.getByInstitution(req.user.institutionId, filters);
+    return this.lessonPlanService.getByInstitution(
+      undefined,
+      filters,
+      req.user.branchName,
+      req.user.branchId,
+    );
   }
 
   @Get('pending')
   @ApiOperation({ summary: 'Get pending lesson plans for review' })
   async getPendingLessonPlans(@Req() req) {
-    return this.lessonPlanService.getPendingForInstitution(req.user.institutionId);
+    return this.lessonPlanService.getPendingForInstitution(undefined, req.user.branchName, req.user.branchId);
   }
 
   @Get('stats')
   @ApiOperation({ summary: 'Get lesson plan statistics for institution' })
   async getStats(@Req() req) {
-    return this.lessonPlanService.getInstitutionStats(req.user.institutionId);
+    return this.lessonPlanService.getInstitutionStats(undefined, req.user.branchName, req.user.branchId);
   }
 
   @Get('training/:trainingId')
@@ -53,7 +58,9 @@ export class CoordinatorLessonPlanController {
   ) {
     return this.lessonPlanService.getByTrainingAndInstitution(
       trainingId,
-      req.user.institutionId,
+      undefined,
+      req.user.branchName,
+      req.user.branchId,
     );
   }
 
@@ -70,6 +77,13 @@ export class CoordinatorLessonPlanController {
     @Body() dto: ReviewLessonPlanDto,
     @Req() req,
   ) {
-    return this.lessonPlanService.review(id, dto, req.user.userId);
+    return this.lessonPlanService.review(
+      id,
+      dto,
+      req.user.userId,
+      undefined,
+      req.user.branchName,
+      req.user.branchId,
+    );
   }
 }

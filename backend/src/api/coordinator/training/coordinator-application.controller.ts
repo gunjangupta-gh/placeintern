@@ -35,13 +35,18 @@ export class CoordinatorApplicationController {
   @Get()
   @ApiOperation({ summary: 'Get applications from institution faculty' })
   async getApplications(@Query() filters: ApplicationFilterDto, @Req() req) {
-    return this.applicationService.getByInstitution(req.user.institutionId, filters);
+    return this.applicationService.getByInstitution(
+      undefined,
+      filters,
+      req.user.branchName,
+      req.user.branchId,
+    );
   }
 
   @Get('stats')
   @ApiOperation({ summary: 'Get application statistics for institution' })
   async getStats(@Req() req) {
-    return this.applicationService.getInstitutionStats(req.user.institutionId);
+    return this.applicationService.getInstitutionStats(undefined, req.user.branchName, req.user.branchId);
   }
 
   @Get('training/:trainingId')
@@ -53,15 +58,17 @@ export class CoordinatorApplicationController {
   ) {
     return this.applicationService.getByTrainingAndInstitution(
       trainingId,
-      req.user.institutionId,
+      undefined,
       filters,
+      req.user.branchName,
+      req.user.branchId,
     );
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get application details' })
   async getApplication(@Param('id') id: string, @Req() req) {
-    return this.applicationService.getById(id, req.user.institutionId);
+    return this.applicationService.getById(id, undefined, req.user.branchName, req.user.branchId);
   }
 
   @Patch(':id/review')
@@ -71,12 +78,25 @@ export class CoordinatorApplicationController {
     @Body() dto: ReviewApplicationDto,
     @Req() req,
   ) {
-    return this.applicationService.review(id, dto, req.user.userId, req.user.institutionId);
+    return this.applicationService.review(
+      id,
+      dto,
+      req.user.userId,
+      undefined,
+      req.user.branchName,
+      req.user.branchId,
+    );
   }
 
   @Post('bulk-review')
   @ApiOperation({ summary: 'Bulk review applications' })
   async bulkReviewApplications(@Body() dto: BulkReviewApplicationDto, @Req() req) {
-    return this.applicationService.bulkReview(dto, req.user.userId, req.user.institutionId);
+    return this.applicationService.bulkReview(
+      dto,
+      req.user.userId,
+      undefined,
+      req.user.branchName,
+      req.user.branchId,
+    );
   }
 }

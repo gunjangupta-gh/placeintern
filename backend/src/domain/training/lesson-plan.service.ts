@@ -206,18 +206,32 @@ export class LessonPlanService {
   /**
    * Review lesson plan (Principal/State)
    */
-  async review(id: string, dto: ReviewLessonPlanDto, reviewerId: string) {
+  async review(
+    id: string,
+    dto: ReviewLessonPlanDto,
+    reviewerId: string,
+    institutionId?: string,
+    branchName?: string,
+  ) {
     try {
       const lessonPlan = await this.prisma.lessonPlan.findUnique({
         where: { id },
         include: {
-          user: { select: { id: true, name: true, institutionId: true } },
+          user: { select: { id: true, name: true, institutionId: true, branchName: true } },
           training: { select: { id: true, title: true } },
         },
       });
 
       if (!lessonPlan) {
         throw new NotFoundException('Lesson plan not found');
+      }
+
+      if (institutionId && lessonPlan.user.institutionId !== institutionId) {
+        throw new ForbiddenException('You can only review lesson plans from your institution');
+      }
+
+      if (branchName && lessonPlan.user.branchName?.toLowerCase() !== branchName.toLowerCase()) {
+        throw new ForbiddenException('You can only review lesson plans from your branch');
       }
 
       if (lessonPlan.status === LessonPlanStatus.DRAFT) {
@@ -409,11 +423,18 @@ export class LessonPlanService {
   /**
    * Get by training
    */
-  async getByTraining(trainingId: string, institutionId?: string) {
+  async getByTraining(trainingId: string, institutionId?: string, branchName?: string) {
     const lessonPlans = await this.prisma.lessonPlan.findMany({
       where: {
         trainingId,
-        ...(institutionId ? { user: { institutionId } } : {}),
+        ...(institutionId || branchName
+          ? {
+              user: {
+                ...(institutionId ? { institutionId } : {}),
+                ...(branchName ? { branchName: { equals: branchName, mode: 'insensitive' } } : {}),
+              },
+            }
+          : {}),
       },
       include: {
         user: {
@@ -672,13 +693,16 @@ export class LessonPlanService {
   /**
    * Get lesson plans by institution (Principal)
    */
-  async getByInstitution(institutionId: string, filters: LessonPlanFilterDto) {
+  async getByInstitution(institutionId: string, filters: LessonPlanFilterDto, branchName?: string) {
     const { status, trainingId } = filters;
     const page = Number(filters.page) || 1;
     const limit = Number(filters.limit) || 20;
 
     const where: Prisma.LessonPlanWhereInput = {
-      user: { institutionId },
+      user: {
+        institutionId,
+        ...(branchName ? { branchName: { equals: branchName, mode: 'insensitive' } } : {}),
+      },
       ...(status ? { status } : {}),
       ...(trainingId ? { trainingId } : {}),
     };
@@ -707,17 +731,20 @@ export class LessonPlanService {
   /**
    * Get lesson plans by training and institution (Principal)
    */
-  async getByTrainingAndInstitution(trainingId: string, institutionId: string) {
-    return this.getByTraining(trainingId, institutionId);
+  async getByTrainingAndInstitution(trainingId: string, institutionId: string, branchName?: string) {
+    return this.getByTraining(trainingId, institutionId, branchName);
   }
 
   /**
    * Get pending lesson plans for institution (Principal)
    */
-  async getPendingForInstitution(institutionId: string) {
+  async getPendingForInstitution(institutionId: string, branchName?: string) {
     return this.prisma.lessonPlan.findMany({
       where: {
-        user: { institutionId },
+        user: {
+          institutionId,
+          ...(branchName ? { branchName: { equals: branchName, mode: 'insensitive' } } : {}),
+        },
         status: LessonPlanStatus.SUBMITTED,
       },
       include: {
@@ -731,14 +758,19 @@ export class LessonPlanService {
   /**
    * Get institution lesson plan statistics (Principal)
    */
-  async getInstitutionStats(institutionId: string) {
+  async getInstitutionStats(institutionId: string, branchName?: string) {
+    const userFilter: Prisma.UserWhereInput = {
+      institutionId,
+      ...(branchName ? { branchName: { equals: branchName, mode: 'insensitive' } } : {}),
+    };
+
     const [total, statusCounts] = await Promise.all([
       this.prisma.lessonPlan.count({
-        where: { user: { institutionId } },
+        where: { user: userFilter },
       }),
       this.prisma.lessonPlan.groupBy({
         by: ['status'],
-        where: { user: { institutionId } },
+        where: { user: userFilter },
         _count: true,
       }),
     ]);

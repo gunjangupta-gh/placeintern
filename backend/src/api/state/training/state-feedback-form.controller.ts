@@ -23,7 +23,7 @@ import { CreateFeedbackFormDto, UpdateFeedbackFormDto, FeedbackFilterDto } from 
 @ApiBearerAuth()
 @Controller('state/feedback-forms')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.STATE_DIRECTORATE)
+@Roles(Role.STATE_DIRECTORATE, Role.FACULTY_COORDINATOR)
 export class StateFeedbackFormController {
   constructor(
     private readonly feedbackFormService: FeedbackFormService,

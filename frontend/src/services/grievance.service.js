@@ -156,7 +156,8 @@ export const grievanceService = {
    * @returns {Promise} - List of assignable users
    */
   async getAssignableUsers(institutionId) {
-    const response = await API.get(`/grievances/assignable-users/list?institutionId=${institutionId}`);
+    const query = institutionId ? `?institutionId=${institutionId}` : '';
+    const response = await API.get(`/grievances/assignable-users/list${query}`);
     return response.data;
   },
 

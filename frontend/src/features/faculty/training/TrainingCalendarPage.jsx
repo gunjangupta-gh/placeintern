@@ -6,7 +6,6 @@ import {
   Calendar,
   Card,
   Col,
-  DatePicker,
   Input,
   Row,
   Segmented,
@@ -71,6 +70,20 @@ const TrainingCalendarPage = () => {
   const handleKeyDown = useCallback(
     (e) => {
       if (viewMode !== "calendar") return;
+
+      const target = e.target;
+      if (
+        target instanceof HTMLElement &&
+        (
+          ["input", "textarea", "select"].includes(target.tagName.toLowerCase()) ||
+          target.closest(".ant-select") ||
+          target.closest(".ant-picker") ||
+          target.closest(".ant-input") ||
+          target.closest(".ant-input-affix-wrapper")
+        )
+      ) {
+        return;
+      }
 
       switch (e.key) {
         case "ArrowLeft":
@@ -137,6 +150,32 @@ const TrainingCalendarPage = () => {
   const selectedDayTrainings = useMemo(
     () => getTrainingsForDate(selectedDate),
     [selectedDate, calendarTrainings],
+  );
+
+  const yearOptions = useMemo(() => {
+    const currentYear = dayjs().year();
+    return Array.from({ length: 11 }, (_, index) => {
+      const year = currentYear - 5 + index;
+      return { value: year, label: String(year) };
+    });
+  }, []);
+
+  const monthOptions = useMemo(
+    () => [
+      { value: 1, label: "January" },
+      { value: 2, label: "February" },
+      { value: 3, label: "March" },
+      { value: 4, label: "April" },
+      { value: 5, label: "May" },
+      { value: 6, label: "June" },
+      { value: 7, label: "July" },
+      { value: 8, label: "August" },
+      { value: 9, label: "September" },
+      { value: 10, label: "October" },
+      { value: 11, label: "November" },
+      { value: 12, label: "December" },
+    ],
+    [],
   );
 
   const hasActiveFilters =
@@ -273,35 +312,33 @@ const TrainingCalendarPage = () => {
           <div className="pt-2.5 mt-2.5 border-t border-slate-100">
             <Row gutter={[8, 8]}>
               <Col xs={24} sm={12} md={4}>
-                <DatePicker
-                  picker="year"
+                <Select
                   size="small"
+                  allowClear
                   className="w-full"
                   placeholder="Year"
-                  value={filters.year ? dayjs().year(filters.year) : null}
+                  value={filters.year}
                   onChange={(value) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      year: value ? value.year() : null,
-                    }))
+                    setFilters((prev) => ({ ...prev, year: value || null }))
                   }
+                  options={yearOptions}
+                  getPopupContainer={() => document.body}
+                  dropdownStyle={{ zIndex: 2000 }}
                 />
               </Col>
               <Col xs={24} sm={12} md={4}>
-                <DatePicker
-                  picker="month"
+                <Select
                   size="small"
+                  allowClear
                   className="w-full"
                   placeholder="Month"
-                  value={
-                    filters.month ? dayjs().month(filters.month - 1) : null
-                  }
+                  value={filters.month}
                   onChange={(value) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      month: value ? value.month() + 1 : null,
-                    }))
+                    setFilters((prev) => ({ ...prev, month: value || null }))
                   }
+                  options={monthOptions}
+                  getPopupContainer={() => document.body}
+                  dropdownStyle={{ zIndex: 2000 }}
                 />
               </Col>
               <Col xs={24} sm={12} md={4}>
@@ -319,6 +356,8 @@ const TrainingCalendarPage = () => {
                     { value: "OFFLINE", label: "In-Person" },
                     { value: "HYBRID", label: "Hybrid" },
                   ]}
+                  getPopupContainer={() => document.body}
+                  dropdownStyle={{ zIndex: 2000 }}
                 />
               </Col>
               {hasActiveFilters && (
@@ -369,6 +408,56 @@ const TrainingCalendarPage = () => {
                   className="training-calendar"
                   value={selectedDate}
                   onSelect={setSelectedDate}
+                  headerRender={({ value }) => {
+                    const calendarYearOptions = useMemo(() => {
+                      const currentYear = value.year();
+                      return Array.from({ length: 11 }, (_, index) => {
+                        const year = currentYear - 5 + index;
+                        return { value: year, label: String(year) };
+                      });
+                    }, [value]);
+
+                    const calendarMonthOptions = useMemo(
+                      () => [
+                        { value: 0, label: "January" },
+                        { value: 1, label: "February" },
+                        { value: 2, label: "March" },
+                        { value: 3, label: "April" },
+                        { value: 4, label: "May" },
+                        { value: 5, label: "June" },
+                        { value: 6, label: "July" },
+                        { value: 7, label: "August" },
+                        { value: 8, label: "September" },
+                        { value: 9, label: "October" },
+                        { value: 10, label: "November" },
+                        { value: 11, label: "December" },
+                      ],
+                      [],
+                    );
+
+                    return (
+                      <div className="flex items-center justify-end gap-2 px-2 pb-2">
+                        <Select
+                          size="small"
+                          className="w-28"
+                          value={value.year()}
+                          options={calendarYearOptions}
+                          onChange={(year) => setSelectedDate(value.clone().year(year))}
+                          getPopupContainer={() => document.body}
+                          dropdownStyle={{ zIndex: 2000 }}
+                        />
+                        <Select
+                          size="small"
+                          className="w-32"
+                          value={value.month()}
+                          options={calendarMonthOptions}
+                          onChange={(month) => setSelectedDate(value.clone().month(month))}
+                          getPopupContainer={() => document.body}
+                          dropdownStyle={{ zIndex: 2000 }}
+                        />
+                      </div>
+                    );
+                  }}
                   fullCellRender={(dateValue, info) => {
                     // Handle month view
                     if (info.type === "month") {

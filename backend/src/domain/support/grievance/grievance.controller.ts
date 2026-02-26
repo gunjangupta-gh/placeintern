@@ -75,10 +75,16 @@ export class GrievanceController {
   @Get('assignable-users/list')
   async getAssignableUsers(@Query('institutionId') institutionId?: string, @Request() req?: any) {
     const instId = institutionId || req?.user?.institutionId;
-    if (!instId) {
+    const isCoordinator = req?.user?.role === 'FACULTY_COORDINATOR';
+    if (!instId && !isCoordinator) {
       throw new HttpException('Institution ID is required', HttpStatus.BAD_REQUEST);
     }
-    return this.grievanceService.getAssignableUsers(instId);
+    return this.grievanceService.getAssignableUsers(
+      instId,
+      req?.user?.role,
+      req?.user?.branchId,
+      req?.user?.branchName,
+    );
   }
 
   /**

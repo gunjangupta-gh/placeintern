@@ -1083,65 +1083,150 @@ function generateTestResponse(questions: any[], isCorrect: boolean = true): Reco
   return responses;
 }
 
-async function getEligibleUsers() {
+async function getEligibleUsers(branchLookup: Map<string, string>) {
   const targetUsers = await prisma.user.findMany({
     where: { email: { in: TARGET_EMAILS } },
-    select: { id: true, name: true, email: true, institutionId: true },
+    select: { id: true, name: true, email: true, institutionId: true, branchId: true, branchName: true, role: true },
   });
+
+  // Get EE branch ID for prioritizing EE users
+  const eeBranchId = branchLookup.get('EE');
 
   // Get teachers from different institutions
   const institutions = await prisma.institution.findMany({
     where: { isActive: true },
     select: { id: true, name: true },
-    take: 5,
+    take: 10,
   });
 
   console.log(`Found ${institutions.length} active institutions`);
 
-  // Get teachers from each institution
+  // Get EE users specifically from all institutions (PRIORITY)
+  const eeUsers = await prisma.user.findMany({
+    where: {
+      active: true,
+      role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
+      OR: [
+        { branchId: eeBranchId },
+        { branchName: { equals: 'EE', mode: 'insensitive' as any } },
+        { branchName: { equals: 'Electrical Engineering', mode: 'insensitive' as any } },
+      ],
+    },
+    select: { id: true, name: true, email: true, institutionId: true, branchId: true, branchName: true, role: true },
+  });
+
+  console.log(`\n  Found ${eeUsers.length} EE Branch Faculty Members`);
+  eeUsers.slice(0, 5).forEach(user => {
+    console.log(`    - ${user.name} (${user.role || 'TEACHER'}) at Institution ${user.institutionId?.substring(0, 8)}...`);
+  });
+
+  // Update EE users to have branchId if missing
+  for (const user of eeUsers) {
+    if (!user.branchId && eeBranchId && user.id) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { branchId: eeBranchId, branchName: 'EE' },
+      });
+      user.branchId = eeBranchId;
+      user.branchName = 'EE';
+    }
+  }
+
+  // Get teachers from each institution with branch information
   const usersByInstitution = await Promise.all(
     institutions.map(async (institution) => {
       const usersFromInstitution = await prisma.user.findMany({
         where: {
           active: true,
-          role: Role.TEACHER,
+          role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
           institutionId: institution.id,
         },
-        select: { id: true, name: true, email: true, institutionId: true },
+        select: { id: true, name: true, email: true, institutionId: true, branchId: true, branchName: true, role: true },
         take: 5,
       });
 
-      console.log(`  Found ${usersFromInstitution.length} teachers from ${institution.name}`);
+      console.log(`  Found ${usersFromInstitution.length} faculty from ${institution.name}`);
       return usersFromInstitution;
     }),
   );
 
-  const crossInstitutionUsers: Array<{ id: string; name: string; email: string; institutionId: string | null }> =
-    usersByInstitution.flat();
+  const crossInstitutionUsers: Array<{
+    id: string;
+    name: string;
+    email: string;
+    institutionId: string | null;
+    branchId: string | null;
+    branchName: string | null;
+    role: Role | null;
+  }> = usersByInstitution.flat();
+
+  // Get faculty coordinators specifically
+  const facultyCoordinators = await prisma.user.findMany({
+    where: { active: true, role: Role.FACULTY_COORDINATOR },
+    select: { id: true, name: true, email: true, institutionId: true, branchId: true, branchName: true, role: true },
+    take: 10,
+  });
+
+  console.log(`\n  Found ${facultyCoordinators.length} Faculty Coordinators`);
+  facultyCoordinators.forEach(fc => {
+    console.log(`    - ${fc.name} (${fc.branchName || 'No Branch'})`);
+  });
 
   const teachers = await prisma.user.findMany({
     where: { active: true, role: Role.TEACHER },
-    select: { id: true, name: true, email: true, institutionId: true },
+    select: { id: true, name: true, email: true, institutionId: true, branchId: true, branchName: true, role: true },
     take: 25,
   });
 
   const allActive = await prisma.user.findMany({
     where: { active: true },
-    select: { id: true, name: true, email: true, institutionId: true },
+    select: { id: true, name: true, email: true, institutionId: true, branchId: true, branchName: true, role: true },
     take: 15,
   });
 
-  // Combine and deduplicate users
-  const allUsers = [...targetUsers, ...crossInstitutionUsers, ...teachers];
+  // Combine and deduplicate users - PRIORITIZE EE USERS
+  const allUsers = [...eeUsers, ...targetUsers, ...crossInstitutionUsers, ...teachers, ...facultyCoordinators];
   const uniqueUsers = Array.from(
     new Map(allUsers.map((u) => [u.id, u])).values()
+  );
+
+  // Ensure users have branchId set based on branchName
+  const usersWithBranch = await Promise.all(
+    uniqueUsers.map(async (user) => {
+      if (user.branchId) {
+        return user;
+      }
+
+      // Try to match branchName to branchId
+      if (user.branchName) {
+        const branchId = branchLookup.get(user.branchName);
+        if (branchId && user.id) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { branchId },
+          });
+          return { ...user, branchId };
+        }
+      }
+
+      return user;
+    })
+  );
+
+  // Separate EE users for prioritized enrollment
+  const eeUsersWithBranch = usersWithBranch.filter(u =>
+    u.branchId === eeBranchId ||
+    u.branchName?.toLowerCase() === 'ee' ||
+    u.branchName?.toLowerCase() === 'electrical engineering'
   );
 
   return {
     targetUsers,
     teachers,
     crossInstitutionUsers,
-    fallbackUsers: uniqueUsers.length ? uniqueUsers : allActive,
+    facultyCoordinators,
+    eeUsers: eeUsersWithBranch,
+    fallbackUsers: usersWithBranch.length ? usersWithBranch : allActive,
   };
 }
 
@@ -1265,14 +1350,15 @@ async function main() {
   counts.postTestForms.created = POST_TEST_FORMS.length;
   console.log('');
 
-  // Get eligible users
-  const { fallbackUsers } = await getEligibleUsers();
+  const branchLookup = await buildBranchLookup();
+
+  // Get eligible users (pass branchLookup for branch assignment)
+  const { fallbackUsers, facultyCoordinators, eeUsers } = await getEligibleUsers(branchLookup);
   if (fallbackUsers.length === 0) {
     console.log('WARNING: No eligible users found for applications.');
   }
-  console.log(`Found ${fallbackUsers.length} eligible users for applications.\n`);
-
-  const branchLookup = await buildBranchLookup();
+  console.log(`Found ${fallbackUsers.length} eligible users for applications.`);
+  console.log(`  - ${eeUsers.length} EE Branch users (PRIORITY for EE trainings)\n`);
   const feedbackFormTitleById = new Map(
     [...formIdMap.entries()].map(([title, id]) => [id, title]),
   );
@@ -1339,7 +1425,34 @@ async function main() {
       continue;
     }
 
-    const userApplications = fallbackUsers.map((user, userIndex) => {
+    // Determine which users to enroll based on training target branches
+    const isEETraining = targetBranches.some(tb => {
+      const branchCode = Array.from(branchLookup.entries())
+        .find(([_, id]) => id === tb.id)?.[0];
+      return branchCode === 'EE';
+    });
+
+    let usersToEnroll = fallbackUsers;
+    let enrollmentMessage = '';
+
+    if (isEETraining && eeUsers.length > 0) {
+      // For EE trainings, prioritize EE users and add some other users
+      const otherUsers = fallbackUsers.filter(u => !eeUsers.some(ee => ee.id === u.id));
+      usersToEnroll = [...eeUsers, ...otherUsers.slice(0, 10)];
+      enrollmentMessage = `EE Training - Enrolling ${eeUsers.length} EE users + ${Math.min(10, otherUsers.length)} others`;
+      console.log(`  📘 ${enrollmentMessage}`);
+    } else if (targetBranches.length === 0) {
+      // Open training - use all users
+      enrollmentMessage = 'Open Training - All branches';
+      console.log(`  🌐 ${enrollmentMessage}`);
+    } else {
+      // Other branch-specific training
+      const branchCodes = seed.targetBranchCodes.join(', ');
+      enrollmentMessage = `Branch-specific Training (${branchCodes})`;
+      console.log(`  🎯 ${enrollmentMessage}`);
+    }
+
+    const userApplications = usersToEnroll.slice(0, seed.capacity).map((user, userIndex) => {
       const applicationStatus = getApplicationStatus(seed.category, userIndex);
       return {
         user,
@@ -1379,6 +1492,20 @@ async function main() {
       })),
     });
     counts.applications.created += applicationInsert.count;
+
+    // Log EE user enrollment statistics for EE trainings
+    if (isEETraining) {
+      const eeApplicants = userApplications.filter(ua =>
+        eeUsers.some(ee => ee.id === ua.user.id)
+      ).length;
+      const eeApproved = userApplications.filter(ua =>
+        eeUsers.some(ee => ee.id === ua.user.id) &&
+        ua.applicationStatus === TrainingApplicationStatus.APPROVED
+      ).length;
+      console.log(`    ✓ Created ${applicationInsert.count} applications (${eeApplicants} from EE, ${eeApproved} EE approved)`);
+    } else {
+      console.log(`    ✓ Created ${applicationInsert.count} applications`);
+    }
 
     const approvedUserApplications = userApplications.filter(
       ({ applicationStatus }) => applicationStatus === TrainingApplicationStatus.APPROVED,
@@ -1552,6 +1679,162 @@ async function main() {
     }
   }
 
+  // ============================================================================
+  // VERIFICATION - Faculty Coordinator Functionality
+  // ============================================================================
+  console.log('\n');
+  console.log('='.repeat(60));
+  console.log('FACULTY COORDINATOR VERIFICATION');
+  console.log('='.repeat(60));
+  console.log('');
+
+  if (facultyCoordinators.length > 0) {
+    // Test coordinator branch filtering
+    for (const coordinator of facultyCoordinators.slice(0, 3)) {
+      if (!coordinator.branchId && !coordinator.branchName) {
+        console.log(`⚠️  Coordinator ${coordinator.name}: No branch assigned (SKIP)`);
+        continue;
+      }
+
+      console.log(`\nTesting Coordinator: ${coordinator.name}`);
+      console.log(`  Branch: ${coordinator.branchName || coordinator.branchId}`);
+      console.log(`  Institution: ${coordinator.institutionId || 'Not Set'}`);
+
+      // Test 1: Get applications filtered by branch across all institutions
+      const coordinatorApplications = await prisma.trainingApplication.findMany({
+        where: {
+          user: coordinator.branchId
+            ? { branchId: coordinator.branchId }
+            : coordinator.branchName
+              ? { branchName: { equals: coordinator.branchName, mode: 'insensitive' as any } }
+              : {},
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              branchName: true,
+              Institution: { select: { name: true, shortName: true } },
+            },
+          },
+          training: { select: { title: true } },
+        },
+        take: 5,
+      });
+
+      console.log(`  ✓ Applications from ${coordinator.branchName} branch: ${coordinatorApplications.length}`);
+
+      if (coordinatorApplications.length > 0) {
+        const institutions = new Set(coordinatorApplications.map(app => app.user.Institution?.name || 'Unknown'));
+        console.log(`    - Across ${institutions.size} institution(s): ${Array.from(institutions).join(', ')}`);
+
+        // Verify all are from correct branch
+        const wrongBranch = coordinatorApplications.filter(
+          app => app.user.branchName?.toLowerCase() !== coordinator.branchName?.toLowerCase()
+        );
+        if (wrongBranch.length > 0) {
+          console.log(`    ❌ ERROR: Found ${wrongBranch.length} applications from wrong branch!`);
+        } else {
+          console.log(`    ✅ All applications are from correct branch`);
+        }
+      }
+
+      // Test 2: Get training statistics for the branch
+      const branchTrainings = await prisma.training.findMany({
+        where: {
+          targetBranches: coordinator.branchId
+            ? { some: { id: coordinator.branchId } }
+            : { none: {} },
+        },
+        select: {
+          id: true,
+          title: true,
+          _count: {
+            select: {
+              applications: true,
+            },
+          },
+        },
+        take: 3,
+      });
+
+      console.log(`  ✓ Trainings targeting ${coordinator.branchName}: ${branchTrainings.length}`);
+
+      // Test 3: Get attendance for branch faculty
+      const branchAttendance = await prisma.trainingAttendance.count({
+        where: {
+          user: coordinator.branchId
+            ? { branchId: coordinator.branchId }
+            : coordinator.branchName
+              ? { branchName: { equals: coordinator.branchName, mode: 'insensitive' as any } }
+              : {},
+        },
+      });
+
+      console.log(`  ✓ Attendance records for ${coordinator.branchName} faculty: ${branchAttendance}`);
+
+      // Test 4: Get certificates for branch faculty
+      const branchCertificates = await prisma.trainingCertificate.count({
+        where: {
+          user: coordinator.branchId
+            ? { branchId: coordinator.branchId }
+            : coordinator.branchName
+              ? { branchName: { equals: coordinator.branchName, mode: 'insensitive' as any } }
+              : {},
+        },
+      });
+
+      console.log(`  ✓ Certificates issued to ${coordinator.branchName} faculty: ${branchCertificates}`);
+    }
+  } else {
+    console.log('⚠️  No Faculty Coordinators found for verification.');
+    console.log('   Please create users with FACULTY_COORDINATOR role and assign them branches.');
+  }
+
+  // Test regular faculty branch filtering
+  console.log('\n--- Testing Faculty (TEACHER) Branch Filtering ---');
+  const sampleTeachers = await prisma.user.findMany({
+    where: {
+      active: true,
+      role: Role.TEACHER,
+      branchId: { not: null },
+    },
+    select: {
+      id: true,
+      name: true,
+      branchId: true,
+      branchName: true,
+    },
+    take: 3,
+  });
+
+  for (const teacher of sampleTeachers) {
+    console.log(`\nTeacher: ${teacher.name} (${teacher.branchName})`);
+
+    // Check trainings they can see
+    const visibleTrainings = await prisma.training.findMany({
+      where: {
+        isPublished: true,
+        OR: [
+          { targetBranches: { some: { id: teacher.branchId! } } },
+          { targetBranches: { none: {} } },
+        ],
+      },
+      select: {
+        title: true,
+        targetBranches: { select: { code: true } },
+      },
+      take: 5,
+    });
+
+    console.log(`  ✓ Can see ${visibleTrainings.length} trainings`);
+    visibleTrainings.forEach(t => {
+      const branches = t.targetBranches.map(b => b.code).join(', ');
+      console.log(`    - ${t.title.substring(0, 40)}... (${branches || 'All Branches'})`);
+    });
+  }
+
   // Print summary
   console.log('\n');
   console.log('='.repeat(60));
@@ -1606,6 +1889,172 @@ async function main() {
   console.log(`  - Created: ${counts.certificates.created}`);
   console.log(`  - Already Existed: ${counts.certificates.existing}`);
   console.log(`  - Total: ${counts.certificates.created + counts.certificates.existing}`);
+  console.log('');
+
+  // Add EE-specific statistics
+  console.log('='.repeat(60));
+  console.log('EE BRANCH ENROLLMENT STATISTICS');
+  console.log('='.repeat(60));
+  console.log('');
+
+  if (eeUsers.length > 0) {
+    // Count EE applications
+    const eeApplications = await prisma.trainingApplication.count({
+      where: {
+        user: eeUsers.length > 0 ? { id: { in: eeUsers.map(u => u.id) } } : undefined,
+      },
+    });
+
+    const eeApprovedApplications = await prisma.trainingApplication.count({
+      where: {
+        user: eeUsers.length > 0 ? { id: { in: eeUsers.map(u => u.id) } } : undefined,
+        status: TrainingApplicationStatus.APPROVED,
+      },
+    });
+
+    const eeAttendance = await prisma.trainingAttendance.count({
+      where: {
+        user: eeUsers.length > 0 ? { id: { in: eeUsers.map(u => u.id) } } : undefined,
+      },
+    });
+
+    const eeCertificates = await prisma.trainingCertificate.count({
+      where: {
+        user: eeUsers.length > 0 ? { id: { in: eeUsers.map(u => u.id) } } : undefined,
+      },
+    });
+
+    const eeLessonPlans = await prisma.lessonPlan.count({
+      where: {
+        user: eeUsers.length > 0 ? { id: { in: eeUsers.map(u => u.id) } } : undefined,
+      },
+    });
+
+    const eeFeedback = await prisma.feedbackResponse.count({
+      where: {
+        user: eeUsers.length > 0 ? { id: { in: eeUsers.map(u => u.id) } } : undefined,
+        trainingId: { not: null },
+      },
+    });
+
+    // Get EE trainings
+    const eeBranchId = branchLookup.get('EE');
+    const eeTrainings = await prisma.training.count({
+      where: {
+        targetBranches: eeBranchId ? { some: { id: eeBranchId } } : undefined,
+      },
+    });
+
+    console.log(`Total EE Faculty Users: ${eeUsers.length}`);
+    console.log(`EE-Targeted Trainings: ${eeTrainings}`);
+    console.log('');
+    console.log(`EE Faculty Enrollments:`);
+    console.log(`  - Total Applications: ${eeApplications}`);
+    console.log(`  - Approved Applications: ${eeApprovedApplications}`);
+    console.log(`  - Attendance Records: ${eeAttendance}`);
+    console.log(`  - Lesson Plans Submitted: ${eeLessonPlans}`);
+    console.log(`  - Feedback Responses: ${eeFeedback}`);
+    console.log(`  - Certificates Issued: ${eeCertificates}`);
+    console.log('');
+
+    // Show sample EE users enrolled
+    console.log('Sample EE Faculty Enrolled:');
+    const sampleEE = eeUsers.slice(0, 5);
+    for (const user of sampleEE) {
+      const userApps = await prisma.trainingApplication.count({
+        where: { userId: user.id },
+      });
+      console.log(`  - ${user.name} (${user.email || 'no email'}) - ${userApps} application(s)`);
+    }
+    if (eeUsers.length > 5) {
+      console.log(`  ... and ${eeUsers.length - 5} more EE faculty`);
+    }
+  } else {
+    console.log('⚠️  No EE branch users found in the system.');
+    console.log('   To test EE coordinator functionality, create users with:');
+    console.log('   - role: TEACHER or FACULTY_COORDINATOR');
+    console.log('   - branchName: "EE" or "Electrical Engineering"');
+    console.log('   - branchId: [EE branch ID from Branch table]');
+  }
+
+  console.log('');
+  console.log('='.repeat(60));
+  console.log('RECOMMENDATIONS FOR TESTING');
+  console.log('='.repeat(60));
+  console.log('');
+  console.log('To verify Faculty Coordinator functionality:');
+  console.log('');
+  console.log('1. Login as a Faculty Coordinator');
+  console.log('   - Make sure the coordinator has a branchId or branchName set');
+  console.log('   - Example: Coordinator from EE branch');
+  console.log('');
+  console.log('2. Test API Endpoints:');
+  console.log('   GET /coordinator/training/applications');
+  console.log('   - Should show only applications from faculty in YOUR branch');
+  console.log('   - Should show faculty from ALL institutions (not just your own)');
+  console.log('');
+  console.log('   GET /coordinator/training/reports/dashboard');
+  console.log('   - Should show metrics for YOUR branch across all institutions');
+  console.log('');
+  console.log('   GET /coordinator/training/reports/attendance');
+  console.log('   - Should show attendance for YOUR branch faculty only');
+  console.log('');
+  console.log('3. Login as a regular Faculty (TEACHER)');
+  console.log('   GET /faculty/training');
+  console.log('   - Should show only trainings for YOUR branch + open trainings');
+  console.log('   - Should NOT show trainings for other branches');
+  console.log('');
+  console.log('   GET /faculty/training/{id}');
+  console.log('   - Should work for trainings in your branch');
+  console.log('   - Should return 403 for trainings in other branches');
+  console.log('');
+  console.log('4. Verify Branch Filtering:');
+  console.log('   - EE Coordinator should see only EE faculty data');
+  console.log('   - CSE Coordinator should see only CSE faculty data');
+  console.log('   - Coordinators should see data from ALL institutions');
+  console.log('   - Regular faculty should see only their branch trainings');
+  console.log('');
+  console.log('='.repeat(60));
+  console.log('TESTING WITH EE DATA');
+  console.log('='.repeat(60));
+  console.log('');
+
+  if (eeUsers.length > 0) {
+    console.log('✅ EE users have been enrolled in trainings!');
+    console.log('');
+    console.log('To test as EE Faculty Coordinator:');
+    console.log('1. Find an EE coordinator user in the database:');
+    console.log('   SELECT * FROM "User" WHERE role = \'FACULTY_COORDINATOR\' AND "branchName" = \'EE\';');
+    console.log('');
+    console.log('2. Login with that coordinator account');
+    console.log('');
+    console.log('3. Test these endpoints (should show EE data only):');
+    console.log('   GET /coordinator/training/applications');
+    console.log(`   Expected: ~${eeUsers.length} applications from EE faculty`);
+    console.log('');
+    console.log('   GET /coordinator/training/reports/dashboard');
+    console.log('   Expected: Dashboard showing EE branch metrics');
+    console.log('');
+    console.log('   GET /coordinator/training/reports/attendance');
+    console.log('   Expected: Attendance records for EE faculty only');
+    console.log('');
+    console.log('4. Verify cross-institution filtering:');
+    console.log('   - The coordinator should see EE faculty from ALL institutions');
+    console.log('   - Not just from their own institution');
+    console.log('');
+    console.log('Sample EE users you can check:');
+    const sampleForTesting = eeUsers.slice(0, 3);
+    sampleForTesting.forEach(u => {
+      console.log(`   - ${u.name} (ID: ${u.id.substring(0, 8)}..., Institution: ${u.institutionId?.substring(0, 8) || 'N/A'}...)`);
+    });
+  } else {
+    console.log('⚠️  No EE users found - cannot test EE coordinator functionality');
+    console.log('');
+    console.log('To enable testing:');
+    console.log('1. Create users with branchName = "EE"');
+    console.log('2. Run this seed script again');
+  }
+
   console.log('');
   console.log('='.repeat(60));
   console.log('=== Training module seed completed successfully ===');

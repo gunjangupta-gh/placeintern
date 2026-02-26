@@ -162,7 +162,6 @@ const Grievances = () => {
   }, [institutionId, isState]);
 
   const fetchAssignableUsers = useCallback(async () => {
-    if (!institutionId) return;
     try {
       const users = await grievanceService.getAssignableUsers(institutionId);
       setAssignableUsers(users || []);
@@ -185,7 +184,7 @@ const Grievances = () => {
     // Other roles need institutionId
     if (isState || institutionId) {
       fetchGrievances();
-      if (institutionId) {
+      if (!isState) {
         fetchAssignableUsers();
       }
     } else if (userRole) {

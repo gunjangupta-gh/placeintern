@@ -41,7 +41,7 @@ import {
 @ApiBearerAuth()
 @Controller('state/training')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.STATE_DIRECTORATE)
+@Roles(Role.STATE_DIRECTORATE, Role.FACULTY_COORDINATOR)
 export class StateTrainingController {
   constructor(
     private readonly trainingService: TrainingService,

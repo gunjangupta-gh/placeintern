@@ -29,7 +29,12 @@ export class CoordinatorReminderController {
   @Get('pending-actions')
   @ApiOperation({ summary: 'Get faculty with pending actions (for targeted reminders)' })
   async getPendingActions(@Query() filters: PendingActionsFilterDto, @Req() req) {
-    return this.reminderService.getFacultyWithPendingActions(req.user.institutionId, filters);
+    return this.reminderService.getFacultyWithPendingActions(
+      undefined,
+      filters,
+      req.user.branchId,
+      req.user.branchName,
+    );
   }
 
   @Throttle({ default: THROTTLE_PRESETS.mutation })
@@ -38,7 +43,9 @@ export class CoordinatorReminderController {
   async sendEnrollReminder(@Body() dto: SendReminderDto, @Req() req) {
     return this.reminderService.sendEnrollmentReminder(dto, {
       userId: req.user.userId,
-      institutionId: req.user.institutionId,
+      institutionId: undefined,
+      branchId: req.user.branchId,
+      branchName: req.user.branchName,
       name: req.user.name,
     });
   }
@@ -49,7 +56,9 @@ export class CoordinatorReminderController {
   async sendPreTestReminder(@Body() dto: SendReminderDto, @Req() req) {
     return this.reminderService.sendPreTestReminder(dto, {
       userId: req.user.userId,
-      institutionId: req.user.institutionId,
+      institutionId: undefined,
+      branchId: req.user.branchId,
+      branchName: req.user.branchName,
       name: req.user.name,
     });
   }
@@ -60,7 +69,9 @@ export class CoordinatorReminderController {
   async sendPostTestReminder(@Body() dto: SendReminderDto, @Req() req) {
     return this.reminderService.sendPostTestReminder(dto, {
       userId: req.user.userId,
-      institutionId: req.user.institutionId,
+      institutionId: undefined,
+      branchId: req.user.branchId,
+      branchName: req.user.branchName,
       name: req.user.name,
     });
   }
@@ -71,7 +82,9 @@ export class CoordinatorReminderController {
   async sendLessonPlanReminder(@Body() dto: SendReminderDto, @Req() req) {
     return this.reminderService.sendLessonPlanReminder(dto, {
       userId: req.user.userId,
-      institutionId: req.user.institutionId,
+      institutionId: undefined,
+      branchId: req.user.branchId,
+      branchName: req.user.branchName,
       name: req.user.name,
     });
   }

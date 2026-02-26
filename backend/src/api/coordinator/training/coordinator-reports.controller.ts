@@ -34,7 +34,7 @@ export class CoordinatorReportsController {
   @Get('dashboard')
   @ApiOperation({ summary: 'Get institution training dashboard' })
   async getDashboard(@Req() req) {
-    return this.trainingService.getInstitutionDashboard(req.user.institutionId);
+    return this.trainingService.getInstitutionDashboard(undefined, req.user.branchName, req.user.branchId);
   }
 
   @Get('attendance')
@@ -45,21 +45,23 @@ export class CoordinatorReportsController {
     @Req() req?,
   ) {
     return this.attendanceService.getInstitutionAttendanceReport(
-      req.user.institutionId,
+      undefined,
       { trainingId, date },
+      req.user.branchName,
+      req.user.branchId,
     );
   }
 
   @Get('certificates')
   @ApiOperation({ summary: 'Get certificates issued to institution faculty' })
   async getCertificates(@Req() req) {
-    return this.certificateService.getByInstitution(req.user.institutionId);
+    return this.certificateService.getByInstitution(undefined, req.user.branchName, req.user.branchId);
   }
 
   @Get('participation')
   @ApiOperation({ summary: 'Get faculty participation summary' })
   async getParticipationReport(@Req() req) {
-    return this.trainingService.getInstitutionParticipationReport(req.user.institutionId);
+    return this.trainingService.getInstitutionParticipationReport(undefined, req.user.branchName, req.user.branchId);
   }
 
   @Get('feedback')
@@ -69,8 +71,10 @@ export class CoordinatorReportsController {
     @Req() req?,
   ) {
     return this.feedbackResponseService.getInstitutionFeedbackSummary(
-      req.user.institutionId,
+      undefined,
       trainingId,
+      req.user.branchName,
+      req.user.branchId,
     );
   }
 }

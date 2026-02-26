@@ -169,6 +169,7 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
               >
                 <Select placeholder="Select role">
                   <Select.Option value="TEACHER">Teacher</Select.Option>
+                  <Select.Option value="FACULTY_COORDINATOR">Faculty Coordinator</Select.Option>
                   <Select.Option value="FACULTY_SUPERVISOR">Faculty Supervisor</Select.Option>
                   <Select.Option value="PLACEMENT_OFFICER">Placement Officer</Select.Option>
                   <Select.Option value="ACCOUNTANT">Accountant</Select.Option>

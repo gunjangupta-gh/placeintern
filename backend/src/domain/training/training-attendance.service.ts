@@ -588,11 +588,36 @@ export class TrainingAttendanceService {
   }
 
   /**
-   * Get institution attendance report (Principal)
+   * Get institution attendance report (Principal/Coordinator)
+   * If institutionId is undefined and branchName/branchId provided, fetches across all institutions for that branch
    */
-  async getInstitutionAttendanceReport(institutionId: string, filters: { trainingId?: string; date?: string }) {
+  async getInstitutionAttendanceReport(
+    institutionId: string | undefined,
+    filters: { trainingId?: string; date?: string },
+    branchName?: string,
+    branchId?: string,
+  ) {
+    // Build user filter - if no institutionId, filter by branch across all institutions
+    const userFilter: Prisma.UserWhereInput = institutionId
+      ? {
+          institutionId,
+          ...(branchName
+            ? { branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }
+            : {}),
+        }
+      : branchName || branchId
+        ? {
+            OR: [
+              ...(branchName
+                ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }]
+                : []),
+              ...(branchId ? [{ branchId }] : []),
+            ],
+          }
+        : {};
+
     const where: Prisma.TrainingAttendanceWhereInput = {
-      user: { institutionId },
+      user: userFilter,
       ...(filters.trainingId ? { trainingId: filters.trainingId } : {}),
     };
 
@@ -608,7 +633,15 @@ export class TrainingAttendanceService {
     const attendance = await this.prisma.trainingAttendance.findMany({
       where,
       include: {
-        user: { select: { id: true, name: true, email: true, branchName: true } },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            branchName: true,
+            Institution: { select: { id: true, name: true, shortName: true } },
+          }
+        },
         training: { select: { id: true, title: true, startDate: true, endDate: true } },
       },
       orderBy: { attendanceDate: 'desc' },

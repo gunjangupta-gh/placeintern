@@ -305,12 +305,19 @@ export class TrainingApplicationService {
   /**
    * Review application (Principal/State)
    */
-  async review(applicationId: string, dto: ReviewApplicationDto, reviewerId: string, institutionId?: string) {
+  async review(
+    applicationId: string,
+    dto: ReviewApplicationDto,
+    reviewerId: string,
+    institutionId?: string,
+    branchName?: string,
+    branchId?: string,
+  ) {
     try {
       const application = await this.prisma.trainingApplication.findUnique({
         where: { id: applicationId },
         include: {
-          user: { select: { id: true, name: true, institutionId: true } },
+          user: { select: { id: true, name: true, institutionId: true, branchName: true } },
           training: { select: { id: true, title: true, capacity: true } },
         },
       });
@@ -321,6 +328,10 @@ export class TrainingApplicationService {
 
       if (institutionId && application.user.institutionId !== institutionId) {
         throw new ForbiddenException('You can only review applications from your institution');
+      }
+
+      if (branchName && application.user.branchName?.toLowerCase() !== branchName.toLowerCase()) {
+        throw new ForbiddenException('You can only review applications from your branch');
       }
 
       // Check capacity if approving
@@ -372,7 +383,13 @@ export class TrainingApplicationService {
   /**
    * Bulk review applications (State/Principal)
    */
-  async bulkReview(dto: BulkReviewApplicationDto, reviewerId: string, institutionId?: string) {
+  async bulkReview(
+    dto: BulkReviewApplicationDto,
+    reviewerId: string,
+    institutionId?: string,
+    branchName?: string,
+    branchId?: string,
+  ) {
     try {
       const { applicationIds, status, reviewComments } = dto;
 
@@ -380,7 +397,14 @@ export class TrainingApplicationService {
       const applications = await this.prisma.trainingApplication.findMany({
         where: {
           id: { in: applicationIds },
-          ...(institutionId ? { user: { institutionId } } : {}),
+          ...(institutionId || branchName
+            ? {
+                user: {
+                  ...(institutionId ? { institutionId } : {}),
+                  ...(branchName ? { branchName: { equals: branchName, mode: 'insensitive' } } : {}),
+                },
+              }
+            : {}),
         },
         include: { user: { select: { id: true, institutionId: true } } },
       });
@@ -485,16 +509,36 @@ export class TrainingApplicationService {
   }
 
   /**
-   * Get applications by institution (Principal)
+   * Get applications by institution (Principal/Coordinator)
+   * If institutionId is undefined and branchName/branchId provided, fetches across all institutions for that branch
    */
-  async getByInstitution(institutionId: string, filters: ApplicationFilterDto) {
+  async getByInstitution(institutionId: string | undefined, filters: ApplicationFilterDto, branchName?: string, branchId?: string) {
     try {
       const { status, trainingId, search } = filters;
       const page = Number(filters.page) || 1;
       const limit = Number(filters.limit) || 20;
 
+      // Build user filter - if no institutionId, filter by branch across all institutions
+      const userFilter: Prisma.UserWhereInput = institutionId
+        ? {
+            institutionId,
+            ...(branchName
+              ? { branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }
+              : {}),
+          }
+        : branchName || branchId
+          ? {
+              OR: [
+                ...(branchName
+                  ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }]
+                  : []),
+                ...(branchId ? [{ branchId }] : []),
+              ],
+            }
+          : {};
+
       const where: Prisma.TrainingApplicationWhereInput = {
-        user: { institutionId },
+        user: userFilter,
         isActive: true,
         ...(status ? { status } : {}),
         ...(trainingId ? { trainingId } : {}),
@@ -512,7 +556,17 @@ export class TrainingApplicationService {
         this.prisma.trainingApplication.findMany({
           where,
           include: {
-            user: { select: { id: true, name: true, email: true, branchName: true, designation: true } },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                branchName: true,
+                designation: true,
+                phoneNo: true,
+                Institution: { select: { id: true, name: true, shortName: true } },
+              }
+            },
             training: { select: { id: true, title: true, startDate: true, endDate: true, deliveryMode: true } },
             reviewedBy: { select: { id: true, name: true } },
           },
@@ -536,7 +590,7 @@ export class TrainingApplicationService {
   /**
    * Get application details
    */
-  async getById(id: string, institutionId?: string) {
+  async getById(id: string, institutionId?: string, branchName?: string, branchId?: string) {
     const application = await this.prisma.trainingApplication.findUnique({
       where: { id },
       include: {
@@ -548,6 +602,7 @@ export class TrainingApplicationService {
             phoneNo: true,
             designation: true,
             branchName: true,
+            branchId: true,
             Institution: { select: { id: true, name: true, shortName: true } },
           },
         },
@@ -573,6 +628,17 @@ export class TrainingApplicationService {
 
     if (institutionId && application.user.Institution?.id !== institutionId) {
       throw new ForbiddenException('You do not have access to this application');
+    }
+
+    // Check branch access - either by branchName or branchId
+    if (branchName || branchId) {
+      const hasAccess =
+        (branchName && application.user.branchName?.toLowerCase() === branchName.toLowerCase()) ||
+        (branchId && application.user.branchId === branchId);
+
+      if (!hasAccess) {
+        throw new ForbiddenException('You do not have access to this application');
+      }
     }
 
     return application;
@@ -662,27 +728,139 @@ export class TrainingApplicationService {
   }
 
   /**
-   * Get applications by training and institution (Principal)
+   * Get applications by training and institution (Principal/Coordinator)
+   * If institutionId is undefined and branchName/branchId provided, fetches across all institutions for that branch
    */
-  async getByTrainingAndInstitution(trainingId: string, institutionId: string, filters: ApplicationFilterDto) {
-    return this.getByTraining(trainingId, filters, institutionId);
+  async getByTrainingAndInstitution(
+    trainingId: string,
+    institutionId: string | undefined,
+    filters: ApplicationFilterDto,
+    branchName?: string,
+    branchId?: string,
+  ) {
+    // If no branch filtering needed, use the standard method
+    if (!branchName && !branchId) {
+      return this.getByTraining(trainingId, filters, institutionId);
+    }
+
+    const branchFilters: ApplicationFilterDto = {
+      ...filters,
+      search: filters.search?.trim(),
+    };
+
+    const page = Number(branchFilters.page) || 1;
+    const limit = Number(branchFilters.limit) || 20;
+
+    // Build user filter - if no institutionId, filter by branch across all institutions
+    const userFilter: Prisma.UserWhereInput = institutionId
+      ? {
+          institutionId,
+          ...(branchName || branchId
+            ? {
+                OR: [
+                  ...(branchName
+                    ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }]
+                    : []),
+                  ...(branchId ? [{ branchId }] : []),
+                ],
+              }
+            : {}),
+        }
+      : {
+          OR: [
+            ...(branchName
+              ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }]
+              : []),
+            ...(branchId ? [{ branchId }] : []),
+          ],
+        };
+
+    const where: Prisma.TrainingApplicationWhereInput = {
+      trainingId,
+      isActive: true,
+      user: userFilter,
+      ...(branchFilters.status ? { status: branchFilters.status } : {}),
+      ...(branchFilters.search
+        ? {
+            OR: [
+              { user: { name: { contains: branchFilters.search, mode: 'insensitive' } } },
+              { user: { email: { contains: branchFilters.search, mode: 'insensitive' } } },
+            ],
+          }
+        : {}),
+    };
+
+    const [applications, total, statusCounts] = await Promise.all([
+      this.prisma.trainingApplication.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phoneNo: true,
+              designation: true,
+              branchName: true,
+              Institution: { select: { id: true, name: true, shortName: true } },
+            },
+          },
+          reviewedBy: { select: { id: true, name: true } },
+        },
+        orderBy: { appliedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.trainingApplication.count({ where }),
+      this.prisma.trainingApplication.groupBy({
+        by: ['status'],
+        where,
+        _count: true,
+      }),
+    ]);
+
+    return {
+      data: applications,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      statusCounts: statusCounts.reduce((acc, s) => ({ ...acc, [s.status]: s._count }), {}),
+    };
   }
 
   /**
-   * Get institution application statistics (Principal)
+   * Get institution application statistics (Principal/Coordinator)
+   * If institutionId is undefined and branchName/branchId provided, fetches across all institutions for that branch
    */
-  async getInstitutionStats(institutionId: string) {
+  async getInstitutionStats(institutionId: string | undefined, branchName?: string, branchId?: string) {
+    // Build user filter - if no institutionId, filter by branch across all institutions
+    const userFilter: Prisma.UserWhereInput = institutionId
+      ? {
+          institutionId,
+          ...(branchName
+            ? { branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }
+            : {}),
+        }
+      : branchName || branchId
+        ? {
+            OR: [
+              ...(branchName
+                ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }]
+                : []),
+              ...(branchId ? [{ branchId }] : []),
+            ],
+          }
+        : {};
+
     const [totalApplications, statusCounts, recentApplications] = await Promise.all([
       this.prisma.trainingApplication.count({
-        where: { user: { institutionId }, isActive: true },
+        where: { user: userFilter, isActive: true },
       }),
       this.prisma.trainingApplication.groupBy({
         by: ['status'],
-        where: { user: { institutionId }, isActive: true },
+        where: { user: userFilter, isActive: true },
         _count: true,
       }),
       this.prisma.trainingApplication.findMany({
-        where: { user: { institutionId }, isActive: true },
+        where: { user: userFilter, isActive: true },
         take: 10,
         orderBy: { appliedAt: 'desc' },
         include: {

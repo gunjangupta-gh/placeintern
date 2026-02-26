@@ -30,13 +30,18 @@ export class CoordinatorRecommendationController {
   @Get()
   @ApiOperation({ summary: 'Get recommendations from faculty of institution' })
   async getInstitutionRecommendations(@Query() filters: RecommendationFilterDto, @Req() req) {
-    return this.recommendationService.getByInstitution(req.user.institutionId, filters);
+    return this.recommendationService.getByInstitution(
+      undefined,
+      filters,
+      req.user.branchName,
+      req.user.branchId,
+    );
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get recommendation details (institution scoped)' })
   async getRecommendation(@Param('id') id: string, @Req() req) {
-    return this.recommendationService.getByIdForInstitution(id, req.user.institutionId);
+    return this.recommendationService.getByIdForInstitution(id, undefined, req.user.branchName, req.user.branchId);
   }
 
   @Patch(':id/review')
@@ -50,7 +55,9 @@ export class CoordinatorRecommendationController {
       id,
       dto,
       req.user.userId,
-      req.user.institutionId,
+      undefined,
+      req.user.branchName,
+      req.user.branchId,
     );
   }
 }

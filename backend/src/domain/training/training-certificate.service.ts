@@ -549,16 +549,44 @@ Issued Date: ${new Date(certificate.issuedAt).toLocaleDateString()}
   }
 
   /**
-   * Get certificates by institution (Principal)
+   * Get certificates by institution (Principal/Coordinator)
+   * If institutionId is undefined and branchName/branchId provided, fetches across all institutions for that branch
    */
-  async getByInstitution(institutionId: string) {
+  async getByInstitution(institutionId: string | undefined, branchName?: string, branchId?: string) {
+    // Build user filter - if no institutionId, filter by branch across all institutions
+    const userFilter: Prisma.UserWhereInput = institutionId
+      ? {
+          institutionId,
+          ...(branchName
+            ? { branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }
+            : {}),
+        }
+      : branchName || branchId
+        ? {
+            OR: [
+              ...(branchName
+                ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }]
+                : []),
+              ...(branchId ? [{ branchId }] : []),
+            ],
+          }
+        : {};
+
     return this.prisma.trainingCertificate.findMany({
       where: {
-        user: { institutionId },
+        user: userFilter,
         isValid: true,
       },
       include: {
-        user: { select: { id: true, name: true, email: true, branchName: true } },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            branchName: true,
+            Institution: { select: { id: true, name: true, shortName: true } },
+          }
+        },
         training: { select: { id: true, title: true } },
       },
       orderBy: { issuedAt: 'desc' },
