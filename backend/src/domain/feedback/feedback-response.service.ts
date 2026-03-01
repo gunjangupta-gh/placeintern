@@ -141,6 +141,80 @@ export class FeedbackResponseService {
   }
 
   /**
+   * Get responses by training for institution/branch scope (Principal/Coordinator)
+   */
+  async getByTrainingAndInstitution(
+    trainingId: string,
+    institutionId?: string,
+    branchName?: string,
+    branchId?: string,
+  ) {
+    try {
+      const userFilter: Prisma.UserWhereInput = {
+        ...(institutionId ? { institutionId } : {}),
+        ...this.getUserBranchScope(branchId, branchName),
+      };
+
+      const [responses, approvedApplications, training] = await Promise.all([
+        this.prisma.feedbackResponse.findMany({
+          where: {
+            trainingId,
+            user: userFilter,
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                branchName: true,
+                Institution: { select: { id: true, name: true, shortName: true } },
+              },
+            },
+            feedbackForm: { select: { id: true, title: true, questions: true } },
+          },
+          orderBy: { submittedAt: 'desc' },
+        }),
+        this.prisma.trainingApplication.findMany({
+          where: {
+            trainingId,
+            status: 'APPROVED',
+            isActive: true,
+            user: userFilter,
+          },
+          select: { userId: true },
+        }),
+        this.prisma.training.findUnique({
+          where: { id: trainingId },
+          select: { id: true, title: true, feedbackForm: { select: { id: true, title: true } } },
+        }),
+      ]);
+
+      const enrolledCount = approvedApplications.length;
+      const submittedUserIds = new Set(responses.map((response) => response.userId));
+      const submittedCount = submittedUserIds.size;
+      const pendingCount = Math.max(enrolledCount - submittedCount, 0);
+      const completionRate = enrolledCount > 0 ? Math.round((submittedCount / enrolledCount) * 100) : 0;
+
+      return {
+        trainingId,
+        trainingTitle: training?.title ?? 'Unknown',
+        feedbackForm: training?.feedbackForm ?? null,
+        stats: {
+          enrolledCount,
+          submittedCount,
+          pendingCount,
+          completionRate,
+        },
+        responses,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get scoped feedback responses: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
    * Get user's feedback responses (Faculty)
    */
   async getByUser(userId: string) {

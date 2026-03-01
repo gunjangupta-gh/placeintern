@@ -34,6 +34,7 @@ export enum PendingActionType {
   PRE_TEST = 'pre_test',
   POST_TEST = 'post_test',
   LESSON_PLAN = 'lesson_plan',
+  FEEDBACK = 'feedback',
 }
 
 export class PendingActionsFilterDto {

@@ -115,7 +115,9 @@ import FacultyRecommendTrainingPage from '../../features/faculty/training/Recomm
 import CoordinatorDashboard from '../../features/coordinator/dashboard/CoordinatorDashboard';
 import CoordinatorApplicationReviewPage from '../../features/coordinator/training/ApplicationReviewPage';
 import CoordinatorLessonPlanReviewPage from '../../features/coordinator/training/LessonPlanReviewPage';
+import CoordinatorTrainingManagementPage from '../../features/coordinator/training/TrainingManagementPage';
 import CoordinatorTestResponsesPage from '../../features/coordinator/training/TestResponsesPage';
+import CoordinatorFeedbackResponsesPage from '../../features/coordinator/training/FeedbackResponsesPage';
 import CoordinatorRecommendationsPage from '../../features/coordinator/training/RecommendationsPage';
 import CoordinatorRemindersPage from '../../features/coordinator/training/RemindersPage';
 
@@ -383,7 +385,7 @@ const AppRoutes = () => {
           path="training/manage"
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.COORDINATOR]}>
-              <StateTrainingManagementPage />
+              <TrainingManageRouter />
             </ProtectedRoute>
           }
         />
@@ -554,6 +556,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
               <CoordinatorTestResponsesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="coordinator/feedback-responses"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <CoordinatorFeedbackResponsesPage />
             </ProtectedRoute>
           }
         />
@@ -1065,6 +1075,16 @@ function TrainingReportsRouter() {
   // State users now see stats in modal from management page
   if (role === ROLES.STATE) return <Navigate to="/app/training/manage" replace />;
   if (role === ROLES.PRINCIPAL) return <PrincipalParticipationReportPage />;
+
+  return <Navigate to="/unauthorized" replace />;
+}
+
+function TrainingManageRouter() {
+  const { user } = useSelector((state) => state.auth);
+  const role = user?.role;
+
+  if (role === ROLES.STATE) return <StateTrainingManagementPage />;
+  if (role === ROLES.COORDINATOR) return <CoordinatorTrainingManagementPage />;
 
   return <Navigate to="/unauthorized" replace />;
 }

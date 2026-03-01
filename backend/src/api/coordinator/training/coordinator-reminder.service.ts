@@ -383,6 +383,96 @@ export class CoordinatorReminderService {
   }
 
   /**
+   * Send feedback reminder to faculty who haven't submitted feedback
+   */
+  async sendFeedbackReminder(dto: SendReminderDto, coordinator: CoordinatorUser) {
+    this.logger.log(`Coordinator ${coordinator.userId} sending feedback reminder for training ${dto.trainingId}`);
+
+    const training = await this.prisma.training.findUnique({
+      where: { id: dto.trainingId },
+      include: { feedbackForm: true },
+    });
+
+    if (!training) {
+      return { success: false, message: 'Training not found', sentCount: 0 };
+    }
+
+    if (!training.feedbackForm) {
+      return { success: false, message: 'Training does not have a feedback form', sentCount: 0 };
+    }
+
+    // Get approved faculty who haven't submitted feedback
+    const approvedApplications = await this.prisma.trainingApplication.findMany({
+      where: {
+        trainingId: dto.trainingId,
+        status: 'APPROVED',
+        isActive: true,
+        user: {
+          ...(coordinator.institutionId ? { institutionId: coordinator.institutionId } : {}),
+          ...this.getUserBranchScope(coordinator.branchId, coordinator.branchName),
+        },
+        ...(dto.userIds?.length ? { userId: { in: dto.userIds } } : {}),
+      },
+      select: { userId: true, user: { select: { id: true, name: true, email: true } } },
+    });
+
+    const feedbackResponses = await this.prisma.feedbackResponse.findMany({
+      where: {
+        trainingId: dto.trainingId,
+        feedbackFormId: training.feedbackForm.id,
+      },
+      select: { userId: true },
+    });
+
+    const respondedUserIds = new Set(feedbackResponses.map((response) => response.userId));
+    const pendingUsers = approvedApplications
+      .filter((application) => !respondedUserIds.has(application.userId))
+      .map((application) => application.user);
+
+    if (pendingUsers.length === 0) {
+      return { success: true, message: 'All faculty have submitted feedback', sentCount: 0 };
+    }
+
+    const body = dto.customMessage ||
+      `Please submit your feedback for training "${training.title}". Your response helps improve future sessions.`;
+
+    const results = await this.notificationSender.sendBulk({
+      userIds: pendingUsers.map((user) => user.id),
+      type: 'CUSTOM',
+      title: 'Training Feedback Reminder',
+      body,
+      sendInApp: dto.sendInApp ?? true,
+      sendEmail: dto.sendEmail ?? true,
+      emailTemplate: 'training-feedback-reminder',
+      emailContext: {
+        trainingTitle: training.title,
+        customMessage: dto.customMessage,
+      },
+      data: { trainingId: dto.trainingId, reminderType: 'feedback' },
+    });
+
+    const sentCount = Array.from(results.values()).filter((result) => result.success).length;
+
+    await this.auditService.log({
+      action: AuditAction.BULK_OPERATION,
+      entityType: 'Training',
+      entityId: dto.trainingId,
+      userId: coordinator.userId,
+      userRole: Role.FACULTY_COORDINATOR,
+      category: AuditCategory.TRAINING,
+      severity: AuditSeverity.LOW,
+      description: `Feedback reminder sent to ${sentCount} faculty for training "${training.title}"`,
+    }).catch(() => {});
+
+    return {
+      success: true,
+      message: `Feedback reminder sent to ${sentCount} faculty`,
+      sentCount,
+      totalTargeted: pendingUsers.length,
+    };
+  }
+
+  /**
    * Get faculty with pending actions (for targeted reminders)
    */
   async getFacultyWithPendingActions(
@@ -420,6 +510,7 @@ export class CoordinatorReminderService {
         ...(filters.trainingId ? { id: filters.trainingId } : {}),
       },
       include: {
+        feedbackForm: true,
         preTestForm: true,
         postTestForm: true,
         applications: {
@@ -442,6 +533,7 @@ export class CoordinatorReminderService {
       pendingPreTests: { trainingId: string; trainingTitle: string }[];
       pendingPostTests: { trainingId: string; trainingTitle: string }[];
       pendingLessonPlans: { trainingId: string; trainingTitle: string }[];
+      pendingFeedbacks: { trainingId: string; trainingTitle: string }[];
     }> = {};
 
     // Initialize faculty actions
@@ -452,6 +544,7 @@ export class CoordinatorReminderService {
         pendingPreTests: [],
         pendingPostTests: [],
         pendingLessonPlans: [],
+        pendingFeedbacks: [],
       };
     }
 
@@ -536,6 +629,29 @@ export class CoordinatorReminderService {
           }
         }
       }
+
+      // Check pending feedback submissions (only if training ended)
+      if (training.feedbackForm && training.endDate < now &&
+          (!filters.actionType || filters.actionType === PendingActionType.FEEDBACK)) {
+        const feedbackResponses = await this.prisma.feedbackResponse.findMany({
+          where: {
+            trainingId: training.id,
+            feedbackFormId: training.feedbackForm.id,
+          },
+          select: { userId: true },
+        });
+
+        const submittedIds = new Set(feedbackResponses.map((response) => response.userId));
+
+        for (const user of enrolledFaculty) {
+          if (!submittedIds.has(user.id)) {
+            facultyActions[user.id].pendingFeedbacks.push({
+              trainingId: training.id,
+              trainingTitle: training.title,
+            });
+          }
+        }
+      }
     }
 
     // Filter out faculty with no pending actions
@@ -543,7 +659,8 @@ export class CoordinatorReminderService {
       f => f.pendingEnrollments.length > 0 ||
            f.pendingPreTests.length > 0 ||
            f.pendingPostTests.length > 0 ||
-           f.pendingLessonPlans.length > 0
+         f.pendingLessonPlans.length > 0 ||
+         f.pendingFeedbacks.length > 0
     );
 
     return {

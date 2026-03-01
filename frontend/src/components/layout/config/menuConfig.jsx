@@ -12,7 +12,6 @@ import {
   BarChartOutlined,
   PieChartOutlined,
   AuditOutlined,
-  FileSyncOutlined,
   IdcardOutlined,
   PushpinOutlined,
   SafetyCertificateOutlined,
@@ -534,7 +533,7 @@ export const menuConfig = {
   },
   COORDINATOR_MANAGEMENT: {
     key: "coordinator-management",
-    title: "Coordination",
+    title: "Training Management",
     icon: <TeamOutlined />,
     items: [
          {
@@ -554,12 +553,6 @@ export const menuConfig = {
         label: "Review Lesson Plans",
         icon: <FileDoneOutlined />,
         path: "/app/coordinator/lesson-plans",
-      },
-      {
-        key: "coordinator-test-responses",
-        label: "Test Responses",
-        icon: <FileSyncOutlined />,
-        path: "/app/coordinator/test-responses",
       },
       {
         key: "coordinator-recommendations",

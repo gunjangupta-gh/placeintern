@@ -88,4 +88,17 @@ export class CoordinatorReminderController {
       name: req.user.name,
     });
   }
+
+  @Throttle({ default: THROTTLE_PRESETS.mutation })
+  @Post('feedback')
+  @ApiOperation({ summary: 'Send reminder to submit feedback' })
+  async sendFeedbackReminder(@Body() dto: SendReminderDto, @Req() req) {
+    return this.reminderService.sendFeedbackReminder(dto, {
+      userId: req.user.userId,
+      institutionId: undefined,
+      branchId: req.user.branchId,
+      branchName: req.user.branchName,
+      name: req.user.name,
+    });
+  }
 }

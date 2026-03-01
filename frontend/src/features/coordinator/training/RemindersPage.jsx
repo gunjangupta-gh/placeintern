@@ -28,19 +28,30 @@ import {
   MailOutlined,
   NotificationOutlined,
 } from '@ant-design/icons';
+import { useSearchParams } from 'react-router-dom';
 import trainingCoordinatorService from '../../../services/training-coordinator.service';
 import TrainingEmptyState from '../../../components/training/TrainingEmptyState';
 
 const { Text } = Typography;
 const { TextArea } = Input;
 
+const ACTION_TYPE_TO_TAB = {
+  enrollment: 'enrollment',
+  pre_test: 'preTest',
+  post_test: 'postTest',
+  lesson_plan: 'lessonPlan',
+  feedback: 'feedback',
+};
+
 const RemindersPage = () => {
+  const [searchParams] = useSearchParams();
+  const initialActionType = searchParams.get('actionType');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [pendingActions, setPendingActions] = useState(null);
   const [searchText, setSearchText] = useState('');
   const [selectedFaculty, setSelectedFaculty] = useState([]);
-  const [activeTab, setActiveTab] = useState('enrollment');
+  const [activeTab, setActiveTab] = useState(ACTION_TYPE_TO_TAB[initialActionType] || 'enrollment');
 
   // Send reminder modal state
   const [reminderOpen, setReminderOpen] = useState(false);
@@ -114,6 +125,9 @@ const RemindersPage = () => {
         case 'lessonPlan':
           response = await trainingCoordinatorService.sendLessonPlanReminder(payload);
           break;
+        case 'feedback':
+          response = await trainingCoordinatorService.sendFeedbackReminder(payload);
+          break;
         default:
           throw new Error('Invalid reminder type');
       }
@@ -135,6 +149,7 @@ const RemindersPage = () => {
       preTest: 'Pre-Test',
       postTest: 'Post-Test',
       lessonPlan: 'Lesson Plan',
+      feedback: 'Feedback',
     };
     return labels[type] || type;
   };
@@ -168,6 +183,9 @@ const RemindersPage = () => {
           break;
         case 'lessonPlan':
           items = f.pendingLessonPlans || [];
+          break;
+        case 'feedback':
+          items = f.pendingFeedbacks || [];
           break;
       }
 
@@ -290,6 +308,20 @@ const RemindersPage = () => {
         />
       ),
     },
+    {
+      title: 'Feedback',
+      key: 'feedback',
+      width: 80,
+      render: (_, record) => (
+        <Badge
+          count={record.pendingFeedbacks?.length || 0}
+          showZero
+          style={{
+            backgroundColor: record.pendingFeedbacks?.length > 0 ? '#fa8c16' : '#d9d9d9',
+          }}
+        />
+      ),
+    },
   ];
 
   const trainingColumns = [
@@ -329,7 +361,7 @@ const RemindersPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-100">
         <Spin size="large" tip="Loading pending actions..." />
       </div>
     );
@@ -377,6 +409,7 @@ const RemindersPage = () => {
               { label: <span><BellOutlined /> Pre-Tests</span>, value: 'preTest' },
               { label: <span><CheckCircleOutlined /> Post-Tests</span>, value: 'postTest' },
               { label: <span><BookOutlined /> Lesson Plans</span>, value: 'lessonPlan' },
+              { label: <span><NotificationOutlined /> Feedback</span>, value: 'feedback' },
             ]}
           />
         </div>
@@ -431,6 +464,7 @@ const RemindersPage = () => {
                 <Select.Option value="preTest">Pre-Test</Select.Option>
                 <Select.Option value="postTest">Post-Test</Select.Option>
                 <Select.Option value="lessonPlan">Lesson Plan</Select.Option>
+                <Select.Option value="feedback">Feedback</Select.Option>
               </Select>
             </Space>
           )}

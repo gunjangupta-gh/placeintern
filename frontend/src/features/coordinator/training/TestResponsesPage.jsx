@@ -19,12 +19,15 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
 } from '@ant-design/icons';
+import { useSearchParams } from 'react-router-dom';
 import trainingCoordinatorService from '../../../services/training-coordinator.service';
 import TrainingEmptyState from '../../../components/training/TrainingEmptyState';
 
 const { Text } = Typography;
 
 const TestResponsesPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const trainingIdFromQuery = searchParams.get('trainingId');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [summary, setSummary] = useState(null);
@@ -54,6 +57,20 @@ const TestResponsesPage = () => {
     fetchSummary();
   }, [fetchSummary]);
 
+  useEffect(() => {
+    if (!trainingIdFromQuery || !summary?.trainings?.length) return;
+
+    const matchedTraining = summary.trainings.find(
+      (item) => String(item.trainingId) === String(trainingIdFromQuery),
+    );
+
+    if (!matchedTraining) return;
+    if (String(selectedTraining) === String(trainingIdFromQuery)) return;
+
+    setSelectedTraining(trainingIdFromQuery);
+    fetchTestResponses(trainingIdFromQuery);
+  }, [trainingIdFromQuery, summary?.trainings, selectedTraining]);
+
   const fetchTestResponses = async (trainingId) => {
     try {
       setTestLoading(true);
@@ -73,8 +90,10 @@ const TestResponsesPage = () => {
   const handleTrainingSelect = (trainingId) => {
     setSelectedTraining(trainingId);
     if (trainingId) {
+      setSearchParams({ trainingId });
       fetchTestResponses(trainingId);
     } else {
+      setSearchParams({});
       setPreTestData(null);
       setPostTestData(null);
     }
@@ -139,7 +158,7 @@ const TestResponsesPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-100">
         <Spin size="large" tip="Loading test summary..." />
       </div>
     );

@@ -95,6 +95,17 @@ const trainingCoordinatorService = {
     return response.data;
   },
 
+  // Feedback Responses
+  async getFeedbackSummary() {
+    const response = await API.get('/coordinator/training/feedback/summary');
+    return response.data;
+  },
+
+  async getTrainingFeedbackResponses(trainingId) {
+    const response = await API.get(`/coordinator/training/feedback/${trainingId}`);
+    return response.data;
+  },
+
   // Recommendations
   async getRecommendations(params = {}) {
     const queryParams = new URLSearchParams(params).toString();
@@ -162,6 +173,11 @@ const trainingCoordinatorService = {
 
   async sendLessonPlanReminder(data) {
     const response = await API.post('/coordinator/training/reminders/lesson-plan', data);
+    return response.data;
+  },
+
+  async sendFeedbackReminder(data) {
+    const response = await API.post('/coordinator/training/reminders/feedback', data);
     return response.data;
   },
 };
