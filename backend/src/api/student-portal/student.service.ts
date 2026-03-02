@@ -2510,28 +2510,12 @@ export class StudentService {
   ) {
     const { student, existingReport } =
       await this.validateMonthlyReportUploadPreconditions(userId, reportDto);
-    const now = new Date();
-    let shouldIncrementReportCount = false;
 
     if (existingReport) {
-      // Update existing report with file and auto-approve
-      const alreadyCountedStatuses: MonthlyReportStatus[] = [
-        MonthlyReportStatus.APPROVED,
-        MonthlyReportStatus.SUBMITTED,
-      ];
-      shouldIncrementReportCount = !alreadyCountedStatuses.includes(
-        existingReport.status
-      );
-
+      // Update existing report with file
       const updated = await this.prisma.monthlyReport.update({
         where: { id: existingReport.id },
-        data: {
-          reportFileUrl: reportDto.reportFileUrl,
-          status: MonthlyReportStatus.APPROVED,
-          isApproved: true,
-          approvedAt: now,
-          submittedAt: now,
-        },
+        data: { reportFileUrl: reportDto.reportFileUrl },
       });
 
       // Audit report file upload (update)
@@ -2552,20 +2536,11 @@ export class StudentService {
             reportMonth: reportDto.reportMonth,
             reportYear: reportDto.reportYear,
             reportFileUrl: reportDto.reportFileUrl,
-            status: MonthlyReportStatus.APPROVED,
-            autoApproved: true,
           },
         })
         .catch(() => {});
 
       await this.cache.invalidateByTags(["reports", `student:${student.id}`]);
-
-      if (shouldIncrementReportCount) {
-        await this.expectedCycleService.incrementReportCount(
-          reportDto.applicationId
-        );
-      }
-
       return updated;
     }
 
@@ -2599,7 +2574,7 @@ export class StudentService {
       59
     );
 
-    // Create new report with file and auto-approval
+    // Create new DRAFT report with file
     let report;
 
     await this.deleteSoftDeletedMonthlyReportConflicts({
@@ -2617,10 +2592,7 @@ export class StudentService {
           reportYear: reportDto.reportYear,
           reportFileUrl: reportDto.reportFileUrl,
           monthName: MONTH_NAMES[reportDto.reportMonth - 1],
-          status: MonthlyReportStatus.APPROVED,
-          isApproved: true,
-          approvedAt: now,
-          submittedAt: now,
+          status: MonthlyReportStatus.DRAFT,
           submissionWindowStart,
           submissionWindowEnd,
           dueDate: submissionWindowEnd,
@@ -2628,7 +2600,6 @@ export class StudentService {
           periodEndDate,
         },
       });
-      shouldIncrementReportCount = true;
     } catch (error) {
       if (!this.isMonthlyReportUniqueConstraintError(error)) {
         throw error;
@@ -2658,10 +2629,7 @@ export class StudentService {
             reportYear: reportDto.reportYear,
             reportFileUrl: reportDto.reportFileUrl,
             monthName: MONTH_NAMES[reportDto.reportMonth - 1],
-            status: MonthlyReportStatus.APPROVED,
-            isApproved: true,
-            approvedAt: now,
-            submittedAt: now,
+            status: MonthlyReportStatus.DRAFT,
             submissionWindowStart,
             submissionWindowEnd,
             dueDate: submissionWindowEnd,
@@ -2669,27 +2637,17 @@ export class StudentService {
             periodEndDate,
           },
         });
-        shouldIncrementReportCount = true;
       } else if (conflictingReport.status === MonthlyReportStatus.APPROVED) {
         throw new BadRequestException("Approved reports cannot be modified");
       } else {
-        shouldIncrementReportCount =
-          conflictingReport.status !== MonthlyReportStatus.SUBMITTED;
-
         report = await this.prisma.monthlyReport.update({
           where: { id: conflictingReport.id },
-          data: {
-            reportFileUrl: reportDto.reportFileUrl,
-            status: MonthlyReportStatus.APPROVED,
-            isApproved: true,
-            approvedAt: now,
-            submittedAt: now,
-          },
+          data: { reportFileUrl: reportDto.reportFileUrl },
         });
       }
     }
 
-    // Audit report file upload (auto-approved)
+    // Audit report file upload (create draft)
     this.auditService
       .log({
         action: AuditAction.MONTHLY_REPORT_UPDATE,
@@ -2707,20 +2665,12 @@ export class StudentService {
           reportMonth: reportDto.reportMonth,
           reportYear: reportDto.reportYear,
           reportFileUrl: reportDto.reportFileUrl,
-          status: MonthlyReportStatus.APPROVED,
-          autoApproved: true,
+          status: MonthlyReportStatus.DRAFT,
         },
       })
       .catch(() => {});
 
     await this.cache.invalidateByTags(["reports", `student:${student.id}`]);
-
-    if (shouldIncrementReportCount) {
-      await this.expectedCycleService.incrementReportCount(
-        reportDto.applicationId
-      );
-    }
-
     return report;
   }
 

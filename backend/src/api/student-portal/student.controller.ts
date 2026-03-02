@@ -278,9 +278,9 @@ export class StudentController {
 
   @Post('monthly-reports/upload')
   @Roles(Role.STUDENT)
-  @ApiOperation({ summary: 'Upload monthly report file (auto-approved)' })
+  @ApiOperation({ summary: 'Upload report file as draft' })
   @ApiConsumes('multipart/form-data')
-  @ApiResponse({ status: 201, description: 'Monthly report uploaded and auto-approved successfully' })
+  @ApiResponse({ status: 201, description: 'Report file uploaded successfully' })
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   async uploadReportFile(
     @Req() req,
