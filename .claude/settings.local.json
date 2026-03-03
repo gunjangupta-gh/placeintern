@@ -8,7 +8,10 @@
       "Bash(dir:*)",
       "Bash(powershell -Command:*)",
       "Bash(npx ts-node:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(npm run seed:faculty-trainings-2026:*)",
+      "Bash(npm run seed:link-feedback-to-trainings:*)",
+      "Bash(npm run seed:faculty-training-feedback:*)"
     ]
   }
 }

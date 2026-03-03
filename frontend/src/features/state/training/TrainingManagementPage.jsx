@@ -70,6 +70,13 @@ const TrainingManagementPage = () => {
   const [statsModalOpen, setStatsModalOpen] = useState(false);
   const [selectedTraining, setSelectedTraining] = useState(null);
 
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+
   // Form modal states
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [formMode, setFormMode] = useState("create"); // 'create' or 'edit'
@@ -79,11 +86,52 @@ const TrainingManagementPage = () => {
   const [formStep, setFormStep] = useState(0);
 
   useEffect(() => {
-    dispatch(fetchStateTrainings());
-    dispatch(fetchStateFeedbackForms());
-    dispatch(fetchStatePreTestForms({ forceRefresh: true }));
-    dispatch(fetchStatePostTestForms({ forceRefresh: true }));
-  }, [dispatch]);
+    const params = {
+      forceRefresh: true, // Bypass cache to always fetch fresh data
+    };
+
+    // Only add pagination for LIST view, fetch all for CALENDAR view
+    if (viewMode === "LIST") {
+      params.page = pagination.current;
+      params.limit = pagination.pageSize;
+    }
+
+    // Add filters if present
+    if (searchText) {
+      params.search = searchText;
+    }
+    if (statusFilter !== "ALL") {
+      params.status = statusFilter;
+    }
+
+    console.log('Fetching trainings with params:', params);
+
+    dispatch(fetchStateTrainings(params)).then((result) => {
+      console.log('Training fetch result:', result);
+      if (result.payload && !result.payload.cached) {
+        const responseData = result.payload;
+        console.log('Response data:', responseData);
+        // Update pagination total from API response (only for LIST view)
+        if (viewMode === "LIST") {
+          setPagination(prev => ({
+            ...prev,
+            total: responseData.total || responseData.pagination?.total || (responseData.data?.length || 0),
+          }));
+        }
+      }
+    });
+
+    // Only fetch forms once on mount
+    if (!feedbackForms.list?.length) {
+      dispatch(fetchStateFeedbackForms());
+    }
+    if (!preTestForms.list?.length) {
+      dispatch(fetchStatePreTestForms({ forceRefresh: true }));
+    }
+    if (!postTestForms.list?.length) {
+      dispatch(fetchStatePostTestForms({ forceRefresh: true }));
+    }
+  }, [dispatch, pagination.current, pagination.pageSize, searchText, statusFilter, viewMode]);
 
   const handleOpenCreateModal = () => {
     setFormMode("create");
@@ -202,27 +250,33 @@ const TrainingManagementPage = () => {
     }
   };
 
+  const handleTableChange = (newPagination) => {
+    setPagination({
+      current: newPagination.current,
+      pageSize: newPagination.pageSize,
+      total: pagination.total,
+    });
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchText(e.target.value);
+    // Reset to page 1 when search changes
+    setPagination(prev => ({ ...prev, current: 1 }));
+  };
+
+  const handleStatusFilterChange = (value) => {
+    setStatusFilter(value);
+    // Reset to page 1 when filter changes
+    setPagination(prev => ({ ...prev, current: 1 }));
+  };
+
   const filteredTrainings = useMemo(() => {
-    let result = trainings.list || [];
-
-    // Filter by status
-    if (statusFilter === "PUBLISHED") {
-      result = result.filter((t) => t.isPublished);
-    } else if (statusFilter === "DRAFT") {
-      result = result.filter((t) => !t.isPublished);
-    }
-
-    // Filter by search
-    if (searchText) {
-      const search = searchText.toLowerCase();
-      result = result.filter(
-        (item) =>
-          (item.title || "").toLowerCase().includes(search) ||
-          (item.providedBy || "").toLowerCase().includes(search),
-      );
-    }
-    return result;
-  }, [trainings.list, searchText, statusFilter]);
+    // Since we're doing server-side filtering, just return the list from Redux
+    // The API handles filtering based on params sent in useEffect
+    const list = trainings.list || [];
+    console.log('Filtered trainings:', list);
+    return list;
+  }, [trainings.list]);
 
   const stats = useMemo(() => {
     const list = trainings.list || [];
@@ -441,7 +495,7 @@ const TrainingManagementPage = () => {
             placeholder="Search trainings..."
             prefix={<SearchOutlined />}
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
+            onChange={handleSearchChange}
             className="lg:w-80"
             size="middle"
             allowClear
@@ -455,7 +509,7 @@ const TrainingManagementPage = () => {
                 { label: "Drafts", value: "DRAFT" },
               ]}
               value={statusFilter}
-              onChange={setStatusFilter}
+              onChange={handleStatusFilterChange}
             />
             <Segmented
               size="small"
@@ -488,7 +542,15 @@ const TrainingManagementPage = () => {
                 columns={columns}
                 dataSource={filteredTrainings}
                 loading={trainings.loading}
-                pagination={{ pageSize: 10, showSizeChanger: true, size: 'small' }}
+                pagination={{
+                  current: pagination.current,
+                  pageSize: pagination.pageSize,
+                  total: pagination.total,
+                  showSizeChanger: true,
+                  showTotal: (total) => `Total ${total} items`,
+                  size: 'small',
+                }}
+                onChange={handleTableChange}
                 size="small"
                 className="custom-table"
                 scroll={{ x: 'max-content' }}

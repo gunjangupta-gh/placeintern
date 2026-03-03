@@ -205,14 +205,13 @@ const FeedbackFormManagementPage = () => {
         description: values.description,
         purpose: values.purpose,
         questions: cleanedQuestions,
-        publish: values.publish,
       };
 
       if (editing) {
         await dispatch(updateStateFeedbackForm({ id: editing.id, data: payload })).unwrap();
         message.success('Feedback form updated');
       } else {
-        await dispatch(createStateFeedbackForm(payload)).unwrap();
+        await dispatch(createStateFeedbackForm({ ...payload, publish: !!values.publish })).unwrap();
         message.success('Feedback form created');
       }
       setModalOpen(false);
@@ -449,9 +448,17 @@ const FeedbackFormManagementPage = () => {
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12}>
-                <Form.Item name="publish" label="Publish Immediately" valuePropName="checked">
-                  <Switch checkedChildren="Yes" unCheckedChildren="No" />
-                </Form.Item>
+                {!editing ? (
+                  <Form.Item name="publish" label="Publish Immediately" valuePropName="checked">
+                    <Switch checkedChildren="Yes" unCheckedChildren="No" />
+                  </Form.Item>
+                ) : (
+                  <Form.Item label="Publish">
+                    <Text type="secondary" className="text-xs">
+                      Use the Publish button from the table after saving changes.
+                    </Text>
+                  </Form.Item>
+                )}
               </Col>
             </Row>
             {/* Question Builder */}

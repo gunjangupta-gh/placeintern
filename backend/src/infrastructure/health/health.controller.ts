@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, OnApplicationShutdown } from '@nestjs/common';
 import {
   HealthCheckService,
   HealthCheck,
@@ -12,7 +12,7 @@ import { PrismaService } from '../../core/database/prisma.service';
 import Redis from 'ioredis';
 
 @Controller('health')
-export class HealthController {
+export class HealthController implements OnApplicationShutdown {
   private readonly redisHealthClient: Redis;
 
   constructor(
@@ -37,6 +37,22 @@ export class HealthController {
       maxRetriesPerRequest: 1,
       retryStrategy: () => null,
     });
+  }
+
+  async onApplicationShutdown(): Promise<void> {
+    if (!this.redisHealthClient) {
+      return;
+    }
+
+    try {
+      if (this.redisHealthClient.status === 'ready' || this.redisHealthClient.status === 'connect') {
+        await this.redisHealthClient.quit();
+      } else {
+        this.redisHealthClient.disconnect();
+      }
+    } catch {
+      this.redisHealthClient.disconnect();
+    }
   }
 
   private async prismaPing(): Promise<HealthIndicatorResult> {

@@ -90,7 +90,9 @@ export const fetchStateTrainings = createAsyncThunk(
         return { cached: true };
       }
 
-      const response = await trainingAdminService.getTrainings(params);
+      // Remove forceRefresh from params before sending to API
+      const { forceRefresh, ...apiParams } = params;
+      const response = await trainingAdminService.getTrainings(apiParams);
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch trainings');
