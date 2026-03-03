@@ -4,6 +4,7 @@ import {
   Avatar,
   Form,
   Input,
+  Select,
   Button,
   Tag,
   Spin,
@@ -32,6 +33,7 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import API from '../services/api';
 import { authService } from '../features/auth/services/auth.service';
+import { useBranches } from '../features/shared/hooks/useLookup';
 import MfaSetup from '../features/auth/components/MfaSetup';
 import MaskedField from './common/MaskedField';
 
@@ -44,6 +46,7 @@ const UserProfile = ({ visible, onClose }) => {
   const [editing, setEditing] = useState(false);
   const [fetchingProfile, setFetchingProfile] = useState(false);
   const { darkMode } = useTheme();
+  const { activeBranches, loading: branchesLoading } = useBranches();
 
   // MFA state
   const [activeTab, setActiveTab] = useState('profile');
@@ -76,12 +79,21 @@ const UserProfile = ({ visible, onClose }) => {
       const data = response.data;
       setUserData(data);
       setMfaEnabled(data.mfaEnabled || false);
+
+      let branchId = data.branchId || null;
+      if (!branchId && data.branchName && activeBranches?.length) {
+        const matchedBranch = activeBranches.find(
+          (branch) => branch.name === data.branchName || branch.shortName === data.branchName
+        );
+        branchId = matchedBranch?.id || null;
+      }
+
       form.setFieldsValue({
         name: data.name,
         email: data.email,
         phoneNo: data.phoneNo || '',
         designation: data.designation || '',
-        branchName: data.branchName || '',
+        branchId,
       });
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -90,6 +102,22 @@ const UserProfile = ({ visible, onClose }) => {
       setFetchingProfile(false);
     }
   };
+
+  useEffect(() => {
+    if (!visible || !userData || !activeBranches?.length) {
+      return;
+    }
+
+    let branchId = userData.branchId || null;
+    if (!branchId && userData.branchName) {
+      const matchedBranch = activeBranches.find(
+        (branch) => branch.name === userData.branchName || branch.shortName === userData.branchName
+      );
+      branchId = matchedBranch?.id || null;
+    }
+
+    form.setFieldValue('branchId', branchId);
+  }, [visible, userData, activeBranches, form]);
 
   const handleMfaSetupSuccess = () => {
     setMfaEnabled(true);
@@ -131,7 +159,21 @@ const UserProfile = ({ visible, onClose }) => {
   const handleUpdate = async (values) => {
     setLoading(true);
     try {
-      const response = await API.post('/auth/profile', values);
+      let branchName = null;
+      if (values.branchId) {
+        const selectedBranch = activeBranches.find((branch) => branch.id === values.branchId);
+        branchName = selectedBranch?.name || null;
+      }
+
+      const payload = {
+        name: values.name,
+        email: values.email,
+        phoneNo: values.phoneNo,
+        designation: values.designation,
+        branchName,
+      };
+
+      const response = await API.post('/auth/profile', payload);
       if (response.data.success) {
         message.success('Profile updated successfully');
         setUserData(response.data.data);
@@ -165,7 +207,12 @@ const UserProfile = ({ visible, onClose }) => {
         email: userData.email,
         phoneNo: userData.phoneNo || '',
         designation: userData.designation || '',
-        branchName: userData.branchName || '',
+        branchId:
+          userData.branchId ||
+          activeBranches.find(
+            (branch) => branch.name === userData.branchName || branch.shortName === userData.branchName
+          )?.id ||
+          null,
       });
       setEditing(false);
     } else {
@@ -377,16 +424,19 @@ const UserProfile = ({ visible, onClose }) => {
                             />
                           </Form.Item>
 
-                          <Form.Item
-                            name="branchName"
-                            label="Branch / Department"
-                            className="md:col-span-2"
-                          >
-                            <Input
+                          <Form.Item name="branchId" label="Branch" className="md:col-span-2">
+                            <Select
                               size="small"
-                              prefix={<BankOutlined className="text-text-tertiary" />}
-                              placeholder="Enter branch or department"
+                              allowClear
+                              showSearch
+                              loading={branchesLoading}
+                              optionFilterProp="label"
+                              placeholder="Select branch"
                               className="rounded-lg"
+                              options={activeBranches.map((branch) => ({
+                                value: branch.id,
+                                label: branch.name,
+                              }))}
                             />
                           </Form.Item>
                         </div>
