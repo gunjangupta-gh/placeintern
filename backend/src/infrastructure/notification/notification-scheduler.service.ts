@@ -289,8 +289,7 @@ export class NotificationSchedulerService implements OnModuleDestroy {
   async sendMonthlyReportReminder(): Promise<void> {
     this.logger.log('Sending weekly monthly report reminders...');
     try {
-      const currentMonth = new Date().getMonth() + 1;
-      const currentYear = new Date().getFullYear();
+      const { month: targetMonth, year: targetYear } = this.getPreviousMonthPeriod();
 
       // Find students with active applications
       const studentsWithActiveApplications = await this.prisma.internshipApplication.findMany({
@@ -299,6 +298,14 @@ export class NotificationSchedulerService implements OnModuleDestroy {
           status: { in: [ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.APPROVED] },
         },
         include: {
+          mentor: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              active: true,
+            },
+          },
           student: {
             include: {
               user: {
@@ -314,6 +321,8 @@ export class NotificationSchedulerService implements OnModuleDestroy {
         },
       });
 
+      const facultyPendingCounts = new Map<string, { facultyId: string; name: string; email: string | null; pendingCount: number }>();
+
       for (const app of studentsWithActiveApplications) {
         if (!app.student?.user?.active) continue;
 
@@ -321,14 +330,28 @@ export class NotificationSchedulerService implements OnModuleDestroy {
         const existingReport = await this.prisma.monthlyReport.findFirst({
           where: {
             studentId: app.studentId,
-            reportMonth: currentMonth,
-            reportYear: currentYear,
+            reportMonth: targetMonth,
+            reportYear: targetYear,
             isDeleted: false,
             status: { in: ['SUBMITTED', 'APPROVED'] },
           },
         });
 
         if (!existingReport) {
+          if (app.mentorId && app.mentor?.active) {
+            const existingFaculty = facultyPendingCounts.get(app.mentorId);
+            if (existingFaculty) {
+              existingFaculty.pendingCount += 1;
+            } else {
+              facultyPendingCounts.set(app.mentorId, {
+                facultyId: app.mentorId,
+                name: app.mentor.name,
+                email: app.mentor.email || null,
+                pendingCount: 1,
+              });
+            }
+          }
+
           const userId = app.student.user.id;
           const userEmail = app.student.user.email ;
           const userName = app.student.user.name ;
@@ -337,8 +360,8 @@ export class NotificationSchedulerService implements OnModuleDestroy {
             userId,
             'MONTHLY_REPORT_REMINDER',
             'Monthly Report Reminder',
-            `Please submit your monthly internship report for ${this.getMonthName(currentMonth)} ${currentYear}.`,
-            { month: currentMonth, year: currentYear },
+            `Please submit your monthly internship report for ${this.getMonthName(targetMonth)} ${targetYear}.`,
+            { month: targetMonth, year: targetYear },
           );
 
           if (userEmail) {
@@ -348,8 +371,8 @@ export class NotificationSchedulerService implements OnModuleDestroy {
               template: 'monthly-report-reminder',
               context: {
                 name: userName,
-                month: this.getMonthName(currentMonth),
-                year: currentYear,
+                month: this.getMonthName(targetMonth),
+                year: targetYear,
                 reportUrl: `${this.appUrl}/student/reports`,
               },
             });
@@ -357,7 +380,19 @@ export class NotificationSchedulerService implements OnModuleDestroy {
         }
       }
 
-      this.logger.log('Monthly report reminders sent successfully');
+      let facultyNotifiedCount = 0;
+      for (const [, facultyData] of facultyPendingCounts) {
+        await this.notificationService.create(
+          facultyData.facultyId,
+          'FACULTY_PENDING_MONTHLY_REPORTS',
+          'Pending Monthly Reports',
+          `${facultyData.pendingCount} student(s) have not submitted ${this.getMonthName(targetMonth)} ${targetYear} monthly reports yet.`,
+          { month: targetMonth, year: targetYear, pendingCount: facultyData.pendingCount },
+        );
+        facultyNotifiedCount++;
+      }
+
+      this.logger.log(`Monthly report reminders sent successfully (faculty notified: ${facultyNotifiedCount})`);
     } catch (error) {
       this.logger.error('Failed to send monthly report reminders', error.stack);
     }
@@ -371,8 +406,7 @@ export class NotificationSchedulerService implements OnModuleDestroy {
   async sendMonthlyReportFinalReminder(): Promise<void> {
     this.logger.log('Sending final monthly report reminders...');
     try {
-      const currentMonth = new Date().getMonth() + 1;
-      const currentYear = new Date().getFullYear();
+      const { month: targetMonth, year: targetYear } = this.getPreviousMonthPeriod();
 
       // Find students with active applications
       const studentsWithActiveApplications = await this.prisma.internshipApplication.findMany({
@@ -381,6 +415,14 @@ export class NotificationSchedulerService implements OnModuleDestroy {
           status: { in: [ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.APPROVED] },
         },
         include: {
+          mentor: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              active: true,
+            },
+          },
           student: {
             include: {
               user: {
@@ -396,6 +438,8 @@ export class NotificationSchedulerService implements OnModuleDestroy {
         },
       });
 
+      const facultyPendingCounts = new Map<string, { facultyId: string; name: string; email: string | null; pendingCount: number }>();
+
       for (const app of studentsWithActiveApplications) {
         if (!app.student?.user?.active) continue;
 
@@ -403,14 +447,28 @@ export class NotificationSchedulerService implements OnModuleDestroy {
         const existingReport = await this.prisma.monthlyReport.findFirst({
           where: {
             studentId: app.studentId,
-            reportMonth: currentMonth,
-            reportYear: currentYear,
+            reportMonth: targetMonth,
+            reportYear: targetYear,
             isDeleted: false,
             status: { in: ['SUBMITTED', 'APPROVED'] },
           },
         });
 
         if (!existingReport) {
+          if (app.mentorId && app.mentor?.active) {
+            const existingFaculty = facultyPendingCounts.get(app.mentorId);
+            if (existingFaculty) {
+              existingFaculty.pendingCount += 1;
+            } else {
+              facultyPendingCounts.set(app.mentorId, {
+                facultyId: app.mentorId,
+                name: app.mentor.name,
+                email: app.mentor.email || null,
+                pendingCount: 1,
+              });
+            }
+          }
+
           const userId = app.student.user.id;
           const userEmail = app.student.user.email ;
           const userName = app.student.user.name;
@@ -419,8 +477,8 @@ export class NotificationSchedulerService implements OnModuleDestroy {
             userId,
             'MONTHLY_REPORT_URGENT',
             'URGENT: Monthly Report Due Soon!',
-            `Your monthly report for ${this.getMonthName(currentMonth)} ${currentYear} is due by end of month. Submit now!`,
-            { month: currentMonth, year: currentYear, urgent: true },
+            `Your monthly report for ${this.getMonthName(targetMonth)} ${targetYear} is pending. Submit now!`,
+            { month: targetMonth, year: targetYear, urgent: true },
           );
 
           if (userEmail) {
@@ -430,8 +488,8 @@ export class NotificationSchedulerService implements OnModuleDestroy {
               template: 'monthly-report-urgent',
               context: {
                 name: userName,
-                month: this.getMonthName(currentMonth),
-                year: currentYear,
+                month: this.getMonthName(targetMonth),
+                year: targetYear,
                 daysLeft: 30 - 25,
                 reportUrl: `${this.appUrl}/student/reports`,
               },
@@ -440,7 +498,19 @@ export class NotificationSchedulerService implements OnModuleDestroy {
         }
       }
 
-      this.logger.log('Urgent report reminders sent successfully');
+      let facultyNotifiedCount = 0;
+      for (const [, facultyData] of facultyPendingCounts) {
+        await this.notificationService.create(
+          facultyData.facultyId,
+          'FACULTY_PENDING_MONTHLY_REPORTS_URGENT',
+          'Urgent: Pending Monthly Reports',
+          `${facultyData.pendingCount} student(s) still have pending ${this.getMonthName(targetMonth)} ${targetYear} monthly reports.`,
+          { month: targetMonth, year: targetYear, pendingCount: facultyData.pendingCount, urgent: true },
+        );
+        facultyNotifiedCount++;
+      }
+
+      this.logger.log(`Urgent report reminders sent successfully (faculty notified: ${facultyNotifiedCount})`);
     } catch (error) {
       this.logger.error('Failed to send urgent report reminders', error.stack);
     }
@@ -676,5 +746,14 @@ export class NotificationSchedulerService implements OnModuleDestroy {
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
     return months[month - 1] || 'Unknown';
+  }
+
+  private getPreviousMonthPeriod(): { month: number; year: number } {
+    const date = new Date();
+    date.setMonth(date.getMonth() - 1);
+    return {
+      month: date.getMonth() + 1,
+      year: date.getFullYear(),
+    };
   }
 }

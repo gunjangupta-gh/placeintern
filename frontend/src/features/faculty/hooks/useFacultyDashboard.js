@@ -7,7 +7,7 @@ import {
   fetchVisitLogs,
   fetchProfile,
   fetchApplications,
-  fetchMonthlyReports,
+  fetchMonthlyReportsForDashboard,
   fetchJoiningLetters,
   createVisitLog,
   updateVisitLog,
@@ -80,7 +80,7 @@ export const useFacultyDashboard = () => {
       dispatch(fetchVisitLogs({ forceRefresh }));
       dispatch(fetchProfile());
       dispatch(fetchApplications({ forceRefresh }));
-      dispatch(fetchMonthlyReports({ forceRefresh }));
+      dispatch(fetchMonthlyReportsForDashboard({ forceRefresh }));
       dispatch(fetchJoiningLetters({ forceRefresh }));
     });
   }, [dispatch, startTransition]);

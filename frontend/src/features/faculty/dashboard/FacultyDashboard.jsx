@@ -171,6 +171,27 @@ const FacultyDashboard = () => {
               lastFetched={lastFetched}
             />
 
+            <Alert
+              type="warning"
+              showIcon
+              closable
+              message="Monthly Report Format"
+              description={
+                <span>
+                  You and your students should submit monthly reports using this format:{' '}
+                  <a
+                    href="/Monthly_report.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold underline"
+                  >
+                    Download Monthly Report Format (PDF)
+                  </a>
+                </span>
+              }
+              className="rounded-xl"
+            />
+
             {/* Statistics Grid */}
             <div className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
               <StatisticsGrid

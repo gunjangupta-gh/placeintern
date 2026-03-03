@@ -87,6 +87,8 @@ const initialState = {
     studentProgressById: {}, // Cache per student ID
     monthlyReports: null,
     monthlyReportsKey: null,
+    monthlyReportsDashboard: null,
+    monthlyReportsDashboardKey: null,
     joiningLetters: null,
     joiningLettersKey: null,
     profile: null,
@@ -357,6 +359,37 @@ export const fetchMonthlyReports = createAsyncThunk(
       return { ...response, _cacheKey: requestKey };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch monthly reports');
+    }
+  }
+);
+
+export const fetchMonthlyReportsForDashboard = createAsyncThunk(
+  'faculty/fetchMonthlyReportsForDashboard',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.faculty.lastFetched.monthlyReportsDashboard;
+
+      const normalizedParams = {
+        page: 1,
+        limit: 1000,
+        status: params?.status ?? '',
+      };
+      const requestKey = JSON.stringify(normalizedParams);
+      const lastKey = state.faculty.lastFetched.monthlyReportsDashboardKey;
+
+      if (
+        !params?.forceRefresh &&
+        lastKey === requestKey &&
+        isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)
+      ) {
+        return { cached: true };
+      }
+
+      const response = await facultyService.getMonthlyReports(normalizedParams);
+      return { ...response, _cacheKey: requestKey };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch dashboard monthly reports');
     }
   }
 );
@@ -863,6 +896,8 @@ const facultySlice = createSlice({
         studentProgressById: {}, // Reset ID-based cache
         monthlyReports: null,
         monthlyReportsKey: null,
+        monthlyReportsDashboard: null,
+        monthlyReportsDashboardKey: null,
         joiningLetters: null,
         joiningLettersKey: null,
         profile: null,
@@ -1218,6 +1253,25 @@ const facultySlice = createSlice({
         }
       })
       .addCase(fetchMonthlyReports.rejected, (state, action) => {
+        state.monthlyReports.loading = false;
+        state.monthlyReports.error = action.payload;
+      })
+      .addCase(fetchMonthlyReportsForDashboard.pending, (state) => {
+        state.monthlyReports.loading = true;
+        state.monthlyReports.error = null;
+      })
+      .addCase(fetchMonthlyReportsForDashboard.fulfilled, (state, action) => {
+        state.monthlyReports.loading = false;
+        if (!action.payload.cached) {
+          state.monthlyReports.list = action.payload.reports || [];
+          state.monthlyReports.total = action.payload.total || 0;
+          state.monthlyReports.page = action.payload.page || 1;
+          state.monthlyReports.totalPages = action.payload.totalPages || 1;
+          state.lastFetched.monthlyReportsDashboard = Date.now();
+          state.lastFetched.monthlyReportsDashboardKey = action.payload._cacheKey ?? null;
+        }
+      })
+      .addCase(fetchMonthlyReportsForDashboard.rejected, (state, action) => {
         state.monthlyReports.loading = false;
         state.monthlyReports.error = action.payload;
       })
