@@ -6,7 +6,8 @@ import API from './api';
  */
 const trainingService = {
   buildQueryParams(params = {}) {
-    const entries = Object.entries(params).filter(([_, value]) => {
+    const entries = Object.entries(params).filter(([key, value]) => {
+      if (key === 'forceRefresh' || key === 'force') return false;
       if (value === null || value === undefined) return false;
       if (Array.isArray(value)) return value.length > 0;
       if (typeof value === 'string') return value.trim() !== '';

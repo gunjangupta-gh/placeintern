@@ -293,7 +293,7 @@ export class TrainingService {
   async findAll(filters: TrainingFilterDto, includeUnpublished = false, userId?: string, institutionId?: string) {
     try {
       const { page = 1, limit = 20, search, year, month, deliveryMode, difficulty, branchIds, isPublished, isActive, startDateFrom, startDateTo } = filters;
-      const userBranchId = userId ? await this.getUserBranchId(userId) : null;
+      const userBranchId = userId ? await this.getUserBranchId(userId) : undefined;
       const effectiveBranchIds = this.getEffectiveBranchIds(branchIds, userBranchId);
 
       // Build branch filtering condition
@@ -438,7 +438,7 @@ export class TrainingService {
   async getCalendar(filters: CalendarFilterDto, userId?: string, institutionId?: string) {
     try {
       const { year = new Date().getFullYear(), month, branchIds, deliveryMode } = filters;
-      const userBranchId = userId ? await this.getUserBranchId(userId) : null;
+      const userBranchId = userId ? await this.getUserBranchId(userId) : undefined;
       const effectiveBranchIds = this.getEffectiveBranchIds(branchIds, userBranchId);
       const branchScopeCondition: Prisma.TrainingWhereInput | undefined = effectiveBranchIds
         ? effectiveBranchIds.length > 0
@@ -539,7 +539,7 @@ export class TrainingService {
   async getUpcoming(limit = 5, branchIds?: string[], userId?: string, institutionId?: string) {
     try {
       const now = new Date();
-      const userBranchId = userId ? await this.getUserBranchId(userId) : null;
+      const userBranchId = userId ? await this.getUserBranchId(userId) : undefined;
       const effectiveBranchIds = this.getEffectiveBranchIds(branchIds, userBranchId);
       const branchScopeCondition: Prisma.TrainingWhereInput | undefined = effectiveBranchIds
         ? effectiveBranchIds.length > 0
@@ -1386,9 +1386,16 @@ export class TrainingService {
     return matchedBranch?.id || null;
   }
 
-  private getEffectiveBranchIds(requestedBranchIds?: string[], userBranchId?: string | null): string[] | undefined {
-    if (!userBranchId) {
+  private getEffectiveBranchIds(
+    requestedBranchIds?: string[],
+    userBranchId?: string | null,
+  ): string[] | undefined {
+    if (userBranchId === undefined) {
       return requestedBranchIds?.length ? requestedBranchIds : undefined;
+    }
+
+    if (userBranchId === null) {
+      return [];
     }
 
     if (!requestedBranchIds?.length) {

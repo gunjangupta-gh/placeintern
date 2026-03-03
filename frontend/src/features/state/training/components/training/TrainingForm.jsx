@@ -28,6 +28,7 @@ import dayjs from "dayjs";
 import { useBranches } from "../../../../shared/hooks/useLookup";
 
 const { Title, Text } = Typography;
+const ALL_BRANCHES_VALUE = "__ALL_BRANCHES__";
 
 const FormSection = ({ icon: Icon, title, children }) => (
   <div className="mb-4">
@@ -76,11 +77,13 @@ const TrainingForm = ({
   const setStep = onStepChange || setInternalStep;
 
   const branchOptions = useMemo(
-    () =>
-      activeBranches.map((branch) => ({
+    () => [
+      { value: ALL_BRANCHES_VALUE, label: "All Branches" },
+      ...activeBranches.map((branch) => ({
         value: branch.id,
         label: branch.name,
       })),
+    ],
     [activeBranches],
   );
 
@@ -136,6 +139,16 @@ const TrainingForm = ({
   };
 
   const handleFinish = (values) => {
+    const selectedTargetBranchIds = Array.isArray(values.targetBranchIds)
+      ? values.targetBranchIds.filter(Boolean)
+      : [];
+
+    const normalizedTargetBranchIds = selectedTargetBranchIds.includes(
+      ALL_BRANCHES_VALUE,
+    )
+      ? []
+      : selectedTargetBranchIds;
+
     const payload = {
       ...values,
       title: values.title?.trim(),
@@ -153,8 +166,26 @@ const TrainingForm = ({
           ? undefined
           : Number(values.duration),
       learningOutcomes: parseLearningOutcomes(values.learningOutcomes),
+      targetBranchIds: normalizedTargetBranchIds,
     };
     onSubmit(payload);
+  };
+
+  const handleTargetBranchesChange = (selectedValues = []) => {
+    if (!Array.isArray(selectedValues)) return;
+
+    if (selectedValues.includes(ALL_BRANCHES_VALUE) && selectedValues.length > 1) {
+      const latestValue = selectedValues[selectedValues.length - 1];
+
+      if (latestValue === ALL_BRANCHES_VALUE) {
+        form.setFieldValue("targetBranchIds", [ALL_BRANCHES_VALUE]);
+      } else {
+        form.setFieldValue(
+          "targetBranchIds",
+          selectedValues.filter((value) => value !== ALL_BRANCHES_VALUE),
+        );
+      }
+    }
   };
 
   // Auto-calculate duration when startTime or endTime changes
@@ -407,12 +438,25 @@ const TrainingForm = ({
           </Form.Item>
         </Col>
         <Col xs={24} sm={16}>
-          <Form.Item name="targetBranchIds" label="Target Branches">
+          <Form.Item
+            name="targetBranchIds"
+            label="Target Branches"
+            rules={[
+              {
+                required: true,
+                type: "array",
+                min: 1,
+                message: "Please select at least one target option",
+              },
+            ]}
+            extra="Select specific branches or choose All Branches"
+          >
             <Select
               mode="multiple"
               options={branchOptions}
-              placeholder="Select branches (leave empty for all)"
+              placeholder="Select specific branches or All Branches"
               allowClear
+              onChange={handleTargetBranchesChange}
             />
           </Form.Item>
         </Col>

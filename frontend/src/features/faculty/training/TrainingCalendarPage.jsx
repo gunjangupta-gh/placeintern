@@ -61,10 +61,43 @@ const TrainingCalendarPage = () => {
     difficulty: null,
   });
 
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+
   useEffect(() => {
-    dispatch(fetchTrainings(filters));
+    const params = {
+      ...filters,
+      forceRefresh: true,
+    };
+
+    // Add pagination only for list view
+    if (viewMode === "list") {
+      params.page = pagination.current;
+      params.limit = pagination.pageSize;
+    }
+
+    // Add search if present
+    if (searchText) {
+      params.search = searchText;
+    }
+
+    dispatch(fetchTrainings(params)).then((result) => {
+      if (result.payload && !result.payload.cached && viewMode === "list") {
+        const responseData = result.payload;
+        // Update pagination total from API response
+        setPagination(prev => ({
+          ...prev,
+          total: responseData.total || responseData.pagination?.total || (responseData.data?.length || 0),
+        }));
+      }
+    });
+
     dispatch(fetchCalendar(filters));
-  }, [dispatch, filters]);
+  }, [dispatch, filters, viewMode, pagination.current, pagination.pageSize, searchText]);
 
   // Keyboard navigation for calendar
   const handleKeyDown = useCallback(
@@ -114,7 +147,28 @@ const TrainingCalendarPage = () => {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
+  const handleTableChange = (newPagination) => {
+    setPagination({
+      current: newPagination.current,
+      pageSize: newPagination.pageSize,
+      total: pagination.total,
+    });
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchText(e.target.value);
+    // Reset to page 1 when search changes
+    setPagination(prev => ({ ...prev, current: 1 }));
+  };
+
   const filteredTrainings = useMemo(() => {
+    // For list view with server-side pagination, return list as-is
+    // Server handles search/filter
+    if (viewMode === "list") {
+      return trainings.list || [];
+    }
+
+    // For calendar view, do client-side search filtering
     let result = trainings.list || [];
     if (searchText) {
       const search = searchText.toLowerCase();
@@ -126,7 +180,7 @@ const TrainingCalendarPage = () => {
       );
     }
     return result;
-  }, [trainings.list, searchText]);
+  }, [trainings.list, searchText, viewMode]);
 
   const calendarTrainings = useMemo(() => {
     if (Array.isArray(calendar.list)) return calendar.list;
@@ -280,7 +334,7 @@ const TrainingCalendarPage = () => {
             placeholder="Search trainings..."
             prefix={<SearchOutlined className="text-slate-400" />}
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
+            onChange={handleSearchChange}
             className="lg:flex-1"
             size="middle"
             allowClear
@@ -612,7 +666,9 @@ const TrainingCalendarPage = () => {
                 loading={trainings.loading}
                 size="small"
                 pagination={{
-                  pageSize: 10,
+                  current: pagination.current,
+                  pageSize: pagination.pageSize,
+                  total: pagination.total,
                   showSizeChanger: true,
                   showTotal: (total, range) => (
                     <Text className="text-[10px] text-slate-600">
@@ -621,6 +677,7 @@ const TrainingCalendarPage = () => {
                   ),
                   size: "small",
                 }}
+                onChange={handleTableChange}
                 scroll={{ x: 'max-content' }}
                 onRow={(record) => ({
                   onClick: () => navigate(`/app/training/${record.id}`),

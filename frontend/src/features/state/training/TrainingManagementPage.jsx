@@ -55,6 +55,7 @@ import {
 } from "../store/stateTrainingSlice";
 
 const { Text } = Typography;
+const ALL_BRANCHES_VALUE = "__ALL_BRANCHES__";
 
 const TrainingManagementPage = () => {
   const dispatch = useDispatch();
@@ -146,6 +147,9 @@ const TrainingManagementPage = () => {
     setEditingTraining(training);
     setFormStep(0);
 
+    const existingTargetBranchIds =
+      training.targetBranches?.map((branch) => branch.id) || [];
+
     // Populate form with training data
     form.setFieldsValue({
       title: training.title,
@@ -168,7 +172,9 @@ const TrainingManagementPage = () => {
       venue: training.venue,
       meetingLink: training.meetingLink,
       capacity: training.capacity,
-      targetBranchIds: training.targetBranches?.map((b) => b.id) || [],
+      targetBranchIds: existingTargetBranchIds.length
+        ? existingTargetBranchIds
+        : [ALL_BRANCHES_VALUE],
       prerequisites: training.prerequisites,
       learningOutcomes: Array.isArray(training.learningOutcomes)
         ? training.learningOutcomes.join("\n")
