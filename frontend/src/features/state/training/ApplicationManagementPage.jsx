@@ -1,81 +1,49 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Button, Card, Col, Form, Input, Modal, Row, Select, Table, Tag, Typography, message } from 'antd';
+import { Button, Card, Form, Input, Modal, Segmented, Select, Space, Table, Tag, Tooltip, Typography, message } from 'antd';
+import {
+  FileTextOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  ClockCircleOutlined,
+  SearchOutlined,
+} from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
-import { FileTextOutlined, TeamOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
-import PageHeader from '../../../components/PageHeader';
 import TrainingEmptyState from '../../../components/training/TrainingEmptyState';
-import { TrainingStatSkeleton, TableRowSkeleton } from '../../../components/training/skeletons/TrainingSkeletons';
+import { TableRowSkeleton } from '../../../components/training/skeletons/TrainingSkeletons';
 import { fetchStateApplications, reviewStateApplication } from '../store/stateTrainingSlice';
 
 const { Text } = Typography;
 
-const STAT_TONES = {
-  primary: { icon: 'bg-blue-100 text-blue-700', card: 'bg-gradient-to-br from-blue-50 via-white to-slate-50' },
-  success: { icon: 'bg-emerald-100 text-emerald-700', card: 'bg-gradient-to-br from-emerald-50 via-white to-slate-50' },
-  warning: { icon: 'bg-amber-100 text-amber-700', card: 'bg-gradient-to-br from-amber-50 via-white to-slate-50' },
-  error: { icon: 'bg-red-100 text-red-700', card: 'bg-gradient-to-br from-red-50 via-white to-slate-50' },
-};
-
-const StatCard = ({ icon: Icon, title, value, subtitle, tone, trend, onClick }) => {
-  const styles = STAT_TONES[tone] || STAT_TONES.primary;
-  const hasTrend = trend !== undefined && trend !== null;
-  const isPositiveTrend = hasTrend && trend >= 0;
-
-  return (
-    <Card
-      className={`rounded-xl border-border shadow-none ${onClick ? 'cursor-pointer hover:shadow-soft' : ''} transition-shadow h-full ${styles.card}`}
-      onClick={onClick}
-      styles={{ body: { padding: '12px' } }}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      aria-label={`${title}: ${value}. ${subtitle || ''}${hasTrend ? ` Trend: ${isPositiveTrend ? 'up' : 'down'} ${Math.abs(trend)}%` : ''}`}
-      onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
-    >
-      <div className="flex items-start justify-between">
-        <div>
-          <Text className="text-text-secondary text-[10px] uppercase tracking-wider font-semibold opacity-80 block mb-0.5">{title}</Text>
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-text-primary leading-tight">{value}</span>
-            {hasTrend && (
-              <span className={`flex items-center text-[10px] font-medium ${isPositiveTrend ? 'text-emerald-600' : 'text-red-600'}`}>
-                {isPositiveTrend ? <ArrowUpOutlined className="mr-0.5" /> : <ArrowDownOutlined className="mr-0.5" />}
-                {Math.abs(trend)}%
-              </span>
-            )}
-          </div>
-          {subtitle && <Text type="secondary" className="text-[10px]">{subtitle}</Text>}
-        </div>
-        {Icon && (
-          <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${styles.icon}`}>
-            <Icon className="text-sm" />
-          </div>
-        )}
-      </div>
-    </Card>
-  );
-};
+const STATUS_OPTIONS = [
+  { label: 'All', value: 'ALL' },
+  { label: 'Pending', value: 'PENDING' },
+  { label: 'Approved', value: 'APPROVED' },
+  { label: 'Rejected', value: 'REJECTED' },
+];
 
 const ApplicationManagementPage = () => {
   const dispatch = useDispatch();
   const { id } = useParams();
   const { applications } = useSelector((state) => state.stateTraining);
-  const { user } = useSelector((state) => state.auth);
+
   const [reviewOpen, setReviewOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [form] = Form.useForm();
 
   useEffect(() => {
+    if (!id) return;
     dispatch(fetchStateApplications({ trainingId: id }));
   }, [dispatch, id]);
 
   const isLoading = applications.loading && !applications.list;
 
-  const openReview = (record) => {
+  const openReview = (record, defaultStatus = 'APPROVED') => {
     setSelected(record);
     setReviewOpen(true);
-    form.setFieldsValue({ status: 'APPROVED', reviewComments: '' });
+    form.setFieldsValue({ status: defaultStatus, reviewComments: '' });
   };
 
   const handleReview = async () => {
@@ -84,8 +52,7 @@ const ApplicationManagementPage = () => {
       await dispatch(reviewStateApplication({ id: selected.id, data: values })).unwrap();
       message.success('Application reviewed');
       setReviewOpen(false);
-      // Refresh applications to show updated status and capacity
-      dispatch(fetchStateApplications({ forceRefresh: true }));
+      dispatch(fetchStateApplications({ trainingId: id, forceRefresh: true }));
     } catch (error) {
       message.error(error || 'Failed to review application');
     }
@@ -96,133 +63,136 @@ const ApplicationManagementPage = () => {
       title: 'Faculty',
       dataIndex: ['user', 'name'],
       key: 'user',
-      render: (_, record) => record.user?.name || record.user?.email || 'Faculty',
+      render: (_, record) => (
+        <div>
+          <div className="font-medium text-sm text-slate-800">{record.user?.name || 'Faculty'}</div>
+          <Text type="secondary" className="text-xs">{record.user?.email || '-'}</Text>
+        </div>
+      ),
     },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
+      width: 130,
       render: (status) => {
         const statusConfig = {
-          APPROVED: { color: 'green', icon: <CheckCircleOutlined /> },
-          REJECTED: { color: 'red', icon: <CloseCircleOutlined /> },
-          PENDING: { color: 'orange', icon: <ClockCircleOutlined /> },
-          SUBMITTED: { color: 'blue', icon: <ClockCircleOutlined /> },
+          APPROVED: { color: 'green', icon: <CheckCircleOutlined />, label: 'Approved' },
+          REJECTED: { color: 'red', icon: <CloseCircleOutlined />, label: 'Rejected' },
+          PENDING: { color: 'orange', icon: <ClockCircleOutlined />, label: 'Pending' },
+          SUBMITTED: { color: 'blue', icon: <ClockCircleOutlined />, label: 'Submitted' },
         };
-        const config = statusConfig[status] || { color: 'default' };
-        return <Tag color={config.color} icon={config.icon}>{status}</Tag>;
+        const config = statusConfig[status] || { color: 'default', label: status };
+
+        return (
+          <Tag color={config.color} icon={config.icon} className="text-xs">
+            {config.label}
+          </Tag>
+        );
       },
     },
     {
       title: 'Applied On',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (value) => (value ? new Date(value).toLocaleDateString() : '-'),
+      width: 120,
+      render: (value) => (
+        <Text className="text-xs">
+          {value
+            ? new Date(value).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+              })
+            : '-'}
+        </Text>
+      ),
     },
     {
       title: 'Actions',
       key: 'actions',
+      width: 110,
       render: (_, record) => (
-        <Button size="small" onClick={() => openReview(record)} aria-label={`Review application from ${record.user?.name || 'faculty'}`}>
-          Review
-        </Button>
+        <Space size="small">
+          <Tooltip title="Approve Application">
+            <Button
+              type="text"
+              size="small"
+              icon={<CheckCircleOutlined className="text-green-600" />}
+              onClick={() => openReview(record, 'APPROVED')}
+              aria-label={`Approve application from ${record.user?.name || 'faculty'}`}
+            />
+          </Tooltip>
+          <Tooltip title="Reject Application">
+            <Button
+              type="text"
+              size="small"
+              icon={<CloseCircleOutlined className="text-red-600" />}
+              onClick={() => openReview(record, 'REJECTED')}
+              aria-label={`Reject application from ${record.user?.name || 'faculty'}`}
+            />
+          </Tooltip>
+        </Space>
       ),
     },
   ];
 
-  const stats = useMemo(() => {
-    const list = applications.list || [];
-    return {
-      total: list.length,
-      pending: list.filter((item) => ['PENDING', 'SUBMITTED'].includes(item.status)).length,
-      approved: list.filter((item) => item.status === 'APPROVED').length,
-      rejected: list.filter((item) => item.status === 'REJECTED').length,
-    };
-  }, [applications.list]);
-
   const filteredApplications = useMemo(() => {
-    if (!searchText) return applications.list || [];
-    const search = searchText.toLowerCase();
-    return (applications.list || []).filter((item) =>
-      (item.user?.name || item.user?.email || '').toLowerCase().includes(search)
-    );
-  }, [applications.list, searchText]);
+    const search = searchText.trim().toLowerCase();
+
+    return (applications.list || []).filter((item) => {
+      const matchesStatus =
+        statusFilter === 'ALL'
+          ? true
+          : statusFilter === 'PENDING'
+            ? ['PENDING', 'SUBMITTED'].includes(item.status)
+            : item.status === statusFilter;
+
+      if (!matchesStatus) return false;
+      if (!search) return true;
+
+      const name = item.user?.name || '';
+      const email = item.user?.email || '';
+      return name.toLowerCase().includes(search) || email.toLowerCase().includes(search);
+    });
+  }, [applications.list, searchText, statusFilter]);
 
   const searchResultCount = searchText ? filteredApplications.length : null;
 
   return (
     <div className="p-4 training-ui" role="main" aria-label="Application Management">
-      <PageHeader
-        icon={FileTextOutlined}
-        title={<span className="training-heading text-lg">Applications</span>}
-        description="Review training applications for this session."
-      />
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-800 mb-0.5">Training Applications</h1>
+          <Text type="secondary" className="text-xs">
+            Review training applications for this session.
+          </Text>
+        </div>
+      </div>
 
-      <Row gutter={[12, 12]} className="mb-4" role="region" aria-label="Application statistics">
-        {isLoading ? (
-          <>
-            <Col xs={12} lg={6}><TrainingStatSkeleton /></Col>
-            <Col xs={12} lg={6}><TrainingStatSkeleton /></Col>
-            <Col xs={12} lg={6}><TrainingStatSkeleton /></Col>
-            <Col xs={12} lg={6}><TrainingStatSkeleton /></Col>
-          </>
-        ) : (
-          <>
-            <Col xs={12} lg={6}>
-              <StatCard
-                icon={TeamOutlined}
-                title="Total"
-                value={stats.total}
-                tone="primary"
-              />
-            </Col>
-            <Col xs={12} lg={6}>
-              <StatCard
-                icon={ClockCircleOutlined}
-                title="Pending"
-                value={stats.pending}
-                tone="warning"
-              />
-            </Col>
-            <Col xs={12} lg={6}>
-              <StatCard
-                icon={CheckCircleOutlined}
-                title="Approved"
-                value={stats.approved}
-                tone="success"
-              />
-            </Col>
-            <Col xs={12} lg={6}>
-              <StatCard
-                icon={CloseCircleOutlined}
-                title="Rejected"
-                value={stats.rejected}
-                tone="error"
-              />
-            </Col>
-          </>
-        )}
-      </Row>
-
-      <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: '12px' } }}>
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-3">
+      <Card className="rounded-xl border-border shadow-none mb-3!" styles={{ body: { padding: '12px' } }}>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Input
-              placeholder="Search faculty"
+              placeholder="Search faculty..."
+              prefix={<SearchOutlined className="text-slate-400" />}
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
               className="lg:w-80"
               size="middle"
               allowClear
-              aria-label="Search faculty by name"
+              aria-label="Search faculty by name or email"
             />
             {searchResultCount !== null && (
               <Text type="secondary" className="text-xs" aria-live="polite">
-                {searchResultCount} result{searchResultCount !== 1 ? 's' : ''} found
+                {searchResultCount} result{searchResultCount !== 1 ? 's' : ''}
               </Text>
             )}
           </div>
+          <Segmented size="small" options={STATUS_OPTIONS} value={statusFilter} onChange={setStatusFilter} />
         </div>
+      </Card>
+
+      <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: '12px' } }}>
         {isLoading ? (
           <TableRowSkeleton rows={5} columns={4} />
         ) : filteredApplications.length > 0 ? (
@@ -234,7 +204,7 @@ const ApplicationManagementPage = () => {
               dataSource={filteredApplications}
               loading={applications.loading}
               size="small"
-              pagination={{ pageSize: 10, size: 'small' }}
+              pagination={{ pageSize: 10, size: 'small', showSizeChanger: true }}
               aria-label="Applications table"
               scroll={{ x: 'max-content' }}
             />

@@ -291,7 +291,14 @@ export class TrainingAttendanceService {
             ...(institutionId ? { user: { institutionId } } : {}),
           },
           include: {
-            user: { select: { id: true, name: true, email: true } },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                Institution: { select: { id: true, name: true, shortName: true } },
+              },
+            },
           },
         }),
       ]);

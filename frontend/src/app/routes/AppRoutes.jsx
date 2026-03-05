@@ -64,6 +64,8 @@ import StateAttendanceManagementPage from '../../features/state/training/Attenda
 import StateCertificateManagementPage from '../../features/state/training/CertificateManagementPage';
 import StateFeedbackFormManagementPage from '../../features/state/training/FeedbackFormManagementPage';
 import StateTestFormManagementPage from '../../features/state/training/TestFormManagementPage';
+import StateTestResponsesPage from '../../features/state/training/TestResponsesPage';
+import StateFeedbackResponsesPage from '../../features/state/training/FeedbackResponsesPage';
 import StateLessonPlanReviewPage from '../../features/state/training/LessonPlanReviewPage';
 
 // Shared
@@ -432,7 +434,7 @@ const AppRoutes = () => {
         <Route
           path="training/feedback-forms"
           element={
-            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.COORDINATOR]}>
               <StateFeedbackFormManagementPage />
             </ProtectedRoute>
           }
@@ -440,8 +442,24 @@ const AppRoutes = () => {
         <Route
           path="training/test-forms"
           element={
-            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.COORDINATOR]}>
               <StateTestFormManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/test-responses"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <StateTestResponsesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/feedback-responses"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <StateFeedbackResponsesPage />
             </ProtectedRoute>
           }
         />

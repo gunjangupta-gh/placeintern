@@ -15,6 +15,7 @@ import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { Role } from '../../../generated/prisma/client';
 import { TrainingService } from '../../../domain/training/training.service';
+import { TrainingAttendanceService } from '../../../domain/training/training-attendance.service';
 import { TrainingFilterDto, CalendarFilterDto } from '../../../domain/training/dto';
 
 @ApiTags('Principal - Training (View Only)')
@@ -23,7 +24,10 @@ import { TrainingFilterDto, CalendarFilterDto } from '../../../domain/training/d
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.PRINCIPAL)
 export class PrincipalTrainingController {
-  constructor(private readonly trainingService: TrainingService) {}
+  constructor(
+    private readonly trainingService: TrainingService,
+    private readonly attendanceService: TrainingAttendanceService,
+  ) {}
 
   @Throttle({ default: THROTTLE_PRESETS.list })
   @Get()
@@ -48,6 +52,20 @@ export class PrincipalTrainingController {
   @ApiOperation({ summary: 'Get training statistics' })
   async getTrainingStats(@Param('id', new ParseUUIDPipe()) id: string, @Req() req) {
     return this.trainingService.getTrainingStats(id, req.user.institutionId);
+  }
+
+  @Get(':id/attendance')
+  @ApiOperation({ summary: 'Get attendance for a training (institution scoped)' })
+  async getTrainingAttendance(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Query('date') date: string | undefined,
+    @Req() req,
+  ) {
+    return this.attendanceService.getByTraining(
+      id,
+      date ? new Date(date) : undefined,
+      req.user.institutionId,
+    );
   }
 
   @Get(':id')

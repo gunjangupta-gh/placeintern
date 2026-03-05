@@ -64,13 +64,124 @@ const FeedbackFormManagementPage = () => {
   const { user } = useSelector((state) => state.auth);
   const [modalOpen, setModalOpen] = useState(false);
   const [responsesModalOpen, setResponsesModalOpen] = useState(false);
+  const [responseDetailOpen, setResponseDetailOpen] = useState(false);
   const [selectedForm, setSelectedForm] = useState(null);
+  const [selectedResponse, setSelectedResponse] = useState(null);
   const [responsesData, setResponsesData] = useState([]);
   const [responsesLoading, setResponsesLoading] = useState(false);
   const [editing, setEditing] = useState(null);
   const [searchText, setSearchText] = useState('');
   const [questions, setQuestions] = useState([]);
   const [form] = Form.useForm();
+
+  const responseTrainingFilters = useMemo(() => {
+    const uniqueTrainings = new Set(
+      (responsesData || [])
+        .map((item) => item?.training?.title)
+        .filter(Boolean),
+    );
+
+    return Array.from(uniqueTrainings).map((value) => ({
+      text: value,
+      value,
+    }));
+  }, [responsesData]);
+
+  const responseTeacherFilters = useMemo(() => {
+    const uniqueTeachers = new Set(
+      (responsesData || [])
+        .map((item) => item?.user?.name)
+        .filter(Boolean),
+    );
+
+    return Array.from(uniqueTeachers).map((value) => ({
+      text: value,
+      value,
+    }));
+  }, [responsesData]);
+
+  const responseColumns = useMemo(
+    () => [
+      {
+        title: 'Faculty',
+        key: 'faculty',
+        width: 200,
+        filters: responseTeacherFilters,
+        onFilter: (value, record) =>
+          (record?.user?.name || '').toLowerCase().includes(String(value).toLowerCase()),
+        render: (_, record) => (
+          <div>
+            <div className="font-medium text-slate-800 text-xs">{record.user?.name || 'Unknown'}</div>
+            <div className="text-[10px] text-slate-500">{record.user?.email || '-'}</div>
+          </div>
+        ),
+      },
+      {
+        title: 'Institution',
+        key: 'institution',
+        width: 160,
+        render: (_, record) => (
+          <div className="text-xs text-slate-700 truncate" title={record.user?.Institution?.name}>
+            {record.user?.Institution?.shortName || record.user?.Institution?.name || 'N/A'}
+          </div>
+        ),
+      },
+      {
+        title: 'Training',
+        key: 'training',
+        width: 220,
+        filters: responseTrainingFilters,
+        onFilter: (value, record) =>
+          (record?.training?.title || '').toLowerCase().includes(String(value).toLowerCase()),
+        render: (_, record) => (
+          <div className="text-xs text-slate-700 truncate" title={record.training?.title}>
+            {record.training?.title || 'N/A'}
+          </div>
+        ),
+      },
+      {
+        title: 'Answered',
+        key: 'answered',
+        width: 90,
+        render: (_, record) => (
+          <span className="text-xs text-slate-600">
+            {Object.keys(record?.responses || {}).length}
+          </span>
+        ),
+      },
+      {
+        title: 'Submitted',
+        dataIndex: 'submittedAt',
+        key: 'submittedAt',
+        width: 120,
+        render: (value) => (
+          <span className="text-xs text-slate-600">
+            {value ? new Date(value).toLocaleDateString() : '-'}
+          </span>
+        ),
+      },
+      {
+        title: 'Action',
+        key: 'action',
+        width: 80,
+        render: (_, record) => (
+          <Button
+            size="small"
+            type="link"
+            icon={<EyeOutlined />}
+            onClick={() => {
+              setSelectedResponse(record);
+              setResponseDetailOpen(true);
+            }}
+            className="text-xs"
+          >
+            View
+          </Button>
+        ),
+      },
+    ],
+    [responseTeacherFilters, responseTrainingFilters],
+  );
 
   const QUESTION_TYPES = [
     { value: 'rating', label: 'Rating (1-5 stars)' },
@@ -165,12 +276,35 @@ const FeedbackFormManagementPage = () => {
     setResponsesModalOpen(true);
 
     try {
-      const data = await trainingAdminService.getFeedbackResponses(record.id);
-      // Data is in aggregated format: { form, totalResponses, aggregated }
-      setResponsesData(data || { totalResponses: 0, aggregated: {} });
+      const formDetails = await trainingAdminService.getFeedbackForm(record.id);
+      const trainings = Array.isArray(formDetails?.trainings) ? formDetails.trainings : [];
+
+      if (!trainings.length) {
+        setResponsesData([]);
+        return;
+      }
+
+      const trainingResponses = await Promise.all(
+        trainings.map(async (training) => {
+          const response = await trainingAdminService.getTrainingFeedbackResponses(training.id);
+          const list = Array.isArray(response) ? response : response?.responses || [];
+
+          return list
+            .filter(
+              (item) =>
+                item?.feedbackForm?.id === record.id || item?.feedbackFormId === record.id,
+            )
+            .map((item) => ({
+              ...item,
+              training: item.training || { id: training.id, title: training.title },
+            }));
+        }),
+      );
+
+      setResponsesData(trainingResponses.flat());
     } catch (error) {
       message.error('Failed to load responses');
-      setResponsesData({ totalResponses: 0, aggregated: {} });
+      setResponsesData([]);
     } finally {
       setResponsesLoading(false);
     }
@@ -330,8 +464,8 @@ const FeedbackFormManagementPage = () => {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
         <div>
-          <Title level={4} className="!mb-0.5 text-lg">
-            Feedback Forms
+          <Title level={4} className="mb-0.5! text-lg">
+            Manage Feedback
           </Title>
           <Text type="secondary" className="text-xs">Manage evaluation and feedback surveys</Text>
         </div>
@@ -608,12 +742,12 @@ const FeedbackFormManagementPage = () => {
         </div>
       </Modal>
 
-      {/* Responses Modal - Aggregated View */}
+      {/* Responses Modal */}
       <Modal
         open={responsesModalOpen}
         onCancel={() => setResponsesModalOpen(false)}
         footer={null}
-        width={700}
+        width={980}
         centered
         closable={false}
         styles={{
@@ -632,11 +766,11 @@ const FeedbackFormManagementPage = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-base font-bold text-slate-800 mb-1 truncate">
-                      {responsesData?.form?.title || selectedForm.title}
+                      {selectedForm.title}
                     </h3>
                     <div className="flex items-center gap-2.5 text-xs text-slate-600">
                       <span>
-                        <strong className="text-slate-800">{responsesData?.totalResponses || 0}</strong> responses
+                        <strong className="text-slate-800">{responsesData.length}</strong> responses
                       </span>
                       <span>•</span>
                       <span>Purpose: <strong className="text-slate-800">{selectedForm.purpose || 'General'}</strong></span>
@@ -648,132 +782,28 @@ const FeedbackFormManagementPage = () => {
                   size="small"
                   icon={<span className="text-xl text-slate-400 hover:text-slate-600">&times;</span>}
                   onClick={() => setResponsesModalOpen(false)}
-                  className="hover:bg-slate-100 flex-shrink-0"
+                  className="hover:bg-slate-100 shrink-0"
                 />
               </div>
             </div>
 
-            {/* Aggregated Responses */}
-            <div className="p-4 max-h-[70vh] overflow-y-auto">
+            {/* Responses Table */}
+            <div className="p-3">
               {responsesLoading ? (
                 <div className="text-center py-12">
                   <Text type="secondary">Loading responses...</Text>
                 </div>
-              ) : responsesData?.totalResponses > 0 ? (
-                <div className="space-y-4">
-                  {Object.entries(responsesData?.aggregated || {}).map(([questionId, data], index) => (
-                    <div key={questionId} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                      <div className="flex items-start gap-2 mb-3">
-                        <span className="text-xs font-medium text-slate-500 bg-white px-1.5 py-0.5 rounded border">
-                          Q{index + 1}
-                        </span>
-                        <div className="flex-1">
-                          <span className="text-sm font-medium text-slate-800">
-                            {data.question}
-                          </span>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Tag className="text-[10px]">{data.type}</Tag>
-                            <span className="text-xs text-slate-500">
-                              {data.totalResponses} responses
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Rating Type - Show Distribution */}
-                      {data.type === 'rating' && (
-                        <div className="mt-3">
-                          <div className="flex items-center gap-2 mb-3">
-                            <span className="text-2xl font-bold text-blue-600">
-                              {data.average?.toFixed(1) || '0.0'}
-                            </span>
-                            <span className="text-xs text-slate-500">/ 5 average</span>
-                          </div>
-                          <div className="space-y-1.5">
-                            {[5, 4, 3, 2, 1].map((rating) => {
-                              const count = data.distribution?.[rating] || 0;
-                              const percentage = data.totalResponses > 0
-                                ? (count / data.totalResponses) * 100
-                                : 0;
-                              return (
-                                <div key={rating} className="flex items-center gap-2">
-                                  <span className="text-xs text-slate-600 w-3">{rating}</span>
-                                  <div className="flex-1 h-4 bg-slate-200 rounded-full overflow-hidden">
-                                    <div
-                                      className="h-full bg-blue-500 rounded-full transition-all"
-                                      style={{ width: `${percentage}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-xs text-slate-500 w-8 text-right">{count}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Text Type - Show Responses */}
-                      {data.type === 'text' && (
-                        <div className="mt-3">
-                          {data.responses?.length > 0 ? (
-                            <div className="space-y-2 max-h-48 overflow-y-auto">
-                              {data.responses.map((response, idx) => (
-                                <div
-                                  key={idx}
-                                  className="p-2 bg-white rounded border border-slate-200 text-xs text-slate-700"
-                                >
-                                  "{response}"
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <Text type="secondary" className="text-xs">No text responses</Text>
-                          )}
-                        </div>
-                      )}
-
-                      {/* MultiChoice/Checkbox - Show Distribution */}
-                      {(data.type === 'multiChoice' || data.type === 'checkbox') && data.distribution && (
-                        <div className="mt-3 space-y-1.5">
-                          {Object.entries(data.distribution).map(([option, count]) => {
-                            const percentage = data.totalResponses > 0
-                              ? (count / data.totalResponses) * 100
-                              : 0;
-                            return (
-                              <div key={option} className="flex items-center gap-2">
-                                <span className="text-xs text-slate-600 truncate flex-1 max-w-[150px]" title={option}>
-                                  {option}
-                                </span>
-                                <div className="flex-1 h-4 bg-slate-200 rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full bg-emerald-500 rounded-full transition-all"
-                                    style={{ width: `${percentage}%` }}
-                                  />
-                                </div>
-                                <span className="text-xs text-slate-500 w-12 text-right">
-                                  {count} ({percentage.toFixed(0)}%)
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {/* Yes/No Type */}
-                      {data.type === 'yesNo' && data.distribution && (
-                        <div className="mt-3 flex gap-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-green-500" />
-                            <span className="text-xs text-slate-600">Yes: {data.distribution.yes || 0}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-red-500" />
-                            <span className="text-xs text-slate-600">No: {data.distribution.no || 0}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+              ) : responsesData.length > 0 ? (
+                <div className="custom-scrollbar overflow-x-auto">
+                  <Table
+                    className="custom-table"
+                    rowKey="id"
+                    columns={responseColumns}
+                    dataSource={responsesData}
+                    pagination={{ pageSize: 10, size: 'small' }}
+                    size="small"
+                    scroll={{ x: 900 }}
+                  />
                 </div>
               ) : (
                 <div className="text-center py-12">
@@ -783,6 +813,105 @@ const FeedbackFormManagementPage = () => {
                   <Text className="text-slate-500">No responses yet</Text>
                 </div>
               )}
+            </div>
+          </>
+        )}
+      </Modal>
+
+      {/* Response Detail Modal */}
+      <Modal
+        open={responseDetailOpen}
+        onCancel={() => setResponseDetailOpen(false)}
+        footer={null}
+        width={620}
+        centered
+        closable={false}
+        styles={{
+          body: { padding: 0 },
+          content: { borderRadius: 12 },
+        }}
+      >
+        {selectedResponse && (
+          <>
+            <div className="bg-white px-5 py-3 border-b border-slate-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                  <div className="w-9 h-9 rounded-lg border-2 border-blue-600 flex items-center justify-center shrink-0">
+                    <FileTextOutlined className="text-blue-600 text-base" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-bold text-slate-800 mb-0.5 truncate">
+                      {selectedResponse.user?.name || 'Unknown'}
+                    </h3>
+                    <div className="flex items-center gap-2 text-xs text-slate-600">
+                      <span>{selectedResponse.user?.email || '-'}</span>
+                      <span>•</span>
+                      <span>{selectedResponse.training?.title || 'N/A'}</span>
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<span className="text-xl text-slate-400 hover:text-slate-600">&times;</span>}
+                  onClick={() => setResponseDetailOpen(false)}
+                  className="hover:bg-slate-100 shrink-0"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 max-h-[60vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-lg text-xs mb-4">
+                <div>
+                  <span className="text-slate-500">Institution:</span>
+                  <div className="font-medium text-slate-800">
+                    {selectedResponse.user?.Institution?.name || 'N/A'}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-500">Submitted:</span>
+                  <div className="font-medium text-slate-800">
+                    {selectedResponse.submittedAt
+                      ? new Date(selectedResponse.submittedAt).toLocaleString()
+                      : 'N/A'}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-semibold text-slate-800 mb-3">Responses</h4>
+                <div className="space-y-3">
+                  {(selectedForm?.questions || []).map((question, index) => {
+                    const answer = selectedResponse.responses?.[question.id];
+
+                    return (
+                      <div
+                        key={question.id || index}
+                        className="p-3 bg-white border border-slate-200 rounded-lg"
+                      >
+                        <div className="flex items-start gap-2 mb-2">
+                          <span className="text-xs font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                            Q{index + 1}
+                          </span>
+                          <span className="text-sm text-slate-700 flex-1">
+                            {question.question}
+                          </span>
+                        </div>
+                        <div className="ml-6">
+                          <span className="text-xs text-slate-500">Answer: </span>
+                          <span className="text-sm font-medium text-slate-800">
+                            {Array.isArray(answer)
+                              ? answer.join(', ')
+                              : answer !== undefined && answer !== null && String(answer).trim() !== ''
+                                ? String(answer)
+                                : '-'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </>
         )}

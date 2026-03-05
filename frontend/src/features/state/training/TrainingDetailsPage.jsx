@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Avatar,
@@ -7,6 +7,7 @@ import {
   Col,
   Descriptions,
   Divider,
+  Modal,
   Row,
   Space,
   Tag,
@@ -15,9 +16,11 @@ import {
   message,
 } from "antd";
 import { useParams, useNavigate } from "react-router-dom";
+import dayjs from "dayjs";
 import {
   TeamOutlined,
   CheckCircleOutlined,
+  CheckCircleFilled,
   SafetyCertificateOutlined,
   FileTextOutlined,
   RiseOutlined,
@@ -30,6 +33,7 @@ import {
   EnvironmentOutlined,
   LinkOutlined,
   ApartmentOutlined,
+  CloseCircleOutlined,
 } from "@ant-design/icons";
 import TrainingDateRange from "../../../components/training/TrainingDateRange";
 import DeliveryModeBadge from "../../../components/training/DeliveryModeBadge";
@@ -41,6 +45,7 @@ import { TrainingDetailsSkeleton } from "../../../components/training/skeletons/
 import {
   fetchStateTrainingDetails,
   fetchStateTrainingStats,
+  fetchStateTrainingAttendance,
   publishStateTraining,
   unpublishStateTraining,
 } from "../store/stateTrainingSlice";
@@ -134,7 +139,9 @@ const StateTrainingDetailsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { id } = useParams();
-  const { currentTraining } = useSelector((state) => state.stateTraining);
+  const { currentTraining, attendance } = useSelector((state) => state.stateTraining);
+  const [attendanceModalOpen, setAttendanceModalOpen] = useState(false);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
 
   const isLoading = currentTraining.loading && !currentTraining.data;
 
@@ -182,6 +189,17 @@ const StateTrainingDetailsPage = () => {
     }
   };
 
+  const handleOpenAttendanceModal = async () => {
+    if (!id) return;
+    setAttendanceModalOpen(true);
+    setAttendanceLoading(true);
+    try {
+      await dispatch(fetchStateTrainingAttendance({ trainingId: id })).unwrap();
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
   if (isLoading) {
     return <TrainingDetailsSkeleton />;
   }
@@ -206,9 +224,49 @@ const StateTrainingDetailsPage = () => {
       value: stats?.attendance?.uniqueAttendees ?? 0,
       icon: TeamOutlined,
       tone: "warning",
-      onClick: () => navigate(`/app/training/${id}/attendance`),
+      onClick: handleOpenAttendanceModal,
     },
   ];
+
+  const attendanceData = useMemo(() => {
+    if (!training || !attendance.list) return null;
+    return attendance.list;
+  }, [training, attendance.list]);
+
+  const trainingDates = useMemo(() => {
+    if (!training?.startDate || !training?.endDate) return [];
+    const dates = [];
+    const start = dayjs(training.startDate);
+    const end = dayjs(training.endDate);
+    let current = start;
+
+    while (current.isSameOrBefore(end, "day")) {
+      dates.push(current.toDate());
+      current = current.add(1, "day");
+    }
+
+    return dates;
+  }, [training]);
+
+  const attendanceTableData = useMemo(() => {
+    if (!attendanceData?.attendanceByUser || !attendanceData?.records) return [];
+
+    return attendanceData.attendanceByUser.map((userData) => {
+      const userAttendanceRecords = attendanceData.records.filter(
+        (record) => record.userId === userData.user.id,
+      );
+
+      const attendedDates = new Set(
+        userAttendanceRecords.map((record) => dayjs(record.attendanceDate).format("YYYY-MM-DD")),
+      );
+
+      return {
+        ...userData,
+        attendedDates,
+        institution: userData.user?.Institution || userAttendanceRecords[0]?.user?.Institution || null,
+      };
+    });
+  }, [attendanceData]);
 
   return (
     <div className="p-4 training-ui">
@@ -227,7 +285,7 @@ const StateTrainingDetailsPage = () => {
 
       {/* Hero Card */}
       <Card
-        className="rounded-xl border-border shadow-none mb-3! bg-gradient-to-br from-slate-50 via-white to-blue-50"
+        className="rounded-xl border-border shadow-none mb-3! bg-linear-to-br from-slate-50 via-white to-blue-50"
         styles={{ body: { padding: "14px" } }}
       >
         <Row gutter={[12, 12]} align="top">
@@ -370,7 +428,7 @@ const StateTrainingDetailsPage = () => {
             <Paragraph type="secondary" className="mb-2 text-xs">
               By the end of this training, participants will be able to:
             </Paragraph>
-            <div className="max-h-[200px] overflow-y-auto custom-scrollbar pr-1">
+            <div className="max-h-50 overflow-y-auto custom-scrollbar pr-1">
               <LearningOutcomesList
                 outcomes={training?.learningOutcomes || []}
                 compact
@@ -425,11 +483,7 @@ const StateTrainingDetailsPage = () => {
               <Button
                 block
                 size="middle"
-                onClick={() =>
-                  navigate("/app/training/manage", {
-                    state: { openAttendanceTrainingId: id },
-                  })
-                }
+                onClick={handleOpenAttendanceModal}
               >
                 View Attendance
               </Button>
@@ -504,6 +558,249 @@ const StateTrainingDetailsPage = () => {
           </Card>
         </Col>
       </Row>
+
+      <Modal
+        open={attendanceModalOpen}
+        onCancel={() => setAttendanceModalOpen(false)}
+        footer={null}
+        width={900}
+        centered
+        closable={false}
+        styles={{
+          body: { padding: 0 },
+          content: { borderRadius: 12 },
+        }}
+      >
+        <div className="bg-white px-5 py-3 border-b border-slate-200">
+          <div className="flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-bold text-slate-800 mb-1 truncate">
+                {training?.title || "Training"}
+              </h3>
+              <div className="flex items-center gap-2.5 text-xs text-slate-600">
+                {training && (
+                  <TrainingDateRange
+                    startDate={training.startDate}
+                    endDate={training.endDate}
+                    compact
+                  />
+                )}
+                {attendanceData?.summary && (
+                  <>
+                    <span>•</span>
+                    <span>
+                      <strong className="text-slate-800">{attendanceData.summary.totalApproved}</strong> enrolled
+                    </span>
+                    <span>•</span>
+                    <span>
+                      <strong className="text-slate-800">{attendanceData.summary.uniqueAttendees}</strong> attended
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+            <Button
+              type="text"
+              size="small"
+              icon={<span className="text-xl text-slate-400 hover:text-slate-600">&times;</span>}
+              onClick={() => setAttendanceModalOpen(false)}
+              className="hover:bg-slate-100 shrink-0"
+            />
+          </div>
+        </div>
+
+        <div className="p-3">
+          <style>{`
+            .attendance-table-wrapper {
+              max-height: 65vh;
+              overflow: auto;
+              border: 1px solid #e2e8f0;
+              border-radius: 6px;
+            }
+            .attendance-table-wrapper::-webkit-scrollbar {
+              width: 6px;
+              height: 6px;
+            }
+            .attendance-table-wrapper::-webkit-scrollbar-track {
+              background: rgba(241, 245, 249, 0.3);
+              border-radius: 10px;
+            }
+            .attendance-table-wrapper::-webkit-scrollbar-thumb {
+              background: rgba(226, 232, 240, 0.8);
+              border-radius: 10px;
+            }
+            .attendance-table-wrapper::-webkit-scrollbar-thumb:hover {
+              background: rgba(71, 85, 105, 0.5);
+            }
+            .attendance-table {
+              width: 100%;
+              border-collapse: separate;
+              border-spacing: 0;
+            }
+            .attendance-table thead th {
+              position: sticky;
+              top: 0;
+              background: white;
+              z-index: 10;
+              padding: 8px 6px;
+              border-bottom: 2px solid #e2e8f0;
+              font-weight: 600;
+              font-size: 11px;
+              color: #334155;
+              text-align: left;
+              white-space: nowrap;
+            }
+            .attendance-table thead th.faculty-col {
+              position: sticky;
+              left: 0;
+              z-index: 20;
+              min-width: 150px;
+              background: white;
+              border-right: 2px solid #e2e8f0;
+            }
+            .attendance-table thead th.institution-col {
+              position: sticky;
+              left: 150px;
+              z-index: 20;
+              min-width: 140px;
+              background: white;
+              border-right: 2px solid #e2e8f0;
+            }
+            .attendance-table thead th.date-col {
+              text-align: center;
+              min-width: 60px;
+              padding: 5px;
+            }
+            .attendance-table tbody td {
+              padding: 8px 6px;
+              border-bottom: 1px solid #f1f5f9;
+              font-size: 12px;
+              color: #475569;
+            }
+            .attendance-table tbody td.faculty-col {
+              position: sticky;
+              left: 0;
+              background: white;
+              z-index: 5;
+              border-right: 2px solid #e2e8f0;
+            }
+            .attendance-table tbody td.institution-col {
+              position: sticky;
+              left: 150px;
+              background: white;
+              z-index: 5;
+              border-right: 2px solid #e2e8f0;
+            }
+            .attendance-table tbody td.date-col {
+              text-align: center;
+              padding: 5px;
+            }
+            .attendance-table tbody tr:hover td {
+              background-color: #f8fafc;
+            }
+            .attendance-table tbody tr:hover td.faculty-col,
+            .attendance-table tbody tr:hover td.institution-col {
+              background-color: #f8fafc;
+            }
+            .date-header {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 0.5px;
+            }
+            .date-day {
+              font-size: 14px;
+              font-weight: 700;
+              color: #1e293b;
+              line-height: 1;
+            }
+            .date-month {
+              font-size: 9px;
+              font-weight: 500;
+              color: #64748b;
+              text-transform: uppercase;
+              line-height: 1;
+            }
+          `}</style>
+          {attendanceLoading ? (
+            <div className="p-12 text-center">
+              <Text type="secondary">Loading attendance data...</Text>
+            </div>
+          ) : attendanceTableData.length > 0 ? (
+            <div className="attendance-table-wrapper">
+              <table className="attendance-table">
+                <thead>
+                  <tr>
+                    <th className="faculty-col">Faculty</th>
+                    <th className="institution-col">Institution</th>
+                    {trainingDates.map((date, idx) => (
+                      <th key={idx} className="date-col">
+                        <div className="date-header">
+                          <span className="date-day">{dayjs(date).format("DD")}</span>
+                          <span className="date-month">{dayjs(date).format("MMM")}</span>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {attendanceTableData.map((record, idx) => (
+                    <tr key={idx}>
+                      <td className="faculty-col">
+                        <div>
+                          <div className="font-medium text-slate-800 text-xs">{record.user.name}</div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">{record.user.email}</div>
+                        </div>
+                      </td>
+                      <td className="institution-col">
+                        <div className="font-medium text-slate-700 text-xs truncate" title={record.institution?.name}>
+                          {record.institution?.shortName || record.institution?.name || "N/A"}
+                        </div>
+                      </td>
+                      {trainingDates.map((date, dateIdx) => {
+                        const dateStr = dayjs(date).format("YYYY-MM-DD");
+                        const isPresent = record.attendedDates.has(dateStr);
+                        return (
+                          <td key={dateIdx} className="date-col">
+                            {isPresent ? (
+                              <CheckCircleFilled className="text-base text-green-500" />
+                            ) : (
+                              <CloseCircleOutlined className="text-base text-slate-300" />
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="text-slate-300 mb-2">
+                <TeamOutlined style={{ fontSize: 48 }} />
+              </div>
+              <Text className="text-slate-500">No attendance records found</Text>
+            </div>
+          )}
+
+          {attendanceTableData.length > 0 && (
+            <div className="mt-2.5 pt-2.5 border-t border-slate-200 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                  <CheckCircleFilled className="text-sm text-green-500" />
+                  <span className="text-slate-600">Present</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <CloseCircleOutlined className="text-sm text-slate-300" />
+                  <span className="text-slate-600">Absent</span>
+                </div>
+              </div>
+              <span className="text-slate-500">Scroll to view all dates</span>
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };

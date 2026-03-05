@@ -6,6 +6,7 @@ import {
   Modal,
   Row,
   Select,
+  Space,
   Spin,
   Table,
   Tag,
@@ -14,12 +15,56 @@ import {
 } from 'antd';
 import { ArrowLeftOutlined, FileTextOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import trainingCoordinatorService from '../../../services/training-coordinator.service';
+import trainingAdminService from '../../../services/training-admin.service';
 import TrainingEmptyState from '../../../components/training/TrainingEmptyState';
 
 const { Text } = Typography;
 
-const normalizeApiResponse = (response) => response?.data || response || {};
+const normalizeTrainings = (response) => {
+  const payload = response?.data || response;
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.list)) return payload.list;
+  return [];
+};
+
+const normalizeFeedbackDetails = (response) => {
+  const payload = response?.data || response || {};
+
+  const responses = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.responses)
+      ? payload.responses
+      : Array.isArray(payload?.data)
+        ? payload.data
+        : [];
+
+  const submittedCount =
+    payload?.stats?.submittedCount
+    ?? new Set(
+      responses
+        .map((item) => item?.userId || item?.user?.id)
+        .filter(Boolean),
+    ).size;
+
+  const enrolledCount = payload?.stats?.enrolledCount ?? submittedCount;
+  const pendingCount = payload?.stats?.pendingCount ?? Math.max(enrolledCount - submittedCount, 0);
+  const completionRate =
+    payload?.stats?.completionRate
+    ?? (enrolledCount > 0 ? Math.round((submittedCount / enrolledCount) * 100) : 0);
+
+  return {
+    ...(Array.isArray(payload) ? {} : payload),
+    responses,
+    stats: {
+      ...(payload?.stats || {}),
+      enrolledCount,
+      submittedCount,
+      pendingCount,
+      completionRate,
+    },
+  };
+};
 
 const renderFeedbackAnswer = (question, value) => {
   if (value === null || value === undefined || value === '') {
@@ -64,13 +109,13 @@ const FeedbackResponsesPage = () => {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [summary, setSummary] = useState(null);
+  const [trainings, setTrainings] = useState([]);
   const [selectedTraining, setSelectedTraining] = useState(trainingIdFromQuery || null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [details, setDetails] = useState(null);
   const [previewResponse, setPreviewResponse] = useState(null);
 
-  const fetchSummary = useCallback(async (isRefresh = false) => {
+  const fetchTrainings = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -78,10 +123,10 @@ const FeedbackResponsesPage = () => {
         setLoading(true);
       }
 
-      const response = await trainingCoordinatorService.getFeedbackSummary();
-      setSummary(normalizeApiResponse(response));
+      const response = await trainingAdminService.getTrainings({ limit: 1000 });
+      setTrainings(normalizeTrainings(response));
     } catch (error) {
-      message.error('Failed to load feedback summary');
+      message.error('Failed to load trainings');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -96,8 +141,8 @@ const FeedbackResponsesPage = () => {
 
     try {
       setDetailsLoading(true);
-      const response = await trainingCoordinatorService.getTrainingFeedbackResponses(trainingId);
-      setDetails(normalizeApiResponse(response));
+      const response = await trainingAdminService.getTrainingFeedbackResponses(trainingId);
+      setDetails(normalizeFeedbackDetails(response));
     } catch (error) {
       message.error('Failed to load feedback responses');
       setDetails(null);
@@ -107,8 +152,8 @@ const FeedbackResponsesPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchSummary();
-  }, [fetchSummary]);
+    fetchTrainings();
+  }, [fetchTrainings]);
 
   useEffect(() => {
     if (!trainingIdFromQuery) return;
@@ -116,7 +161,21 @@ const FeedbackResponsesPage = () => {
     fetchTrainingDetails(trainingIdFromQuery);
   }, [trainingIdFromQuery, fetchTrainingDetails]);
 
-  const trainings = useMemo(() => summary?.byTraining || [], [summary?.byTraining]);
+  const handleTrainingSelect = (trainingId) => {
+    setSelectedTraining(trainingId || null);
+    if (trainingId) {
+      setSearchParams({ trainingId });
+      fetchTrainingDetails(trainingId);
+    } else {
+      setSearchParams({});
+      setDetails(null);
+    }
+  };
+
+  const selectedTrainingTitle = useMemo(
+    () => trainings.find((item) => String(item.id) === String(selectedTraining))?.title,
+    [trainings, selectedTraining],
+  );
 
   const previewQuestionRows = useMemo(() => {
     if (!previewResponse) return [];
@@ -151,22 +210,6 @@ const FeedbackResponsesPage = () => {
 
     return [...mappedRows, ...extraRows];
   }, [previewResponse]);
-
-  const handleTrainingSelect = (trainingId) => {
-    setSelectedTraining(trainingId || null);
-    if (trainingId) {
-      setSearchParams({ trainingId });
-      fetchTrainingDetails(trainingId);
-    } else {
-      setSearchParams({});
-      setDetails(null);
-    }
-  };
-
-  const selectedTrainingTitle = useMemo(
-    () => trainings.find((item) => String(item.trainingId) === String(selectedTraining))?.trainingTitle,
-    [trainings, selectedTraining],
-  );
 
   const responseColumns = [
     {
@@ -228,7 +271,7 @@ const FeedbackResponsesPage = () => {
           <Button
             icon={<ReloadOutlined spin={refreshing} />}
             loading={refreshing}
-            onClick={() => fetchSummary(true)}
+            onClick={() => fetchTrainings(true)}
           >
             Refresh
           </Button>
@@ -247,8 +290,8 @@ const FeedbackResponsesPage = () => {
             size="middle"
           >
             {trainings.map((item) => (
-              <Select.Option key={item.trainingId} value={item.trainingId}>
-                {item.trainingTitle}
+              <Select.Option key={item.id} value={item.id}>
+                {item.title}
               </Select.Option>
             ))}
           </Select>

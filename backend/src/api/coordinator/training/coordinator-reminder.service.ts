@@ -529,11 +529,11 @@ export class CoordinatorReminderService {
 
     const facultyActions: Record<string, {
       user: typeof faculty[0];
-      pendingEnrollments: { trainingId: string; trainingTitle: string; deadline: Date }[];
-      pendingPreTests: { trainingId: string; trainingTitle: string }[];
-      pendingPostTests: { trainingId: string; trainingTitle: string }[];
-      pendingLessonPlans: { trainingId: string; trainingTitle: string }[];
-      pendingFeedbacks: { trainingId: string; trainingTitle: string }[];
+      pendingEnrollments: { trainingId: string; trainingTitle: string; deadline: Date; startDate: Date; endDate: Date }[];
+      pendingPreTests: { trainingId: string; trainingTitle: string; startDate: Date; endDate: Date }[];
+      pendingPostTests: { trainingId: string; trainingTitle: string; startDate: Date; endDate: Date }[];
+      pendingLessonPlans: { trainingId: string; trainingTitle: string; startDate: Date; endDate: Date }[];
+      pendingFeedbacks: { trainingId: string; trainingTitle: string; startDate: Date; endDate: Date }[];
     }> = {};
 
     // Initialize faculty actions
@@ -560,6 +560,8 @@ export class CoordinatorReminderService {
                 trainingId: training.id,
                 trainingTitle: training.title,
                 deadline: training.applicationDeadline,
+                startDate: training.startDate,
+                endDate: training.endDate,
               });
             }
           }
@@ -585,6 +587,8 @@ export class CoordinatorReminderService {
             facultyActions[user.id].pendingPreTests.push({
               trainingId: training.id,
               trainingTitle: training.title,
+              startDate: training.startDate,
+              endDate: training.endDate,
             });
           }
         }
@@ -607,6 +611,8 @@ export class CoordinatorReminderService {
             facultyActions[user.id].pendingPostTests.push({
               trainingId: training.id,
               trainingTitle: training.title,
+              startDate: training.startDate,
+              endDate: training.endDate,
             });
           }
         }
@@ -625,6 +631,8 @@ export class CoordinatorReminderService {
             facultyActions[user.id].pendingLessonPlans.push({
               trainingId: training.id,
               trainingTitle: training.title,
+              startDate: training.startDate,
+              endDate: training.endDate,
             });
           }
         }
@@ -648,6 +656,8 @@ export class CoordinatorReminderService {
             facultyActions[user.id].pendingFeedbacks.push({
               trainingId: training.id,
               trainingTitle: training.title,
+              startDate: training.startDate,
+              endDate: training.endDate,
             });
           }
         }

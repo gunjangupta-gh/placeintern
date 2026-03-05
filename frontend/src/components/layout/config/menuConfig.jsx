@@ -555,6 +555,18 @@ export const menuConfig = {
         path: "/app/coordinator/lesson-plans",
       },
       {
+        key: "coordinator-test-forms",
+        label: "Test Forms",
+        icon: <FileDoneOutlined />,
+        path: "/app/training/test-forms",
+      },
+      {
+        key: "coordinator-feedback-forms",
+        label: "Feedback Forms",
+        icon: <FileTextOutlined />,
+        path: "/app/training/feedback-forms",
+      },
+      {
         key: "coordinator-recommendations",
         label: "Recommendations",
         icon: <BulbOutlined />,

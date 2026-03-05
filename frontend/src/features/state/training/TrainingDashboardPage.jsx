@@ -114,7 +114,7 @@ const TrainingDashboardPage = () => {
         title: "Lesson Plan",
         icon: BookOutlined,
         lines: [
-          { label: "Faculty Completed Training", value: summary.peopleCompletedTraining || 0 },
+          // { label: "Faculty Completed Training", value: summary.peopleCompletedTraining || 0 },
           { label: "Lesson Plans Created", value: summary.lessonPlanCreated || lessonPlans.created || lessonPlans.total || 0 },
         ],
         variant: "purple",

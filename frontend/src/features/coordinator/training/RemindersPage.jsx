@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card,
   Table,
@@ -25,7 +25,6 @@ import {
   BellOutlined,
   CheckCircleOutlined,
   BookOutlined,
-  MailOutlined,
   NotificationOutlined,
 } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
@@ -86,7 +85,6 @@ const RemindersPage = () => {
     setReminderOpen(true);
     form.setFieldsValue({
       sendInApp: true,
-      sendEmail: true,
       customMessage: '',
     });
   };
@@ -96,18 +94,11 @@ const RemindersPage = () => {
       setSendingReminder(true);
       const values = await form.validateFields();
 
-      // Validate at least one notification channel is selected
-      if (!values.sendInApp && !values.sendEmail) {
-        message.warning('Please select at least one notification channel');
-        setSendingReminder(false);
-        return;
-      }
-
       const payload = {
         ...(selectedTraining?.trainingId && { trainingId: selectedTraining.trainingId }),
         ...(selectedFaculty.length > 0 && { userIds: selectedFaculty }),
-        sendInApp: values.sendInApp,
-        sendEmail: values.sendEmail,
+        sendInApp: true,
+        sendEmail: false,
         ...(values.customMessage && { customMessage: values.customMessage }),
       };
 
@@ -165,6 +156,26 @@ const RemindersPage = () => {
     );
   });
 
+  const reminderSummary = useMemo(() => {
+    const summary = {
+      enrollments: 0,
+      preTests: 0,
+      postTests: 0,
+      lessonPlans: 0,
+      feedbacks: 0,
+    };
+
+    faculty.forEach((item) => {
+      summary.enrollments += item.pendingEnrollments?.length || 0;
+      summary.preTests += item.pendingPreTests?.length || 0;
+      summary.postTests += item.pendingPostTests?.length || 0;
+      summary.lessonPlans += item.pendingLessonPlans?.length || 0;
+      summary.feedbacks += item.pendingFeedbacks?.length || 0;
+    });
+
+    return summary;
+  }, [faculty]);
+
   // Get unique trainings from pending actions
   const getTrainingsWithPending = (type) => {
     const trainingsMap = new Map();
@@ -195,6 +206,8 @@ const RemindersPage = () => {
             trainingsMap.set(item.trainingId, {
               trainingId: item.trainingId,
               trainingTitle: item.trainingTitle,
+              trainingStartDate: item.startDate || null,
+              trainingEndDate: item.endDate || null,
               pendingCount: 0,
               faculty: [],
             });
@@ -202,6 +215,12 @@ const RemindersPage = () => {
           const training = trainingsMap.get(item.trainingId);
           training.pendingCount++;
           training.faculty.push(f.user);
+          if (!training.trainingStartDate && item.startDate) {
+            training.trainingStartDate = item.startDate;
+          }
+          if (!training.trainingEndDate && item.endDate) {
+            training.trainingEndDate = item.endDate;
+          }
         }
       });
     });
@@ -330,10 +349,31 @@ const RemindersPage = () => {
       dataIndex: 'trainingTitle',
       key: 'title',
       render: (title) => (
-        <div className="font-medium text-sm text-slate-800 truncate" style={{ maxWidth: 200 }}>
-          {title}
+        <div className="font-medium text-sm text-slate-800 whitespace-normal wrap-break-word leading-5">
+          {title || '-'}
         </div>
       ),
+    },
+    {
+      title: 'Training Date',
+      key: 'trainingDate',
+      width: 190,
+      render: (_, record) => {
+        const start = record.trainingStartDate ? new Date(record.trainingStartDate) : null;
+        const end = record.trainingEndDate ? new Date(record.trainingEndDate) : null;
+
+        if (!start && !end) {
+          return <Text type="secondary" className="text-xs">-</Text>;
+        }
+
+        return (
+          <Text className="text-xs text-slate-700">
+            {start ? start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+            {' - '}
+            {end ? end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+          </Text>
+        );
+      },
     },
     {
       title: 'Pending',
@@ -391,14 +431,24 @@ const RemindersPage = () => {
       {pendingActions?.facultyWithPendingActions > 0 && (
         <Alert
           message={`${pendingActions.facultyWithPendingActions} faculty members have pending actions`}
-          type="warning"
+          description={
+            <div className="text-xs flex flex-wrap gap-x-4 gap-y-1 mt-1">
+              <span>Enrollments: <strong>{reminderSummary.enrollments}</strong></span>
+              <span>Pre-Tests: <strong>{reminderSummary.preTests}</strong></span>
+              <span>Post-Tests: <strong>{reminderSummary.postTests}</strong></span>
+              <span>Lesson Plans: <strong>{reminderSummary.lessonPlans}</strong></span>
+              <span>Feedback: <strong>{reminderSummary.feedbacks}</strong></span>
+            </div>
+          }
+          type="info"
           showIcon
-          className="mb-4 rounded-lg"
+          closable
+          className="mb-4! rounded-lg"
         />
       )}
 
       {/* By Training Tab View */}
-      <Card className="rounded-xl border-border shadow-none mb-4" styles={{ body: { padding: '12px' } }}>
+      <Card className="rounded-xl border-border shadow-none mb-4!" styles={{ body: { padding: '12px' } }}>
         <div className="mb-3">
           <Segmented
             size="small"
@@ -438,7 +488,7 @@ const RemindersPage = () => {
 
       {/* Faculty List */}
       <Card
-        className="rounded-xl border-border shadow-none"
+        className="rounded-xl border-border shadow-none mb-4!"
         styles={{ body: { padding: '12px' } }}
       >
         <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-3">
@@ -542,28 +592,11 @@ const RemindersPage = () => {
             </div>
           )}
 
-          <Form.Item label="Notification Channels" required className="mb-3">
-            <div className="flex flex-col gap-2">
-              <Form.Item name="sendInApp" valuePropName="checked" noStyle>
-                <Checkbox>
-                  <Space>
-                    <NotificationOutlined className="text-blue-500" />
-                    <span>In-App Notification</span>
-                  </Space>
-                </Checkbox>
-              </Form.Item>
-              <Form.Item name="sendEmail" valuePropName="checked" noStyle>
-                <Checkbox>
-                  <Space>
-                    <MailOutlined className="text-green-500" />
-                    <span>Email Notification</span>
-                  </Space>
-                </Checkbox>
-              </Form.Item>
+          <Form.Item label="Notification Channel" className="mb-3">
+            <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+              <NotificationOutlined className="text-blue-500" />
+              <Text className="text-sm text-slate-700">In-App Notification (default)</Text>
             </div>
-            <Text type="secondary" className="text-xs mt-1 block">
-              Select at least one notification channel
-            </Text>
           </Form.Item>
 
           <Form.Item name="customMessage" label="Custom Message (Optional)">

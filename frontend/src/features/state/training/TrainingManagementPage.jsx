@@ -42,6 +42,7 @@ import TrainingDateRange from "../../../components/training/TrainingDateRange";
 import DeliveryModeBadge from "../../../components/training/DeliveryModeBadge";
 import TrainingEmptyState from "../../../components/training/TrainingEmptyState";
 import TrainingForm from "./components/training/TrainingForm";
+import trainingAdminService from "../../../services/training-admin.service";
 import {
   fetchStateTrainings,
   fetchStateTrainingAttendance,
@@ -70,6 +71,15 @@ const TrainingManagementPage = () => {
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [statsModalOpen, setStatsModalOpen] = useState(false);
   const [selectedTraining, setSelectedTraining] = useState(null);
+  const [testModalOpen, setTestModalOpen] = useState(false);
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+  const [actionTraining, setActionTraining] = useState(null);
+  const [testTab, setTestTab] = useState("preTest");
+  const [testLoading, setTestLoading] = useState(false);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [preTestData, setPreTestData] = useState(null);
+  const [postTestData, setPostTestData] = useState(null);
+  const [feedbackData, setFeedbackData] = useState(null);
 
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -222,6 +232,25 @@ const TrainingManagementPage = () => {
     setStatsModalOpen(true);
   };
 
+  const handleViewTestResponses = async (training) => {
+    navigate(`/app/training/test-responses?trainingId=${training.id}`);
+  };
+
+  const handleViewFeedbackResponses = async (training) => {
+    navigate(`/app/training/feedback-responses?trainingId=${training.id}`);
+  };
+
+  const handleCloseTestModal = () => {
+    setTestModalOpen(false);
+    setPreTestData(null);
+    setPostTestData(null);
+  };
+
+  const handleCloseFeedbackModal = () => {
+    setFeedbackModalOpen(false);
+    setFeedbackData(null);
+  };
+
   useEffect(() => {
     const trainingIdToOpen = location.state?.openAttendanceTrainingId;
     if (!trainingIdToOpen || !trainings.list?.length) return;
@@ -359,6 +388,22 @@ const TrainingManagementPage = () => {
               onClick={() => handleViewAttendance(record)}
             />
           </Tooltip>
+          <Tooltip title="View Test Responses">
+            <Button
+              type="text"
+              size="small"
+              icon={<SafetyCertificateOutlined />}
+              onClick={() => handleViewTestResponses(record)}
+            />
+          </Tooltip>
+          <Tooltip title="View Feedback Responses">
+            <Button
+              type="text"
+              size="small"
+              icon={<FileTextOutlined />}
+              onClick={() => handleViewFeedbackResponses(record)}
+            />
+          </Tooltip>
           <Tooltip title="Edit">
             <Button
               type="text"
@@ -426,6 +471,101 @@ const TrainingManagementPage = () => {
       };
     });
   }, [attendanceData]);
+
+  const testResponseColumns = [
+    {
+      title: "Faculty",
+      dataIndex: ["user", "name"],
+      key: "faculty",
+      render: (_, record) => (
+        <div>
+          <div className="font-medium text-sm text-slate-800">{record.user?.name}</div>
+          <Text type="secondary" className="text-xs">
+            {record.user?.branchName || record.user?.email}
+          </Text>
+        </div>
+      ),
+    },
+    {
+      title: "Score",
+      dataIndex: "score",
+      key: "score",
+      width: 90,
+      render: (score) => (
+        <Text className="text-xs font-medium">
+          {score !== null && score !== undefined ? `${Number(score).toFixed(1)}%` : "N/A"}
+        </Text>
+      ),
+    },
+    {
+      title: "Result",
+      dataIndex: "passed",
+      key: "passed",
+      width: 100,
+      render: (passed) =>
+        passed === null ? (
+          <Tag>Not Graded</Tag>
+        ) : passed ? (
+          <Tag color="green" icon={<CheckCircleFilled />}>
+            Passed
+          </Tag>
+        ) : (
+          <Tag color="red" icon={<CloseCircleOutlined />}>
+            Failed
+          </Tag>
+        ),
+    },
+    {
+      title: "Submitted",
+      dataIndex: "submittedAt",
+      key: "submittedAt",
+      width: 110,
+      render: (value) => (
+        <Text className="text-xs">
+          {value
+            ? new Date(value).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })
+            : "-"}
+        </Text>
+      ),
+    },
+  ];
+
+  const feedbackResponseColumns = [
+    {
+      title: "Faculty",
+      dataIndex: ["user", "name"],
+      key: "faculty",
+      render: (_, record) => (
+        <div>
+          <div className="font-medium text-sm text-slate-800">{record.user?.name}</div>
+          <Text type="secondary" className="text-xs">
+            {record.user?.branchName || record.user?.email}
+          </Text>
+        </div>
+      ),
+    },
+    {
+      title: "Submitted",
+      dataIndex: "submittedAt",
+      key: "submittedAt",
+      width: 120,
+      render: (value) => (
+        <Text className="text-xs">
+          {value
+            ? new Date(value).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })
+            : "-"}
+        </Text>
+      ),
+    },
+  ];
+
+  const currentTestData = testTab === "preTest" ? preTestData : postTestData;
 
   const getTrainingsForDate = (dateValue) => {
     if (!filteredTrainings.length) return [];
@@ -495,7 +635,7 @@ const TrainingManagementPage = () => {
 
 
       {/* Filters */}
-      <Card className="rounded-xl border-border shadow-none !mb-3" styles={{ body: { padding: '12px' } }}>
+      <Card className="rounded-xl border-border shadow-none mb-3!" styles={{ body: { padding: '12px' } }}>
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <Input
             placeholder="Search trainings..."
@@ -757,7 +897,7 @@ const TrainingManagementPage = () => {
                 </div>
               </div>
               {selectedDayTrainings.length > 0 ? (
-                <div className="!space-y-2 max-h-[450px] overflow-y-auto pr-1 custom-scrollbar">
+                <div className="space-y-2! max-h-112.5 overflow-y-auto pr-1 custom-scrollbar">
                   {selectedDayTrainings.map((training) => (
                     <Card
                       key={training.id}
@@ -942,7 +1082,7 @@ const TrainingManagementPage = () => {
                     </span>
                   }
                   onClick={() => setStatsModalOpen(false)}
-                  className="hover:bg-slate-100 flex-shrink-0"
+                  className="hover:bg-slate-100 shrink-0"
                 />
               </div>
             </div>
@@ -1161,6 +1301,218 @@ const TrainingManagementPage = () => {
             <Text type="secondary">Loading attendance data...</Text>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        open={testModalOpen}
+        onCancel={handleCloseTestModal}
+        footer={null}
+        width={900}
+        centered
+        closable={false}
+        styles={{
+          body: { padding: 0 },
+          content: { borderRadius: 12 },
+        }}
+      >
+        <div className="bg-white px-5 py-3 border-b border-slate-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-slate-800 mb-1 truncate">
+                  {actionTraining?.title || "Training"}
+                </h3>
+                <div className="flex items-center gap-2.5 text-xs text-slate-600">
+                  <span>Test Responses</span>
+                  {actionTraining && (
+                    <>
+                      <span>•</span>
+                      <span>
+                        <strong className="text-slate-800">
+                          {currentTestData?.stats?.total || 0}
+                        </strong>{" "}
+                        total
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+            <Button
+              type="text"
+              size="small"
+              icon={
+                <span className="text-xl text-slate-400 hover:text-slate-600">
+                  &times;
+                </span>
+              }
+              onClick={handleCloseTestModal}
+              className="hover:bg-slate-100 shrink-0"
+            />
+          </div>
+        </div>
+
+        <div className="p-3">
+          <Segmented
+            size="small"
+            className="mb-3"
+            value={testTab}
+            onChange={setTestTab}
+            options={[
+              { label: `Pre-Test (${preTestData?.stats?.total || 0})`, value: "preTest" },
+              { label: `Post-Test (${postTestData?.stats?.total || 0})`, value: "postTest" },
+            ]}
+          />
+
+          <Row gutter={[12, 12]} className="mb-3">
+            <Col xs={12} sm={6}>
+              <Card className="rounded-lg border-border shadow-none" styles={{ body: { padding: "10px" } }}>
+                <Text className="text-[10px] text-slate-500">Total</Text>
+                <div className="text-base font-semibold text-slate-800">{currentTestData?.stats?.total || 0}</div>
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card className="rounded-lg border-border shadow-none" styles={{ body: { padding: "10px" } }}>
+                <Text className="text-[10px] text-slate-500">Passed</Text>
+                <div className="text-base font-semibold text-green-600">{currentTestData?.stats?.passed || 0}</div>
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card className="rounded-lg border-border shadow-none" styles={{ body: { padding: "10px" } }}>
+                <Text className="text-[10px] text-slate-500">Failed</Text>
+                <div className="text-base font-semibold text-red-600">{currentTestData?.stats?.failed || 0}</div>
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card className="rounded-lg border-border shadow-none" styles={{ body: { padding: "10px" } }}>
+                <Text className="text-[10px] text-slate-500">Avg Score</Text>
+                <div className="text-base font-semibold text-blue-600">
+                  {Number(currentTestData?.stats?.averageScore || 0).toFixed(1)}%
+                </div>
+              </Card>
+            </Col>
+          </Row>
+
+          <Table
+            rowKey="id"
+            columns={testResponseColumns}
+            dataSource={currentTestData?.responses || []}
+            loading={testLoading}
+            pagination={{ pageSize: 10, showSizeChanger: true, size: "small" }}
+            size="small"
+            className="custom-table"
+            scroll={{ x: "max-content" }}
+            locale={{
+              emptyText: (
+                <TrainingEmptyState
+                  type="search"
+                  message={`No ${testTab === "preTest" ? "pre-test" : "post-test"} responses`}
+                  description="No response data available for this training."
+                />
+              ),
+            }}
+          />
+        </div>
+      </Modal>
+
+      <Modal
+        open={feedbackModalOpen}
+        onCancel={handleCloseFeedbackModal}
+        footer={null}
+        width={900}
+        centered
+        closable={false}
+        styles={{
+          body: { padding: 0 },
+          content: { borderRadius: 12 },
+        }}
+      >
+        <div className="bg-white px-5 py-3 border-b border-slate-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-slate-800 mb-1 truncate">
+                  {actionTraining?.title || "Training"}
+                </h3>
+                <div className="flex items-center gap-2.5 text-xs text-slate-600">
+                  <span>Feedback Responses</span>
+                  {feedbackData?.stats && (
+                    <>
+                      <span>•</span>
+                      <span>
+                        <strong className="text-slate-800">{feedbackData.stats.submittedCount || 0}</strong> submitted
+                      </span>
+                      <span>•</span>
+                      <span>
+                        <strong className="text-slate-800">{feedbackData.stats.pendingCount || 0}</strong> pending
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+            <Button
+              type="text"
+              size="small"
+              icon={
+                <span className="text-xl text-slate-400 hover:text-slate-600">
+                  &times;
+                </span>
+              }
+              onClick={handleCloseFeedbackModal}
+              className="hover:bg-slate-100 shrink-0"
+            />
+          </div>
+        </div>
+
+        <div className="p-3">
+          <Row gutter={[12, 12]} className="mb-3">
+            <Col xs={12} sm={6}>
+              <Card className="rounded-lg border-border shadow-none" styles={{ body: { padding: "10px" } }}>
+                <Text className="text-[10px] text-slate-500">Enrolled</Text>
+                <div className="text-base font-semibold text-slate-800">{feedbackData?.stats?.enrolledCount || 0}</div>
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card className="rounded-lg border-border shadow-none" styles={{ body: { padding: "10px" } }}>
+                <Text className="text-[10px] text-slate-500">Submitted</Text>
+                <div className="text-base font-semibold text-blue-600">{feedbackData?.stats?.submittedCount || 0}</div>
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card className="rounded-lg border-border shadow-none" styles={{ body: { padding: "10px" } }}>
+                <Text className="text-[10px] text-slate-500">Pending</Text>
+                <div className="text-base font-semibold text-orange-600">{feedbackData?.stats?.pendingCount || 0}</div>
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card className="rounded-lg border-border shadow-none" styles={{ body: { padding: "10px" } }}>
+                <Text className="text-[10px] text-slate-500">Completion</Text>
+                <div className="text-base font-semibold text-green-600">{feedbackData?.stats?.completionRate || 0}%</div>
+              </Card>
+            </Col>
+          </Row>
+
+          <Table
+            rowKey="id"
+            columns={feedbackResponseColumns}
+            dataSource={feedbackData?.responses || []}
+            loading={feedbackLoading}
+            pagination={{ pageSize: 10, showSizeChanger: true, size: "small" }}
+            size="small"
+            className="custom-table"
+            scroll={{ x: "max-content" }}
+            locale={{
+              emptyText: (
+                <TrainingEmptyState
+                  type="search"
+                  message="No feedback responses"
+                  description="No feedback data available for this training."
+                />
+              ),
+            }}
+          />
+        </div>
       </Modal>
     </div>
   );

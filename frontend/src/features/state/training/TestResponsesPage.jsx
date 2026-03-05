@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Card,
   Table,
@@ -21,71 +21,83 @@ import {
   FileTextOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import trainingCoordinatorService from '../../../services/training-coordinator.service';
+import trainingAdminService from '../../../services/training-admin.service';
 import TrainingEmptyState from '../../../components/training/TrainingEmptyState';
 
 const { Text } = Typography;
+
+const normalizeTrainings = (response) => {
+  const payload = response?.data || response;
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.list)) return payload.list;
+  return [];
+};
 
 const TestResponsesPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const trainingIdFromQuery = searchParams.get('trainingId');
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [summary, setSummary] = useState(null);
-  const [selectedTraining, setSelectedTraining] = useState(null);
+  const [trainings, setTrainings] = useState([]);
+  const [selectedTraining, setSelectedTraining] = useState(trainingIdFromQuery || null);
   const [preTestData, setPreTestData] = useState(null);
   const [postTestData, setPostTestData] = useState(null);
   const [testLoading, setTestLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('preTest');
   const [previewResponse, setPreviewResponse] = useState(null);
 
-  const fetchSummary = useCallback(async (isRefresh = false) => {
+  const fetchTrainings = async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
 
-      const response = await trainingCoordinatorService.getTestSummary();
-      const data = response?.data || response;
-      setSummary(data);
-    } catch (err) {
-      message.error('Failed to load test summary');
+      const response = await trainingAdminService.getTrainings({ limit: 1000 });
+      setTrainings(normalizeTrainings(response));
+    } catch (error) {
+      message.error('Failed to load trainings');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
+  };
+
+  useEffect(() => {
+    fetchTrainings();
   }, []);
 
-  useEffect(() => {
-    fetchSummary();
-  }, [fetchSummary]);
-
-  useEffect(() => {
-    if (!trainingIdFromQuery || !summary?.trainings?.length) return;
-    if (String(selectedTraining) === String(trainingIdFromQuery)) return;
-
-    setSelectedTraining(trainingIdFromQuery);
-    fetchTestResponses(trainingIdFromQuery);
-  }, [trainingIdFromQuery, summary?.trainings, selectedTraining]);
-
   const fetchTestResponses = async (trainingId) => {
+    if (!trainingId) {
+      setPreTestData(null);
+      setPostTestData(null);
+      return;
+    }
+
     try {
       setTestLoading(true);
       const [preTestRes, postTestRes] = await Promise.all([
-        trainingCoordinatorService.getPreTestResponses(trainingId),
-        trainingCoordinatorService.getPostTestResponses(trainingId),
+        trainingAdminService.getPreTestResponses(trainingId),
+        trainingAdminService.getPostTestResponses(trainingId),
       ]);
       setPreTestData(preTestRes?.data || preTestRes);
       setPostTestData(postTestRes?.data || postTestRes);
-    } catch (err) {
+    } catch (error) {
       message.error('Failed to load test responses');
     } finally {
       setTestLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (!trainingIdFromQuery) return;
+    setSelectedTraining(trainingIdFromQuery);
+    fetchTestResponses(trainingIdFromQuery);
+  }, [trainingIdFromQuery]);
+
   const handleTrainingSelect = (trainingId) => {
-    setSelectedTraining(trainingId);
+    setSelectedTraining(trainingId || null);
     if (trainingId) {
       setSearchParams({ trainingId });
       fetchTestResponses(trainingId);
@@ -105,7 +117,7 @@ const TestResponsesPage = () => {
         <div>
           <div className="font-medium text-sm text-slate-800">{record.user?.name}</div>
           <Text type="secondary" className="text-xs">
-            {record.user?.branchName || record.user?.designation}
+            {record.user?.branchName || record.user?.designation || record.user?.email}
           </Text>
         </div>
       ),
@@ -141,13 +153,15 @@ const TestResponsesPage = () => {
       title: 'Submitted',
       dataIndex: 'submittedAt',
       key: 'submittedAt',
-      width: 100,
+      width: 120,
       render: (value) => (
         <Text className="text-xs">
-          {value && new Date(value).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-          })}
+          {value
+            ? new Date(value).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+              })
+            : '-'}
         </Text>
       ),
     },
@@ -163,10 +177,10 @@ const TestResponsesPage = () => {
     },
   ];
 
-  const trainings = summary?.trainings || [];
   const currentTestData = activeTab === 'preTest' ? preTestData : postTestData;
+
   const selectedTrainingTitle = useMemo(
-    () => trainings.find((item) => String(item.trainingId) === String(selectedTraining))?.trainingTitle,
+    () => trainings.find((item) => String(item.id) === String(selectedTraining))?.title,
     [trainings, selectedTraining],
   );
 
@@ -240,7 +254,7 @@ const TestResponsesPage = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-100">
-        <Spin size="large" tip="Loading test summary..." />
+        <Spin size="large" tip="Loading trainings..." />
       </div>
     );
   }
@@ -260,7 +274,7 @@ const TestResponsesPage = () => {
           </Button>
           <Button
             icon={<SyncOutlined spin={refreshing} />}
-            onClick={() => fetchSummary(true)}
+            onClick={() => fetchTrainings(true)}
             loading={refreshing}
             size="middle"
           >
@@ -281,9 +295,9 @@ const TestResponsesPage = () => {
               size="middle"
               allowClear
             >
-              {trainings.map((t) => (
-                <Select.Option key={t.trainingId} value={t.trainingId}>
-                  {t.trainingTitle}
+              {trainings.map((item) => (
+                <Select.Option key={item.id} value={item.id}>
+                  {item.title}
                 </Select.Option>
               ))}
             </Select>
@@ -338,6 +352,7 @@ const TestResponsesPage = () => {
                 </Col>
               </Row>
             )}
+
             <div className="custom-scrollbar overflow-x-auto">
               <Table
                 className="custom-table"

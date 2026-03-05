@@ -23,6 +23,15 @@ const trainingPrincipalService = {
     return response.data;
   },
 
+  async getTrainingAttendance(id, params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams
+      ? `/principal/training/${id}/attendance?${queryParams}`
+      : `/principal/training/${id}/attendance`;
+    const response = await API.get(url);
+    return response.data;
+  },
+
   async getCalendar(params = {}) {
     const queryParams = new URLSearchParams(params).toString();
     const url = queryParams ? `/principal/training/calendar?${queryParams}` : '/principal/training/calendar';

@@ -5,14 +5,11 @@ import {
   Card,
   Input,
   Modal,
-  Progress,
   Space,
   Table,
   Tag,
   Tooltip,
   Typography,
-  Descriptions,
-  Statistic,
   Row,
   Col,
   Segmented,
@@ -31,7 +28,6 @@ import {
   SearchOutlined,
   CalendarOutlined,
   UnorderedListOutlined,
-  BankOutlined,
   CheckCircleOutlined,
   CheckCircleFilled,
   CloseCircleOutlined,
@@ -57,10 +53,53 @@ import {
 
 const { Text } = Typography;
 
+const STAT_VARIANTS = {
+  primary: {
+    iconWrap: "bg-blue-100",
+    iconColor: "text-blue-700",
+  },
+  warning: {
+    iconWrap: "bg-amber-100",
+    iconColor: "text-amber-700",
+  },
+  purple: {
+    iconWrap: "bg-purple-100",
+    iconColor: "text-purple-700",
+  },
+};
+
+const StatCard = ({ icon: Icon, title, lines = [], onClick, variant = "primary" }) => {
+  const styles = STAT_VARIANTS[variant] || STAT_VARIANTS.primary;
+
+  return (
+    <div
+      className={`rounded-xl p-3 h-full border border-slate-200 bg-slate-50 ${onClick ? "cursor-pointer hover:shadow-sm transition-all" : ""}`}
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md ${styles.iconWrap}`}>
+          <Icon className={`text-xs ${styles.iconColor}`} />
+        </span>
+        <Text className="text-[11px] text-slate-600 font-medium leading-tight line-clamp-1">
+          {title}
+        </Text>
+      </div>
+      <div className="space-y-1 mt-1">
+        {lines.map((line) => (
+          <Text key={line.label} className="block text-[12px] leading-snug text-slate-600">
+            {line.label}: <span className="font-semibold text-slate-800">{line.value}</span>
+          </Text>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const TrainingManagementPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useSelector((state) => state.auth);
   const { trainings, feedbackForms, preTestForms, postTestForms, attendance } = useSelector(
     (state) => state.stateTraining,
   );
@@ -79,6 +118,7 @@ const TrainingManagementPage = () => {
   const [preTestData, setPreTestData] = useState(null);
   const [postTestData, setPostTestData] = useState(null);
   const [feedbackData, setFeedbackData] = useState(null);
+  const [dashboardData, setDashboardData] = useState(null);
 
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -142,6 +182,27 @@ const TrainingManagementPage = () => {
       dispatch(fetchStatePostTestForms({ forceRefresh: true }));
     }
   }, [dispatch, pagination.current, pagination.pageSize, searchText, statusFilter, viewMode]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchDashboard = async () => {
+      try {
+        const response = await trainingCoordinatorService.getDashboard();
+        if (mounted) {
+          setDashboardData(response || null);
+        }
+      } catch (error) {
+        // Keep page functional with zero/fallback stats if dashboard call fails
+      }
+    };
+
+    fetchDashboard();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleOpenCreateModal = () => {
     setFormMode("create");
@@ -227,39 +288,11 @@ const TrainingManagementPage = () => {
   };
 
   const handleViewTestResponses = async (training) => {
-    try {
-      setActionTraining(training);
-      setTestTab("preTest");
-      setTestModalOpen(true);
-      setTestLoading(true);
-
-      const [preResponse, postResponse] = await Promise.all([
-        trainingCoordinatorService.getPreTestResponses(training.id),
-        trainingCoordinatorService.getPostTestResponses(training.id),
-      ]);
-
-      setPreTestData(preResponse?.data || preResponse || null);
-      setPostTestData(postResponse?.data || postResponse || null);
-    } catch (error) {
-      message.error("Failed to load test responses");
-    } finally {
-      setTestLoading(false);
-    }
+    navigate(`/app/coordinator/test-responses?trainingId=${training.id}`);
   };
 
   const handleViewFeedbackResponses = async (training) => {
-    try {
-      setActionTraining(training);
-      setFeedbackModalOpen(true);
-      setFeedbackLoading(true);
-
-      const response = await trainingCoordinatorService.getTrainingFeedbackResponses(training.id);
-      setFeedbackData(response?.data || response || null);
-    } catch (error) {
-      message.error("Failed to load feedback responses");
-    } finally {
-      setFeedbackLoading(false);
-    }
+    navigate(`/app/coordinator/feedback-responses?trainingId=${training.id}`);
   };
 
   const handleCloseTestModal = () => {
@@ -335,14 +368,133 @@ const TrainingManagementPage = () => {
     return list;
   }, [trainings.list]);
 
-  const stats = useMemo(() => {
+  const coordinatorBranchId = user?.branchId || user?.branch?.id || null;
+  const coordinatorInstitutionId = user?.institutionId || user?.institution?.id || null;
+
+  const scopedTrainingsForStats = useMemo(() => {
     const list = trainings.list || [];
-    return {
-      total: list.length,
-      published: list.filter((item) => item.isPublished).length,
-      draft: list.filter((item) => !item.isPublished).length,
-    };
-  }, [trainings.list]);
+
+    return list.filter((training) => {
+      const targetBranches = Array.isArray(training.targetBranches)
+        ? training.targetBranches
+        : [];
+      const trainingInstitutionId =
+        training.institutionId || training.institution?.id || null;
+
+      const matchesInstitution =
+        !coordinatorInstitutionId ||
+        !trainingInstitutionId ||
+        String(trainingInstitutionId) === String(coordinatorInstitutionId);
+
+      const matchesBranch =
+        !coordinatorBranchId ||
+        !targetBranches.length ||
+        targetBranches.some(
+          (branch) => String(branch?.id) === String(coordinatorBranchId),
+        );
+
+      return matchesInstitution && matchesBranch;
+    });
+  }, [trainings.list, coordinatorBranchId, coordinatorInstitutionId]);
+
+  const dashboard = dashboardData || {};
+  const trainingsMetrics = dashboard.trainings || {};
+  const applications = dashboard.applications || {};
+  const summary = dashboard.summary || {};
+  const lessonPlans = dashboard.lessonPlans || {};
+  const trainingMetrics = dashboard.trainingMetrics || {};
+  const facultyMetrics = dashboard.facultyMetrics || {};
+  const completionMetrics = dashboard.completionMetrics || {};
+  const hoursDistribution = dashboard.hoursDistribution || {};
+
+  const statCards = useMemo(
+    () => [
+      {
+        title: "Trainings",
+        icon: CalendarOutlined,
+        lines: [
+          {
+            label: "Published",
+            value:
+              summary.totalTrainingsPublished ||
+              trainingsMetrics.published ||
+              scopedTrainingsForStats.filter((item) => item.isPublished).length,
+          },
+          { label: "Conducted", value: trainingMetrics.totalTrainingsConducted || 0 },
+          { label: "Hours Delivered", value: trainingMetrics.totalTrainingHoursDelivered || 0 },
+        ],
+        variant: "primary",
+        onClick: () => navigate("/app/training/manage"),
+      },
+      {
+        title: "Faculty",
+        icon: PlusOutlined,
+        lines: [
+          {
+            label: "Nominations",
+            value: summary.nominations || applications.nominations || applications.total || 0,
+          },
+          { label: "Completed", value: facultyMetrics.facultyWithCompletedTrainings || 0 },
+          { label: "Ongoing", value: facultyMetrics.facultyWithOngoingTrainings || 0 },
+          { label: "Yet to Start", value: facultyMetrics.facultyYetToStart || 0 },
+        ],
+        variant: "warning",
+        onClick: () => navigate("/app/training/manage"),
+      },
+      {
+        title: "Lesson Plan",
+        icon: FileTextOutlined,
+        lines: [
+          // { label: "Faculty Completed Training", value: summary.peopleCompletedTraining || 0 },
+          {
+            label: "Lesson Plans Created",
+            value: summary.lessonPlanCreated || lessonPlans.created || lessonPlans.total || 0,
+          },
+        ],
+        variant: "purple",
+        onClick: () => navigate("/app/training/lesson-plans"),
+      },
+      {
+        title: "Completion Metrics",
+        icon: CheckCircleOutlined,
+        lines: [
+          { label: "Completed ≥ 40 Hours", value: completionMetrics.facultyCompleted40Hours || 0 },
+          {
+            label: "Completed < 40 Hours",
+            value: completionMetrics.facultyCompletedUnder40Hours || 0,
+          },
+        ],
+        variant: "warning",
+        onClick: () => navigate("/app/training/manage"),
+      },
+      {
+        title: "Hours Distribution",
+        icon: CalendarOutlined,
+        lines: [
+          { label: "Avg. Hours per Faculty", value: hoursDistribution.averageHoursPerFaculty || 0 },
+          {
+            label: "Highest Hours (Single Faculty)",
+            value: hoursDistribution.highestHoursSingleFaculty || 0,
+          },
+          { label: "Lowest Hours", value: hoursDistribution.lowestHoursSingleFaculty || 0 },
+        ],
+        variant: "primary",
+        onClick: () => navigate("/app/training/manage"),
+      },
+    ],
+    [
+      summary,
+      trainingsMetrics,
+      trainingMetrics,
+      applications,
+      facultyMetrics,
+      lessonPlans,
+      completionMetrics,
+      hoursDistribution,
+      scopedTrainingsForStats,
+      navigate,
+    ],
+  );
 
   const columns = [
     {
@@ -653,6 +805,14 @@ const TrainingManagementPage = () => {
         >
           Create Training
         </Button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-3">
+        {statCards.map((stat) => (
+          <div key={stat.title}>
+            <StatCard {...stat} />
+          </div>
+        ))}
       </div>
 
 

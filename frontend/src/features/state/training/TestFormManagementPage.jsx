@@ -433,96 +433,125 @@ const TestFormManagementPage = () => {
     setResponseDetailOpen(true);
   };
 
+  const responseTeacherFilters = useMemo(() => {
+    const uniqueTeachers = new Set(
+      (responsesData || [])
+        .map((item) => item?.user?.name)
+        .filter(Boolean),
+    );
+
+    return Array.from(uniqueTeachers).map((value) => ({ text: value, value }));
+  }, [responsesData]);
+
+  const responseTrainingFilters = useMemo(() => {
+    const uniqueTrainings = new Set(
+      (responsesData || [])
+        .map((item) => item?.training?.title)
+        .filter(Boolean),
+    );
+
+    return Array.from(uniqueTrainings).map((value) => ({ text: value, value }));
+  }, [responsesData]);
+
   // Response table columns
-  const responseColumns = [
-    {
-      title: "Faculty",
-      key: "faculty",
-      width: 180,
-      render: (_, record) => (
-        <div>
-          <div className="font-medium text-slate-800 text-xs">
-            {record.user?.name || "Unknown"}
+  const responseColumns = useMemo(
+    () => [
+      {
+        title: "Faculty",
+        key: "faculty",
+        width: 180,
+        filters: responseTeacherFilters,
+        onFilter: (value, record) =>
+          (record?.user?.name || "").toLowerCase().includes(String(value).toLowerCase()),
+        render: (_, record) => (
+          <div>
+            <div className="font-medium text-slate-800 text-xs">
+              {record.user?.name || "Unknown"}
+            </div>
+            <div className="text-[10px] text-slate-500">
+              {record.user?.email || "-"}
+            </div>
           </div>
-          <div className="text-[10px] text-slate-500">
-            {record.user?.email || "-"}
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: "Institution",
-      key: "institution",
-      width: 150,
-      render: (_, record) => (
-        <div className="text-xs text-slate-700 truncate" title={record.user?.Institution?.name}>
-          {record.user?.Institution?.shortName || record.user?.Institution?.name || "N/A"}
-        </div>
-      ),
-    },
-    {
-      title: "Training",
-      key: "training",
-      width: 180,
-      render: (_, record) => (
-        <div className="text-xs text-slate-700 truncate" title={record.training?.title}>
-          {record.training?.title || "N/A"}
-        </div>
-      ),
-    },
-    {
-      title: "Score",
-      dataIndex: "score",
-      key: "score",
-      width: 70,
-      render: (value, record) => {
-        const passingScore = selectedForm?.passingScore;
-        const passed = passingScore ? value >= passingScore : true;
-        return value !== null && value !== undefined ? (
-          <Tag color={passed ? "green" : "red"} className="text-xs">
-            {value}%
-          </Tag>
-        ) : (
-          <Text type="secondary" className="text-xs">-</Text>
-        );
+        ),
       },
-    },
-    {
-      title: "Submitted",
-      dataIndex: "submittedAt",
-      key: "submittedAt",
-      width: 100,
-      render: (value) => (
-        <span className="text-xs text-slate-600">
-          {value ? dayjs(value).format("DD MMM YYYY") : "-"}
-        </span>
-      ),
-    },
-    {
-      title: "Action",
-      key: "action",
-      width: 80,
-      render: (_, record) => (
-        <Button
-          size="small"
-          type="link"
-          icon={<EyeOutlined />}
-          onClick={() => handleViewResponseDetail(record)}
-          className="text-xs"
-        >
-          View
-        </Button>
-      ),
-    },
-  ];
+      {
+        title: "Institution",
+        key: "institution",
+        width: 150,
+        render: (_, record) => (
+          <div className="text-xs text-slate-700 truncate" title={record.user?.Institution?.name}>
+            {record.user?.Institution?.shortName || record.user?.Institution?.name || "N/A"}
+          </div>
+        ),
+      },
+      {
+        title: "Training",
+        key: "training",
+        width: 180,
+        filters: responseTrainingFilters,
+        onFilter: (value, record) =>
+          (record?.training?.title || "").toLowerCase().includes(String(value).toLowerCase()),
+        render: (_, record) => (
+          <div className="text-xs text-slate-700 truncate" title={record.training?.title}>
+            {record.training?.title || "N/A"}
+          </div>
+        ),
+      },
+      {
+        title: "Score",
+        dataIndex: "score",
+        key: "score",
+        width: 70,
+        render: (value) => {
+          const passingScore = selectedForm?.passingScore;
+          const passed = passingScore ? value >= passingScore : true;
+          return value !== null && value !== undefined ? (
+            <Tag color={passed ? "green" : "red"} className="text-xs">
+              {value}%
+            </Tag>
+          ) : (
+            <Text type="secondary" className="text-xs">-</Text>
+          );
+        },
+      },
+      {
+        title: "Submitted",
+        dataIndex: "submittedAt",
+        key: "submittedAt",
+        width: 100,
+        render: (value) => (
+          <span className="text-xs text-slate-600">
+            {value ? dayjs(value).format("DD MMM YYYY") : "-"}
+          </span>
+        ),
+      },
+      {
+        title: "Action",
+        key: "action",
+        width: 80,
+        render: (_, record) => (
+          <Button
+            size="small"
+            type="link"
+            icon={<EyeOutlined />}
+            onClick={() => handleViewResponseDetail(record)}
+            className="text-xs"
+          >
+            View
+          </Button>
+        ),
+      },
+    ],
+    [responseTeacherFilters, responseTrainingFilters, selectedForm?.passingScore],
+  );
 
   return (
     <div className="p-4 training-ui">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
         <div>
-          <Title level={4} className="!mb-0.5 text-lg">
-            Test Forms
+          <Title level={4} className="mb-0.5! text-lg">
+            Manage Test Forms
           </Title>
         </div>
         <Button
@@ -950,7 +979,7 @@ const TestFormManagementPage = () => {
                   size="small"
                   icon={<span className="text-xl text-slate-400 hover:text-slate-600">&times;</span>}
                   onClick={() => setResponsesModalOpen(false)}
-                  className="hover:bg-slate-100 flex-shrink-0"
+                  className="hover:bg-slate-100 shrink-0"
                 />
               </div>
             </div>
@@ -1062,7 +1091,7 @@ const TestFormManagementPage = () => {
                   size="small"
                   icon={<span className="text-xl text-slate-400 hover:text-slate-600">&times;</span>}
                   onClick={() => setResponseDetailOpen(false)}
-                  className="hover:bg-slate-100 flex-shrink-0"
+                  className="hover:bg-slate-100 shrink-0"
                 />
               </div>
             </div>
