@@ -393,14 +393,29 @@ export class TrainingService {
       // Calculate available seats and enrolled faculty for each training
       const trainingsWithCapacity = await Promise.all(
         trainings.map(async (training) => {
-          const approvedApps = await this.prisma.trainingApplication.findMany({
-            where: {
-              trainingId: training.id,
-              status: 'APPROVED',
-              ...(institutionId ? { user: { institutionId } } : {}),
-            },
-            select: { user: { select: { name: true } } },
-          });
+          const [approvedApps, pendingCount, totalApplications] = await Promise.all([
+            this.prisma.trainingApplication.findMany({
+              where: {
+                trainingId: training.id,
+                status: 'APPROVED',
+                ...(institutionId ? { user: { institutionId } } : {}),
+              },
+              select: { user: { select: { name: true } } },
+            }),
+            this.prisma.trainingApplication.count({
+              where: {
+                trainingId: training.id,
+                status: { in: ['PENDING', 'SUBMITTED', 'WAITLISTED'] },
+                ...(institutionId ? { user: { institutionId } } : {}),
+              },
+            }),
+            this.prisma.trainingApplication.count({
+              where: {
+                trainingId: training.id,
+                ...(institutionId ? { user: { institutionId } } : {}),
+              },
+            }),
+          ]);
 
           const approvedCount = institutionId
             ? approvedApps.length
@@ -413,6 +428,11 @@ export class TrainingService {
             availableSeats: training.capacity - approvedCount,
             isFull: approvedCount >= training.capacity,
             enrolledFaculty: approvedApps.map((a) => a.user.name),
+            applicationSummary: {
+              total: totalApplications,
+              approved: approvedCount,
+              pending: pendingCount,
+            },
           };
         }),
       );
@@ -832,7 +852,7 @@ export class TrainingService {
     try {
       const now = new Date();
 
-      const [trainings, applications, attendanceAgg, teachers, totalFeedback, totalLessonPlans, approvedLessonPlans, totalCertificates] =
+      const [trainings, applications, attendanceAgg, teachers, feedbackResponses, totalLessonPlans, approvedLessonPlans, totalCertificates] =
         await Promise.all([
           this.prisma.training.findMany({
             select: {
@@ -866,7 +886,13 @@ export class TrainingService {
               branch: { select: { id: true, name: true, shortName: true, code: true } },
             },
           }),
-          this.prisma.feedbackResponse.count({ where: { trainingId: { not: null } } }),
+          this.prisma.feedbackResponse.findMany({
+            where: { trainingId: { not: null } },
+            select: {
+              userId: true,
+              trainingId: true,
+            },
+          }),
           this.prisma.lessonPlan.count(),
           this.prisma.lessonPlan.count({ where: { status: 'APPROVED' } }),
           this.prisma.trainingCertificate.count(),
@@ -895,21 +921,79 @@ export class TrainingService {
       const totalFaculty = teachers.length;
       const teacherIds = new Set(teachers.map((teacher) => teacher.id));
 
-      const courseWiseMap = new Map<string, { course: string; facultyCount: number }>();
+      const teacherCourseMap = new Map<string, string>();
+      const courseWiseMap = new Map<
+        string,
+        {
+          course: string;
+          facultyCount: number;
+          completedFacultyIds: Set<string>;
+          feedbackFacultyIds: Set<string>;
+        }
+      >();
+
+      const ensureCourseBucket = (courseName: string) => {
+        if (!courseWiseMap.has(courseName)) {
+          courseWiseMap.set(courseName, {
+            course: courseName,
+            facultyCount: 0,
+            completedFacultyIds: new Set<string>(),
+            feedbackFacultyIds: new Set<string>(),
+          });
+        }
+      };
+
+      const resolveCourseForTraining = (userId: string, trainingId?: string | null) => {
+        const profileCourse = teacherCourseMap.get(userId) || 'Unassigned';
+        if (profileCourse !== 'Unassigned') {
+          return profileCourse;
+        }
+
+        if (!trainingId) {
+          return profileCourse;
+        }
+
+        const training = trainingById.get(trainingId);
+        if (!training) {
+          return profileCourse;
+        }
+
+        const targetBranches = Array.isArray(training.targetBranches)
+          ? training.targetBranches
+          : [];
+
+        // If exactly one target branch exists, use it as an inferred course for unassigned faculty.
+        if (targetBranches.length === 1) {
+          return (
+            targetBranches[0]?.shortName ||
+            targetBranches[0]?.name ||
+            targetBranches[0]?.code ||
+            profileCourse
+          );
+        }
+
+        return profileCourse;
+      };
+
       for (const teacher of teachers) {
         const courseName =
           teacher.branch?.shortName ||
           teacher.branch?.name ||
           teacher.branchName ||
           'Unassigned';
+        teacherCourseMap.set(teacher.id, courseName);
         const existing = courseWiseMap.get(courseName);
         if (existing) {
           existing.facultyCount += 1;
         } else {
-          courseWiseMap.set(courseName, { course: courseName, facultyCount: 1 });
+          courseWiseMap.set(courseName, {
+            course: courseName,
+            facultyCount: 1,
+            completedFacultyIds: new Set<string>(),
+            feedbackFacultyIds: new Set<string>(),
+          });
         }
       }
-      const courseWiseFaculty = Array.from(courseWiseMap.values()).sort((a, b) => b.facultyCount - a.facultyCount);
 
       const facultyHoursMap = new Map<string, number>();
       for (const teacher of teachers) {
@@ -956,6 +1040,12 @@ export class TrainingService {
 
         if (training.endDate < now && attendedDays >= safeTrainingDays) {
           facultyWithCompletedTrainings.add(application.userId);
+
+          const courseName = resolveCourseForTraining(application.userId, application.trainingId);
+          if (courseName) {
+            ensureCourseBucket(courseName);
+            courseWiseMap.get(courseName)?.completedFacultyIds.add(application.userId);
+          }
         }
 
         if (training.startDate <= now && training.endDate >= now) {
@@ -972,7 +1062,33 @@ export class TrainingService {
       const facultyCompleted40Hours = facultyHoursValues.filter((hours) => hours >= 40).length;
       const facultyCompletedUnder40Hours = Math.max(totalFaculty - facultyCompleted40Hours, 0);
 
+      for (const response of feedbackResponses) {
+        const courseName = resolveCourseForTraining(response.userId, response.trainingId);
+        if (courseName) {
+          ensureCourseBucket(courseName);
+          courseWiseMap.get(courseName)?.feedbackFacultyIds.add(response.userId);
+        }
+      }
+
+      const courseWiseFaculty = Array.from(courseWiseMap.values())
+        .map((item) => ({
+          course: item.course,
+          facultyCount: item.facultyCount,
+          completedTrainingsCount: item.completedFacultyIds.size,
+          feedbackSubmittedCount: item.feedbackFacultyIds.size,
+        }))
+        .sort((a, b) => b.facultyCount - a.facultyCount);
+
+      const totalFeedback = feedbackResponses.length;
+
       const totalFacultyRegistered = new Set(applications.map((application) => application.userId)).size;
+      const applicantFacultyCount = new Set(
+        applications
+          .filter((application) => teacherIds.has(application.userId))
+          .map((application) => application.userId),
+      ).size;
+      const facultyApplicationCoveragePercentage =
+        totalFaculty > 0 ? (applicantFacultyCount / totalFaculty) * 100 : 0;
 
       const completedPublishedTrainings = trainings.filter((training) => training.isPublished && training.endDate < now);
       const totalTrainingHoursDelivered = completedPublishedTrainings.reduce((sum, training) => {
@@ -1008,6 +1124,7 @@ export class TrainingService {
           approved: approvedApplications,
           approvalRate: totalApplications > 0 ? (approvedApplications / totalApplications) * 100 : 0,
           nominations: totalApplications,
+          facultyApplicationCoveragePercentage: Number(facultyApplicationCoveragePercentage.toFixed(2)),
         },
         attendance: {
           total: totalAttendance,
@@ -1178,6 +1295,7 @@ export class TrainingService {
           approved: 0,
           approvalRate: 0,
           nominations: 0,
+          facultyApplicationCoveragePercentage: 0,
         },
         attendance: {
           total: 0,
@@ -1245,7 +1363,7 @@ export class TrainingService {
           }
         : {};
 
-    const [trainings, applications, attendanceRecords, teachers, totalFeedback, totalLessonPlans, totalCertificates] =
+    const [trainings, applications, attendanceRecords, teachers, feedbackResponses, totalLessonPlans, totalCertificates] =
       await Promise.all([
         this.prisma.training.findMany({
           select: {
@@ -1285,10 +1403,14 @@ export class TrainingService {
             branch: { select: { id: true, name: true, shortName: true, code: true } },
           },
         }),
-        this.prisma.feedbackResponse.count({
+        this.prisma.feedbackResponse.findMany({
           where: {
             trainingId: { not: null },
             user: { is: userFilter },
+          },
+          select: {
+            userId: true,
+            trainingId: true,
           },
         }),
         this.prisma.lessonPlan.count({ where: { user: { is: userFilter } } }),
@@ -1372,23 +1494,79 @@ export class TrainingService {
     const totalFaculty = teachers.length;
     const allFacultyIds = new Set(teachers.map((teacher) => teacher.id));
 
-    const courseWiseMap = new Map<string, { course: string; facultyCount: number }>();
+    const teacherCourseMap = new Map<string, string>();
+    const courseWiseMap = new Map<
+      string,
+      {
+        course: string;
+        facultyCount: number;
+        completedFacultyIds: Set<string>;
+        feedbackFacultyIds: Set<string>;
+      }
+    >();
+
+    const ensureCourseBucket = (courseName: string) => {
+      if (!courseWiseMap.has(courseName)) {
+        courseWiseMap.set(courseName, {
+          course: courseName,
+          facultyCount: 0,
+          completedFacultyIds: new Set<string>(),
+          feedbackFacultyIds: new Set<string>(),
+        });
+      }
+    };
+
+    const resolveCourseForTraining = (userId: string, trainingId?: string | null) => {
+      const profileCourse = teacherCourseMap.get(userId) || 'Unassigned';
+      if (profileCourse !== 'Unassigned') {
+        return profileCourse;
+      }
+
+      if (!trainingId) {
+        return profileCourse;
+      }
+
+      const training = trainingById.get(trainingId);
+      if (!training) {
+        return profileCourse;
+      }
+
+      const targetBranches = Array.isArray(training.targetBranches)
+        ? training.targetBranches
+        : [];
+
+      // If exactly one target branch exists, use it as an inferred course for unassigned faculty.
+      if (targetBranches.length === 1) {
+        return (
+          targetBranches[0]?.shortName ||
+          targetBranches[0]?.name ||
+          targetBranches[0]?.code ||
+          profileCourse
+        );
+      }
+
+      return profileCourse;
+    };
+
     for (const teacher of teachers) {
       const courseName =
         teacher.branch?.shortName ||
         teacher.branch?.name ||
         teacher.branchName ||
         'Unassigned';
+      teacherCourseMap.set(teacher.id, courseName);
       const existing = courseWiseMap.get(courseName);
       if (existing) {
         existing.facultyCount += 1;
       } else {
-        courseWiseMap.set(courseName, { course: courseName, facultyCount: 1 });
+        courseWiseMap.set(courseName, {
+          course: courseName,
+          facultyCount: 1,
+          completedFacultyIds: new Set<string>(),
+          feedbackFacultyIds: new Set<string>(),
+        });
       }
     }
-    const courseWiseFaculty = Array.from(courseWiseMap.values()).sort(
-      (a, b) => b.facultyCount - a.facultyCount,
-    );
 
     const facultyHoursMap = new Map<string, number>();
     for (const teacher of teachers) {
@@ -1440,6 +1618,12 @@ export class TrainingService {
 
       if (training.endDate < now && attendedDays >= safeTrainingDays) {
         facultyWithCompletedTrainings.add(application.userId);
+
+        const courseName = resolveCourseForTraining(application.userId, application.trainingId);
+        if (courseName) {
+          ensureCourseBucket(courseName);
+          courseWiseMap.get(courseName)?.completedFacultyIds.add(application.userId);
+        }
       }
 
       if (training.startDate <= now && training.endDate >= now) {
@@ -1456,7 +1640,37 @@ export class TrainingService {
     const facultyCompleted40Hours = facultyHoursValues.filter((hours) => hours >= 40).length;
     const facultyCompletedUnder40Hours = Math.max(totalFaculty - facultyCompleted40Hours, 0);
 
+    const scopedFeedbackResponses = feedbackResponses.filter((response) =>
+      scopedTrainingIds.has(response.trainingId),
+    );
+
+    for (const response of scopedFeedbackResponses) {
+      const courseName = resolveCourseForTraining(response.userId, response.trainingId);
+      if (courseName) {
+        ensureCourseBucket(courseName);
+        courseWiseMap.get(courseName)?.feedbackFacultyIds.add(response.userId);
+      }
+    }
+
+    const courseWiseFaculty = Array.from(courseWiseMap.values())
+      .map((item) => ({
+        course: item.course,
+        facultyCount: item.facultyCount,
+        completedTrainingsCount: item.completedFacultyIds.size,
+        feedbackSubmittedCount: item.feedbackFacultyIds.size,
+      }))
+      .sort((a, b) => b.facultyCount - a.facultyCount);
+
+    const totalFeedback = scopedFeedbackResponses.length;
+
     const totalFacultyRegistered = new Set(approvedApplications.map((application) => application.userId)).size;
+    const applicantFacultyCount = new Set(
+      scopedApplications
+        .filter((application) => allFacultyIds.has(application.userId))
+        .map((application) => application.userId),
+    ).size;
+    const facultyApplicationCoveragePercentage =
+      totalFaculty > 0 ? (applicantFacultyCount / totalFaculty) * 100 : 0;
     const totalTrainingHoursDelivered = scopedTrainings
       .filter((training) => training.isPublished && training.endDate < now)
       .reduce((sum, training) => {
@@ -1502,6 +1716,7 @@ export class TrainingService {
         approved: approvedApplicationsCount,
         approvalRate: totalApplications > 0 ? (approvedApplicationsCount / totalApplications) * 100 : 0,
         nominations: totalApplications,
+        facultyApplicationCoveragePercentage: Number(facultyApplicationCoveragePercentage.toFixed(2)),
       },
       attendance: {
         total: totalAttendance,

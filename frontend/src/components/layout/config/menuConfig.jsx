@@ -329,7 +329,7 @@ export const menuConfig = {
       },
       {
         key: "principal-training-recommend-approvals",
-        label: "Recommend Approvals",
+        label: "Recommendations",
         icon: <BulbOutlined />,
         path: "/app/training/recommend-approvals",
       },

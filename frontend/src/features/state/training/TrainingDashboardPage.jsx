@@ -20,6 +20,11 @@ import {
 
 const { Title, Text } = Typography;
 
+const asNumber = (value) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+};
+
 const STAT_VARIANTS = {
   primary: {
     iconWrap: "bg-blue-100",
@@ -84,6 +89,37 @@ const TrainingDashboardPage = () => {
   const completionMetrics = dashboard.completionMetrics || {};
   const hoursDistribution = dashboard.hoursDistribution || {};
   const courseWiseFaculty = dashboard.courseWiseFaculty || [];
+  const normalizedCourseWiseFaculty = useMemo(
+    () =>
+      (Array.isArray(courseWiseFaculty) ? courseWiseFaculty : []).map((item, index) => ({
+        ...item,
+        // Support current and legacy key names from different dashboard responses.
+        course: item?.course || item?.courseName || `Course ${index + 1}`,
+        facultyCount: asNumber(item?.facultyCount ?? item?.faculty_count),
+        completedTrainingsCount: asNumber(
+          item?.completedTrainingsCount ??
+            item?.completedTrainingCount ??
+            item?.completedTrainings ??
+            item?.completed_count,
+        ),
+        feedbackSubmittedCount: asNumber(
+          item?.feedbackSubmittedCount ??
+            item?.feedbackSubmissionCount ??
+            item?.feedbackSubmitted ??
+            item?.feedback_count,
+        ),
+      })),
+    [courseWiseFaculty],
+  );
+
+  const applicationsCoveragePercentage =
+    typeof applications.facultyApplicationCoveragePercentage === "number"
+      ? applications.facultyApplicationCoveragePercentage
+      : (summary.totalFaculty || 0) > 0
+        ? ((summary.nominations || applications.nominations || applications.total || 0) /
+            (summary.totalFaculty || 1)) *
+          100
+        : 0;
 
   const stats = useMemo(
     () => [
@@ -102,10 +138,13 @@ const TrainingDashboardPage = () => {
         title: "Faculty",
         icon: PlusOutlined,
         lines: [
-          { label: "Nominations", value: summary.nominations || applications.nominations || applications.total || 0 },
+          {
+            label: "Applications",
+            value: `${summary.nominations || applications.nominations || applications.total || 0} (${applicationsCoveragePercentage.toFixed(1)}%)`,
+          },
           { label: "Completed", value: facultyMetrics.facultyWithCompletedTrainings || 0 },
           { label: "Ongoing", value: facultyMetrics.facultyWithOngoingTrainings || 0 },
-          { label: "Yet to Start", value: facultyMetrics.facultyYetToStart || 0 },
+          // { label: "Yet to Start", value: facultyMetrics.facultyYetToStart || 0 },
         ],
         variant: "warning",
         onClick: () => navigate("/app/training/manage"),
@@ -121,22 +160,12 @@ const TrainingDashboardPage = () => {
         onClick: () => navigate("/app/training/lesson-plans"),
       },
       {
-        title: "Completion Metrics",
+        title: "Completion & Hours",
         icon: SettingOutlined,
         lines: [
           { label: "Completed ≥ 40 Hours", value: completionMetrics.facultyCompleted40Hours || 0 },
           { label: "Completed < 40 Hours", value: completionMetrics.facultyCompletedUnder40Hours || 0 },
-        ],
-        variant: "warning",
-        onClick: () => navigate("/app/training/manage"),
-      },
-      {
-        title: "Hours Distribution",
-        icon: CalendarOutlined,
-        lines: [
           { label: "Avg. Hours per Faculty", value: hoursDistribution.averageHoursPerFaculty || 0 },
-          { label: "Highest Hours (Single Faculty)", value: hoursDistribution.highestHoursSingleFaculty || 0 },
-          { label: "Lowest Hours", value: hoursDistribution.lowestHoursSingleFaculty || 0 },
         ],
         variant: "primary",
         onClick: () => navigate("/app/training/manage"),
@@ -151,6 +180,7 @@ const TrainingDashboardPage = () => {
       trainingMetrics,
       facultyMetrics,
       hoursDistribution,
+      applicationsCoveragePercentage,
       navigate,
     ],
   );
@@ -168,6 +198,20 @@ const TrainingDashboardPage = () => {
       key: "facultyCount",
       width: 140,
       render: (value) => <Text className="text-xs font-semibold">{value}</Text>,
+    },
+    {
+      title: "Completed Trainings",
+      dataIndex: "completedTrainingsCount",
+      key: "completedTrainingsCount",
+      width: 170,
+      render: (value) => <Text className="text-xs font-semibold">{value ?? 0}</Text>,
+    },
+    {
+      title: "Feedback Submitted",
+      dataIndex: "feedbackSubmittedCount",
+      key: "feedbackSubmittedCount",
+      width: 160,
+      render: (value) => <Text className="text-xs font-semibold">{value ?? 0}</Text>,
     },
   ];
 
@@ -202,7 +246,7 @@ const TrainingDashboardPage = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
         {stats.map((stat) => (
           <div key={stat.title}>
             <StatCard {...stat} />
@@ -222,7 +266,7 @@ const TrainingDashboardPage = () => {
         <Table
           rowKey="course"
           columns={courseColumns}
-          dataSource={courseWiseFaculty}
+          dataSource={normalizedCourseWiseFaculty}
           size="small"
           pagination={false}
         />

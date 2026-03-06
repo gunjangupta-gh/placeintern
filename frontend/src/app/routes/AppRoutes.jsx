@@ -552,6 +552,39 @@ const AppRoutes = () => {
           }
         />
 
+        <Route
+          path="coordinator/training/:id"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <StateTrainingDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="coordinator/training/:id/applications"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <StateApplicationManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="coordinator/training/:id/attendance"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <StateAttendanceManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="coordinator/training/:id/certificates"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <StateCertificateManagementPage />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Coordinator Routes */}
         <Route
           path="coordinator/applications"
@@ -1112,9 +1145,9 @@ function TrainingDetailsRouter() {
   const role = user?.role;
 
   if (role === ROLES.STATE) return <StateTrainingDetailsPage />;
-  if (role === ROLES.COORDINATOR) return <StateTrainingDetailsPage />;
   if (role === ROLES.PRINCIPAL) return <PrincipalTrainingDetailsPage />;
   if (ROLES.FACULTY.includes(role)) return <FacultyTrainingDetailsPage />;
+  if (role === ROLES.COORDINATOR) return <StateTrainingDetailsPage />;
 
   return <Navigate to="/unauthorized" replace />;
 }

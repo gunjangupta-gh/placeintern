@@ -407,6 +407,15 @@ const TrainingManagementPage = () => {
   const completionMetrics = dashboard.completionMetrics || {};
   const hoursDistribution = dashboard.hoursDistribution || {};
 
+  const applicationsCoveragePercentage =
+    typeof applications.facultyApplicationCoveragePercentage === "number"
+      ? applications.facultyApplicationCoveragePercentage
+      : (summary.totalFaculty || 0) > 0
+        ? ((summary.nominations || applications.nominations || applications.total || 0) /
+            (summary.totalFaculty || 1)) *
+          100
+        : 0;
+
   const statCards = useMemo(
     () => [
       {
@@ -431,12 +440,12 @@ const TrainingManagementPage = () => {
         icon: PlusOutlined,
         lines: [
           {
-            label: "Nominations",
-            value: summary.nominations || applications.nominations || applications.total || 0,
+            label: "Applications",
+            value: `${summary.nominations || applications.nominations || applications.total || 0} (${applicationsCoveragePercentage.toFixed(1)}%)`,
           },
           { label: "Completed", value: facultyMetrics.facultyWithCompletedTrainings || 0 },
           { label: "Ongoing", value: facultyMetrics.facultyWithOngoingTrainings || 0 },
-          { label: "Yet to Start", value: facultyMetrics.facultyYetToStart || 0 },
+          // { label: "Yet to Start", value: facultyMetrics.facultyYetToStart || 0 },
         ],
         variant: "warning",
         onClick: () => navigate("/app/training/manage"),
@@ -455,7 +464,7 @@ const TrainingManagementPage = () => {
         onClick: () => navigate("/app/training/lesson-plans"),
       },
       {
-        title: "Completion Metrics",
+        title: "Completion & Hours",
         icon: CheckCircleOutlined,
         lines: [
           { label: "Completed ≥ 40 Hours", value: completionMetrics.facultyCompleted40Hours || 0 },
@@ -463,20 +472,7 @@ const TrainingManagementPage = () => {
             label: "Completed < 40 Hours",
             value: completionMetrics.facultyCompletedUnder40Hours || 0,
           },
-        ],
-        variant: "warning",
-        onClick: () => navigate("/app/training/manage"),
-      },
-      {
-        title: "Hours Distribution",
-        icon: CalendarOutlined,
-        lines: [
           { label: "Avg. Hours per Faculty", value: hoursDistribution.averageHoursPerFaculty || 0 },
-          {
-            label: "Highest Hours (Single Faculty)",
-            value: hoursDistribution.highestHoursSingleFaculty || 0,
-          },
-          { label: "Lowest Hours", value: hoursDistribution.lowestHoursSingleFaculty || 0 },
         ],
         variant: "primary",
         onClick: () => navigate("/app/training/manage"),
@@ -491,10 +487,41 @@ const TrainingManagementPage = () => {
       lessonPlans,
       completionMetrics,
       hoursDistribution,
+      applicationsCoveragePercentage,
       scopedTrainingsForStats,
       navigate,
     ],
   );
+
+  // Green when all applications are approved, red when pending exists, default otherwise.
+  const getViewIconColor = (training) => {
+    const summary = training?.applicationSummary || {};
+    const hasSummary =
+      summary &&
+      Object.prototype.hasOwnProperty.call(summary, "total") &&
+      Object.prototype.hasOwnProperty.call(summary, "approved") &&
+      Object.prototype.hasOwnProperty.call(summary, "pending");
+
+    const total = hasSummary
+      ? Number(summary.total ?? 0)
+      : Number(training?._count?.applications ?? 0);
+    const approved = hasSummary
+      ? Number(summary.approved ?? 0)
+      : Number(Array.isArray(training?.enrolledFaculty) ? training.enrolledFaculty.length : 0);
+    const pending = hasSummary
+      ? Number(summary.pending ?? 0)
+      : Math.max(total - approved, 0);
+
+    if (pending > 0) {
+      return "#dc2626";
+    }
+
+    if (total > 0 && approved === total) {
+      return "#16a34a";
+    }
+
+    return "#475569";
+  };
 
   const columns = [
     {
@@ -541,60 +568,99 @@ const TrainingManagementPage = () => {
       ),
     },
     {
-      title: "Actions",
-      key: "actions",
-      width: 180,
+      title: "View",
+      key: "viewAction",
+      width: 72,
+      align: "center",
       render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="View Details">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => navigate(`/app/training/${record.id}`)}
-            />
-          </Tooltip>
-          <Tooltip title="View Attendance">
-            <Button
-              type="text"
-              size="small"
-              icon={<CheckCircleOutlined />}
-              onClick={() => handleViewAttendance(record)}
-            />
-          </Tooltip>
-          <Tooltip title="View Test Responses">
-            <Button
-              type="text"
-              size="small"
-              icon={<SafetyCertificateOutlined />}
-              onClick={() => handleViewTestResponses(record)}
-            />
-          </Tooltip>
-          <Tooltip title="View Feedback Responses">
-            <Button
-              type="text"
-              size="small"
-              icon={<FileTextOutlined />}
-              onClick={() => handleViewFeedbackResponses(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Edit">
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => handleOpenEditModal(record)}
-            />
-          </Tooltip>
-          <Tooltip title={record.isPublished ? "Unpublish (Draft)" : "Publish (Active)"}>
-            <Button
-              type="text"
-              size="small"
-              icon={record.isPublished ? <CloseCircleOutlined /> : <CheckCircleFilled />}
-              onClick={() => handleTogglePublish(record)}
-            />
-          </Tooltip>
-        </Space>
+        <Tooltip title="View Details">
+          <Button
+            type="text"
+            size="small"
+            icon={<EyeOutlined style={{ color: getViewIconColor(record) }} />}
+            onClick={() => navigate(`/app/coordinator/training/${record.id}`)}
+          />
+        </Tooltip>
+      ),
+    },
+    {
+      title: "Attendance",
+      key: "attendanceAction",
+      width: 96,
+      align: "center",
+      render: (_, record) => (
+        <Tooltip title="View Attendance">
+          <Button
+            type="text"
+            size="small"
+            icon={<CheckCircleOutlined />}
+            onClick={() => handleViewAttendance(record)}
+          />
+        </Tooltip>
+      ),
+    },
+    {
+      title: "Test",
+      key: "testAction",
+      width: 72,
+      align: "center",
+      render: (_, record) => (
+        <Tooltip title="View Test Responses">
+          <Button
+            type="text"
+            size="small"
+            icon={<SafetyCertificateOutlined />}
+            onClick={() => handleViewTestResponses(record)}
+          />
+        </Tooltip>
+      ),
+    },
+    {
+      title: "Feedback",
+      key: "feedbackAction",
+      width: 90,
+      align: "center",
+      render: (_, record) => (
+        <Tooltip title="View Feedback Responses">
+          <Button
+            type="text"
+            size="small"
+            icon={<FileTextOutlined />}
+            onClick={() => handleViewFeedbackResponses(record)}
+          />
+        </Tooltip>
+      ),
+    },
+    {
+      title: "Edit",
+      key: "editAction",
+      width: 64,
+      align: "center",
+      render: (_, record) => (
+        <Tooltip title="Edit">
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleOpenEditModal(record)}
+          />
+        </Tooltip>
+      ),
+    },
+    {
+      title: "Publish",
+      key: "publishAction",
+      width: 78,
+      align: "center",
+      render: (_, record) => (
+        <Tooltip title={record.isPublished ? "Unpublish (Draft)" : "Publish (Active)"}>
+          <Button
+            type="text"
+            size="small"
+            icon={record.isPublished ? <CloseCircleOutlined /> : <CheckCircleFilled />}
+            onClick={() => handleTogglePublish(record)}
+          />
+        </Tooltip>
       ),
     },
   ];
@@ -807,7 +873,7 @@ const TrainingManagementPage = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
         {statCards.map((stat) => (
           <div key={stat.title}>
             <StatCard {...stat} />
@@ -1085,7 +1151,7 @@ const TrainingManagementPage = () => {
                       key={training.id}
                       className="rounded-lg border-slate-200 hover:border-blue-400 cursor-pointer transition-all"
                       styles={{ body: { padding: "10px" } }}
-                      onClick={() => navigate(`/app/training/${training.id}`)}
+                      onClick={() => navigate(`/app/coordinator/training/${training.id}`)}
                     >
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <Text className="font-medium text-xs text-slate-800 flex-1 line-clamp-1">

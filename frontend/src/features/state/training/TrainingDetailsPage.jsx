@@ -15,7 +15,7 @@ import {
   Typography,
   message,
 } from "antd";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
 import {
   TeamOutlined,
@@ -138,6 +138,7 @@ const StatCard = ({ icon: Icon, title, value, tone, trend, onClick }) => {
 const StateTrainingDetailsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const { currentTraining, attendance } = useSelector((state) => state.stateTraining);
   const [attendanceModalOpen, setAttendanceModalOpen] = useState(false);
@@ -153,6 +154,8 @@ const StateTrainingDetailsPage = () => {
 
   const training = currentTraining.data;
   const stats = currentTraining.stats;
+  const isCoordinatorRoute = location.pathname.startsWith("/app/coordinator/training/");
+  const detailBasePath = isCoordinatorRoute ? "/app/coordinator/training" : "/app/training";
 
   const capacityInfo = useMemo(() => {
     if (training?.capacity && typeof training.capacity === "object") {
@@ -210,14 +213,14 @@ const StateTrainingDetailsPage = () => {
       value: stats?.applications?.total ?? 0,
       icon: FileTextOutlined,
       tone: "primary",
-      onClick: () => navigate(`/app/training/${id}/applications`),
+      onClick: () => navigate(`${detailBasePath}/${id}/applications`),
     },
     {
       title: "Approved",
       value: stats?.applications?.approved ?? 0,
       icon: CheckCircleOutlined,
       tone: "success",
-      onClick: () => navigate(`/app/training/${id}/applications`),
+      onClick: () => navigate(`${detailBasePath}/${id}/applications`),
     },
     {
       title: "Attendance",

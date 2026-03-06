@@ -322,6 +322,36 @@ const TrainingManagementPage = () => {
     };
   }, [trainings.list]);
 
+  // Green when all applications are approved, red when pending exists, default otherwise.
+  const getViewIconColor = (training) => {
+    const summary = training?.applicationSummary || {};
+    const hasSummary =
+      summary &&
+      Object.prototype.hasOwnProperty.call(summary, "total") &&
+      Object.prototype.hasOwnProperty.call(summary, "approved") &&
+      Object.prototype.hasOwnProperty.call(summary, "pending");
+
+    const total = hasSummary
+      ? Number(summary.total ?? 0)
+      : Number(training?._count?.applications ?? 0);
+    const approved = hasSummary
+      ? Number(summary.approved ?? 0)
+      : Number(Array.isArray(training?.enrolledFaculty) ? training.enrolledFaculty.length : 0);
+    const pending = hasSummary
+      ? Number(summary.pending ?? 0)
+      : Math.max(total - approved, 0);
+
+    if (pending > 0) {
+      return "#dc2626";
+    }
+
+    if (total > 0 && approved === total) {
+      return "#16a34a";
+    }
+
+    return "#475569";
+  };
+
   const columns = [
     {
       title: "Training",
@@ -367,60 +397,99 @@ const TrainingManagementPage = () => {
       ),
     },
     {
-      title: "Actions",
-      key: "actions",
-      width: 180,
+      title: "View",
+      key: "viewAction",
+      width: 72,
+      align: "center",
       render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="View Details">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => navigate(`/app/training/${record.id}`)}
-            />
-          </Tooltip>
-          <Tooltip title="View Attendance">
-            <Button
-              type="text"
-              size="small"
-              icon={<CheckCircleOutlined />}
-              onClick={() => handleViewAttendance(record)}
-            />
-          </Tooltip>
-          <Tooltip title="View Test Responses">
-            <Button
-              type="text"
-              size="small"
-              icon={<SafetyCertificateOutlined />}
-              onClick={() => handleViewTestResponses(record)}
-            />
-          </Tooltip>
-          <Tooltip title="View Feedback Responses">
-            <Button
-              type="text"
-              size="small"
-              icon={<FileTextOutlined />}
-              onClick={() => handleViewFeedbackResponses(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Edit">
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => handleOpenEditModal(record)}
-            />
-          </Tooltip>
-          <Tooltip title={record.isPublished ? "Unpublish (Draft)" : "Publish (Active)"}>
-            <Button
-              type="text"
-              size="small"
-              icon={record.isPublished ? <CloseCircleOutlined /> : <CheckCircleFilled />}
-              onClick={() => handleTogglePublish(record)}
-            />
-          </Tooltip>
-        </Space>
+        <Tooltip title="View Details">
+          <Button
+            type="text"
+            size="small"
+            icon={<EyeOutlined style={{ color: getViewIconColor(record) }} />}
+            onClick={() => navigate(`/app/training/${record.id}`)}
+          />
+        </Tooltip>
+      ),
+    },
+    {
+      title: "Attendance",
+      key: "attendanceAction",
+      width: 96,
+      align: "center",
+      render: (_, record) => (
+        <Tooltip title="View Attendance">
+          <Button
+            type="text"
+            size="small"
+            icon={<CheckCircleOutlined />}
+            onClick={() => handleViewAttendance(record)}
+          />
+        </Tooltip>
+      ),
+    },
+    {
+      title: "Test",
+      key: "testAction",
+      width: 72,
+      align: "center",
+      render: (_, record) => (
+        <Tooltip title="View Test Responses">
+          <Button
+            type="text"
+            size="small"
+            icon={<SafetyCertificateOutlined />}
+            onClick={() => handleViewTestResponses(record)}
+          />
+        </Tooltip>
+      ),
+    },
+    {
+      title: "Feedback",
+      key: "feedbackAction",
+      width: 90,
+      align: "center",
+      render: (_, record) => (
+        <Tooltip title="View Feedback Responses">
+          <Button
+            type="text"
+            size="small"
+            icon={<FileTextOutlined />}
+            onClick={() => handleViewFeedbackResponses(record)}
+          />
+        </Tooltip>
+      ),
+    },
+    {
+      title: "Edit",
+      key: "editAction",
+      width: 64,
+      align: "center",
+      render: (_, record) => (
+        <Tooltip title="Edit">
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleOpenEditModal(record)}
+          />
+        </Tooltip>
+      ),
+    },
+    {
+      title: "Publish",
+      key: "publishAction",
+      width: 78,
+      align: "center",
+      render: (_, record) => (
+        <Tooltip title={record.isPublished ? "Unpublish (Draft)" : "Publish (Active)"}>
+          <Button
+            type="text"
+            size="small"
+            icon={record.isPublished ? <CloseCircleOutlined /> : <CheckCircleFilled />}
+            onClick={() => handleTogglePublish(record)}
+          />
+        </Tooltip>
       ),
     },
   ];

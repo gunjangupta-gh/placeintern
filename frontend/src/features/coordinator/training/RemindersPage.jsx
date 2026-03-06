@@ -26,6 +26,7 @@ import {
   CheckCircleOutlined,
   BookOutlined,
   NotificationOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import trainingCoordinatorService from '../../../services/training-coordinator.service';
@@ -272,7 +273,11 @@ const RemindersPage = () => {
       ),
     },
     {
-      title: 'Enroll',
+      title: (
+        <Tooltip title="Pending enrollment count. One count = one training where the faculty has not applied yet.">
+          <span>Enroll</span>
+        </Tooltip>
+      ),
       key: 'enrollments',
       width: 70,
       render: (_, record) => (
@@ -286,7 +291,11 @@ const RemindersPage = () => {
       ),
     },
     {
-      title: 'Pre',
+      title: (
+        <Tooltip title="Pending pre-test count. One count = one enrolled training with pre-test not submitted.">
+          <span>Pre</span>
+        </Tooltip>
+      ),
       key: 'preTests',
       width: 60,
       render: (_, record) => (
@@ -300,7 +309,11 @@ const RemindersPage = () => {
       ),
     },
     {
-      title: 'Post',
+      title: (
+        <Tooltip title="Pending post-test count. One count = one completed training with post-test not submitted.">
+          <span>Post</span>
+        </Tooltip>
+      ),
       key: 'postTests',
       width: 60,
       render: (_, record) => (
@@ -314,7 +327,11 @@ const RemindersPage = () => {
       ),
     },
     {
-      title: 'Plans',
+      title: (
+        <Tooltip title="Pending lesson plan count. One count = one completed training with no lesson plan submission.">
+          <span>Plans</span>
+        </Tooltip>
+      ),
       key: 'lessonPlans',
       width: 60,
       render: (_, record) => (
@@ -328,7 +345,11 @@ const RemindersPage = () => {
       ),
     },
     {
-      title: 'Feedback',
+      title: (
+        <Tooltip title="Pending feedback count. One count = one completed training with feedback not submitted.">
+          <span>Feedback</span>
+        </Tooltip>
+      ),
       key: 'feedback',
       width: 80,
       render: (_, record) => (
@@ -446,6 +467,20 @@ const RemindersPage = () => {
           className="mb-4! rounded-lg"
         />
       )}
+
+      <Alert
+        className="mb-4! rounded-lg"
+        showIcon
+        type="warning"
+        icon={<InfoCircleOutlined />}
+        message="How reminder counts work"
+        description={
+          <div className="text-xs">
+            Each number is a pending action item, not the number of reminders sent.
+            1 means one training pending for that faculty in that category (Enroll, Pre-Test, Post-Test, Lesson Plan, Feedback).
+          </div>
+        }
+      />
 
       {/* By Training Tab View */}
       <Card className="rounded-xl border-border shadow-none mb-4!" styles={{ body: { padding: '12px' } }}>
