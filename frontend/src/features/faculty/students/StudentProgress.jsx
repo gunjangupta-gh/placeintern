@@ -387,6 +387,11 @@ const StudentProgressPage = () => {
       return;
     }
 
+    if (reportFile.size > 1 * 1024 * 1024) {
+      toast.error("File must be smaller than 1MB!");
+      return;
+    }
+
     if (!selected?.student?.id) {
       toast.error("No student selected");
       return;
@@ -514,9 +519,9 @@ const StudentProgressPage = () => {
         toast.error("You can only upload PDF files!");
         return Upload.LIST_IGNORE;
       }
-      const isLt5M = file.size / 1024 / 1024 < 5;
-      if (!isLt5M) {
-        toast.error("File must be smaller than 5MB!");
+      const isLt1M = file.size / 1024 / 1024 < 1;
+      if (!isLt1M) {
+        toast.error("File must be smaller than 1MB!");
         return Upload.LIST_IGNORE;
       }
       setReportFile(file);
@@ -1109,7 +1114,7 @@ const StudentProgressPage = () => {
 
           <div>
             <Text strong className="block mb-2">
-              Report File (PDF only, max 5MB)
+              Report File (PDF only, max 1MB)
             </Text>
             <Upload.Dragger {...reportFileProps} maxCount={1}>
               <p className="ant-upload-drag-icon">
@@ -1119,7 +1124,7 @@ const StudentProgressPage = () => {
                 Click or drag PDF file to this area to upload
               </p>
               <p className="ant-upload-hint">
-                Only PDF files are allowed. Maximum file size is 5MB.
+                Only PDF files are allowed. Maximum file size is 1MB.
               </p>
             </Upload.Dragger>
           </div>

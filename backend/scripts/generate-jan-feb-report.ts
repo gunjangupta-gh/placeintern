@@ -6,11 +6,12 @@ import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client';
 
-const REPORT_MONTHS = [1, 2] as const;
+const REPORT_MONTHS = [1, 2, 3] as const;
 
 const MONTH_NAME: Record<number, string> = {
   1: 'January',
   2: 'February',
+  3: 'March',
 };
 
 function parseYearFromArgs(defaultYear: number): number {
@@ -46,10 +47,10 @@ async function main() {
   const prisma = new PrismaClient({ adapter } as any);
 
   try {
-    console.log(`Generating Jan-Feb report for year ${reportYear}...`);
+    console.log(`Generating Jan-Feb-Mar report for year ${reportYear}...`);
 
     const janStart = new Date(Date.UTC(reportYear, 0, 1, 0, 0, 0, 0));
-    const marStart = new Date(Date.UTC(reportYear, 2, 1, 0, 0, 0, 0));
+    const aprStart = new Date(Date.UTC(reportYear, 3, 1, 0, 0, 0, 0));
 
     const monthlyReports = await prisma.monthlyReport.findMany({
       where: {
@@ -122,7 +123,7 @@ async function main() {
           {
             visitDate: {
               gte: janStart,
-              lt: marStart,
+              lt: aprStart,
             },
           },
           {
@@ -204,22 +205,22 @@ async function main() {
       { header: 'Value', key: 'value', width: 22 },
     ];
 
-    const studentsWithBothMonths = Array.from(studentMonthSet.values()).filter(
-      (months) => months.has(1) && months.has(2),
+    const studentsWithAllMonths = Array.from(studentMonthSet.values()).filter(
+      (months) => REPORT_MONTHS.every((month) => months.has(month)),
     ).length;
 
-    const facultyWithBothMonths = Array.from(facultyMonthSet.values()).filter(
-      (months) => months.has(1) && months.has(2),
+    const facultyWithAllMonths = Array.from(facultyMonthSet.values()).filter(
+      (months) => REPORT_MONTHS.every((month) => months.has(month)),
     ).length;
 
     summarySheet.addRows([
       { metric: 'Report Year', value: reportYear },
-      { metric: 'Monthly Report Entries (Jan+Feb)', value: monthlyReports.length },
+      { metric: 'Monthly Report Entries (Jan+Feb+Mar)', value: monthlyReports.length },
       { metric: 'Distinct Students with Monthly Report Entries', value: studentMonthSet.size },
-      { metric: 'Students with both Jan and Feb Monthly Reports', value: studentsWithBothMonths },
-      { metric: 'Faculty Visit Log Entries (Jan+Feb, Completed)', value: facultyVisitLogs.length },
+      { metric: 'Students with Jan, Feb, and Mar Monthly Reports', value: studentsWithAllMonths },
+      { metric: 'Faculty Visit Log Entries (Jan+Feb+Mar, Completed)', value: facultyVisitLogs.length },
       { metric: 'Distinct Faculty with Visit Log Entries', value: facultyMonthSet.size },
-      { metric: 'Faculty with both Jan and Feb Visit Logs', value: facultyWithBothMonths },
+      { metric: 'Faculty with Jan, Feb, and Mar Visit Logs', value: facultyWithAllMonths },
       { metric: 'Generated At', value: new Date().toISOString() },
     ]);
 
@@ -234,7 +235,7 @@ async function main() {
       { header: 'Status', key: 'status', width: 18 },
       { header: 'Submitted At', key: 'submittedAt', width: 14 },
       { header: 'Report File URL', key: 'reportFileUrl', width: 45 },
-      { header: 'Has Jan+Feb', key: 'hasBothMonths', width: 14 },
+      { header: 'Has Jan+Feb+Mar', key: 'hasAllMonths', width: 16 },
       { header: 'Record Created At', key: 'createdAt', width: 14 },
     ];
 
@@ -248,7 +249,7 @@ async function main() {
         'N/A';
 
       const monthSet = user?.id ? studentMonthSet.get(user.id) : undefined;
-      const hasBothMonths = monthSet ? monthSet.has(1) && monthSet.has(2) : false;
+      const hasAllMonths = monthSet ? REPORT_MONTHS.every((month) => monthSet.has(month)) : false;
 
       monthlySheet.addRow({
         studentName: user?.name || 'N/A',
@@ -260,7 +261,7 @@ async function main() {
         status: report.status,
         submittedAt: toIsoDate(report.submittedAt),
         reportFileUrl: report.reportFileUrl || '',
-        hasBothMonths: hasBothMonths ? 'Yes' : 'No',
+        hasAllMonths: hasAllMonths ? 'Yes' : 'No',
         createdAt: toIsoDate(report.createdAt),
       });
     }
@@ -277,14 +278,14 @@ async function main() {
       { header: 'Visit Date', key: 'visitDate', width: 14 },
       { header: 'Student Name', key: 'studentName', width: 30 },
       { header: 'Student Roll Number', key: 'studentRollNumber', width: 20 },
-      { header: 'Has Jan+Feb', key: 'hasBothMonths', width: 14 },
+      { header: 'Has Jan+Feb+Mar', key: 'hasAllMonths', width: 16 },
       { header: 'Record Created At', key: 'createdAt', width: 14 },
     ];
 
     for (const log of facultyVisitLogs) {
       const faculty = log.faculty;
       const monthSet = faculty?.id ? facultyMonthSet.get(faculty.id) : undefined;
-      const hasBothMonths = monthSet ? monthSet.has(1) && monthSet.has(2) : false;
+      const hasAllMonths = monthSet ? REPORT_MONTHS.every((month) => monthSet.has(month)) : false;
 
       const effectiveMonth =
         log.visitDate?.getUTCMonth() !== undefined
@@ -309,7 +310,7 @@ async function main() {
         visitDate: toIsoDate(log.visitDate),
         studentName: log.application?.student?.user?.name || 'N/A',
         studentRollNumber: log.application?.student?.user?.rollNumber || '',
-        hasBothMonths: hasBothMonths ? 'Yes' : 'No',
+        hasAllMonths: hasAllMonths ? 'Yes' : 'No',
         createdAt: toIsoDate(log.createdAt),
       });
     }
@@ -333,7 +334,7 @@ async function main() {
 
     const outputPath = path.join(
       outputDir,
-      `jan-feb-student-monthly-and-faculty-visit-report-${reportYear}.xlsx`,
+      `jan-feb-mar-student-monthly-and-faculty-visit-report-${reportYear}.xlsx`,
     );
 
     await workbook.xlsx.writeFile(outputPath);

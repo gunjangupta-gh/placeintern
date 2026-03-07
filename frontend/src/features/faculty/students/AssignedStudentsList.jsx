@@ -252,8 +252,8 @@ const AssignedStudentsList = () => {
   // Handle report file change
   const handleReportFileChange = ({ fileList: newFileList }) => {
     const file = newFileList[0]?.originFileObj;
-    if (file && file.size > 5 * 1024 * 1024) {
-      toast.error('File must be smaller than 5MB');
+    if (file && file.size > 1 * 1024 * 1024) {
+      toast.error('File must be smaller than 1MB');
       return;
     }
     setReportFileList(newFileList.slice(-1));
@@ -318,6 +318,11 @@ const AssignedStudentsList = () => {
     const file = reportFileList[0]?.originFileObj || reportFileList[0];
     if (!file) {
       toast.error('Invalid file');
+      return;
+    }
+
+    if (file.size > 1 * 1024 * 1024) {
+      toast.error('File must be smaller than 1MB');
       return;
     }
 
@@ -1204,7 +1209,7 @@ const AssignedStudentsList = () => {
                 Click or drag PDF file to upload
               </p>
               <p style={{ fontSize: 12, color: token.colorTextTertiary }}>
-                Maximum file size: 5MB
+                Maximum file size: 1MB
               </p>
             </Upload.Dragger>
           </div>
