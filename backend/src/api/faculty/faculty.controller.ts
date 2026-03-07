@@ -622,4 +622,15 @@ export class FacultyController {
   ) {
     return this.facultyService.toggleStudentStatus(studentId, req.user.userId);
   }
+
+  @Post('students/:id/reset-password')
+  @Roles(Role.TEACHER, Role.TEACHER)
+  @ApiOperation({ summary: 'Reset assigned student password' })
+  @ApiResponse({ status: 200, description: 'Student password reset successfully' })
+  async resetStudentPassword(
+    @Param('id') studentId: string,
+    @Req() req,
+  ) {
+    return this.facultyService.resetStudentPassword(studentId, req.user.userId);
+  }
 }

@@ -787,6 +787,18 @@ export const toggleStudentStatus = createAsyncThunk(
   }
 );
 
+export const resetUserPassword = createAsyncThunk(
+  'faculty/resetUserPassword',
+  async (studentId, { rejectWithValue }) => {
+    try {
+      const response = await facultyService.resetStudentPassword(studentId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to reset password');
+    }
+  }
+);
+
 // Faculty Grievances
 export const fetchFacultyGrievances = createAsyncThunk(
   'faculty/fetchFacultyGrievances',

@@ -76,6 +76,11 @@ export const facultyService = {
     return response.data;
   },
 
+  async resetStudentPassword(studentId) {
+    const response = await API.post(`/faculty/students/${studentId}/reset-password`);
+    return response.data;
+  },
+
   // Visit Logs
   async getVisitLogs(params = {}) {
     const queryParams = new URLSearchParams();

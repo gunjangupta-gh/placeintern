@@ -5,6 +5,7 @@ import { Prisma, ApplicationStatus, MonthlyReportStatus, AuditAction, AuditCateg
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
 import { ExpectedCycleService } from '../../domain/internship/expected-cycle/expected-cycle.service';
+import { AuthService } from '../../core/auth/services/auth.service';
 import {
   calculateExpectedMonths,
   getTotalExpectedCount,
@@ -23,6 +24,7 @@ export class FacultyService {
     private readonly cache: LruCacheService,
     private readonly auditService: AuditService,
     private readonly expectedCycleService: ExpectedCycleService,
+    private readonly authService: AuthService,
   ) {}
 
   private normalizeVisitType(visitType?: string): string | undefined {
@@ -3227,6 +3229,50 @@ export class FacultyService {
       active: newStatus,
       message: `Student ${newStatus ? 'activated' : 'deactivated'} successfully. Mentor assignments and internship applications also ${newStatus ? 'reactivated' : 'deactivated'}.`,
     };
+  }
+
+  /**
+   * Reset assigned student password
+   * SECURITY: Requires facultyId to verify authorization via MentorAssignment
+   */
+  async resetStudentPassword(studentId: string, facultyId: string) {
+    const isAuthorized = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        studentId,
+        mentorId: facultyId,
+        isActive: true,
+      },
+    });
+
+    if (!isAuthorized) {
+      throw new NotFoundException('Student not found or you are not the assigned mentor');
+    }
+
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            active: true,
+          },
+        },
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    if (!student.user?.id) {
+      throw new NotFoundException('Student user account not found');
+    }
+
+    if (student.user.active === false) {
+      throw new BadRequestException('Cannot reset password for inactive user');
+    }
+
+    return this.authService.adminResetPassword(student.user.id, facultyId);
   }
 
   /**

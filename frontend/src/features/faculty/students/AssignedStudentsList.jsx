@@ -33,6 +33,7 @@ import {
   uploadMonthlyReport,
   uploadStudentDocument,
   toggleStudentStatus,
+  resetUserPassword,
   optimisticallyToggleStudentStatus,
   rollbackStudentOperation,
   viewMonthlyReport,
@@ -61,6 +62,7 @@ import {
   EditOutlined,
   StopOutlined,
   PlayCircleOutlined,
+  KeyOutlined,
   InboxOutlined,
   PlusOutlined,
   DeleteOutlined,
@@ -417,6 +419,59 @@ const AssignedStudentsList = () => {
     }
   };
 
+  const handleResetPassword = () => {
+    const studentId = selectedStudent?.id || selectedStudent?.student?.id;
+
+    if (!studentId) {
+      toast.error('Student account not found');
+      return;
+    }
+
+    Modal.confirm({
+      title: 'Reset Password',
+      content: `Are you sure you want to reset the password for ${selectedStudent?.user?.name || selectedStudent?.name}? A new password will be generated.`,
+      okText: 'Reset Password',
+      okType: 'primary',
+      onOk: async () => {
+        try {
+          const result = await dispatch(resetUserPassword(studentId)).unwrap();
+          Modal.success({
+            title: 'Password Reset Successful',
+            content: (
+              <div style={{ marginTop: 16 }}>
+                <p><strong>Name:</strong> {result.name || selectedStudent?.user?.name || selectedStudent?.name}</p>
+                <p><strong>Email:</strong> {result.email || selectedStudent?.user?.email || selectedStudent?.email}</p>
+                {result.newPassword ? (
+                  <>
+                    <div style={{ padding: 12, backgroundColor: token.colorSuccessBg, border: `1px solid ${token.colorSuccessBorder}`, borderRadius: token.borderRadiusLG, marginTop: 12 }}>
+                      <p style={{ fontSize: 14, color: token.colorTextSecondary, marginBottom: 4 }}>New Password:</p>
+                      <p style={{ fontSize: 18, fontFamily: 'monospace', fontWeight: 'bold', color: token.colorSuccessText, userSelect: 'all' }}>{result.newPassword}</p>
+                    </div>
+                    <p style={{ fontSize: 12, color: token.colorTextDescription, marginTop: 8 }}>
+                      Please share this password securely with the student. They will be required to change it on first login.
+                    </p>
+                  </>
+                ) : (
+                  <div style={{ padding: 12, backgroundColor: token.colorInfoBg, border: `1px solid ${token.colorInfoBorder}`, borderRadius: token.borderRadiusLG, marginTop: 12 }}>
+                    <p style={{ fontSize: 14, color: token.colorInfoText }}>
+                      A new password has been generated and sent to the student's email address.
+                      They will be required to change it on first login.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ),
+            width: 450,
+            okText: 'Close',
+          });
+        } catch (error) {
+          const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to reset password';
+          toast.error(errorMessage);
+        }
+      },
+    });
+  };
+
   // Document type options
   const documentTypeOptions = [
     { value: 'MARKSHEET_10TH', label: '10th Marksheet' },
@@ -461,6 +516,12 @@ const AssignedStudentsList = () => {
     },
     {
       type: 'divider',
+    },
+    {
+      key: 'resetPassword',
+      icon: <KeyOutlined />,
+      label: 'Reset Password',
+      onClick: handleResetPassword,
     },
     {
       key: 'toggle',
