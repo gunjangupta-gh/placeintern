@@ -4,6 +4,8 @@ import { PrincipalApplicationController } from './principal-application.controll
 import { PrincipalLessonPlanController } from './principal-lesson-plan.controller';
 import { PrincipalReportsController } from './principal-reports.controller';
 import { PrincipalRecommendationController } from './principal-recommendation.controller';
+import { PrincipalTestResponsesController } from './principal-test-responses.controller';
+import { PrincipalFeedbackController } from './principal-feedback.controller';
 import { TrainingModule } from '../../../domain/training/training.module';
 import { FeedbackModule } from '../../../domain/feedback/feedback.module';
 
@@ -15,6 +17,8 @@ import { FeedbackModule } from '../../../domain/feedback/feedback.module';
     PrincipalLessonPlanController,
     PrincipalReportsController,
     PrincipalTrainingController,
+    PrincipalTestResponsesController,
+    PrincipalFeedbackController,
   ],
 })
 export class PrincipalTrainingModule {}

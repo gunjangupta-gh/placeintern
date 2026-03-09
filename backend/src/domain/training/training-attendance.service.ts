@@ -244,7 +244,13 @@ export class TrainingAttendanceService {
   /**
    * Get attendance by training (State/Principal)
    */
-  async getByTraining(trainingId: string, date?: Date, institutionId?: string) {
+  async getByTraining(
+    trainingId: string,
+    date?: Date,
+    institutionId?: string,
+    branchName?: string,
+    branchId?: string,
+  ) {
     try {
       const training = await this.prisma.training.findUnique({
         where: { id: trainingId },
@@ -254,9 +260,34 @@ export class TrainingAttendanceService {
         throw new NotFoundException('Training not found');
       }
 
+      const userFilter: Prisma.UserWhereInput = institutionId
+        ? {
+            institutionId,
+            ...(branchName || branchId
+              ? {
+                  OR: [
+                    ...(branchName
+                      ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }]
+                      : []),
+                    ...(branchId ? [{ branchId }] : []),
+                  ],
+                }
+              : {}),
+          }
+        : branchName || branchId
+          ? {
+              OR: [
+                ...(branchName
+                  ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }]
+                  : []),
+                ...(branchId ? [{ branchId }] : []),
+              ],
+            }
+          : {};
+
       const where: Prisma.TrainingAttendanceWhereInput = {
         trainingId,
-        ...(institutionId ? { user: { institutionId } } : {}),
+        ...(institutionId || branchName || branchId ? { user: userFilter } : {}),
       };
 
       if (date) {
@@ -288,7 +319,7 @@ export class TrainingAttendanceService {
           where: {
             trainingId,
             status: 'APPROVED',
-            ...(institutionId ? { user: { institutionId } } : {}),
+            ...(institutionId || branchName || branchId ? { user: userFilter } : {}),
           },
           include: {
             user: {

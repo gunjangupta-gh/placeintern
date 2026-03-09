@@ -111,6 +111,19 @@ const initialState = {
   },
 };
 
+const unwrapPayload = (payload) => {
+  if (payload && typeof payload === 'object' && !Array.isArray(payload) && 'data' in payload) {
+    return payload.data;
+  }
+  return payload;
+};
+
+const asArray = (value) => {
+  if (Array.isArray(value)) return value;
+  if (value === null || value === undefined) return [];
+  return [];
+};
+
 // Trainings
 export const fetchTrainings = createAsyncThunk(
   'facultyTraining/fetchTrainings',
@@ -1024,7 +1037,7 @@ const facultyTrainingSlice = createSlice({
         state.attendance.error = action.payload;
       })
       .addCase(fetchAttendanceSummary.fulfilled, (state, action) => {
-        state.attendance.summary = action.payload;
+        state.attendance.summary = unwrapPayload(action.payload) || null;
       })
       .addCase(fetchTrainingAttendance.pending, (state, action) => {
         const trainingId = action.meta.arg;
@@ -1091,7 +1104,7 @@ const facultyTrainingSlice = createSlice({
         state.feedback.responses = action.payload || [];
       })
       .addCase(fetchPendingFeedback.fulfilled, (state, action) => {
-        state.feedback.pending = action.payload || [];
+        state.feedback.pending = asArray(unwrapPayload(action.payload));
       })
 
       // Lesson plans
@@ -1270,13 +1283,14 @@ const facultyTrainingSlice = createSlice({
       .addCase(fetchPendingTests.fulfilled, (state, action) => {
         state.pendingTests.loading = false;
         if (!action.payload?.cached) {
+          const payload = unwrapPayload(action.payload) || {};
           // Backend returns { pendingPreTests, pendingPostTests, totalPending }
           // Transform into a flat list with type indicator
-          const preTests = (action.payload?.pendingPreTests || []).map((t) => ({
+          const preTests = asArray(payload.pendingPreTests).map((t) => ({
             ...t,
             type: 'PRE_TEST',
           }));
-          const postTests = (action.payload?.pendingPostTests || []).map((t) => ({
+          const postTests = asArray(payload.pendingPostTests).map((t) => ({
             ...t,
             type: 'POST_TEST',
           }));
@@ -1297,7 +1311,8 @@ const facultyTrainingSlice = createSlice({
       .addCase(fetchPendingLessonPlans.fulfilled, (state, action) => {
         state.pendingLessonPlans.loading = false;
         if (!action.payload?.cached) {
-          state.pendingLessonPlans.list = action.payload?.pendingLessonPlans || [];
+          const payload = unwrapPayload(action.payload) || {};
+          state.pendingLessonPlans.list = asArray(payload.pendingLessonPlans);
           state.lastFetched.pendingLessonPlans = Date.now();
         }
       })

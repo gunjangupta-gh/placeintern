@@ -6,6 +6,7 @@ import { CoordinatorRecommendationController } from './coordinator-recommendatio
 import { CoordinatorReminderController } from './coordinator-reminder.controller';
 import { CoordinatorReportsController } from './coordinator-reports.controller';
 import { CoordinatorFeedbackController } from './coordinator-feedback.controller';
+import { CoordinatorTrainingController } from './coordinator-training.controller';
 import { CoordinatorReminderService } from './coordinator-reminder.service';
 import { TrainingModule } from '../../../domain/training/training.module';
 import { FeedbackModule } from '../../../domain/feedback/feedback.module';
@@ -29,6 +30,7 @@ import { MailModule } from '../../../infrastructure/mail/mail.module';
     CoordinatorReminderController,
     CoordinatorReportsController,
     CoordinatorFeedbackController,
+    CoordinatorTrainingController,
   ],
   providers: [CoordinatorReminderService],
   exports: [CoordinatorReminderService],

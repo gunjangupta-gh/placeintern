@@ -386,17 +386,6 @@ const TrainingManagementPage = () => {
       render: (mode) => <DeliveryModeBadge mode={mode} />,
     },
     {
-      title: "Status",
-      dataIndex: "isPublished",
-      key: "isPublished",
-      width: 100,
-      render: (value) => (
-        <Tag color={value ? "green" : "orange"} className="text-xs">
-          {value ? "Published" : "Draft"}
-        </Tag>
-      ),
-    },
-    {
       title: "View",
       key: "viewAction",
       width: 72,
@@ -477,18 +466,20 @@ const TrainingManagementPage = () => {
       ),
     },
     {
-      title: "Publish",
+      title: "Status",
       key: "publishAction",
-      width: 78,
+      width: 110,
       align: "center",
       render: (_, record) => (
         <Tooltip title={record.isPublished ? "Unpublish (Draft)" : "Publish (Active)"}>
           <Button
-            type="text"
+            type="link"
             size="small"
-            icon={record.isPublished ? <CloseCircleOutlined /> : <CheckCircleFilled />}
+            className="px-0"
             onClick={() => handleTogglePublish(record)}
-          />
+          >
+            {record.isPublished ? "Unpublish" : "Publish"}
+          </Button>
         </Tooltip>
       ),
     },

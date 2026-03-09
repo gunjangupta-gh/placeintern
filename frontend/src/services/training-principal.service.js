@@ -144,6 +144,33 @@ const trainingPrincipalService = {
     return response.data;
   },
 
+  // Test Responses
+  async getTestSummary() {
+    const response = await API.get('/principal/training/test-responses/summary');
+    return response.data;
+  },
+
+  async getPreTestResponses(trainingId) {
+    const response = await API.get(`/principal/training/test-responses/pre-test/${trainingId}`);
+    return response.data;
+  },
+
+  async getPostTestResponses(trainingId) {
+    const response = await API.get(`/principal/training/test-responses/post-test/${trainingId}`);
+    return response.data;
+  },
+
+  // Feedback Responses
+  async getFeedbackResponseSummary() {
+    const response = await API.get('/principal/training/feedback/summary');
+    return response.data;
+  },
+
+  async getTrainingFeedbackResponses(trainingId) {
+    const response = await API.get(`/principal/training/feedback/${trainingId}`);
+    return response.data;
+  },
+
   // Recommendations
   async getRecommendations(params = {}) {
     const queryParams = new URLSearchParams(params).toString();

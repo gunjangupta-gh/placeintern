@@ -135,7 +135,7 @@ const TrainingDashboardPage = () => {
         onClick: () => navigate("/app/training/manage"),
       },
       {
-        title: "Faculty",
+        title: "Faculty Trainings",
         icon: PlusOutlined,
         lines: [
           {

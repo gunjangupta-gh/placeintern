@@ -95,6 +95,8 @@ import PrincipalLessonPlanReviewPage from '../../features/principal/training/Les
 import PrincipalParticipationReportPage from '../../features/principal/training/ParticipationReportPage';
 import PrincipalTrainingDetailsPage from '../../features/principal/training/TrainingDetailsPage';
 import PrincipalRecommendTrainingApprovalPage from '../../features/principal/training/RecommendTrainingApprovalPage';
+import PrincipalTestResponsesPage from '../../features/principal/training/TestResponsesPage';
+import PrincipalFeedbackResponsesPage from '../../features/principal/training/FeedbackResponsesPage';
 
 // Faculty
 import FacultyDashboard from '../../features/faculty/dashboard/FacultyDashboard';
@@ -631,6 +633,23 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
               <CoordinatorRemindersPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="principal/test-responses"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
+              <PrincipalTestResponsesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="principal/feedback-responses"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
+              <PrincipalFeedbackResponsesPage />
             </ProtectedRoute>
           }
         />

@@ -129,6 +129,29 @@ const LessonPlanEditorPage = () => {
     return options;
   }, [myTrainings.list, lessonPlans.current]);
 
+  const courseSemesterOptions = useMemo(() => {
+    const baseOptions = [
+      { value: "Semester 1", label: "Semester 1" },
+      { value: "Semester 2", label: "Semester 2" },
+      { value: "Semester 3", label: "Semester 3" },
+      { value: "Semester 4", label: "Semester 4" },
+      { value: "Semester 5", label: "Semester 5" },
+      { value: "Semester 6", label: "Semester 6" },
+      { value: "Semester 7", label: "Semester 7" },
+      { value: "Semester 8", label: "Semester 8" },
+    ];
+
+    const currentValue = lessonPlans.current?.courseOrSemester;
+    if (
+      currentValue &&
+      !baseOptions.some((option) => option.value === currentValue)
+    ) {
+      return [{ value: currentValue, label: currentValue }, ...baseOptions];
+    }
+
+    return baseOptions;
+  }, [lessonPlans.current?.courseOrSemester]);
+
   return (
     <div className="p-4 training-ui">
       {/* Header */}
@@ -187,7 +210,17 @@ const LessonPlanEditorPage = () => {
                 }
                 className="mb-3"
               >
-                <Input placeholder="Course or semester" />
+                <Select
+                  options={courseSemesterOptions}
+                  placeholder="Select semester"
+                  allowClear
+                  showSearch
+                  filterOption={(input, option) =>
+                    (option?.label ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                />
               </Form.Item>
             </Col>
           </Row>

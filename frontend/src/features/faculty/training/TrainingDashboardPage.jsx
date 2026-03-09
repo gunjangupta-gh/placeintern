@@ -7,7 +7,6 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   BellOutlined,
-  ExclamationCircleOutlined,
   FormOutlined,
   SolutionOutlined,
 } from '@ant-design/icons';
@@ -62,12 +61,24 @@ const TrainingDashboardPage = () => {
   const pendingActionsCount =
     (feedback.pending?.length || 0) + pendingTestCount + pendingLessonPlansList.length;
 
-  const mandatoryTraining = attendance.summary?.dashboard?.mandatoryTraining;
-  const attendedTrainings = attendance.summary?.dashboard?.trainingsAttended || [];
+  const attendanceSummary = useMemo(() => {
+    const summary = attendance.summary;
+    if (!summary) return null;
+    if (summary && typeof summary === 'object' && !Array.isArray(summary) && summary.data) {
+      return summary.data;
+    }
+    return summary;
+  }, [attendance.summary]);
+
+  const dashboard = attendanceSummary?.dashboard;
+  const mandatoryTraining = dashboard?.mandatoryTraining;
+  const attendedTrainings = Array.isArray(dashboard?.trainingsAttended)
+    ? dashboard.trainingsAttended
+    : [];
 
   const stats = useMemo(() => {
     const hoursCompleted = mandatoryTraining?.hoursCompleted || 0;
-    const trainingsAttendedCount = attendance.summary?.dashboard?.trainingsAttendedCount || 0;
+    const trainingsAttendedCount = dashboard?.trainingsAttendedCount || 0;
     const isCompleted = mandatoryTraining?.isCompleted === true;
     const totalPendingActions = pendingActionsCount;
 
@@ -92,7 +103,7 @@ const TrainingDashboardPage = () => {
         subtitle: totalPendingActions > 0 ? 'action needed' : 'all done',
       },
     ];
-  }, [attendance.summary?.dashboard, mandatoryTraining, pendingActionsCount]);
+  }, [dashboard, mandatoryTraining, pendingActionsCount]);
 
   const todaysAttendanceApplications = useMemo(() => {
     const today = new Date();
@@ -190,6 +201,20 @@ const TrainingDashboardPage = () => {
     }
   };
 
+  const navigateToLessonPlanAction = (plan) => {
+    const trainingId = plan?.trainingId;
+    if (!trainingId) return;
+
+    // Existing draft/revision lesson plans should open editor for submit/update.
+    if (plan?.type === 'SUBMIT_LESSON_PLAN' && plan?.lessonPlanId) {
+      navigate(`/app/training/lesson-plans/${plan.lessonPlanId}/edit`);
+      return;
+    }
+
+    // Missing lesson plans should open preselected create form for this training.
+    navigate(`/app/training/lesson-plans/new/${trainingId}`);
+  };
+
   if (isLoading) {
     return <DashboardSkeleton />;
   }
@@ -217,7 +242,7 @@ const TrainingDashboardPage = () => {
       <Row gutter={[12, 12]} className="mb-4">
         {stats.map((stat) => (
           <Col xs={24} sm={12} lg={8} key={stat.title}>
-            <TrainingStatCard {...stat} loading={applications.loading && !attendance.summary} />
+            <TrainingStatCard {...stat} loading={applications.loading && !attendanceSummary} />
           </Col>
         ))}
       </Row>
@@ -430,7 +455,7 @@ const TrainingDashboardPage = () => {
                   <div
                     key={`${plan.type}-${plan.trainingId}`}
                     className="flex items-center gap-2.5 p-2 rounded-lg bg-blue-50 hover:bg-blue-100 cursor-pointer"
-                    onClick={() => navigate(`/app/training/${plan.trainingId}`)}
+                    onClick={() => navigateToLessonPlanAction(plan)}
                   >
                     <div className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-200">
                       <ClockCircleOutlined className="text-blue-700 text-xs" />
@@ -443,7 +468,9 @@ const TrainingDashboardPage = () => {
                         {plan.type === 'CREATE_LESSON_PLAN' ? 'Create lesson plan' : 'Submit lesson plan'}
                       </Text>
                     </div>
-                    <ExclamationCircleOutlined className="text-blue-500 text-xs" />
+                    <Button type="link" size="small" className="text-[10px] p-0 h-auto">
+                      {plan.type === 'CREATE_LESSON_PLAN' ? 'Create' : 'Submit'}
+                    </Button>
                   </div>
                 ))}
               </div>

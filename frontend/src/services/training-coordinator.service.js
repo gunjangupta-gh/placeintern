@@ -5,6 +5,26 @@ import API from './api';
  * API methods for faculty coordinator training operations
  */
 const trainingCoordinatorService = {
+  // Training Details (branch scoped)
+  async getTrainingDetails(id) {
+    const response = await API.get(`/coordinator/training/${id}`);
+    return response.data;
+  },
+
+  async getTrainingStats(id) {
+    const response = await API.get(`/coordinator/training/${id}/stats`);
+    return response.data;
+  },
+
+  async getTrainingAttendance(id, params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams
+      ? `/coordinator/training/${id}/attendance?${queryParams}`
+      : `/coordinator/training/${id}/attendance`;
+    const response = await API.get(url);
+    return response.data;
+  },
+
   // Applications
   async getApplications(params = {}) {
     const queryParams = new URLSearchParams(params).toString();

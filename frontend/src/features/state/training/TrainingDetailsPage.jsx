@@ -42,6 +42,7 @@ import LearningOutcomesList from "../../../components/training/LearningOutcomesL
 import BranchTags from "../../../components/training/BranchTags";
 import DeadlineCountdown from "../../../components/training/DeadlineCountdown";
 import { TrainingDetailsSkeleton } from "../../../components/training/skeletons/TrainingSkeletons";
+import trainingCoordinatorService from "../../../services/training-coordinator.service";
 import {
   fetchStateTrainingDetails,
   fetchStateTrainingStats,
@@ -143,19 +144,72 @@ const StateTrainingDetailsPage = () => {
   const { currentTraining, attendance } = useSelector((state) => state.stateTraining);
   const [attendanceModalOpen, setAttendanceModalOpen] = useState(false);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [coordinatorStats, setCoordinatorStats] = useState(null);
+  const [coordinatorAttendanceData, setCoordinatorAttendanceData] = useState(null);
+  const isCoordinatorRoute = location.pathname.startsWith("/app/coordinator/training/");
+  const detailBasePath = isCoordinatorRoute ? "/app/coordinator/training" : "/app/training";
 
   const isLoading = currentTraining.loading && !currentTraining.data;
 
   useEffect(() => {
     if (!id) return;
     dispatch(fetchStateTrainingDetails(id));
-    dispatch(fetchStateTrainingStats(id));
-  }, [dispatch, id]);
+    if (!isCoordinatorRoute) {
+      dispatch(fetchStateTrainingStats(id));
+      return;
+    }
+
+    let mounted = true;
+    const fetchScopedStats = async () => {
+      try {
+        const [applicationsResponse, attendanceResponse] = await Promise.all([
+          trainingCoordinatorService.getTrainingApplications(id, { page: 1, limit: 2000 }),
+          trainingCoordinatorService.getTrainingAttendance(id).catch(() => null),
+        ]);
+
+        const applicationsPayload = applicationsResponse?.data || applicationsResponse?.applications || [];
+        const applications = Array.isArray(applicationsPayload) ? applicationsPayload : [];
+
+        const approved = applications.filter((app) => app.status === "APPROVED").length;
+        const pending = applications.filter((app) => ["PENDING", "SUBMITTED"].includes(app.status)).length;
+        const rejected = applications.filter((app) => app.status === "REJECTED").length;
+
+        const attendanceData = attendanceResponse?.data || attendanceResponse || null;
+        const attendanceSummary = attendanceData?.summary || {};
+
+        if (mounted) {
+          setCoordinatorStats({
+            applications: {
+              total: applications.length,
+              approved,
+              pending,
+              rejected,
+            },
+            attendance: {
+              uniqueAttendees: attendanceSummary.uniqueAttendees || 0,
+              totalRecords: attendanceSummary.totalRecords || 0,
+              averageAttendanceRate: attendanceSummary.averageAttendanceRate || 0,
+            },
+          });
+          setCoordinatorAttendanceData(attendanceData);
+        }
+      } catch (error) {
+        if (mounted) {
+          setCoordinatorStats(null);
+          setCoordinatorAttendanceData(null);
+        }
+      }
+    };
+
+    fetchScopedStats();
+
+    return () => {
+      mounted = false;
+    };
+  }, [dispatch, id, isCoordinatorRoute]);
 
   const training = currentTraining.data;
   const stats = currentTraining.stats;
-  const isCoordinatorRoute = location.pathname.startsWith("/app/coordinator/training/");
-  const detailBasePath = isCoordinatorRoute ? "/app/coordinator/training" : "/app/training";
 
   const capacityInfo = useMemo(() => {
     if (training?.capacity && typeof training.capacity === "object") {
@@ -169,10 +223,12 @@ const StateTrainingDetailsPage = () => {
     return {
       available: training?.availableSeats ?? 0,
       total: training?.capacity ?? 0,
-      approved: stats?.applications?.approved ?? 0,
+      approved: isCoordinatorRoute
+        ? (coordinatorStats?.applications?.approved ?? 0)
+        : (stats?.applications?.approved ?? 0),
       isFull: false,
     };
-  }, [training, stats]);
+  }, [training, stats, isCoordinatorRoute, coordinatorStats?.applications?.approved]);
 
   const handlePublish = async () => {
     try {
@@ -195,9 +251,17 @@ const StateTrainingDetailsPage = () => {
   const handleOpenAttendanceModal = async () => {
     if (!id) return;
     setAttendanceModalOpen(true);
+    if (isCoordinatorRoute && coordinatorAttendanceData) {
+      return;
+    }
     setAttendanceLoading(true);
     try {
-      await dispatch(fetchStateTrainingAttendance({ trainingId: id })).unwrap();
+      if (isCoordinatorRoute) {
+        const response = await trainingCoordinatorService.getTrainingAttendance(id);
+        setCoordinatorAttendanceData(response?.data || response || null);
+      } else {
+        await dispatch(fetchStateTrainingAttendance({ trainingId: id })).unwrap();
+      }
     } finally {
       setAttendanceLoading(false);
     }
@@ -210,21 +274,21 @@ const StateTrainingDetailsPage = () => {
   const statCards = [
     {
       title: "Total Applications",
-      value: stats?.applications?.total ?? 0,
+      value: (isCoordinatorRoute ? coordinatorStats?.applications?.total : stats?.applications?.total) ?? 0,
       icon: FileTextOutlined,
       tone: "primary",
       onClick: () => navigate(`${detailBasePath}/${id}/applications`),
     },
     {
       title: "Approved",
-      value: stats?.applications?.approved ?? 0,
+      value: (isCoordinatorRoute ? coordinatorStats?.applications?.approved : stats?.applications?.approved) ?? 0,
       icon: CheckCircleOutlined,
       tone: "success",
       onClick: () => navigate(`${detailBasePath}/${id}/applications`),
     },
     {
       title: "Attendance",
-      value: stats?.attendance?.uniqueAttendees ?? 0,
+      value: (isCoordinatorRoute ? coordinatorStats?.attendance?.uniqueAttendees : stats?.attendance?.uniqueAttendees) ?? 0,
       icon: TeamOutlined,
       tone: "warning",
       onClick: handleOpenAttendanceModal,
@@ -232,9 +296,11 @@ const StateTrainingDetailsPage = () => {
   ];
 
   const attendanceData = useMemo(() => {
-    if (!training || !attendance.list) return null;
+    if (!training) return null;
+    if (isCoordinatorRoute) return coordinatorAttendanceData;
+    if (!attendance.list) return null;
     return attendance.list;
-  }, [training, attendance.list]);
+  }, [training, isCoordinatorRoute, coordinatorAttendanceData, attendance.list]);
 
   const trainingDates = useMemo(() => {
     if (!training?.startDate || !training?.endDate) return [];

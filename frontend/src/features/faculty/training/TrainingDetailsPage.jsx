@@ -118,7 +118,6 @@ const TrainingDetailsPage = () => {
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
   const [preTestSuccess, setPreTestSuccess] = useState(false);
   const [postTestSuccess, setPostTestSuccess] = useState(false);
-  const [form] = Form.useForm();
   const [feedbackFormInstance] = Form.useForm();
   const [preTestFormInstance] = Form.useForm();
   const [postTestFormInstance] = Form.useForm();
@@ -177,12 +176,9 @@ const TrainingDetailsPage = () => {
   const handleApply = async () => {
     try {
       setSubmitting(true);
-      const values = await form.validateFields();
-
-      await dispatch(applyForTraining({ trainingId: id, ...values })).unwrap();
+      await dispatch(applyForTraining({ trainingId: id })).unwrap();
       setApplicationSuccess(true);
       setApplyOpen(false);
-      form.resetFields();
       // Refresh both application status and training details to update capacity
       dispatch(fetchApplicationStatus(id));
       dispatch(fetchTrainingDetails(id));
@@ -1075,40 +1071,6 @@ const TrainingDetailsPage = () => {
             type="info"
             className="mb-4"
           />
-
-          <Form layout="vertical" form={form}>
-            <Form.Item
-              name="relevanceToTeaching"
-              label="How is this training relevant to your teaching?"
-              rules={[
-                { required: true, message: "Please explain the relevance" },
-              ]}
-            >
-              <Input.TextArea
-                rows={4}
-                placeholder="Describe how this training aligns with your teaching discipline and current curriculum..."
-                showCount
-                maxLength={500}
-              />
-            </Form.Item>
-            <Form.Item
-              name="expectedApplication"
-              label="How do you plan to apply this learning?"
-              rules={[
-                {
-                  required: true,
-                  message: "Please describe your application plan",
-                },
-              ]}
-            >
-              <Input.TextArea
-                rows={4}
-                placeholder="Explain how you will integrate the knowledge gained into your classroom practice..."
-                showCount
-                maxLength={500}
-              />
-            </Form.Item>
-          </Form>
 
           <div className="mt-4 p-3 bg-blue-50 rounded-lg">
             <Text className="text-xs text-blue-700">

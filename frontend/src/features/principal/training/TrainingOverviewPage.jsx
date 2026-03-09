@@ -9,6 +9,9 @@ import {
   CloseCircleOutlined,
   BarChartOutlined,
   SearchOutlined,
+  SafetyCertificateOutlined,
+  FileTextOutlined,
+  BookOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -82,6 +85,17 @@ const TrainingOverviewPage = () => {
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [selectedTraining, setSelectedTraining] = useState(null);
   const [attendanceData, setAttendanceData] = useState(null);
+  const [testModalOpen, setTestModalOpen] = useState(false);
+  const [testLoading, setTestLoading] = useState(false);
+  const [testTab, setTestTab] = useState("preTest");
+  const [preTestData, setPreTestData] = useState(null);
+  const [postTestData, setPostTestData] = useState(null);
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackData, setFeedbackData] = useState(null);
+  const [lessonPlanModalOpen, setLessonPlanModalOpen] = useState(false);
+  const [lessonPlanLoading, setLessonPlanLoading] = useState(false);
+  const [lessonPlanData, setLessonPlanData] = useState([]);
 
   const isLoading = trainings.loading && !trainings.list;
 
@@ -187,6 +201,67 @@ const TrainingOverviewPage = () => {
         t.title?.toLowerCase().includes(searchText.toLowerCase()),
     );
 
+  const normalizeResponse = (response) => {
+    if (response && typeof response === "object" && "data" in response) {
+      return response.data;
+    }
+    return response;
+  };
+
+  const handleViewTestResponses = async (training) => {
+    try {
+      setSelectedTraining(training);
+      setTestModalOpen(true);
+      setTestLoading(true);
+
+      const [preRes, postRes] = await Promise.all([
+        trainingPrincipalService.getPreTestResponses(training.id),
+        trainingPrincipalService.getPostTestResponses(training.id),
+      ]);
+
+      setPreTestData(normalizeResponse(preRes) || { responses: [], stats: null });
+      setPostTestData(normalizeResponse(postRes) || { responses: [], stats: null });
+    } catch (error) {
+      setPreTestData({ responses: [], stats: null });
+      setPostTestData({ responses: [], stats: null });
+    } finally {
+      setTestLoading(false);
+    }
+  };
+
+  const handleViewFeedbackResponses = async (training) => {
+    try {
+      setSelectedTraining(training);
+      setFeedbackModalOpen(true);
+      setFeedbackLoading(true);
+
+      const response = await trainingPrincipalService.getTrainingFeedbackResponses(
+        training.id,
+      );
+      setFeedbackData(normalizeResponse(response) || { responses: [], stats: null });
+    } catch (error) {
+      setFeedbackData({ responses: [], stats: null });
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
+  const handleViewLessonPlans = async (training) => {
+    try {
+      setSelectedTraining(training);
+      setLessonPlanModalOpen(true);
+      setLessonPlanLoading(true);
+
+      const response = await trainingPrincipalService.getTrainingLessonPlans(training.id);
+      const normalized = normalizeResponse(response);
+      setLessonPlanData(Array.isArray(normalized) ? normalized : []);
+    } catch (error) {
+      setLessonPlanData([]);
+    } finally {
+      setLessonPlanLoading(false);
+    }
+  };
+
   const trainingColumns = [
     {
       title: "Training",
@@ -261,7 +336,7 @@ const TrainingOverviewPage = () => {
     {
       title: "Actions",
       key: "actions",
-      width: 90,
+      width: 180,
       render: (_, record) => (
         <Space size="small">
           <Tooltip title="View Attendance">
@@ -282,6 +357,30 @@ const TrainingOverviewPage = () => {
                   setAttendanceLoading(false);
                 }
               }}
+            />
+          </Tooltip>
+          <Tooltip title="View Test Responses">
+            <Button
+              type="text"
+              size="small"
+              icon={<SafetyCertificateOutlined />}
+              onClick={() => navigate(`/app/principal/test-responses?trainingId=${record.id}`)}
+            />
+          </Tooltip>
+          <Tooltip title="View Feedback Responses">
+            <Button
+              type="text"
+              size="small"
+              icon={<FileTextOutlined />}
+              onClick={() => navigate(`/app/principal/feedback-responses?trainingId=${record.id}`)}
+            />
+          </Tooltip>
+          <Tooltip title="View Lesson Plans">
+            <Button
+              type="text"
+              size="small"
+              icon={<BookOutlined />}
+              onClick={() => navigate('/app/training/lesson-plans')}
             />
           </Tooltip>
         </Space>
@@ -324,6 +423,142 @@ const TrainingOverviewPage = () => {
       };
     });
   }, [attendanceData]);
+
+  const currentTestData = testTab === "preTest" ? preTestData : postTestData;
+  const currentTestResponses = Array.isArray(currentTestData?.responses)
+    ? currentTestData.responses
+    : [];
+  const feedbackResponses = Array.isArray(feedbackData?.responses)
+    ? feedbackData.responses
+    : [];
+
+  const testResponseColumns = [
+    {
+      title: "Faculty",
+      dataIndex: ["user", "name"],
+      key: "faculty",
+      render: (_, record) => (
+        <div>
+          <div className="font-medium text-xs text-slate-800">{record.user?.name || "Faculty"}</div>
+          <Text className="text-[10px] text-slate-500">{record.user?.email || ""}</Text>
+        </div>
+      ),
+    },
+    {
+      title: "Institution",
+      key: "institution",
+      render: (_, record) => (
+        <Text className="text-xs text-slate-700">
+          {record.user?.Institution?.shortName || record.user?.Institution?.name || "N/A"}
+        </Text>
+      ),
+    },
+    {
+      title: "Score",
+      dataIndex: "score",
+      key: "score",
+      width: 110,
+      render: (score) => (
+        <Text className="text-xs font-medium">
+          {score !== null && score !== undefined ? `${Number(score).toFixed(1)}%` : "N/A"}
+        </Text>
+      ),
+    },
+    {
+      title: "Result",
+      dataIndex: "passed",
+      key: "passed",
+      width: 100,
+      render: (passed) => (
+        passed === null ? <Tag>Not graded</Tag> : passed ? <Tag color="green">Passed</Tag> : <Tag color="red">Failed</Tag>
+      ),
+    },
+    {
+      title: "Submitted",
+      dataIndex: "submittedAt",
+      key: "submittedAt",
+      width: 120,
+      render: (value) => (
+        <Text className="text-xs">
+          {value ? new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "-"}
+        </Text>
+      ),
+    },
+  ];
+
+  const feedbackColumns = [
+    {
+      title: "Faculty",
+      dataIndex: ["user", "name"],
+      key: "faculty",
+      render: (_, record) => (
+        <div>
+          <div className="font-medium text-xs text-slate-800">{record.user?.name || "Faculty"}</div>
+          <Text className="text-[10px] text-slate-500">{record.user?.email || ""}</Text>
+        </div>
+      ),
+    },
+    {
+      title: "Institution",
+      key: "institution",
+      render: (_, record) => (
+        <Text className="text-xs text-slate-700">
+          {record.user?.Institution?.shortName || record.user?.Institution?.name || "N/A"}
+        </Text>
+      ),
+    },
+    {
+      title: "Submitted",
+      dataIndex: "submittedAt",
+      key: "submittedAt",
+      width: 120,
+      render: (value) => (
+        <Text className="text-xs">
+          {value ? new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "-"}
+        </Text>
+      ),
+    },
+  ];
+
+  const lessonPlanColumns = [
+    {
+      title: "Faculty",
+      dataIndex: ["user", "name"],
+      key: "faculty",
+      render: (_, record) => (
+        <div>
+          <div className="font-medium text-xs text-slate-800">{record.user?.name || "Faculty"}</div>
+          <Text className="text-[10px] text-slate-500">{record.user?.email || ""}</Text>
+        </div>
+      ),
+    },
+    {
+      title: "Lesson Plan",
+      dataIndex: "title",
+      key: "title",
+      render: (value) => <Text className="text-xs">{value || "Untitled"}</Text>,
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      width: 130,
+      render: (status) => <Tag>{status || "-"}</Tag>,
+    },
+    {
+      title: "Submitted",
+      dataIndex: "submittedAt",
+      key: "submittedAt",
+      width: 120,
+      render: (value, record) => (
+        <Text className="text-xs">
+          {(value || record.createdAt)
+            ? new Date(value || record.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+            : "-"}
+        </Text>
+      ),
+    },
+  ];
 
   return (
     <div className="p-4 training-ui">
@@ -524,6 +759,125 @@ const TrainingOverviewPage = () => {
             />
           )}
         </div>
+      </Modal>
+
+      <Modal
+        open={testModalOpen}
+        onCancel={() => {
+          setTestModalOpen(false);
+          setSelectedTraining(null);
+          setPreTestData(null);
+          setPostTestData(null);
+          setTestTab("preTest");
+        }}
+        footer={null}
+        width={900}
+        title={selectedTraining ? `Test Responses - ${selectedTraining.title}` : "Test Responses"}
+      >
+        <div className="mb-3">
+          <Space>
+            <Button
+              type={testTab === "preTest" ? "primary" : "default"}
+              size="small"
+              onClick={() => setTestTab("preTest")}
+            >
+              Pre-Test ({preTestData?.stats?.total || 0})
+            </Button>
+            <Button
+              type={testTab === "postTest" ? "primary" : "default"}
+              size="small"
+              onClick={() => setTestTab("postTest")}
+            >
+              Post-Test ({postTestData?.stats?.total || 0})
+            </Button>
+          </Space>
+        </div>
+        {testLoading ? (
+          <div className="p-8 text-center">
+            <Text type="secondary">Loading test responses...</Text>
+          </div>
+        ) : currentTestResponses.length > 0 ? (
+          <Table
+            rowKey="id"
+            columns={testResponseColumns}
+            dataSource={currentTestResponses}
+            size="small"
+            pagination={{ pageSize: 8, size: "small" }}
+            scroll={{ x: "max-content" }}
+          />
+        ) : (
+          <TrainingEmptyState
+            type="search"
+            message="No test responses found"
+            description="No test submissions available for this training."
+          />
+        )}
+      </Modal>
+
+      <Modal
+        open={feedbackModalOpen}
+        onCancel={() => {
+          setFeedbackModalOpen(false);
+          setSelectedTraining(null);
+          setFeedbackData(null);
+        }}
+        footer={null}
+        width={900}
+        title={selectedTraining ? `Feedback Responses - ${selectedTraining.title}` : "Feedback Responses"}
+      >
+        {feedbackLoading ? (
+          <div className="p-8 text-center">
+            <Text type="secondary">Loading feedback responses...</Text>
+          </div>
+        ) : feedbackResponses.length > 0 ? (
+          <Table
+            rowKey="id"
+            columns={feedbackColumns}
+            dataSource={feedbackResponses}
+            size="small"
+            pagination={{ pageSize: 8, size: "small" }}
+            scroll={{ x: "max-content" }}
+          />
+        ) : (
+          <TrainingEmptyState
+            type="search"
+            message="No feedback responses found"
+            description="No feedback submissions available for this training."
+          />
+        )}
+      </Modal>
+
+      <Modal
+        open={lessonPlanModalOpen}
+        onCancel={() => {
+          setLessonPlanModalOpen(false);
+          setSelectedTraining(null);
+          setLessonPlanData([]);
+        }}
+        footer={null}
+        width={900}
+        title={selectedTraining ? `Lesson Plans - ${selectedTraining.title}` : "Lesson Plans"}
+      >
+        {lessonPlanLoading ? (
+          <div className="p-8 text-center">
+            <Text type="secondary">Loading lesson plans...</Text>
+          </div>
+        ) : lessonPlanData.length > 0 ? (
+          <Table
+            rowKey="id"
+            columns={lessonPlanColumns}
+            dataSource={lessonPlanData}
+            size="small"
+            pagination={{ pageSize: 8, size: "small" }}
+            scroll={{ x: "max-content" }}
+          />
+        ) : (
+          <TrainingEmptyState
+            type="search"
+            message="No lesson plans found"
+            description="No lesson plans available for this training."
+          />
+        )}
       </Modal>
     </div>
   );
