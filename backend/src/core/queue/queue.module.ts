@@ -30,6 +30,7 @@ const queueLogger = new Logger('QueueModule');
         const redisHost = configService.get<string>('REDIS_HOST', 'localhost');
         const redisPort = configService.get<number>('REDIS_PORT', 6379);
         const redisPassword = configService.get<string>('REDIS_PASSWORD');
+        const queuePrefix = configService.get<string>('QUEUE_PREFIX', 'bull');
 
         const connection: any = {
           host: redisHost,
@@ -63,8 +64,8 @@ const queueLogger = new Logger('QueueModule');
 
         return {
           connection,
-          // Simple prefix for DragonflyDB compatibility
-          prefix: 'bull',
+          // Prefix is configurable to isolate environments/workers on shared Redis.
+          prefix: queuePrefix,
         };
       },
     }),

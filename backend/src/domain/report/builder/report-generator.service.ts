@@ -130,6 +130,29 @@ export class ReportGeneratorService {
   }
 
   /**
+   * Format month/year pair as readable report month label (e.g. "March 2026")
+   */
+  private formatReportMonth(month: number, year: number): string {
+    const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const safeMonth = Number(month);
+    const safeYear = Number(year);
+    if (!safeMonth || safeMonth < 1 || safeMonth > 12 || !safeYear) {
+      return '';
+    }
+    return `${monthNames[safeMonth]} ${safeYear}`;
+  }
+
+  /**
+   * Build report month label from a date value in local calendar month/year.
+   */
+  private formatReportMonthFromDate(date: Date | string | null | undefined): string {
+    if (!date) return '';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '';
+    return this.formatReportMonth(d.getMonth() + 1, d.getFullYear());
+  }
+
+  /**
    * Parse common boolean-ish inputs coming from JSON bodies, query params, or forms.
    * Returns undefined when the value is "not provided".
    */
@@ -753,6 +776,23 @@ export class ReportGeneratorService {
       where.visitDate = dateFilter;
     }
 
+    // Support direct month/year filtering for report builders using month selectors.
+    if (filters?.month || filters?.year) {
+      const resolvedYear = filters?.year ? Number(filters.year) : new Date().getFullYear();
+      const dateFilter: Record<string, unknown> = {};
+
+      if (filters?.month) {
+        const resolvedMonth = Number(filters.month);
+        dateFilter.gte = new Date(resolvedYear, resolvedMonth - 1, 1, 0, 0, 0, 0);
+        dateFilter.lte = new Date(resolvedYear, resolvedMonth, 0, 23, 59, 59, 999);
+      } else {
+        dateFilter.gte = new Date(resolvedYear, 0, 1, 0, 0, 0, 0);
+        dateFilter.lte = new Date(resolvedYear, 11, 31, 23, 59, 59, 999);
+      }
+
+      where.visitDate = dateFilter;
+    }
+
     // Handle visit type filter
     if (filters?.visitType) {
       where.visitType = filters.visitType;
@@ -792,6 +832,7 @@ export class ReportGeneratorService {
       studentActive: visit.application.student.user?.active,
       companyName: visit.application.companyName,
       visitDate: this.formatToIST(visit.visitDate),
+      reportMonth: this.formatReportMonthFromDate(visit.visitDate),
       visitType: visit.visitType,
       visitLocation: visit.visitLocation,
       followUpRequired: visit.followUpRequired,
@@ -837,8 +878,10 @@ export class ReportGeneratorService {
       where.student = studentFilter;
     }
 
-    if (filters?.month && filters?.year) {
+    if (filters?.month) {
       where.reportMonth = Number(filters.month);
+    }
+    if (filters?.year) {
       where.reportYear = Number(filters.year);
     }
 
@@ -871,6 +914,7 @@ export class ReportGeneratorService {
       companyName: report.application.companyName ?? '',
       month: report.reportMonth,
       year: report.reportYear,
+      reportMonth: this.formatReportMonth(report.reportMonth, report.reportYear),
       status: report.status,
       submittedAt: this.formatToIST(report.submittedAt),
       reportFileUrl: report.reportFileUrl,
@@ -2513,6 +2557,12 @@ export class ReportGeneratorService {
     pagination?: ReportPaginationOptions,
   ): Promise<any[]> {
     const { take, skip } = this.getPaginationParams(pagination);
+    // Determine report month - use filter or current month
+    const now = new Date();
+    const filterMonth = filters?.month ? Number(filters.month) : now.getMonth() + 1;
+    const filterYear = filters?.year ? Number(filters.year) : now.getFullYear();
+    const reportMonthStr = this.formatReportMonth(filterMonth, filterYear);
+    const hasExplicitMonthFilter = filters?.month !== undefined && filters?.month !== null && filters?.month !== '';
 
     // Fetch students the SAME way as Joining Report
     const userFilter: Record<string, unknown> = { active: true };
@@ -2534,6 +2584,25 @@ export class ReportGeneratorService {
       internshipAppWhere.startDate = { lte: filterDate };
     }
 
+    const monthStartDate = new Date(filterYear, filterMonth - 1, 1, 0, 0, 0, 0);
+    const monthEndDate = new Date(filterYear, filterMonth, 0, 23, 59, 59, 999);
+
+    // For explicit month filtering, narrow applications to those with at least one
+    // completed visit inside the selected month window (same behavior users expect
+    // from month-filtered pending visit reports).
+    if (hasExplicitMonthFilter) {
+      internshipAppWhere.facultyVisitLogs = {
+        some: {
+          isDeleted: false,
+          status: 'COMPLETED',
+          visitDate: {
+            gte: monthStartDate,
+            lte: monthEndDate,
+          },
+        },
+      };
+    }
+
     const students = await this.prisma.student.findMany({
       where: studentWhere,
       include: {
@@ -2553,7 +2622,14 @@ export class ReportGeneratorService {
             joiningDate: true,
             totalExpectedVisits: true,
             facultyVisitLogs: {
-              where: { isDeleted: false, status: 'COMPLETED' },
+              where: {
+                isDeleted: false,
+                status: 'COMPLETED',
+                visitDate: {
+                  gte: monthStartDate,
+                  lte: monthEndDate,
+                },
+              },
               select: { visitDate: true, visitType: true, status: true },
               orderBy: { visitDate: 'desc' as const },
             },
@@ -2590,6 +2666,7 @@ export class ReportGeneratorService {
           complianceLevel: 'low',
           lastVisitDate: null,
           lastVisitType: 'N/A',
+          reportMonth: reportMonthStr,
           studentActive: student.user?.active ?? false,
         });
       } else {
@@ -2625,6 +2702,7 @@ export class ReportGeneratorService {
             complianceLevel,
             lastVisitDate: this.formatToIST(lastVisitLog?.visitDate ?? null),
             lastVisitType: lastVisitLog?.visitType ?? 'N/A',
+            reportMonth: reportMonthStr,
             studentActive: student.user?.active ?? false,
           });
         }
@@ -2670,11 +2748,17 @@ export class ReportGeneratorService {
 
     // Build monthly reports filter based on month/year
     const monthlyReportsWhere: Record<string, unknown> = {};
-    if (filters?.month) {
+    const now = new Date();
+    const hasMonthFilter = filters?.month !== undefined && filters?.month !== null && filters?.month !== '';
+    const hasYearFilter = filters?.year !== undefined && filters?.year !== null && filters?.year !== '';
+    const resolvedMonth = hasMonthFilter ? Number(filters.month) : undefined;
+    const resolvedYear = hasYearFilter ? Number(filters.year) : (hasMonthFilter ? now.getFullYear() : undefined);
+
+    if (resolvedMonth) {
       monthlyReportsWhere.reportMonth = Number(filters.month);
     }
-    if (filters?.year) {
-      monthlyReportsWhere.reportYear = Number(filters.year);
+    if (resolvedYear) {
+      monthlyReportsWhere.reportYear = resolvedYear;
     }
 
     const students = await this.prisma.student.findMany({
@@ -2717,7 +2801,7 @@ export class ReportGeneratorService {
       let approved = 0;
       let totalExpected = 0;
 
-      if (filters?.month && filters?.year) {
+      if (resolvedMonth && resolvedYear) {
         // For specific month/year: check if report for that month exists
         totalExpected = 1; // One report expected per month
         submitted = student.monthlyReports.length > 0 ? 1 : 0;
@@ -2744,6 +2828,9 @@ export class ReportGeneratorService {
         institutionName: student.Institution?.name ?? 'N/A',
         mentorName: app?.mentor?.name ?? 'N/A',
         companyName: (app as any)?.companyName ?? 'N/A',
+        reportMonth: resolvedMonth && resolvedYear
+          ? this.formatReportMonth(resolvedMonth, resolvedYear)
+          : this.formatReportMonthFromDate(lastSubmission ?? null),
         totalReportsExpected: totalExpected,
         reportsSubmitted: submitted,
         reportsApproved: approved,
@@ -2939,6 +3026,23 @@ export class ReportGeneratorService {
       visitWhere.facultyId = filters.mentorId;
     }
 
+    // Support month/year filters directly for compliance-style period filtering.
+    if (filters?.month || filters?.year) {
+      const resolvedYear = filters?.year ? Number(filters.year) : new Date().getFullYear();
+      if (filters?.month) {
+        const resolvedMonth = Number(filters.month);
+        visitWhere.visitDate = {
+          gte: new Date(resolvedYear, resolvedMonth - 1, 1, 0, 0, 0, 0),
+          lte: new Date(resolvedYear, resolvedMonth, 0, 23, 59, 59, 999),
+        };
+      } else {
+        visitWhere.visitDate = {
+          gte: new Date(resolvedYear, 0, 1, 0, 0, 0, 0),
+          lte: new Date(resolvedYear, 11, 31, 23, 59, 59, 999),
+        };
+      }
+    }
+
     // Fetch faculty visit logs with related data
     const visitLogs = await this.prisma.facultyVisitLog.findMany({
       where: visitWhere,
@@ -2999,6 +3103,7 @@ export class ReportGeneratorService {
 
       results.push({
         mentorName: visit.faculty?.name ?? 'N/A',
+        reportMonth: this.formatReportMonthFromDate(visit.visitDate),
         studentName: student?.user?.name ?? 'N/A',
         rollNumber: student?.user?.rollNumber ?? 'N/A',
         institutionName: student?.Institution?.name ?? 'N/A',
@@ -3204,18 +3309,19 @@ export class ReportGeneratorService {
     }
 
     // Build date filter for visits based on month/year
-   const visitLogsWhere: Record<string, unknown> = { isDeleted: false, status: 'COMPLETED' };
-    if (filters?.month && filters?.year) {
-      const filterMonth = Number(filters.month);
-      const filterYear = Number(filters.year);
+    const visitLogsWhere: Record<string, unknown> = { isDeleted: false, status: 'COMPLETED' };
+    const now = new Date();
+    const filterMonth = filters?.month ? Number(filters.month) : null;
+    const filterYear = filters?.year ? Number(filters.year) : (filterMonth ? now.getFullYear() : null);
+
+    if (filterMonth && filterYear) {
       const startDate = new Date(filterYear, filterMonth - 1, 1);
       const endDate = new Date(filterYear, filterMonth, 0, 23, 59, 59, 999);
       visitLogsWhere.visitDate = {
         gte: startDate,
         lte: endDate,
       };
-    } else if (filters?.year) {
-      const filterYear = Number(filters.year);
+    } else if (filterYear) {
       const startDate = new Date(filterYear, 0, 1);
       const endDate = new Date(filterYear, 11, 31, 23, 59, 59, 999);
       visitLogsWhere.visitDate = {
@@ -3259,14 +3365,11 @@ export class ReportGeneratorService {
 
     this.warnOnLargeResultSet(mentors.length, 'PendingMonthlyVisitsReport');
 
-    const now = new Date();
     const results: any[] = [];
 
     // Determine the reference date for calculations (either filter date or now)
     let referenceDate = now;
-    if (filters?.month && filters?.year) {
-      const filterMonth = Number(filters.month);
-      const filterYear = Number(filters.year);
+    if (filterMonth && filterYear) {
       // Use end of the specified month as reference
       referenceDate = new Date(filterYear, filterMonth, 0, 23, 59, 59, 999);
     }
@@ -3279,7 +3382,7 @@ export class ReportGeneratorService {
         assignment.student.internshipApplications.forEach((app) => {
           // When filtering by month/year, calculate visits due based on filtered visits
           const completedVisits = app.facultyVisitLogs.length;
-          const visitsDue = filters?.month && filters?.year
+          const visitsDue = filterMonth && filterYear
             ? (completedVisits === 0 ? 1 : 0) // If no visit in the period, 1 visit is due
             : app.totalExpectedVisits - completedVisits;
 
@@ -3306,6 +3409,8 @@ export class ReportGeneratorService {
               rollNumber: assignment.student.user?.rollNumber,
               companyName: app.companyName,
               lastVisitDate: this.formatToIST(lastVisit),
+              pendingMonth: this.formatReportMonth(referenceDate.getMonth() + 1, referenceDate.getFullYear()),
+              pendingYear: referenceDate.getFullYear(),
               daysSinceLastVisit,
               visitsDue,
             });
@@ -3381,7 +3486,7 @@ export class ReportGeneratorService {
 
     // Determine if we're filtering by specific month/year
     const filterMonth = filters?.month ? Number(filters.month) : null;
-    const filterYear = filters?.year ? Number(filters.year) : null;
+    const filterYear = filters?.year ? Number(filters.year) : (filterMonth ? currentYear : null);
 
     for (const student of students) {
       const app = student.internshipApplications[0];
@@ -3461,7 +3566,7 @@ export class ReportGeneratorService {
           branchName: student.branch?.name ?? student.user?.branchName,
           mentorName: app.mentor?.name ?? 'N/A',
           companyName: app.companyName,
-          pendingMonth: monthNames[filterMonth],
+          pendingMonth: this.formatReportMonth(filterMonth, filterYear),
           pendingYear: filterYear,
           daysPastDue,
           lastSubmittedReport: lastReport?.submittedAt ?? null,
@@ -3500,7 +3605,7 @@ export class ReportGeneratorService {
           branchName: student.branch?.name ?? student.user?.branchName,
           mentorName: app.mentor?.name ?? 'N/A',
           companyName: app.companyName,
-          pendingMonth: monthNames[pendingMonth],
+          pendingMonth: this.formatReportMonth(pendingMonth, pendingYear),
           pendingYear,
           daysPastDue,
           lastSubmittedReport: lastReport?.submittedAt ?? null,

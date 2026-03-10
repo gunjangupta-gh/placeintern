@@ -458,6 +458,7 @@ export class ReportProcessor extends WorkerHost {
         { field: 'branchName', header: 'Branch', type: 'string' as const, width: 15 },
         { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
         { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'reportMonth', header: 'Report Month', type: 'string' as const, width: 14 },
         { field: 'internshipStartDate', header: 'Internship Start', type: 'date' as const, width: 15 },
         { field: 'mentorName', header: 'Mentor Name', type: 'string' as const, width: 20 },
         { field: 'requiredVisits', header: 'Required Visits', type: 'number' as const, width: 14 },
@@ -470,6 +471,7 @@ export class ReportProcessor extends WorkerHost {
       ],
       'faculty_visit_details': [
         { field: 'mentorName', header: 'Mentor Name', type: 'string' as const, width: 20 },
+        { field: 'reportMonth', header: 'Report Month', type: 'string' as const, width: 14 },
         { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
         { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
         { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
@@ -488,6 +490,52 @@ export class ReportProcessor extends WorkerHost {
         { field: 'significantChangeInPlan', header: 'Significant Change in Plan', type: 'string' as const, width: 30 },
         { field: 'observationsAboutStudent', header: 'Observations About Student', type: 'string' as const, width: 40 },
         { field: 'feedbackSharedWithStudent', header: 'Feedback Shared', type: 'string' as const, width: 40 },
+      ],
+      'monthly_report_compliance': [
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 22 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'gender', header: 'Gender', type: 'string' as const, width: 10 },
+        { field: 'branchName', header: 'Branch', type: 'string' as const, width: 15 },
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
+        { field: 'mentorName', header: 'Mentor Name', type: 'string' as const, width: 20 },
+        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'reportMonth', header: 'Report Month', type: 'string' as const, width: 14 },
+        { field: 'totalReportsExpected', header: 'Expected Reports', type: 'number' as const, width: 14 },
+        { field: 'reportsSubmitted', header: 'Submitted', type: 'number' as const, width: 12 },
+        { field: 'reportsApproved', header: 'Approved', type: 'number' as const, width: 12 },
+        { field: 'reportsPending', header: 'Pending', type: 'number' as const, width: 12 },
+        { field: 'compliancePercent', header: 'Compliance %', type: 'number' as const, width: 12 },
+        { field: 'lastSubmissionDate', header: 'Last Submission', type: 'date' as const, width: 15 },
+        { field: 'isActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
+        { field: 'userActive', header: 'User Active', type: 'boolean' as const, width: 12 },
+      ],
+      'pending_monthly_visits': [
+        { field: 'mentorName', header: 'Mentor Name', type: 'string' as const, width: 20 },
+        { field: 'mentorEmail', header: 'Email', type: 'string' as const, width: 25 },
+        { field: 'mentorPhone', header: 'Phone', type: 'string' as const, width: 15 },
+        { field: 'department', header: 'Department', type: 'string' as const, width: 15 },
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
+        { field: 'studentName', header: 'Student', type: 'string' as const, width: 20 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'pendingMonth', header: 'Report Month', type: 'string' as const, width: 14 },
+        { field: 'pendingYear', header: 'Year', type: 'number' as const, width: 10 },
+        { field: 'lastVisitDate', header: 'Last Visit', type: 'date' as const, width: 15 },
+        { field: 'daysSinceLastVisit', header: 'Days Since Visit', type: 'number' as const, width: 14 },
+        { field: 'visitsDue', header: 'Visits Due', type: 'number' as const, width: 10 },
+      ],
+      'pending_monthly_reports': [
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 22 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'branchName', header: 'Branch', type: 'string' as const, width: 15 },
+        { field: 'mentorName', header: 'Mentor', type: 'string' as const, width: 20 },
+        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'pendingMonth', header: 'Report Month', type: 'string' as const, width: 14 },
+        { field: 'pendingYear', header: 'Year', type: 'number' as const, width: 10 },
+        { field: 'daysPastDue', header: 'Days Past Due', type: 'number' as const, width: 14 },
+        { field: 'lastSubmittedReport', header: 'Last Submitted', type: 'date' as const, width: 15 },
+        { field: 'reportsSubmitted', header: 'Reports Submitted', type: 'number' as const, width: 14 },
+        { field: 'reportsExpected', header: 'Reports Expected', type: 'number' as const, width: 14 },
       ],
       // 'faculty_visit': [
       //   { field: 'facultyName', header: 'Faculty Name', type: 'string' as const, width: 20 },
@@ -626,9 +674,8 @@ export class ReportProcessor extends WorkerHost {
     }
 
     // Filter columns based on user selection (if provided)
-    // Skip filtering if predefined columns exist for this report type (prevents stale frontend selections from overriding)
-    const hasPredefinedColumns = !!reportColumns[normalizedType];
-    if (!hasPredefinedColumns && selectedColumns && selectedColumns.length > 0) {
+    // Apply for both predefined and inferred columns.
+    if (selectedColumns && selectedColumns.length > 0) {
       this.logger.log(`Filtering to selected columns: ${selectedColumns.join(', ')}`);
 
       // Filter to only include selected columns while preserving order
@@ -651,6 +698,8 @@ export class ReportProcessor extends WorkerHost {
           }
           return filteredRow;
         });
+      } else {
+        this.logger.warn('No selected columns matched export columns, keeping default column set');
       }
     }
 
