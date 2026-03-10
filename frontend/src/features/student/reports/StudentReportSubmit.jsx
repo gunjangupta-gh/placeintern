@@ -61,6 +61,33 @@ const StudentReportSubmit = () => {
   const [selectedMonth, setSelectedMonth] = useState(() => dayjs().month() + 1);
   const [selectedYear, setSelectedYear] = useState(() => dayjs().year());
 
+  const showMonthlyReportGuideline = useCallback((onContinue) => {
+    Modal.confirm({
+      title: 'Monthly Report Guideline',
+      width: 760,
+      content: (
+        <div>
+          <p className="mb-2">
+            Please review the official monthly report format before uploading your report.
+          </p>
+          <Alert
+            type="info"
+            showIcon
+            message="Use the exact structure shown in the guideline PDF."
+            description={
+              <a href="/Monthly_report.pdf" target="_blank" rel="noopener noreferrer" className="font-medium underline">
+                Open Monthly Report Guideline (PDF)
+              </a>
+            }
+          />
+        </div>
+      ),
+      okText: 'Continue to Upload',
+      cancelText: 'Cancel',
+      onOk: onContinue,
+    });
+  }, []);
+
   // Get active applications (APPROVED or JOINED status)
   const applications = useMemo(() => {
     return activeInternships.length > 0
@@ -180,13 +207,15 @@ const StudentReportSubmit = () => {
       toast('No active internship found', { icon: '⚠️' });
       return;
     }
-    setEditingReport(null);
-    setFileList([]);
-    setAutoMonthSelection(true);
-    setSelectedMonth(dayjs().month() + 1);
-    setSelectedYear(dayjs().year());
-    setModalVisible(true);
-  }, [selectedApplication]);
+    showMonthlyReportGuideline(() => {
+      setEditingReport(null);
+      setFileList([]);
+      setAutoMonthSelection(true);
+      setSelectedMonth(dayjs().month() + 1);
+      setSelectedYear(dayjs().year());
+      setModalVisible(true);
+    });
+  }, [selectedApplication, showMonthlyReportGuideline]);
 
   // Close modal
   const handleCloseModal = useCallback(() => {
@@ -287,13 +316,15 @@ const StudentReportSubmit = () => {
 
   // Replace report
   const handleReplace = useCallback((report) => {
-    setEditingReport(report);
-    setFileList([]);
-    setAutoMonthSelection(false);
-    setSelectedMonth(report.reportMonth);
-    setSelectedYear(report.reportYear);
-    setModalVisible(true);
-  }, []);
+    showMonthlyReportGuideline(() => {
+      setEditingReport(report);
+      setFileList([]);
+      setAutoMonthSelection(false);
+      setSelectedMonth(report.reportMonth);
+      setSelectedYear(report.reportYear);
+      setModalVisible(true);
+    });
+  }, [showMonthlyReportGuideline]);
 
   // Status tag
   const getStatusTag = useCallback((status) => {

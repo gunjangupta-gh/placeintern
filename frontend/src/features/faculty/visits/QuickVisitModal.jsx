@@ -77,8 +77,50 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
   const [selectedApplicationId, setSelectedApplicationId] = useState(null);
   const [internshipDateError, setInternshipDateError] = useState(null);
   const [visitStatus, setVisitStatus] = useState('COMPLETED');
+  const [guidanceAcknowledged, setGuidanceAcknowledged] = useState(false);
   const isCompletedStatus = visitStatus === 'COMPLETED';
   const wasVisibleRef = useRef(false);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!visible) {
+      setGuidanceAcknowledged(false);
+      return;
+    }
+
+    if (guidanceAcknowledged) {
+      return;
+    }
+
+    const guidanceModal = Modal.confirm({
+      title: 'Visit Log Writing Guidance',
+      width: 760,
+      content: (
+        <div>
+          <p className="mb-2">While filling today's visit report, please:</p>
+          <ul className="list-disc pl-5 space-y-1 mb-2">
+            <li>Refer to specific tasks you observed (e.g., transformer testing, bar bending, drawing reading).</li>
+            <li>Note what the student did well with examples.</li>
+            <li>Give 1-2 precise improvement points plus an action for the next visit.</li>
+            <li>Connect your comments to a competency / CO / PO where possible.</li>
+          </ul>
+          <p className="mb-0">Kindly avoid generic feedback such as "improve practical skills" or "focus on safety" without examples or next steps.</p>
+        </div>
+      ),
+      okText: 'Continue to Visit Log',
+      cancelText: 'Cancel',
+      onOk: () => setGuidanceAcknowledged(true),
+      onCancel: () => onCloseRef.current?.(),
+    });
+
+    return () => {
+      guidanceModal?.destroy?.();
+    };
+  }, [visible, guidanceAcknowledged]);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -341,7 +383,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
           <span>Quick Log Visit</span>
         </div>
       }
-      open={visible}
+      open={visible && guidanceAcknowledged}
       onCancel={onClose}
       footer={[
         <Button key="cancel" onClick={onClose} disabled={submitting}>

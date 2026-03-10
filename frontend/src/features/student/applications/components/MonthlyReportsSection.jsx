@@ -40,6 +40,33 @@ const MonthlyReportsSection = ({
   const [selectedMonth, setSelectedMonth] = useState(() => dayjs().month() + 1);
   const [selectedYear, setSelectedYear] = useState(() => dayjs().year());
 
+  const showMonthlyReportGuideline = useCallback((onContinue) => {
+    Modal.confirm({
+      title: 'Monthly Report Guideline',
+      width: 760,
+      content: (
+        <div>
+          <p className="mb-2">
+            Please review the official monthly report format before uploading your report.
+          </p>
+          <Alert
+            type="info"
+            showIcon
+            message="Use the exact structure shown in the guideline PDF."
+            description={
+              <a href="/Monthly_report.pdf" target="_blank" rel="noopener noreferrer" className="font-medium underline">
+                Open Monthly Report Guideline (PDF)
+              </a>
+            }
+          />
+        </div>
+      ),
+      okText: 'Continue to Upload',
+      cancelText: 'Cancel',
+      onOk: onContinue,
+    });
+  }, []);
+
   // Month options
   const monthOptions = useMemo(() =>
     MONTH_NAMES.map((name, index) => ({
@@ -160,18 +187,20 @@ const MonthlyReportsSection = ({
 
   // Open upload modal
   const openUploadModal = useCallback((report = null) => {
-    if (report) {
-      setSelectedMonth(report.reportMonth);
-      setSelectedYear(report.reportYear);
-      setAutoMonthSelection(false);
-    } else {
-      setAutoMonthSelection(true);
-      setSelectedMonth(dayjs().month() + 1);
-      setSelectedYear(dayjs().year());
-    }
-    setFileList([]);
-    setUploadModalVisible(true);
-  }, []);
+    showMonthlyReportGuideline(() => {
+      if (report) {
+        setSelectedMonth(report.reportMonth);
+        setSelectedYear(report.reportYear);
+        setAutoMonthSelection(false);
+      } else {
+        setAutoMonthSelection(true);
+        setSelectedMonth(dayjs().month() + 1);
+        setSelectedYear(dayjs().year());
+      }
+      setFileList([]);
+      setUploadModalVisible(true);
+    });
+  }, [showMonthlyReportGuideline]);
 
   // Close upload modal
   const handleCloseUploadModal = useCallback(() => {

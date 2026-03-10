@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Modal, Form, Input, Select, DatePicker, Button, Row, Col, Divider, Upload, Spin, Alert } from 'antd';
 import { toast } from 'react-hot-toast';
@@ -39,12 +39,54 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
   const [internshipDateError, setInternshipDateError] = useState(null);
   const [selectedInternship, setSelectedInternship] = useState(null);
   const [visitStatus, setVisitStatus] = useState('COMPLETED');
+  const [guidanceAcknowledged, setGuidanceAcknowledged] = useState(false);
+  const onCloseRef = useRef(onClose);
 
   const { visitLogs, students } = useSelector((state) => state.faculty);
   const currentVisitLog = visitLogs?.current;
   const assignedStudents = students?.list || [];
   const { companies } = useSelector((state) => state.company || { companies: [] });
   const isCompletedStatus = visitStatus === 'COMPLETED';
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!open) {
+      setGuidanceAcknowledged(false);
+      return;
+    }
+
+    if (guidanceAcknowledged) {
+      return;
+    }
+
+    const guidanceModal = Modal.confirm({
+      title: 'Visit Log Writing Guidance',
+      width: 760,
+      content: (
+        <div>
+          <p className="mb-2">While filling today's visit report, please:</p>
+          <ul className="list-disc pl-5 space-y-1 mb-2">
+            <li>Refer to specific tasks you observed (e.g., transformer testing, bar bending, drawing reading).</li>
+            <li>Note what the student did well with examples.</li>
+            <li>Give 1-2 precise improvement points plus an action for the next visit.</li>
+            <li>Connect your comments to a competency / CO / PO where possible.</li>
+          </ul>
+          <p className="mb-0">Kindly avoid generic feedback such as "improve practical skills" or "focus on safety" without examples or next steps.</p>
+        </div>
+      ),
+      okText: 'Continue to Visit Log',
+      cancelText: 'Cancel',
+      onOk: () => setGuidanceAcknowledged(true),
+      onCancel: () => onCloseRef.current?.(),
+    });
+
+    return () => {
+      guidanceModal?.destroy?.();
+    };
+  }, [open, guidanceAcknowledged]);
 
   useEffect(() => {
     if (open) {
@@ -258,7 +300,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
   return (
     <Modal
       title={isEdit ? 'Edit Visit Log' : 'Add Visit Log'}
-      open={open}
+      open={open && guidanceAcknowledged}
       onCancel={handleClose}
       footer={null}
       width={900}
