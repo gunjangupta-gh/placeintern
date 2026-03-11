@@ -357,19 +357,27 @@ const TrainingManagementPage = () => {
       title: "Training",
       dataIndex: "title",
       key: "title",
+      width: 260,
       render: (text, record) => (
         <div className="py-1">
-          <div className="font-medium text-sm text-slate-800">{text}</div>
-          <Text type="secondary" className="text-xs">
-            {record.providedBy || "Training Provider"}
-          </Text>
+          <Tooltip title={text}>
+            <div className="font-medium text-sm text-slate-800 truncate max-w-60">
+              {text}
+            </div>
+          </Tooltip>
+          <div className="flex items-center gap-2 mt-0.5 min-w-0">
+            <Text type="secondary" className="text-xs truncate">
+              {record.providedBy || "Training Provider"}
+            </Text>
+            <DeliveryModeBadge mode={record.deliveryMode} />
+          </div>
         </div>
       ),
     },
     {
       title: "Dates",
       key: "dates",
-      width: 200,
+      width: 170,
       render: (_, record) => (
         <TrainingDateRange
           startDate={record.startDate}
@@ -379,16 +387,9 @@ const TrainingManagementPage = () => {
       ),
     },
     {
-      title: "Mode",
-      dataIndex: "deliveryMode",
-      key: "deliveryMode",
-      width: 100,
-      render: (mode) => <DeliveryModeBadge mode={mode} />,
-    },
-    {
       title: "View",
       key: "viewAction",
-      width: 72,
+      width: 56,
       align: "center",
       render: (_, record) => (
         <Tooltip title="View Details">
@@ -404,7 +405,7 @@ const TrainingManagementPage = () => {
     {
       title: "Attendance",
       key: "attendanceAction",
-      width: 96,
+      width: 76,
       align: "center",
       render: (_, record) => (
         <Tooltip title="View Attendance">
@@ -420,7 +421,7 @@ const TrainingManagementPage = () => {
     {
       title: "Test",
       key: "testAction",
-      width: 72,
+      width: 56,
       align: "center",
       render: (_, record) => (
         <Tooltip title="View Test Responses">
@@ -436,7 +437,7 @@ const TrainingManagementPage = () => {
     {
       title: "Feedback",
       key: "feedbackAction",
-      width: 90,
+      width: 76,
       align: "center",
       render: (_, record) => (
         <Tooltip title="View Feedback Responses">
@@ -452,7 +453,7 @@ const TrainingManagementPage = () => {
     {
       title: "Edit",
       key: "editAction",
-      width: 64,
+      width: 56,
       align: "center",
       render: (_, record) => (
         <Tooltip title="Edit">
@@ -468,7 +469,7 @@ const TrainingManagementPage = () => {
     {
       title: "Status",
       key: "publishAction",
-      width: 110,
+      width: 88,
       align: "center",
       render: (_, record) => (
         <Tooltip title={record.isPublished ? "Unpublish (Draft)" : "Publish (Active)"}>
@@ -741,7 +742,7 @@ const TrainingManagementPage = () => {
       {/* Table/Calendar View */}
       {viewMode === "LIST" ? (
         <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: 0 } }}>
-          <div className="p-0 custom-scrollbar overflow-x-auto">
+          <div className="p-0 custom-scrollbar">
             {filteredTrainings.length > 0 ? (
               <Table
                 rowKey="id"
@@ -759,7 +760,6 @@ const TrainingManagementPage = () => {
                 onChange={handleTableChange}
                 size="small"
                 className="custom-table"
-                scroll={{ x: 'max-content' }}
               />
             ) : (
               <div className="p-6">
