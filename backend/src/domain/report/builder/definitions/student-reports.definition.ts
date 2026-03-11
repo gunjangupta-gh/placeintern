@@ -68,11 +68,6 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
     filters: [
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false, placeholder: 'All Institutions' },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
-      { id: 'complianceLevel', label: 'Compliance Level', type: 'select', required: false, options: [
-        { label: 'Compliant (80%+)', value: 'high' },
-        { label: 'Partial (50-80%)', value: 'medium' },
-        { label: 'Non-Compliant (<50%)', value: 'low' },
-      ]},
       { id: 'isActive', label: 'Student Status', type: 'select', required: false, options: [
         { label: 'Active', value: true },
         { label: 'Inactive', value: false },

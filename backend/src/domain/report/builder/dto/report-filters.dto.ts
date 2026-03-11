@@ -102,11 +102,6 @@ export class StudentDirectoryFilterDto extends BaseReportFilterDto {
  * Filters for Student Compliance Report
  */
 export class StudentComplianceFilterDto extends BaseReportFilterDto {
-  @IsOptional()
-  @IsIn(['high', 'medium', 'low'], {
-    message: 'Compliance level must be high, medium, or low',
-  })
-  complianceLevel?: string;
 }
 
 // ============================================

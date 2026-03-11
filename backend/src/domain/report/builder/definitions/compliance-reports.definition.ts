@@ -45,11 +45,6 @@ export const complianceReportDefinitions: Record<string, ReportDefinition> = {
       ]},
       { id: 'year', label: 'Year', type: 'select', dynamic: true, required: false },
       { id: 'internshipStartDate', label: 'Internship Start Date (Before)', type: 'date', required: false },
-      { id: 'complianceLevel', label: 'Compliance Level', type: 'select', required: false, options: [
-        { label: 'Compliant (80%+)', value: 'high' },
-        { label: 'Partial (50-80%)', value: 'medium' },
-        { label: 'Non-Compliant (<50%)', value: 'low' },
-      ]},
     ],
     groupBy: ['institutionName', 'branchName', 'mentorName', 'complianceLevel', 'reportMonth'],
     sortableColumns: ['studentName', 'mentorName', 'completedVisits', 'pendingVisits', 'compliancePercent', 'internshipStartDate', 'institutionName', 'reportMonth'],

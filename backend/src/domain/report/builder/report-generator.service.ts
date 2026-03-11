@@ -1189,11 +1189,6 @@ export class ReportGeneratorService {
       };
     });
 
-    // Apply complianceLevel filter if specified
-    if (filters?.complianceLevel) {
-      return results.filter((r) => r.complianceLevel === filters.complianceLevel);
-    }
-
     return results;
   }
 
@@ -2549,7 +2544,7 @@ export class ReportGeneratorService {
   /**
    * Generate Faculty Visit Compliance Report
    * Tracks faculty visit compliance for internship monitoring
-   * @param filters - Filter criteria (institutionId, month, year, complianceLevel)
+    * @param filters - Filter criteria (institutionId, month, year)
    * @param pagination - Optional pagination options
    */
   async generateFacultyVisitComplianceReport(
@@ -2707,11 +2702,6 @@ export class ReportGeneratorService {
           });
         }
       }
-    }
-
-    // Apply compliance level filter if specified
-    if (filters?.complianceLevel) {
-      return results.filter((r) => r.complianceLevel === filters.complianceLevel);
     }
 
     return results;
@@ -3287,7 +3277,7 @@ export class ReportGeneratorService {
   /**
    * Generate Pending Monthly Visits Report
    * Faculty with overdue visits - matches pending-reports.definition.ts columns
-   * @param filters - Filter criteria (institutionId, mentorId, month, year, urgency)
+    * @param filters - Filter criteria (institutionId, mentorId, month, year)
    * @param pagination - Optional pagination options
    */
   async generatePendingMonthlyVisitsReport(
@@ -3391,13 +3381,6 @@ export class ReportGeneratorService {
             const daysSinceLastVisit = lastVisit
               ? Math.floor((referenceDate.getTime() - new Date(lastVisit).getTime()) / (1000 * 60 * 60 * 24))
               : null;
-
-            // Apply urgency filter if specified
-            if (filters?.urgency) {
-              if (filters.urgency === 'critical' && (daysSinceLastVisit === null || daysSinceLastVisit <= 30)) return;
-              if (filters.urgency === 'high' && (daysSinceLastVisit === null || daysSinceLastVisit < 15 || daysSinceLastVisit > 30)) return;
-              if (filters.urgency === 'normal' && daysSinceLastVisit !== null && daysSinceLastVisit >= 15) return;
-            }
 
             results.push({
               mentorName: mentor.name,
@@ -3621,7 +3604,7 @@ export class ReportGeneratorService {
   /**
    * Generate Pending Joining Letters Report
    * Students who haven't submitted joining letter - matches pending-reports.definition.ts columns
-   * @param filters - Filter criteria (institutionId, branchId, mentorId, urgency)
+    * @param filters - Filter criteria (institutionId, branchId, mentorId)
    * @param pagination - Optional pagination options
    */
   async generatePendingJoiningLettersReport(
@@ -3692,16 +3675,6 @@ export class ReportGeneratorService {
         institutionName: app.student.Institution?.name ?? 'N/A',
       };
     });
-
-    // Apply urgency filter if specified
-    if (filters?.urgency) {
-      return results.filter((r) => {
-        if (filters.urgency === 'critical') return r.daysSinceStart > 14;
-        if (filters.urgency === 'high') return r.daysSinceStart >= 7 && r.daysSinceStart <= 14;
-        if (filters.urgency === 'normal') return r.daysSinceStart < 7;
-        return true;
-      });
-    }
 
     return results;
   }
