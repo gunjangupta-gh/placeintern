@@ -265,7 +265,7 @@ const ReportBuilder = () => {
               return updated;
             });
             if (result.status === 'completed') {
-              toast.success(`Report completed successfully!`);
+              toast.success(`Report completed successfully and available in history tab to download!`);
             } else if (result.status === 'failed') {
               toast.error(`Report generation failed: ${result.errorMessage || 'Unknown error'}`);
             }
