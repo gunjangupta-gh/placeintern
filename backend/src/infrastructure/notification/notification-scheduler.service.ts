@@ -159,18 +159,19 @@ export class NotificationSchedulerService implements OnModuleDestroy {
           { pendingCount: data.pendingCount, upcomingCount: data.upcomingCount },
         );
 
-        await this.mailService.queueMail({
-          to: data.mentor.email,
-          subject: 'Reminder: Faculty Visit Schedule',
-          template: 'faculty-visit-reminder',
-          context: {
-            name: data.mentor.name,
-            studentCount: data.pendingCount,
-            pendingCount: data.pendingCount,
-            upcomingCount: data.upcomingCount,
-            dashboardUrl: `${this.appUrl}/faculty/visits`,
-          },
-        });
+        // In-app only: email intentionally disabled for faculty visit reminders.
+        // await this.mailService.queueMail({
+        //   to: data.mentor.email,
+        //   subject: 'Reminder: Faculty Visit Schedule',
+        //   template: 'faculty-visit-reminder',
+        //   context: {
+        //     name: data.mentor.name,
+        //     studentCount: data.pendingCount,
+        //     pendingCount: data.pendingCount,
+        //     upcomingCount: data.upcomingCount,
+        //     dashboardUrl: `${this.appUrl}/faculty/visits`,
+        //   },
+        // });
 
         notifiedCount++;
       }
@@ -257,19 +258,20 @@ export class NotificationSchedulerService implements OnModuleDestroy {
           { upcomingCount: data.count, nextVisitDate: data.nextVisitDate },
         );
 
-        if (data.email) {
-          await this.mailService.queueMail({
-            to: data.email,
-            subject: 'Upcoming Faculty Visit Reminder',
-            template: 'student-visit-reminder',
-            context: {
-              name: data.name,
-              upcomingCount: data.count,
-              nextVisitDate: dateLabel,
-              dashboardUrl: `${this.appUrl}/student/dashboard`,
-            },
-          });
-        }
+        // In-app only: email intentionally disabled for student visit reminders.
+        // if (data.email) {
+        //   await this.mailService.queueMail({
+        //     to: data.email,
+        //     subject: 'Upcoming Faculty Visit Reminder',
+        //     template: 'student-visit-reminder',
+        //     context: {
+        //       name: data.name,
+        //       upcomingCount: data.count,
+        //       nextVisitDate: dateLabel,
+        //       dashboardUrl: `${this.appUrl}/student/dashboard`,
+        //     },
+        //   });
+        // }
 
         notifiedCount++;
       }
@@ -364,19 +366,20 @@ export class NotificationSchedulerService implements OnModuleDestroy {
             { month: targetMonth, year: targetYear },
           );
 
-          if (userEmail) {
-            await this.mailService.queueMail({
-              to: userEmail,
-              subject: 'Reminder: Submit Your Monthly Internship Report',
-              template: 'monthly-report-reminder',
-              context: {
-                name: userName,
-                month: this.getMonthName(targetMonth),
-                year: targetYear,
-                reportUrl: `${this.appUrl}/student/reports`,
-              },
-            });
-          }
+          // In-app only: email intentionally disabled for weekly monthly report reminders.
+          // if (userEmail) {
+          //   await this.mailService.queueMail({
+          //     to: userEmail,
+          //     subject: 'Reminder: Submit Your Monthly Internship Report',
+          //     template: 'monthly-report-reminder',
+          //     context: {
+          //       name: userName,
+          //       month: this.getMonthName(targetMonth),
+          //       year: targetYear,
+          //       reportUrl: `${this.appUrl}/student/reports`,
+          //     },
+          //   });
+          // }
         }
       }
 
