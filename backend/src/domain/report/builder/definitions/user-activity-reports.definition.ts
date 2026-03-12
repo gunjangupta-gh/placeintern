@@ -9,6 +9,7 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
     icon: 'login',
     availableFor: ['STATE_DIRECTORATE', 'PRINCIPAL', 'SYSTEM_ADMIN'],
     columns: [
+      { id: 'userId', label: 'User ID', type: 'string', default: true, sortable: true },
       { id: 'userName', label: 'User Name', type: 'string', default: true, sortable: true },
       { id: 'email', label: 'Email', type: 'string', default: true, sortable: true },
       { id: 'phoneNo', label: 'Phone', type: 'string', default: false },
@@ -100,6 +101,7 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
     icon: 'history',
     availableFor: ['STATE_DIRECTORATE', 'PRINCIPAL', 'SYSTEM_ADMIN'],
     columns: [
+      { id: 'userId', label: 'User ID', type: 'string', default: true, sortable: true },
       { id: 'userName', label: 'User Name', type: 'string', default: true, sortable: true },
       { id: 'email', label: 'Email', type: 'string', default: true },
       { id: 'role', label: 'Role', type: 'string', default: true },
@@ -146,6 +148,7 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
     icon: 'user-delete',
     availableFor: ['STATE_DIRECTORATE', 'PRINCIPAL', 'SYSTEM_ADMIN'],
     columns: [
+      { id: 'userId', label: 'User ID', type: 'string', default: true, sortable: true },
       { id: 'userName', label: 'User Name', type: 'string', default: true, sortable: true },
       { id: 'email', label: 'Email', type: 'string', default: true },
       { id: 'phoneNo', label: 'Phone', type: 'string', default: true },
@@ -188,6 +191,7 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
     icon: 'key',
     availableFor: ['STATE_DIRECTORATE', 'PRINCIPAL', 'SYSTEM_ADMIN'],
     columns: [
+      { id: 'userId', label: 'User ID', type: 'string', default: true, sortable: true },
       { id: 'userName', label: 'User Name', type: 'string', default: true, sortable: true },
       { id: 'email', label: 'Email', type: 'string', default: true },
       { id: 'phoneNo', label: 'Phone', type: 'string', default: true },
@@ -232,6 +236,7 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
     icon: 'clock-circle',
     availableFor: ['STATE_DIRECTORATE', 'PRINCIPAL', 'SYSTEM_ADMIN'],
     columns: [
+      { id: 'userId', label: 'User ID', type: 'string', default: true, sortable: true },
       { id: 'userName', label: 'User Name', type: 'string', default: true, sortable: true },
       { id: 'email', label: 'Email', type: 'string', default: true },
       { id: 'phoneNo', label: 'Phone', type: 'string', default: false },
@@ -279,6 +284,7 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
     icon: 'file-search',
     availableFor: ['STATE_DIRECTORATE', 'SYSTEM_ADMIN'],
     columns: [
+      { id: 'userId', label: 'User ID', type: 'string', default: true, sortable: true },
       { id: 'userName', label: 'User Name', type: 'string', default: true, sortable: true },
       { id: 'userRole', label: 'Role', type: 'string', default: true },
       { id: 'action', label: 'Action', type: 'string', default: true, sortable: true },

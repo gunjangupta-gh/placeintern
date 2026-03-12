@@ -2,6 +2,7 @@ import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import { InternshipStatus, MonthlyReportStatus, Role } from '../../../generated/prisma/client';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { ReportType } from './interfaces/report.interface';
+import { getMonthCycle } from '../../../common/utils/monthly-cycle.util';
 
 /**
  * Pagination options for report generation
@@ -49,6 +50,20 @@ const ADMIN_ONLY_REPORTS = ['institution_performance', 'system'];
 @Injectable()
 export class ReportGeneratorService {
   private readonly logger = new Logger(ReportGeneratorService.name);
+  private readonly monthMatrix = [
+    { month: 1, key: 'jan' },
+    { month: 2, key: 'feb' },
+    { month: 3, key: 'mar' },
+    { month: 4, key: 'apr' },
+    { month: 5, key: 'may' },
+    { month: 6, key: 'jun' },
+    { month: 7, key: 'jul' },
+    { month: 8, key: 'aug' },
+    { month: 9, key: 'sep' },
+    { month: 10, key: 'oct' },
+    { month: 11, key: 'nov' },
+    { month: 12, key: 'dec' },
+  ] as const;
 
   constructor(private prisma: PrismaService) {}
 
@@ -150,6 +165,91 @@ export class ReportGeneratorService {
     const d = new Date(date);
     if (isNaN(d.getTime())) return '';
     return this.formatReportMonth(d.getMonth() + 1, d.getFullYear());
+  }
+
+  /**
+   * Build Jan-Dec submission columns where eligible months are 0/1 and
+   * non-eligible months are null (blank in exports).
+   */
+  private buildMonthSubmissionColumns(
+    submittedMonths: Set<number>,
+    eligibleMonths: Set<number>,
+  ): Record<string, number | null> {
+    return this.monthMatrix.reduce((acc, { month, key }) => {
+      acc[key] = eligibleMonths.has(month)
+        ? (submittedMonths.has(month) ? 1 : 0)
+        : null;
+      return acc;
+    }, {} as Record<string, number | null>);
+  }
+
+  /**
+   * Determine which months in the provided year are expected based on internship period.
+   */
+  private getExpectedMonthsForYear(
+    startDate: Date | string | null | undefined,
+    endDate: Date | string | null | undefined,
+    year: number,
+  ): Set<number> {
+    const expectedMonths = new Set<number>();
+    if (!startDate) return expectedMonths;
+
+    const parsedStart = new Date(startDate);
+    if (isNaN(parsedStart.getTime())) return expectedMonths;
+
+    const parsedEnd = endDate ? new Date(endDate) : null;
+    const effectiveEnd = parsedEnd && !isNaN(parsedEnd.getTime())
+      ? parsedEnd
+      : new Date(year, 11, 31, 23, 59, 59, 999);
+
+    const yearStart = new Date(year, 0, 1, 0, 0, 0, 0);
+    const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999);
+
+    const rangeStart = parsedStart > yearStart ? parsedStart : yearStart;
+    const rangeEnd = effectiveEnd < yearEnd ? effectiveEnd : yearEnd;
+
+    if (rangeEnd < rangeStart) return expectedMonths;
+
+    const cursor = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+    const lastMonth = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), 1);
+
+    while (cursor <= lastMonth) {
+      expectedMonths.add(cursor.getMonth() + 1);
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+
+    return expectedMonths;
+  }
+
+  /**
+   * Determine eligible months using the same monthly-cycle rule used by dashboard cards.
+   * For reports, January is excluded.
+   */
+  private getEligibleMonthsForYearByCycle(
+    startDate: Date | string | null | undefined,
+    endDate: Date | string | null | undefined,
+    year: number,
+    mode: 'report' | 'visit',
+  ): Set<number> {
+    const eligibleMonths = new Set<number>();
+    if (!startDate) return eligibleMonths;
+
+    const parsedStart = new Date(startDate);
+    if (isNaN(parsedStart.getTime())) return eligibleMonths;
+
+    // Dashboard logic uses a 6-month forward fallback for open-ended internships.
+    const fallbackEnd = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000);
+    const parsedEnd = endDate ? new Date(endDate) : fallbackEnd;
+    const effectiveEnd = isNaN(parsedEnd.getTime()) ? fallbackEnd : parsedEnd;
+
+    for (let month = 1; month <= 12; month++) {
+      const cycle = getMonthCycle(year, month, parsedStart, effectiveEnd);
+      if (!cycle) continue;
+      if (mode === 'report' && month === 1) continue;
+      eligibleMonths.add(month);
+    }
+
+    return eligibleMonths;
   }
 
   /**
@@ -1429,6 +1529,7 @@ export class ReportGeneratorService {
         : userActive;
 
       return {
+        userId: user.id,
         userName: user.name,
         email: user.email,
         phoneNo: user.phoneNo,
@@ -1530,6 +1631,7 @@ export class ReportGeneratorService {
       include: {
         user: {
           select: {
+            id: true,
             name: true,
             email: true,
             role: true,
@@ -1562,6 +1664,7 @@ export class ReportGeneratorService {
         : userActive;
 
       return {
+        userId: session.userId,
         userName: session.user.name,
         email: session.user.email,
         role: session.user.role,
@@ -1661,6 +1764,7 @@ export class ReportGeneratorService {
         : userActive;
 
       return {
+        userId: user.id,
         userName: user.name,
         email: user.email,
         phoneNo: user.phoneNo,
@@ -1753,6 +1857,7 @@ export class ReportGeneratorService {
         : userActive;
 
       return {
+        userId: user.id,
         userName: user.name,
         email: user.email,
         phoneNo: user.phoneNo,
@@ -1867,6 +1972,7 @@ export class ReportGeneratorService {
         : userActive;
 
       return {
+        userId: user.id,
         userName: user.name,
         email: user.email,
         phoneNo: user.phoneNo,
@@ -1951,6 +2057,7 @@ export class ReportGeneratorService {
     this.warnOnLargeResultSet(auditLogs.length, 'UserAuditLogReport');
 
     return auditLogs.map((log) => ({
+      userId: log.userId,
       userName: log.userName ?? log.user?.name ?? 'Unknown',
       userRole: log.userRole,
       action: log.action,
@@ -2552,12 +2659,14 @@ export class ReportGeneratorService {
     pagination?: ReportPaginationOptions,
   ): Promise<any[]> {
     const { take, skip } = this.getPaginationParams(pagination);
-    // Determine report month - use filter or current month
+    // Determine reporting period
     const now = new Date();
-    const filterMonth = filters?.month ? Number(filters.month) : now.getMonth() + 1;
-    const filterYear = filters?.year ? Number(filters.year) : now.getFullYear();
-    const reportMonthStr = this.formatReportMonth(filterMonth, filterYear);
-    const hasExplicitMonthFilter = filters?.month !== undefined && filters?.month !== null && filters?.month !== '';
+    const hasMonthFilter = filters?.month !== undefined && filters?.month !== null && filters?.month !== '';
+    const reportMonth = hasMonthFilter ? Number(filters.month) : undefined;
+    const reportYear = filters?.year ? Number(filters.year) : now.getFullYear();
+    const reportMonthStr = reportMonth
+      ? this.formatReportMonth(reportMonth, reportYear)
+      : `Jan-Dec ${reportYear}`;
 
     // Fetch students the SAME way as Joining Report
     const userFilter: Record<string, unknown> = { active: true };
@@ -2567,35 +2676,39 @@ export class ReportGeneratorService {
 
     const studentWhere: Record<string, unknown> = {
       user: userFilter,
+      Institution: { isActive: true },
     };
     if (filters?.branchId) {
       studentWhere.branchId = filters.branchId;
     }
 
-    const internshipAppWhere: Record<string, unknown> = { isActive: true };
+    const internshipAppWhere: Record<string, unknown> = {
+      isActive: true,
+      isSelfIdentified: true,
+      status: 'APPROVED',
+      startDate: { not: null },
+    };
     if (filters?.internshipStartDate) {
       const filterDate = new Date(filters.internshipStartDate);
       filterDate.setUTCHours(23, 59, 59, 999);
       internshipAppWhere.startDate = { lte: filterDate };
     }
 
-    const monthStartDate = new Date(filterYear, filterMonth - 1, 1, 0, 0, 0, 0);
-    const monthEndDate = new Date(filterYear, filterMonth, 0, 23, 59, 59, 999);
+    const yearStartDate = new Date(reportYear, 0, 1, 0, 0, 0, 0);
+    const yearEndDate = new Date(reportYear, 11, 31, 23, 59, 59, 999);
+    const selectedMonthStartDate = reportMonth
+      ? new Date(reportYear, reportMonth - 1, 1, 0, 0, 0, 0)
+      : undefined;
+    const selectedMonthEndDate = reportMonth
+      ? new Date(reportYear, reportMonth, 0, 23, 59, 59, 999)
+      : undefined;
 
-    // For explicit month filtering, narrow applications to those with at least one
-    // completed visit inside the selected month window (same behavior users expect
-    // from month-filtered pending visit reports).
-    if (hasExplicitMonthFilter) {
-      internshipAppWhere.facultyVisitLogs = {
-        some: {
-          isDeleted: false,
-          status: 'COMPLETED',
-          visitDate: {
-            gte: monthStartDate,
-            lte: monthEndDate,
-          },
-        },
-      };
+    if (selectedMonthStartDate && selectedMonthEndDate) {
+      internshipAppWhere.startDate = { lte: selectedMonthEndDate };
+      internshipAppWhere.OR = [
+        { endDate: { gte: selectedMonthStartDate } },
+        { endDate: null },
+      ];
     }
 
     const students = await this.prisma.student.findMany({
@@ -2614,6 +2727,7 @@ export class ReportGeneratorService {
           select: {
             companyName: true,
             startDate: true,
+            endDate: true,
             joiningDate: true,
             totalExpectedVisits: true,
             facultyVisitLogs: {
@@ -2621,8 +2735,8 @@ export class ReportGeneratorService {
                 isDeleted: false,
                 status: 'COMPLETED',
                 visitDate: {
-                  gte: monthStartDate,
-                  lte: monthEndDate,
+                  gte: yearStartDate,
+                  lte: yearEndDate,
                 },
               },
               select: { visitDate: true, visitType: true, status: true },
@@ -2642,6 +2756,7 @@ export class ReportGeneratorService {
 
     for (const student of students) {
       const mentorName = student.mentorAssignments[0]?.mentor?.name ?? 'N/A';
+      const emptyMonthColumns = this.buildMonthSubmissionColumns(new Set<number>(), new Set<number>());
 
       if (student.internshipApplications.length === 0) {
         // Student with no active application — still show them
@@ -2663,13 +2778,35 @@ export class ReportGeneratorService {
           lastVisitType: 'N/A',
           reportMonth: reportMonthStr,
           studentActive: student.user?.active ?? false,
+          ...emptyMonthColumns,
         });
       } else {
         // One row per active application
         for (const app of student.internshipApplications) {
           const startDate = app.startDate ?? app.joiningDate;
-          const requiredVisits = app.totalExpectedVisits;
-          const completedVisits = app.facultyVisitLogs.length;
+          const expectedMonths = this.getEligibleMonthsForYearByCycle(
+            startDate,
+            app.endDate,
+            reportYear,
+            'visit',
+          );
+
+          if (reportMonth && !expectedMonths.has(reportMonth)) {
+            continue;
+          }
+
+          const completedVisitMonths = new Set<number>(
+            app.facultyVisitLogs
+              .map((visit) => new Date(visit.visitDate).getMonth() + 1)
+              .filter((month) => month >= 1 && month <= 12),
+          );
+
+          const requiredVisits = reportMonth
+            ? (expectedMonths.has(reportMonth) ? 1 : 0)
+            : expectedMonths.size;
+          const completedVisits = reportMonth
+            ? (completedVisitMonths.has(reportMonth) ? 1 : 0)
+            : Array.from(expectedMonths).filter((month) => completedVisitMonths.has(month)).length;
           const pendingVisits = Math.max(0, requiredVisits - completedVisits);
           const compliancePercent = requiredVisits > 0
             ? Math.round((completedVisits / requiredVisits) * 100)
@@ -2699,6 +2836,7 @@ export class ReportGeneratorService {
             lastVisitType: lastVisitLog?.visitType ?? 'N/A',
             reportMonth: reportMonthStr,
             studentActive: student.user?.active ?? false,
+            ...this.buildMonthSubmissionColumns(completedVisitMonths, expectedMonths),
           });
         }
       }
@@ -2735,20 +2873,36 @@ export class ReportGeneratorService {
     } else {
       where.user = { active: true };
     }
+    where.Institution = { isActive: true };
 
-    // Build monthly reports filter based on month/year
-    const monthlyReportsWhere: Record<string, unknown> = {};
+    // Reporting period controls monthly matrix and expected month calculation.
     const now = new Date();
     const hasMonthFilter = filters?.month !== undefined && filters?.month !== null && filters?.month !== '';
-    const hasYearFilter = filters?.year !== undefined && filters?.year !== null && filters?.year !== '';
     const resolvedMonth = hasMonthFilter ? Number(filters.month) : undefined;
-    const resolvedYear = hasYearFilter ? Number(filters.year) : (hasMonthFilter ? now.getFullYear() : undefined);
+    const resolvedYear = filters?.year ? Number(filters.year) : now.getFullYear();
+    const reportMonthStr = resolvedMonth
+      ? this.formatReportMonth(resolvedMonth, resolvedYear)
+      : `Jan-Dec ${resolvedYear}`;
 
-    if (resolvedMonth) {
-      monthlyReportsWhere.reportMonth = Number(filters.month);
-    }
-    if (resolvedYear) {
-      monthlyReportsWhere.reportYear = resolvedYear;
+    const selectedMonthStartDate = resolvedMonth
+      ? new Date(resolvedYear, resolvedMonth - 1, 1, 0, 0, 0, 0)
+      : undefined;
+    const selectedMonthEndDate = resolvedMonth
+      ? new Date(resolvedYear, resolvedMonth, 0, 23, 59, 59, 999)
+      : undefined;
+
+    const internshipWhere: Record<string, unknown> = {
+      isActive: true,
+      isSelfIdentified: true,
+      status: 'APPROVED',
+      startDate: { not: null },
+    };
+    if (selectedMonthStartDate && selectedMonthEndDate) {
+      internshipWhere.startDate = { lte: selectedMonthEndDate };
+      internshipWhere.OR = [
+        { endDate: { gte: selectedMonthStartDate } },
+        { endDate: null },
+      ];
     }
 
     const students = await this.prisma.student.findMany({
@@ -2757,18 +2911,33 @@ export class ReportGeneratorService {
         user: { select: { name: true, rollNumber: true, branchName: true, active: true } },
         branch: { select: { name: true } },
         Institution: { select: { name: true } },
-        internshipApplications: {
+        mentorAssignments: {
           where: { isActive: true },
           include: {
             mentor: { select: { id: true, name: true } },
           },
           take: 1,
-          orderBy: { createdAt: 'desc' },
+          orderBy: { assignmentDate: 'desc' },
         },
-        monthlyReports: {
-          where: Object.keys(monthlyReportsWhere).length > 0 ? monthlyReportsWhere : undefined,
-          select: { status: true, submittedAt: true, reportMonth: true, reportYear: true },
-          orderBy: { submittedAt: 'desc' },
+        internshipApplications: {
+          where: internshipWhere,
+          include: {
+            mentor: { select: { id: true, name: true } },
+            monthlyReports: {
+              where: {
+                isDeleted: false,
+                reportYear: resolvedYear,
+              },
+              select: {
+                status: true,
+                submittedAt: true,
+                reportMonth: true,
+                reportYear: true,
+              },
+              orderBy: { submittedAt: 'desc' },
+            },
+          },
+          orderBy: { startDate: 'desc' },
         },
       },
       take,
@@ -2781,55 +2950,104 @@ export class ReportGeneratorService {
     const results: any[] = [];
 
     for (const student of students) {
-      const app = student.internshipApplications[0];
+      const emptyMonthColumns = this.buildMonthSubmissionColumns(new Set<number>(), new Set<number>());
+      const assignedMentor = student.mentorAssignments?.[0]?.mentor;
 
-      // Apply mentor filter if specified
-      if (filters?.mentorId && app?.mentor?.id !== filters.mentorId) continue;
-
-      // When filtering by specific month/year, calculate compliance based on filtered reports
-      let submitted = 0;
-      let approved = 0;
-      let totalExpected = 0;
-
-      if (resolvedMonth && resolvedYear) {
-        // For specific month/year: check if report for that month exists
-        totalExpected = 1; // One report expected per month
-        submitted = student.monthlyReports.length > 0 ? 1 : 0;
-        approved = student.monthlyReports.filter((r) => r.status === MonthlyReportStatus.APPROVED).length > 0 ? 1 : 0;
-      } else {
-        // Overall compliance
-        totalExpected = app?.totalExpectedReports ?? 0;
-        submitted = student.monthlyReports.length;
-        approved = student.monthlyReports.filter((r) => r.status === MonthlyReportStatus.APPROVED).length;
+      if (student.internshipApplications.length === 0) {
+        results.push({
+          studentName: student.user?.name,
+          rollNumber: student.user?.rollNumber,
+          gender: student.gender ?? 'N/A',
+          branchName: student.branch?.name ?? student.user?.branchName,
+          institutionName: student.Institution?.name ?? 'N/A',
+          mentorName: assignedMentor?.name ?? 'N/A',
+          companyName: 'N/A',
+          reportMonth: reportMonthStr,
+          totalReportsExpected: 0,
+          reportsSubmitted: 0,
+          reportsApproved: 0,
+          reportsPending: 0,
+          compliancePercent: 0,
+          lastSubmissionDate: '',
+          isActive: student.user?.active ?? false,
+          userActive: student.user?.active ?? true,
+          ...emptyMonthColumns,
+        });
+        continue;
       }
 
-      const pending = Math.max(0, totalExpected - submitted);
-      const compliancePercent = totalExpected > 0
-        ? Math.round((submitted / totalExpected) * 100)
-        : 0;
+      for (const app of student.internshipApplications) {
+        const resolvedMentorId = assignedMentor?.id ?? app?.mentor?.id;
+        const resolvedMentorName = assignedMentor?.name ?? app?.mentor?.name ?? 'N/A';
 
-      const lastSubmission = student.monthlyReports[0]?.submittedAt;
+        if (filters?.mentorId && resolvedMentorId !== filters.mentorId) {
+          continue;
+        }
 
-      results.push({
-        studentName: student.user?.name,
-        rollNumber: student.user?.rollNumber,
-        gender: student.gender ?? 'N/A',
-        branchName: student.branch?.name ?? student.user?.branchName,
-        institutionName: student.Institution?.name ?? 'N/A',
-        mentorName: app?.mentor?.name ?? 'N/A',
-        companyName: (app as any)?.companyName ?? 'N/A',
-        reportMonth: resolvedMonth && resolvedYear
-          ? this.formatReportMonth(resolvedMonth, resolvedYear)
-          : this.formatReportMonthFromDate(lastSubmission ?? null),
-        totalReportsExpected: totalExpected,
-        reportsSubmitted: submitted,
-        reportsApproved: approved,
-        reportsPending: pending,
-        compliancePercent,
-        lastSubmissionDate: this.formatToIST(lastSubmission ?? null),
-        isActive: student.user?.active ?? false,
-        userActive: student.user?.active ?? true,
-      });
+        const internshipStart = app.startDate ?? app.joiningDate;
+        const expectedMonths = this.getEligibleMonthsForYearByCycle(
+          internshipStart,
+          app.endDate,
+          resolvedYear,
+          'report',
+        );
+        if (resolvedMonth && !expectedMonths.has(resolvedMonth)) {
+          continue;
+        }
+
+        const submittedMonths = new Set<number>();
+        const approvedMonths = new Set<number>();
+
+        for (const report of app.monthlyReports ?? []) {
+          if (
+            report.status === MonthlyReportStatus.SUBMITTED ||
+            report.status === MonthlyReportStatus.UNDER_REVIEW ||
+            report.status === MonthlyReportStatus.APPROVED
+          ) {
+            submittedMonths.add(report.reportMonth);
+          }
+          if (report.status === MonthlyReportStatus.APPROVED) {
+            approvedMonths.add(report.reportMonth);
+          }
+        }
+
+        const totalExpected = resolvedMonth
+          ? (expectedMonths.has(resolvedMonth) ? 1 : 0)
+          : expectedMonths.size;
+        const submitted = resolvedMonth
+          ? (submittedMonths.has(resolvedMonth) ? 1 : 0)
+          : Array.from(expectedMonths).filter((month) => submittedMonths.has(month)).length;
+        const approved = resolvedMonth
+          ? (approvedMonths.has(resolvedMonth) ? 1 : 0)
+          : Array.from(expectedMonths).filter((month) => approvedMonths.has(month)).length;
+
+        const pending = Math.max(0, totalExpected - submitted);
+        const compliancePercent = totalExpected > 0
+          ? Math.round((submitted / totalExpected) * 100)
+          : 0;
+
+        const lastSubmission = (app.monthlyReports ?? []).find((report) => !!report.submittedAt)?.submittedAt;
+
+        results.push({
+          studentName: student.user?.name,
+          rollNumber: student.user?.rollNumber,
+          gender: student.gender ?? 'N/A',
+          branchName: student.branch?.name ?? student.user?.branchName,
+          institutionName: student.Institution?.name ?? 'N/A',
+          mentorName: resolvedMentorName,
+          companyName: (app as any)?.companyName ?? 'N/A',
+          reportMonth: reportMonthStr,
+          totalReportsExpected: totalExpected,
+          reportsSubmitted: submitted,
+          reportsApproved: approved,
+          reportsPending: pending,
+          compliancePercent,
+          lastSubmissionDate: this.formatToIST(lastSubmission ?? null),
+          isActive: student.user?.active ?? false,
+          userActive: student.user?.active ?? true,
+          ...this.buildMonthSubmissionColumns(submittedMonths, expectedMonths),
+        });
+      }
     }
 
     return results;
