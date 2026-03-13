@@ -823,57 +823,40 @@ export class AuthService {
       }
     }
 
-    // Build student update data for synced fields (if user is a student)
-    const studentUpdateData: any = {};
-    if (user.Student) {
-      if (data.name) studentUpdateData.name = data.name;
-      if (data.email) studentUpdateData.email = data.email;
-      if (data.phoneNo !== undefined) studentUpdateData.contact = data.phoneNo; // User.phoneNo -> Student.contact
-    }
-
-    // Use transaction to sync User and Student records
-    const [updatedUser] = await this.prisma.$transaction([
-      this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          ...(data.name && { name: data.name }),
-          ...(data.email && { email: data.email }),
-          ...(data.phoneNo !== undefined && { phoneNo: data.phoneNo }),
-          ...(data.designation !== undefined && { designation: data.designation }),
-          ...(data.branchName !== undefined && { branchName: data.branchName }),
-        },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          phoneNo: true,
-          rollNumber: true,
-          dob: true,
-          branchName: true,
-          designation: true,
-          role: true,
-          active: true,
-          lastLoginAt: true,
-          loginCount: true,
-          hasChangedDefaultPassword: true,
-          createdAt: true,
-          institutionId: true,
-          Institution: {
-            select: {
-              id: true,
-              name: true,
-            },
+    // User is the source of truth for profile fields (name/email/phone/branch/designation).
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(data.name && { name: data.name }),
+        ...(data.email && { email: data.email }),
+        ...(data.phoneNo !== undefined && { phoneNo: data.phoneNo }),
+        ...(data.designation !== undefined && { designation: data.designation }),
+        ...(data.branchName !== undefined && { branchName: data.branchName }),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phoneNo: true,
+        rollNumber: true,
+        dob: true,
+        branchName: true,
+        designation: true,
+        role: true,
+        active: true,
+        lastLoginAt: true,
+        loginCount: true,
+        hasChangedDefaultPassword: true,
+        createdAt: true,
+        institutionId: true,
+        Institution: {
+          select: {
+            id: true,
+            name: true,
           },
         },
-      }),
-      // Sync to Student record if user is a student and there are fields to sync
-      ...(user.Student && Object.keys(studentUpdateData).length > 0
-        ? [this.prisma.student.update({
-            where: { userId },
-            data: studentUpdateData,
-          })]
-        : []),
-    ]);
+      },
+    });
 
     // Audit log
     this.auditService.log({
