@@ -32,6 +32,7 @@ import {
   updateRecommendation,
   deleteRecommendation,
 } from "../store/facultyTrainingSlice";
+import { useLookup } from "../../shared/hooks/useLookup";
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -60,6 +61,7 @@ const RecommendTrainingPage = () => {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const { branchOptions, branchesLoading } = useLookup({ include: ["branches"] });
 
   const { recommendations } = useSelector((state) => state.facultyTraining);
 
@@ -73,7 +75,9 @@ const RecommendTrainingPage = () => {
       form.setFieldsValue({
         title: record.title,
         description: record.description,
-        targetAudience: record.targetAudience,
+        targetBranchIds: Array.isArray(record.targetBranches)
+          ? record.targetBranches.map((branch) => branch.id)
+          : [],
         suggestedDuration: record.suggestedDuration,
         suggestedMode: record.suggestedMode,
         suggestedDifficulty: record.suggestedDifficulty,
@@ -142,8 +146,13 @@ const RecommendTrainingPage = () => {
       render: (text, record) => (
         <div>
           <Text strong className="text-sm">{text}</Text>
-          {record.targetAudience && (
-            <div className="text-xs text-slate-500 mt-0.5">{record.targetAudience}</div>
+          {Array.isArray(record.targetBranches) && record.targetBranches.length > 0 && (
+            <div className="text-xs text-slate-500 mt-0.5">
+              {record.targetBranches
+                .map((branch) => branch.shortName || branch.name || branch.code)
+                .filter(Boolean)
+                .join(", ")}
+            </div>
           )}
         </div>
       ),
@@ -379,8 +388,26 @@ const RecommendTrainingPage = () => {
           </Form.Item>
 
           <div className="grid grid-cols-2 gap-4">
-            <Form.Item name="targetAudience" label="Target Audience">
-              <Input placeholder="e.g., CSE Faculty, All Engineering Faculty" />
+            <Form.Item
+              name="targetBranchIds"
+              label="Target Branches"
+              rules={[
+                {
+                  required: true,
+                  type: "array",
+                  min: 1,
+                  message: "Please select at least one target branch",
+                },
+              ]}
+            >
+              <Select
+                mode="multiple"
+                placeholder="Select target branches"
+                options={branchOptions}
+                loading={branchesLoading}
+                allowClear
+                optionFilterProp="label"
+              />
             </Form.Item>
 
             <Form.Item name="suggestedDuration" label="Suggested Duration (hours)">
@@ -499,10 +526,16 @@ const RecommendTrainingPage = () => {
             )}
 
             <div className="grid grid-cols-2 gap-4">
-              {selectedRecord.targetAudience && (
+              {Array.isArray(selectedRecord.targetBranches) && selectedRecord.targetBranches.length > 0 && (
                 <div>
-                  <Text type="secondary" className="text-xs">Target Audience</Text>
-                  <div>{selectedRecord.targetAudience}</div>
+                  <Text type="secondary" className="text-xs">Target Branches</Text>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {selectedRecord.targetBranches.map((branch) => (
+                      <Tag key={branch.id} className="m-0">
+                        {branch.shortName || branch.name || branch.code}
+                      </Tag>
+                    ))}
+                  </div>
                 </div>
               )}
               {selectedRecord.suggestedDuration && (

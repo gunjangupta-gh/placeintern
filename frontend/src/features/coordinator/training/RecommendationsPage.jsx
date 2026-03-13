@@ -104,6 +104,26 @@ const RecommendationsPage = () => {
     fetchRecommendations(false, pag.current);
   };
 
+  const getRecommendationTitle = (record) => {
+    return record?.title || record?.trainingTitle || 'Training Recommendation';
+  };
+
+  const getRecommendationProvider = (record) => {
+    return record?.suggestedTrainer || record?.trainingProvider || 'Not specified';
+  };
+
+  const getTargetBranchesText = (record) => {
+    if (!Array.isArray(record?.targetBranches) || record.targetBranches.length === 0) {
+      return 'Not specified';
+    }
+
+    const labels = record.targetBranches
+      .map((branch) => branch?.shortName || branch?.code || branch?.name)
+      .filter(Boolean);
+
+    return labels.length > 0 ? labels.join(', ') : 'Not specified';
+  };
+
   const getStatusTag = (status) => {
     const statusMap = {
       PENDING: { color: 'orange', text: 'Pending' },
@@ -120,8 +140,11 @@ const RecommendationsPage = () => {
     const searchLower = searchText.toLowerCase();
     return (
       rec.user?.name?.toLowerCase().includes(searchLower) ||
-      rec.trainingTitle?.toLowerCase().includes(searchLower) ||
-      rec.trainingProvider?.toLowerCase().includes(searchLower)
+      rec.user?.email?.toLowerCase().includes(searchLower) ||
+      getRecommendationTitle(rec).toLowerCase().includes(searchLower) ||
+      (rec.description || '').toLowerCase().includes(searchLower) ||
+      getRecommendationProvider(rec).toLowerCase().includes(searchLower) ||
+      getTargetBranchesText(rec).toLowerCase().includes(searchLower)
     );
   });
 
@@ -143,25 +166,25 @@ const RecommendationsPage = () => {
     },
     {
       title: 'Recommended Training',
-      dataIndex: 'trainingTitle',
-      key: 'trainingTitle',
-      render: (title, record) => (
+      dataIndex: 'title',
+      key: 'title',
+      render: (_, record) => (
         <div>
           <div className="font-medium text-sm text-slate-800 truncate" style={{ maxWidth: 180 }}>
-            {title}
+            {getRecommendationTitle(record)}
           </div>
           <Text type="secondary" className="text-xs">
-            {record.trainingProvider}
+            {getRecommendationProvider(record)}
           </Text>
         </div>
       ),
     },
     {
-      title: 'Category',
-      dataIndex: 'category',
-      key: 'category',
+      title: 'Priority',
+      dataIndex: 'priority',
+      key: 'priority',
       width: 110,
-      render: (category) => category && <Tag>{category}</Tag>,
+      render: (priority) => priority ? <Tag>{priority}</Tag> : '-',
     },
     {
       title: 'Status',
@@ -358,11 +381,11 @@ const RecommendationsPage = () => {
           <div className="mt-4 p-3 bg-slate-50 rounded-lg text-sm">
             <div className="mb-2">
               <Text className="text-xs text-slate-500">Training</Text>
-              <div className="font-medium text-slate-800">{selected.trainingTitle}</div>
+              <div className="font-medium text-slate-800">{getRecommendationTitle(selected)}</div>
             </div>
             <div>
               <Text className="text-xs text-slate-500">Provider</Text>
-              <div className="font-medium text-slate-800">{selected.trainingProvider || 'Not specified'}</div>
+              <div className="font-medium text-slate-800">{getRecommendationProvider(selected)}</div>
             </div>
           </div>
         )}
@@ -399,28 +422,40 @@ const RecommendationsPage = () => {
               {selected.user?.branchName || 'Not specified'}
             </Descriptions.Item>
             <Descriptions.Item label="Status">{getStatusTag(selected.status)}</Descriptions.Item>
-            <Descriptions.Item label="Training Title">{selected.trainingTitle}</Descriptions.Item>
-            <Descriptions.Item label="Provider">
-              {selected.trainingProvider || 'Not specified'}
+            <Descriptions.Item label="Recommendation Title">{getRecommendationTitle(selected)}</Descriptions.Item>
+            <Descriptions.Item label="Description">
+              <Paragraph className="mb-0! text-sm whitespace-pre-wrap">{selected.description || 'Not provided'}</Paragraph>
             </Descriptions.Item>
-            <Descriptions.Item label="Category">
-              {selected.category || 'Not specified'}
+            <Descriptions.Item label="Target Audience">
+              {selected.targetAudience || 'Not specified'}
             </Descriptions.Item>
-            <Descriptions.Item label="Estimated Duration">
-              {selected.estimatedDuration || 'Not specified'}
+            <Descriptions.Item label="Suggested Duration">
+              {selected.suggestedDuration ? `${selected.suggestedDuration} hours` : 'Not specified'}
             </Descriptions.Item>
-            <Descriptions.Item label="Estimated Cost">
-              {selected.estimatedCost ? `₹${selected.estimatedCost}` : 'Not specified'}
+            <Descriptions.Item label="Delivery Mode">
+              {selected.suggestedMode || 'Not specified'}
             </Descriptions.Item>
-            <Descriptions.Item label="Justification">
-              <Paragraph className="!mb-0 text-sm whitespace-pre-wrap">{selected.justification || 'Not provided'}</Paragraph>
+            <Descriptions.Item label="Difficulty">
+              {selected.suggestedDifficulty || 'Not specified'}
             </Descriptions.Item>
-            <Descriptions.Item label="Expected Outcomes">
-              <Paragraph className="!mb-0 text-sm whitespace-pre-wrap">{selected.expectedOutcomes || 'Not provided'}</Paragraph>
+            <Descriptions.Item label="Suggested Trainer">
+              {selected.suggestedTrainer || 'Not specified'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Target Branches">
+              {getTargetBranchesText(selected)}
+            </Descriptions.Item>
+            <Descriptions.Item label="Topics Covered">
+              <Paragraph className="mb-0! text-sm whitespace-pre-wrap">{selected.topicsCovered || 'Not provided'}</Paragraph>
+            </Descriptions.Item>
+            <Descriptions.Item label="Why Needed">
+              <Paragraph className="mb-0! text-sm whitespace-pre-wrap">{selected.relevanceReason || 'Not provided'}</Paragraph>
+            </Descriptions.Item>
+            <Descriptions.Item label="Estimated Budget">
+              {selected.estimatedBudget ? `₹${selected.estimatedBudget}` : 'Not specified'}
             </Descriptions.Item>
             {selected.reviewComments && (
               <Descriptions.Item label="Review Comments">
-                <Paragraph className="!mb-0 text-sm">{selected.reviewComments}</Paragraph>
+                <Paragraph className="mb-0! text-sm">{selected.reviewComments}</Paragraph>
               </Descriptions.Item>
             )}
           </Descriptions>

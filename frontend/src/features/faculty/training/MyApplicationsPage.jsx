@@ -260,6 +260,11 @@ const MyApplicationsPage = () => {
       return;
     }
 
+    if (hasMarkedAttendanceForToday(attendanceModal.application)) {
+      message.info("Attendance already marked for today");
+      return;
+    }
+
     try {
       setSubmitting(true);
       const trainingId =
@@ -327,6 +332,37 @@ const MyApplicationsPage = () => {
   const attendanceProgress = attendanceTrainingId
     ? attendance?.byTraining?.[attendanceTrainingId]
     : null;
+
+  const getTodayDateOnly = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  };
+
+  const hasMarkedAttendanceForToday = (application) => {
+    const trainingId = application?.trainingId || application?.training?.id;
+    if (!trainingId) return application?.hasMarkedAttendanceToday === true;
+
+    const progress = attendance?.byTraining?.[trainingId];
+    const attendanceRecords = Array.isArray(progress?.attendance) ? progress.attendance : [];
+    const today = getTodayDateOnly();
+
+    const markedFromRecords = attendanceRecords.some((record) => {
+      if (!record?.attendanceDate) return false;
+      const markedDate = new Date(record.attendanceDate);
+      const markedDateOnly = new Date(
+        markedDate.getFullYear(),
+        markedDate.getMonth(),
+        markedDate.getDate()
+      );
+      return markedDateOnly.getTime() === today.getTime();
+    });
+
+    return markedFromRecords || application?.hasMarkedAttendanceToday === true;
+  };
+
+  const isAttendanceAlreadyMarkedForModal = hasMarkedAttendanceForToday(
+    attendanceModal.application
+  );
 
   const columns = [
     {
@@ -424,7 +460,7 @@ const MyApplicationsPage = () => {
           </Tooltip>
           {record.status === "APPROVED" &&
             isTrainingOngoing(record.training) &&
-            (record.hasMarkedAttendanceToday === true ? (
+            (hasMarkedAttendanceForToday(record) ? (
               <Tooltip title="Attendance marked for today">
                 <CheckCircleOutlined className="text-green-500 mx-2" />
               </Tooltip>
@@ -648,7 +684,7 @@ const MyApplicationsPage = () => {
             onClick={handleMarkAttendance}
             loading={submitting}
             icon={<CheckCircleOutlined />}
-            disabled={attendanceModal.application?.hasMarkedAttendanceToday === true}
+            disabled={isAttendanceAlreadyMarkedForModal}
           >
             Mark Attendance
           </Button>,
@@ -684,7 +720,7 @@ const MyApplicationsPage = () => {
               Attendance Progress: <Text strong>{attendanceProgress.attendedDays}</Text>/<Text strong>{attendanceProgress.totalDays}</Text> days
             </div>
           )}
-          {attendanceModal.application?.hasMarkedAttendanceToday === true && (
+          {isAttendanceAlreadyMarkedForModal && (
             <div className="text-xs text-green-600">
               Attendance already marked for today.
             </div>

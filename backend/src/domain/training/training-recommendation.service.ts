@@ -218,7 +218,7 @@ export class TrainingRecommendationService {
             Institution: { select: { id: true, name: true, shortName: true } },
           },
         },
-        targetBranches: { select: { id: true, name: true, code: true } },
+        targetBranches: { select: { id: true, name: true, shortName: true, code: true } },
         reviewedBy: { select: { id: true, name: true } },
         implementedTraining: { select: { id: true, title: true, startDate: true, endDate: true } },
       },
@@ -303,36 +303,68 @@ export class TrainingRecommendationService {
       const page = Number(filters.page) || 1;
       const limit = Number(filters.limit) || 20;
 
-      // Build user filter - if no institutionId, filter by branch across all institutions
-      const userFilter: Prisma.UserWhereInput = institutionId
-        ? {
+      const andConditions: Prisma.TrainingRecommendationWhereInput[] = [];
+
+      if (status) {
+        andConditions.push({ status });
+      }
+
+      if (priority) {
+        andConditions.push({ priority });
+      }
+
+      if (search) {
+        andConditions.push({
+          OR: [
+            { title: { contains: search, mode: Prisma.QueryMode.insensitive } },
+            { description: { contains: search, mode: Prisma.QueryMode.insensitive } },
+            { user: { name: { contains: search, mode: Prisma.QueryMode.insensitive } } },
+            { user: { email: { contains: search, mode: Prisma.QueryMode.insensitive } } },
+          ],
+        });
+      }
+
+      if (institutionId) {
+        andConditions.push({
+          user: {
             institutionId,
             ...(branchName ? { branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } } : {}),
-          }
-        : branchName || branchId
-          ? {
-              OR: [
-                ...(branchName ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }] : []),
-                ...(branchId ? [{ branchId }] : []),
-              ],
-            }
-          : {};
+          },
+        });
+      } else if (branchName || branchId) {
+        andConditions.push({
+          OR: [
+            {
+              user: {
+                OR: [
+                  ...(branchName ? [{ branchName: { equals: branchName, mode: Prisma.QueryMode.insensitive } }] : []),
+                  ...(branchId ? [{ branchId }] : []),
+                ],
+              },
+            },
+            {
+              targetBranches: {
+                some: {
+                  OR: [
+                    ...(branchId ? [{ id: branchId }] : []),
+                    ...(branchName
+                      ? [
+                          { name: { equals: branchName, mode: Prisma.QueryMode.insensitive } },
+                          { shortName: { equals: branchName, mode: Prisma.QueryMode.insensitive } },
+                          { code: { equals: branchName, mode: Prisma.QueryMode.insensitive } },
+                        ]
+                      : []),
+                  ],
+                },
+              },
+            },
+          ],
+        });
+      }
 
-      const where: Prisma.TrainingRecommendationWhereInput = {
-        user: userFilter,
-        ...(status ? { status } : {}),
-        ...(priority ? { priority } : {}),
-        ...(search
-          ? {
-              OR: [
-                { title: { contains: search, mode: Prisma.QueryMode.insensitive } },
-                { description: { contains: search, mode: Prisma.QueryMode.insensitive } },
-                { user: { name: { contains: search, mode: Prisma.QueryMode.insensitive } } },
-                { user: { email: { contains: search, mode: Prisma.QueryMode.insensitive } } },
-              ],
-            }
-          : {}),
-      };
+      const where: Prisma.TrainingRecommendationWhereInput = andConditions.length
+        ? { AND: andConditions }
+        : {};
 
       const [recommendations, total] = await Promise.all([
         this.prisma.trainingRecommendation.findMany({
@@ -388,11 +420,22 @@ export class TrainingRecommendationService {
       throw new ForbiddenException('You do not have access to this recommendation');
     }
 
-    // Check branch access - either by branchName or branchId
+    // Check branch access - coordinator can access if creator is from the same branch
+    // or if recommendation explicitly targets coordinator branch.
     if (branchName || branchId) {
-      const hasAccess =
+      const hasCreatorBranchAccess =
         (branchName && recommendation.user?.branchName?.toLowerCase() === branchName.toLowerCase()) ||
         (branchId && recommendation.user?.branchId === branchId);
+
+      const hasTargetBranchAccess = Array.isArray(recommendation.targetBranches)
+        && recommendation.targetBranches.some((targetBranch) =>
+          (branchId && targetBranch.id === branchId)
+          || (branchName && [targetBranch.name, targetBranch.shortName, targetBranch.code]
+            .filter(Boolean)
+            .some((value) => value.toLowerCase() === branchName.toLowerCase())),
+        );
+
+      const hasAccess = hasCreatorBranchAccess || hasTargetBranchAccess;
 
       if (!hasAccess) {
         throw new ForbiddenException('You do not have access to this recommendation');
@@ -439,6 +482,14 @@ export class TrainingRecommendationService {
             name: true,
           },
         },
+        targetBranches: {
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            code: true,
+          },
+        },
       },
     });
 
@@ -450,14 +501,25 @@ export class TrainingRecommendationService {
       throw new ForbiddenException('You can only review recommendations from your institution');
     }
 
-    // Check branch access - either by branchName or branchId
+    // Check branch access - coordinator can review if creator is from same branch
+    // or if recommendation explicitly targets coordinator branch.
     if (branchName || branchId) {
-      const hasAccess =
+      const hasCreatorBranchAccess =
         (branchName && existing.user.branchName?.toLowerCase() === branchName.toLowerCase()) ||
         (branchId && existing.user.branchId === branchId);
 
+      const hasTargetBranchAccess = Array.isArray(existing.targetBranches)
+        && existing.targetBranches.some((targetBranch) =>
+          (branchId && targetBranch.id === branchId)
+          || (branchName && [targetBranch.name, targetBranch.shortName, targetBranch.code]
+            .filter(Boolean)
+            .some((value) => value.toLowerCase() === branchName.toLowerCase())),
+        );
+
+      const hasAccess = hasCreatorBranchAccess || hasTargetBranchAccess;
+
       if (!hasAccess) {
-        throw new ForbiddenException('You can only review recommendations from your branch');
+        throw new ForbiddenException('You can only review recommendations from your branch or targeted to your branch');
       }
     }
 

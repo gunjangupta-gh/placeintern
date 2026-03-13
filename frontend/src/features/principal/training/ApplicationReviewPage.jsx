@@ -74,7 +74,11 @@ const ApplicationReviewPage = () => {
       key: 'training',
       render: (_, record) => (
         <div>
-          <div className="font-medium text-sm text-slate-800">{record.training?.title || 'Training'}</div>
+          <Tooltip title={record.training?.title || 'Training'}>
+            <div className="font-medium text-sm text-slate-800 truncate max-w-60">
+              {record.training?.title || 'Training'}
+            </div>
+          </Tooltip>
         </div>
       ),
     },

@@ -139,6 +139,30 @@ const TrainingDashboardPage = () => {
 
   const isLoading = applications.loading && !(applications.list?.length > 0);
 
+  const getTodayDateOnly = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  };
+
+  const hasMarkedAttendanceForToday = (trainingId, app) => {
+    const today = getTodayDateOnly();
+    const progress = trainingId ? attendance?.byTraining?.[trainingId] : null;
+    const attendanceRecords = Array.isArray(progress?.attendance) ? progress.attendance : [];
+
+    const markedFromRecords = attendanceRecords.some((record) => {
+      if (!record?.attendanceDate) return false;
+      const markedDate = new Date(record.attendanceDate);
+      const markedDateOnly = new Date(
+        markedDate.getFullYear(),
+        markedDate.getMonth(),
+        markedDate.getDate()
+      );
+      return markedDateOnly.getTime() === today.getTime();
+    });
+
+    return markedFromRecords || app?.hasMarkedAttendanceToday === true;
+  };
+
   const captureLocation = () => {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
@@ -264,7 +288,7 @@ const TrainingDashboardPage = () => {
               dataSource={todaysAttendanceApplications.slice(0, 4)}
               renderItem={(app) => {
                 const trainingId = app.trainingId || app.training?.id;
-                const alreadyMarked = app.hasMarkedAttendanceToday === true;
+                const alreadyMarked = hasMarkedAttendanceForToday(trainingId, app);
                 const progress = trainingId ? attendance?.byTraining?.[trainingId] : null;
                 const missingDays = progress?.totalDays
                   ? Math.max(0, progress.totalDays - (progress.attendedDays || 0))
