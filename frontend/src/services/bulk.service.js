@@ -55,6 +55,18 @@ export const bulkService = {
     return response.data;
   },
 
+  // Download Excel report for created users
+  async downloadCreatedUsersReport(successRecords) {
+    const response = await API.post('/bulk/users/download-created-report', { successRecords }, { responseType: 'blob' });
+    return response.data;
+  },
+
+  // Download Excel report for failed/error users
+  async downloadErrorUsersReport(failedRecords) {
+    const response = await API.post('/bulk/users/download-error-report', { failedRecords }, { responseType: 'blob' });
+    return response.data;
+  },
+
   // Student bulk upload
   async uploadStudents(file, onProgress, useAsync = false, institutionId = null) {
     const formData = new FormData();

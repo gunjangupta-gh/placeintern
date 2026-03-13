@@ -49,10 +49,11 @@ export class BulkQueueService {
 
   /**
    * Queue a bulk user upload job
+   * institutionId can be null for STATE_DIRECTORATE - institution comes from Excel
    */
   async queueUserUpload(
     users: any[],
-    institutionId: string,
+    institutionId: string | null,
     createdById: string,
     fileName: string,
     fileSize: number,
@@ -60,7 +61,8 @@ export class BulkQueueService {
     return this.queueBulkOperation({
       type: BulkJobType.USERS,
       data: users,
-      institutionId,
+      // Use 'MULTI_INSTITUTION' as placeholder when institution comes from Excel
+      institutionId: institutionId || 'MULTI_INSTITUTION',
       createdById,
       fileName,
       fileSize,

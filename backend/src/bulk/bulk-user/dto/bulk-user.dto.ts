@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsEmail, IsNotEmpty, IsOptional, IsEnum, IsArray, ValidateNested } from 'class-validator';
+import { IsString, IsEmail, IsNotEmpty, IsOptional, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class BulkUserRowDto {
@@ -18,10 +18,10 @@ export class BulkUserRowDto {
   @IsOptional()
   phone?: string;
 
-  @ApiProperty({ description: 'Role', enum: ['FACULTY', 'MENTOR', 'PRINCIPAL'] })
-  @IsEnum(['FACULTY', 'MENTOR', 'PRINCIPAL'])
-  @IsNotEmpty()
-  role: string;
+  @ApiProperty({ description: 'Role (TEACHER or FACULTY_SUPERVISOR)', default: 'TEACHER' })
+  @IsString()
+  @IsOptional()
+  role?: string;
 
   @ApiProperty({ description: 'Designation', required: false })
   @IsString()
@@ -37,6 +37,16 @@ export class BulkUserRowDto {
   @IsString()
   @IsOptional()
   employeeId?: string;
+
+  @ApiProperty({ description: 'Institution name (for matching)', required: false })
+  @IsString()
+  @IsOptional()
+  institutionName?: string;
+
+  @ApiProperty({ description: 'Branch/Course name (for matching)', required: false })
+  @IsString()
+  @IsOptional()
+  branchName?: string;
 }
 
 export class BulkUserUploadDto {
@@ -62,8 +72,13 @@ export class BulkUserResultDto {
     row: number;
     name: string;
     email: string;
+    phone?: string;
     role: string;
+    designation?: string;
+    institution?: string;
+    branch?: string;
     userId: string;
+    password: string;
   }>;
 
   @ApiProperty({ description: 'List of failed user creations with error details' })
@@ -71,9 +86,10 @@ export class BulkUserResultDto {
     row: number;
     name?: string;
     email?: string;
+    phone?: string;
     role?: string;
+    institution?: string;
     error: string;
-    details?: string;
   }>;
 
   @ApiProperty({ description: 'Processing time in milliseconds' })
@@ -85,19 +101,25 @@ export class BulkUserValidationResultDto {
   isValid: boolean;
 
   @ApiProperty({ description: 'Total number of rows' })
-  totalRows: number;
+  total: number;
 
   @ApiProperty({ description: 'Number of valid rows' })
-  validRows: number;
+  valid: number;
 
   @ApiProperty({ description: 'Number of invalid rows' })
-  invalidRows: number;
+  invalid: number;
 
   @ApiProperty({ description: 'Validation errors' })
   errors: Array<{
     row: number;
     field?: string;
     value?: string;
-    error: string;
+    message: string;
   }>;
+
+  @ApiProperty({ description: 'Validation warnings' })
+  warnings: string[];
+
+  @ApiProperty({ description: 'Preview data' })
+  data: any[];
 }

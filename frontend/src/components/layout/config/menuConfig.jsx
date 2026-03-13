@@ -116,6 +116,12 @@ export const menuConfig = {
         path: "/app/institutions/bulk-upload",
       },
       {
+        key: "bulk-user-create",
+        label: "Faculty/Staff",
+        icon: <UsergroupAddOutlined />,
+        path: "/app/users/bulk-create",
+      },
+      {
         key: "bulk-staff-upload",
         label: "Staff/Students",
         icon: <TeamOutlined />,

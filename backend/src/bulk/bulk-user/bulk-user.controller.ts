@@ -10,6 +10,8 @@ import {
   Res,
   HttpStatus,
   Query,
+  Body,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody, ApiQuery } from '@nestjs/swagger';
@@ -27,6 +29,8 @@ import { BulkQueueService } from '../shared/bulk-queue.service';
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class BulkUserController {
+  private readonly logger = new Logger(BulkUserController.name);
+
   constructor(
     private readonly bulkUserService: BulkUserService,
     private readonly bulkQueueService: BulkQueueService,
@@ -35,10 +39,12 @@ export class BulkUserController {
   @Post('upload')
   @Roles(Role.PRINCIPAL, Role.SYSTEM_ADMIN, Role.STATE_DIRECTORATE)
   @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Bulk upload users (staff/faculty) from CSV/Excel file' })
+  @ApiOperation({
+    summary: 'Bulk upload users (staff/faculty) from CSV/Excel file',
+    description: 'Upload faculty/staff users. Institution is auto-linked from "Name of the College" column in Excel. Branch is auto-linked from "Course" column.',
+  })
   @ApiConsumes('multipart/form-data')
   @ApiQuery({ name: 'async', type: Boolean, required: false, description: 'Process asynchronously via queue (recommended for large files)' })
-  @ApiQuery({ name: 'institutionId', type: String, required: false, description: 'Institution ID (required for STATE_DIRECTORATE)' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -61,7 +67,6 @@ export class BulkUserController {
     @UploadedFile() file: Express.Multer.File,
     @Req() req: any,
     @Query('async') async?: string,
-    @Query('institutionId') queryInstitutionId?: string,
   ) {
     if (!file) {
       throw new BadRequestException('File is required');
@@ -85,21 +90,12 @@ export class BulkUserController {
     }
 
     const user = req.user;
-    let institutionId: string;
 
-    // STATE_DIRECTORATE must provide institutionId in query
-    if (user.role === Role.STATE_DIRECTORATE) {
-      if (!queryInstitutionId) {
-        throw new BadRequestException('Institution ID is required for State Directorate');
-      }
-      institutionId = queryInstitutionId;
-    } else {
-      // PRINCIPAL uses their own institution
-      institutionId = user.institutionId;
-      if (!institutionId) {
-        throw new BadRequestException('Institution ID not found for the user');
-      }
-    }
+    // For PRINCIPAL, use their institution as default fallback
+    // For STATE_DIRECTORATE, institution comes from Excel "Name of the College" column
+    const defaultInstitutionId = user.role === Role.PRINCIPAL ? user.institutionId : null;
+
+    this.logger.log(`Bulk user upload - User: ${user.userId}, Role: ${user.role}, DefaultInstitutionId: ${defaultInstitutionId}`);
 
     // Parse file
     const users = await this.bulkUserService.parseFile(file.buffer, file.originalname);
@@ -119,7 +115,7 @@ export class BulkUserController {
       // Queue the job for background processing
       const result = await this.bulkQueueService.queueUserUpload(
         users,
-        institutionId,
+        defaultInstitutionId,
         user.userId,
         file.originalname,
         file.size,
@@ -132,7 +128,7 @@ export class BulkUserController {
     }
 
     // Process synchronously for smaller files
-    const result = await this.bulkUserService.bulkUploadUsers(users, institutionId, user.userId);
+    const result = await this.bulkUserService.bulkUploadUsers(users, defaultInstitutionId, user.userId);
 
     return result;
   }
@@ -140,9 +136,11 @@ export class BulkUserController {
   @Post('validate')
   @Roles(Role.PRINCIPAL, Role.SYSTEM_ADMIN, Role.STATE_DIRECTORATE)
   @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Validate user data from CSV/Excel file without creating records' })
+  @ApiOperation({
+    summary: 'Validate user data from CSV/Excel file without creating records',
+    description: 'Validates user data including institution matching from "Name of the College" column.',
+  })
   @ApiConsumes('multipart/form-data')
-  @ApiQuery({ name: 'institutionId', type: String, required: false, description: 'Institution ID (required for STATE_DIRECTORATE)' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -162,32 +160,25 @@ export class BulkUserController {
   async validateUsers(
     @UploadedFile() file: Express.Multer.File,
     @Req() req: any,
-    @Query('institutionId') queryInstitutionId?: string,
   ) {
     if (!file) {
       throw new BadRequestException('File is required');
     }
 
     const user = req.user;
-    let institutionId: string;
+    const defaultInstitutionId = user.role === Role.PRINCIPAL ? user.institutionId : null;
 
-    if (user.role === Role.STATE_DIRECTORATE) {
-      if (!queryInstitutionId) {
-        throw new BadRequestException('Institution ID is required for State Directorate');
-      }
-      institutionId = queryInstitutionId;
-    } else {
-      institutionId = user.institutionId;
-      if (!institutionId) {
-        throw new BadRequestException('Institution ID not found for the user');
-      }
-    }
+    this.logger.log(`Bulk user validate - User: ${user.userId}, Role: ${user.role}, DefaultInstitutionId: ${defaultInstitutionId}`);
 
     // Parse file
     const users = await this.bulkUserService.parseFile(file.buffer, file.originalname);
 
+    if (users.length === 0) {
+      throw new BadRequestException('No valid data found in the file');
+    }
+
     // Validate users
-    const validationResult = await this.bulkUserService.validateUsers(users, institutionId);
+    const validationResult = await this.bulkUserService.validateUsers(users, defaultInstitutionId);
 
     return validationResult;
   }
@@ -214,5 +205,97 @@ export class BulkUserController {
     res.setHeader('Content-Disposition', 'attachment; filename=bulk-user-upload-template.xlsx');
 
     res.send(template);
+  }
+
+  @Post('download-created-report')
+  @Roles(Role.PRINCIPAL, Role.SYSTEM_ADMIN, Role.STATE_DIRECTORATE)
+  @ApiOperation({ summary: 'Download Excel report for successfully created users with credentials' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        successRecords: {
+          type: 'array',
+          items: { type: 'object' },
+          description: 'Array of successfully created user records from upload result',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Excel file with created users and their credentials',
+    content: {
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {
+        schema: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  async downloadCreatedReport(
+    @Body() body: { successRecords: any[] },
+    @Res() res: Response,
+  ) {
+    const { successRecords } = body;
+
+    if (!successRecords || !Array.isArray(successRecords) || successRecords.length === 0) {
+      throw new BadRequestException('No success records provided');
+    }
+
+    const excelBuffer = await this.bulkUserService.generateCreatedUsersExcel(successRecords);
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=created_users_${timestamp}.xlsx`);
+
+    res.send(excelBuffer);
+  }
+
+  @Post('download-error-report')
+  @Roles(Role.PRINCIPAL, Role.SYSTEM_ADMIN, Role.STATE_DIRECTORATE)
+  @ApiOperation({ summary: 'Download Excel report for failed/error users' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        failedRecords: {
+          type: 'array',
+          items: { type: 'object' },
+          description: 'Array of failed user records from upload result',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Excel file with failed users and error details',
+    content: {
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {
+        schema: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  async downloadErrorReport(
+    @Body() body: { failedRecords: any[] },
+    @Res() res: Response,
+  ) {
+    const { failedRecords } = body;
+
+    if (!failedRecords || !Array.isArray(failedRecords) || failedRecords.length === 0) {
+      throw new BadRequestException('No error records provided');
+    }
+
+    const excelBuffer = await this.bulkUserService.generateErrorUsersExcel(failedRecords);
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=error_users_${timestamp}.xlsx`);
+
+    res.send(excelBuffer);
   }
 }
