@@ -199,9 +199,6 @@ const TrainingDashboardPage = () => {
     const trainingId = application.trainingId || application.training?.id;
     if (!trainingId) return;
 
-    const now = new Date();
-    const attendanceDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
     try {
       setMarkingTrainingId(trainingId);
       const { latitude, longitude } = await captureLocation();
@@ -209,7 +206,6 @@ const TrainingDashboardPage = () => {
       await dispatch(
         markSelfAttendance({
           trainingId,
-          attendanceDate,
           latitude,
           longitude,
         })

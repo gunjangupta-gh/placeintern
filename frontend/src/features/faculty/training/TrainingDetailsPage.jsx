@@ -135,14 +135,6 @@ const TrainingDetailsPage = () => {
     dispatch(fetchUpcoming()); // For similar trainings
   }, [dispatch, id]);
 
-  const getTodayDateString = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
   const training = currentTraining.data;
   const status = applicationStatus?.[id];
   const feedbackStatus = feedback?.statusByTraining?.[id];
@@ -351,7 +343,6 @@ const TrainingDetailsPage = () => {
       await dispatch(
         markSelfAttendance({
           trainingId: id,
-          attendanceDate: getTodayDateString(),
           latitude,
           longitude,
         }),

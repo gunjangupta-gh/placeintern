@@ -86,14 +86,6 @@ const MyApplicationsPage = () => {
     });
   }, [applications.list, attendance?.byTraining, attendance?.loadingByTraining, dispatch]);
 
-  const getTodayDateString = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
   const handleWithdraw = async (id) => {
     try {
       await dispatch(withdrawApplication(id)).unwrap();
@@ -274,7 +266,6 @@ const MyApplicationsPage = () => {
       await dispatch(
         markSelfAttendance({
           trainingId,
-          attendanceDate: getTodayDateString(),
           latitude: locationState.data.latitude,
           longitude: locationState.data.longitude,
           locationAddress: locationState.data.locationAddress,

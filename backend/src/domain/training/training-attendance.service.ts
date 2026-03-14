@@ -515,22 +515,8 @@ export class TrainingAttendanceService {
    * Mark self attendance using DTO (Faculty)
    */
   async markSelfAttendance(dto: MarkSelfAttendanceDto, userId: string) {
-    if (dto.attendanceDate) {
-      const requestedDate = new Date(dto.attendanceDate);
-      const requestedDateOnly = new Date(
-        requestedDate.getFullYear(),
-        requestedDate.getMonth(),
-        requestedDate.getDate(),
-      );
-
-      const now = new Date();
-      const todayDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-      if (requestedDateOnly.getTime() !== todayDateOnly.getTime()) {
-        throw new BadRequestException('Self attendance can only be marked for today');
-      }
-    }
-
+    // Ignore optional client-provided attendanceDate to avoid timezone drift issues.
+    // Self-attendance is always recorded for the server's current day.
     return this.markAttendance(dto.trainingId, userId, {
       attendanceDate: new Date().toISOString().split('T')[0],
       latitude: dto.latitude,
