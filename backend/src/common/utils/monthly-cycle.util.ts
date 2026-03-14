@@ -40,6 +40,10 @@ const FIRST_MONTH_MIN_DAYS = MONTHLY_CYCLE_CONFIG.FIRST_MONTH_MIN_DAYS;
 const REPORT_DUE_DAY = MONTHLY_CYCLE_CONFIG.REPORT_DUE_DAY;
 const MAX_MONTHS = MONTHLY_CYCLE_CONFIG.MAX_MONTHS;
 const MONTH_NAMES = MONTHLY_CYCLE_CONFIG.MONTH_NAMES;
+const PRINCIPAL_FEEDBACK_CYCLE_START_DATE =
+  MONTHLY_CYCLE_CONFIG.PRINCIPAL_FEEDBACK_CYCLE_START_DATE;
+const PRINCIPAL_FEEDBACK_INTERVAL_DAYS =
+  MONTHLY_CYCLE_CONFIG.PRINCIPAL_FEEDBACK_INTERVAL_DAYS;
 
 /**
  * Report submission status enum
@@ -108,6 +112,14 @@ export interface VisitStatusResult {
   isOverdue: boolean;
   daysOverdue: number;
   canComplete: boolean;
+}
+
+/**
+ * Principal feedback cycle result
+ */
+export interface PrincipalFeedbackCycleResult {
+  dueDates: Date[];
+  totalExpected: number;
 }
 
 /**
@@ -831,6 +843,105 @@ export function getExpectedVisitsAsOfToday(
 }
 
 /**
+ * Build the effective principal feedback cycle start date for an internship.
+ * Uses global cycle start and internship start, whichever is later.
+ */
+function getEffectivePrincipalFeedbackStartDate(startDate: Date): Date {
+  const internshipStart = new Date(startDate);
+  internshipStart.setHours(0, 0, 0, 0);
+
+  const configuredCycleStart = new Date(PRINCIPAL_FEEDBACK_CYCLE_START_DATE);
+  configuredCycleStart.setHours(0, 0, 0, 0);
+
+  return internshipStart > configuredCycleStart ? internshipStart : configuredCycleStart;
+}
+
+/**
+ * Get all mandatory principal feedback due dates in the internship window.
+ * Rule: fixed 15-day cadence from max(global cycle start, internship start)
+ * until internship end date.
+ */
+export function getPrincipalFeedbackDueDates(
+  startDate: Date,
+  endDate: Date,
+): Date[] {
+  if (!startDate || !endDate) return [];
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return [];
+  if (end < start) return [];
+
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+
+  const effectiveStart = getEffectivePrincipalFeedbackStartDate(start);
+
+  if (effectiveStart > end) {
+    return [];
+  }
+
+  const dueDates: Date[] = [];
+  const maxSlots = 200;
+  let currentDueDate = new Date(effectiveStart);
+  let slotCount = 0;
+
+  while (currentDueDate <= end && slotCount < maxSlots) {
+    const due = new Date(currentDueDate);
+    due.setHours(23, 59, 59, 999);
+    dueDates.push(due);
+
+    currentDueDate.setDate(currentDueDate.getDate() + PRINCIPAL_FEEDBACK_INTERVAL_DAYS);
+    slotCount++;
+  }
+
+  return dueDates;
+}
+
+/**
+ * Get total expected principal feedback visits in the internship window.
+ */
+export function getTotalExpectedPrincipalFeedbackVisits(
+  startDate: Date,
+  endDate: Date,
+): number {
+  return getPrincipalFeedbackDueDates(startDate, endDate).length;
+}
+
+/**
+ * Get expected principal feedback visits as of a reference date.
+ * Counts only slots whose due date has passed.
+ */
+export function getExpectedPrincipalFeedbackVisitsAsOfToday(
+  startDate: Date,
+  endDate: Date,
+  asOfDate?: Date,
+): number {
+  if (!startDate || !endDate) return 0;
+
+  const referenceDate = asOfDate ? new Date(asOfDate) : new Date();
+  if (isNaN(referenceDate.getTime())) return 0;
+
+  const dueDates = getPrincipalFeedbackDueDates(startDate, endDate);
+  return dueDates.filter((dueDate) => referenceDate > dueDate).length;
+}
+
+/**
+ * Get principal feedback cycle details for an internship.
+ */
+export function getPrincipalFeedbackCycle(
+  startDate: Date,
+  endDate: Date,
+): PrincipalFeedbackCycleResult {
+  const dueDates = getPrincipalFeedbackDueDates(startDate, endDate);
+  return {
+    dueDates,
+    totalExpected: dueDates.length,
+  };
+}
+
+/**
  * Get report submission status
  *
  * @param report - Report object (should have status and submittedAt properties)
@@ -1227,4 +1338,6 @@ export const MONTHLY_CYCLE = {
   REPORT_DUE_DAY,
   MAX_MONTHS,
   MONTH_NAMES,
+  PRINCIPAL_FEEDBACK_CYCLE_START_DATE,
+  PRINCIPAL_FEEDBACK_INTERVAL_DAYS,
 };

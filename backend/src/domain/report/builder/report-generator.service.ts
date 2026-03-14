@@ -2,7 +2,10 @@ import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import { InternshipStatus, MonthlyReportStatus, Role } from '../../../generated/prisma/client';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { ReportType } from './interfaces/report.interface';
-import { getMonthCycle } from '../../../common/utils/monthly-cycle.util';
+import {
+  getMonthCycle,
+  getPrincipalFeedbackDueDates,
+} from '../../../common/utils/monthly-cycle.util';
 
 /**
  * Pagination options for report generation
@@ -4409,6 +4412,186 @@ export class ReportGeneratorService {
       CANCELLED: 'Cancelled',
     };
 
+    // Build half-month interval buckets (1-15 and 16-end).
+    const now = new Date();
+    const configuredCycleStart = new Date('2026-02-01');
+    configuredCycleStart.setHours(0, 0, 0, 0);
+
+    const filterRangeStart = filters?.dateRange?.[0] ? new Date(filters.dateRange[0]) : null;
+    const filterRangeEnd = filters?.dateRange?.[1] ? new Date(filters.dateRange[1]) : null;
+
+    const intervalStartBoundary = filterRangeStart && !isNaN(filterRangeStart.getTime())
+      ? filterRangeStart
+      : configuredCycleStart;
+    intervalStartBoundary.setHours(0, 0, 0, 0);
+
+    const intervalEndBoundary = filterRangeEnd && !isNaN(filterRangeEnd.getTime())
+      ? filterRangeEnd
+      : now;
+    intervalEndBoundary.setHours(23, 59, 59, 999);
+
+    const intervalBuckets: Array<{
+      keyBase: string;
+      label: string;
+      start: Date;
+      end: Date;
+      expectedField: string;
+      completedField: string;
+    }> = [];
+
+    if (intervalStartBoundary <= intervalEndBoundary) {
+      const cursor = new Date(
+        intervalStartBoundary.getFullYear(),
+        intervalStartBoundary.getMonth(),
+        1,
+      );
+      cursor.setHours(0, 0, 0, 0);
+
+      while (cursor <= intervalEndBoundary) {
+        const year = cursor.getFullYear();
+        const monthIndex = cursor.getMonth();
+        const monthNumber = monthIndex + 1;
+        const monthName = cursor.toLocaleString('en-US', { month: 'short' });
+        const monthEndDate = new Date(year, monthNumber, 0);
+        monthEndDate.setHours(23, 59, 59, 999);
+
+        const firstHalfStart = new Date(year, monthIndex, 1, 0, 0, 0, 0);
+        const firstHalfEnd = new Date(year, monthIndex, 15, 23, 59, 59, 999);
+        const secondHalfStart = new Date(year, monthIndex, 16, 0, 0, 0, 0);
+        const secondHalfEnd = monthEndDate;
+
+        intervalBuckets.push({
+          keyBase: `${year}_${String(monthNumber).padStart(2, '0')}_01_15`,
+          label: `${monthName} 1-15`,
+          start: firstHalfStart,
+          end: firstHalfEnd,
+          expectedField: `${monthName} 1-15 Expected`,
+          completedField: `${monthName} 1-15 Completed`,
+        });
+
+        intervalBuckets.push({
+          keyBase: `${year}_${String(monthNumber).padStart(2, '0')}_16_end`,
+          label: `${monthName} 16-End`,
+          start: secondHalfStart,
+          end: secondHalfEnd,
+          expectedField: `${monthName} 16-End Expected`,
+          completedField: `${monthName} 16-End Completed`,
+        });
+
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+    }
+
+    const inReportRangeBuckets = intervalBuckets.filter(
+      (bucket) => bucket.end >= intervalStartBoundary && bucket.start <= intervalEndBoundary,
+    );
+
+    const getIntervalBucket = (date: Date) => {
+      return inReportRangeBuckets.find(
+        (bucket) => date >= bucket.start && date <= bucket.end,
+      );
+    };
+
+    // Calculate expected due slots per institution per interval bucket.
+    const internshipWhere: Record<string, unknown> = {
+      isSelfIdentified: true,
+      isActive: true,
+      startDate: { not: null },
+      endDate: { not: null },
+    };
+
+    if (filters?.institutionId) {
+      internshipWhere.student = { institutionId: filters.institutionId };
+    }
+
+    const internshipApps = await this.prisma.internshipApplication.findMany({
+      where: internshipWhere as any,
+      select: {
+        startDate: true,
+        endDate: true,
+        student: {
+          select: {
+            institutionId: true,
+          },
+        },
+      },
+    });
+
+    const institutionExpectedByInterval = new Map<string, Map<string, number>>();
+
+    for (const app of internshipApps) {
+      if (!app.startDate || !app.endDate || !app.student?.institutionId) {
+        continue;
+      }
+
+      const institutionId = app.student.institutionId;
+      const dueDates = getPrincipalFeedbackDueDates(app.startDate, app.endDate).filter(
+        (dueDate) => dueDate >= intervalStartBoundary && dueDate <= intervalEndBoundary,
+      );
+
+      if (!institutionExpectedByInterval.has(institutionId)) {
+        institutionExpectedByInterval.set(institutionId, new Map<string, number>());
+      }
+
+      const intervalMap = institutionExpectedByInterval.get(institutionId)!;
+      for (const dueDate of dueDates) {
+        const bucket = getIntervalBucket(dueDate);
+        if (!bucket) continue;
+
+        intervalMap.set(
+          bucket.keyBase,
+          (intervalMap.get(bucket.keyBase) || 0) + 1,
+        );
+      }
+    }
+
+    // Calculate completed counts per institution/principal per interval bucket.
+    const principalCompletedByInterval = new Map<string, Map<string, number>>();
+
+    for (const log of visitLogs) {
+      if (log.status !== 'COMPLETED' || !log.visitDate) {
+        continue;
+      }
+
+      const bucket = getIntervalBucket(new Date(log.visitDate));
+      if (!bucket) continue;
+
+      const institutionId = log.institutionId || '';
+      const principalId = log.principalId || '';
+      const key = `${institutionId}::${principalId}`;
+
+      if (!principalCompletedByInterval.has(key)) {
+        principalCompletedByInterval.set(key, new Map<string, number>());
+      }
+
+      const intervalMap = principalCompletedByInterval.get(key)!;
+      intervalMap.set(
+        bucket.keyBase,
+        (intervalMap.get(bucket.keyBase) || 0) + 1,
+      );
+    }
+
+    const globalExpectedByBucket = new Map<string, number>();
+    institutionExpectedByInterval.forEach((intervalMap) => {
+      intervalMap.forEach((count, key) => {
+        globalExpectedByBucket.set(key, (globalExpectedByBucket.get(key) || 0) + count);
+      });
+    });
+
+    const globalCompletedByBucket = new Map<string, number>();
+    principalCompletedByInterval.forEach((intervalMap) => {
+      intervalMap.forEach((count, key) => {
+        globalCompletedByBucket.set(key, (globalCompletedByBucket.get(key) || 0) + count);
+      });
+    });
+
+    // ACTIVE_ONLY (default and supported): show only intervals with expected or completed activity
+    // within the selected date range.
+    const finalBuckets = inReportRangeBuckets.filter((bucket) =>
+      (globalExpectedByBucket.get(bucket.keyBase) || 0) > 0 ||
+      (globalCompletedByBucket.get(bucket.keyBase) || 0) > 0,
+    );
+
     return visitLogs.map((log) => {
       const studentNames = log.students
         .map((s) => s.student?.user?.name || 'Unknown')
@@ -4426,6 +4609,33 @@ export class ReportGeneratorService {
       const absentCount = log.students.filter((s) => s.isPresent === false).length;
       const attendanceStatus = `${presentCount} Present, ${absentCount} Absent`;
 
+      const institutionId = log.institutionId || '';
+      const principalId = log.principalId || '';
+      const principalKey = `${institutionId}::${principalId}`;
+      const expectedMap = institutionExpectedByInterval.get(institutionId) || new Map<string, number>();
+      const completedMap = principalCompletedByInterval.get(principalKey) || new Map<string, number>();
+
+      let expectedVisits = 0;
+      let completedVisits = 0;
+      const intervalColumns: Record<string, number> = {};
+
+      for (const bucket of finalBuckets) {
+        const expectedForBucket = expectedMap.get(bucket.keyBase) || 0;
+        const completedForBucket = completedMap.get(bucket.keyBase) || 0;
+
+        expectedVisits += expectedForBucket;
+        completedVisits += completedForBucket;
+
+        intervalColumns[bucket.expectedField] = expectedForBucket;
+        intervalColumns[bucket.completedField] = completedForBucket;
+
+      }
+
+      const currentBucket = log.visitDate
+        ? getIntervalBucket(new Date(log.visitDate))
+        : undefined;
+      const intervalBucket = currentBucket?.label || 'Outside configured range';
+
       return {
         visitDate: log.visitDate,
         institutionName: log.institution?.name ?? 'N/A',
@@ -4437,12 +4647,17 @@ export class ReportGeneratorService {
         visitLocation: log.visitLocation ?? 'N/A',
         visitDuration: log.visitDuration ?? 'N/A',
         status: statusMap[log.status] || log.status,
+        expectedVisits,
+        completedVisits,
+        pendingVisits: Math.max(0, expectedVisits - completedVisits),
+        intervalBucket,
         responseFromOrganisation: log.responseFromOrganisation ?? '',
         observationsAboutIndustry: log.observationsAboutIndustry ?? '',
         followUpRequired: log.followUpRequired,
         nextVisitDate: log.nextVisitDate,
         attendanceStatus,
         createdAt: log.createdAt,
+        ...intervalColumns,
       };
     });
   }
@@ -4493,6 +4708,141 @@ export class ReportGeneratorService {
       orderBy: { visitDate: 'desc' },
     });
 
+    // Build half-month interval buckets (1-15 and 16-end) for report columns.
+    const now = new Date();
+    const configuredCycleStart = new Date('2026-02-01');
+    configuredCycleStart.setHours(0, 0, 0, 0);
+
+    const filterRangeStart = filters?.dateRange?.[0] ? new Date(filters.dateRange[0]) : null;
+    const filterRangeEnd = filters?.dateRange?.[1] ? new Date(filters.dateRange[1]) : null;
+
+    const intervalStartBoundary = filterRangeStart && !isNaN(filterRangeStart.getTime())
+      ? filterRangeStart
+      : configuredCycleStart;
+    intervalStartBoundary.setHours(0, 0, 0, 0);
+
+    const intervalEndBoundary = filterRangeEnd && !isNaN(filterRangeEnd.getTime())
+      ? filterRangeEnd
+      : now;
+    intervalEndBoundary.setHours(23, 59, 59, 999);
+
+    const intervalBuckets: Array<{
+      keyBase: string;
+      label: string;
+      start: Date;
+      end: Date;
+      expectedField: string;
+      completedField: string;
+    }> = [];
+
+    if (intervalStartBoundary <= intervalEndBoundary) {
+      const cursor = new Date(
+        intervalStartBoundary.getFullYear(),
+        intervalStartBoundary.getMonth(),
+        1,
+      );
+      cursor.setHours(0, 0, 0, 0);
+
+      while (cursor <= intervalEndBoundary) {
+        const year = cursor.getFullYear();
+        const monthIndex = cursor.getMonth();
+        const monthNumber = monthIndex + 1;
+        const monthName = cursor.toLocaleString('en-US', { month: 'short' });
+        const monthEndDate = new Date(year, monthNumber, 0);
+        monthEndDate.setHours(23, 59, 59, 999);
+
+        const firstHalfStart = new Date(year, monthIndex, 1, 0, 0, 0, 0);
+        const firstHalfEnd = new Date(year, monthIndex, 15, 23, 59, 59, 999);
+        const secondHalfStart = new Date(year, monthIndex, 16, 0, 0, 0, 0);
+        const secondHalfEnd = monthEndDate;
+
+        intervalBuckets.push({
+          keyBase: `${year}_${String(monthNumber).padStart(2, '0')}_01_15`,
+          label: `${monthName} 1-15`,
+          start: firstHalfStart,
+          end: firstHalfEnd,
+          expectedField: `${monthName} 1-15 Expected`,
+          completedField: `${monthName} 1-15 Completed`,
+        });
+
+        intervalBuckets.push({
+          keyBase: `${year}_${String(monthNumber).padStart(2, '0')}_16_end`,
+          label: `${monthName} 16-End`,
+          start: secondHalfStart,
+          end: secondHalfEnd,
+          expectedField: `${monthName} 16-End Expected`,
+          completedField: `${monthName} 16-End Completed`,
+        });
+
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+    }
+
+    const inReportRangeBuckets = intervalBuckets.filter(
+      (bucket) => bucket.end >= intervalStartBoundary && bucket.start <= intervalEndBoundary,
+    );
+
+    // Get internship applications once and calculate expected due slots per institution bucket.
+    const internshipWhere: Record<string, unknown> = {
+      isSelfIdentified: true,
+      isActive: true,
+      startDate: { not: null },
+      endDate: { not: null },
+    };
+
+    if (filters?.institutionId) {
+      internshipWhere.student = { institutionId: filters.institutionId };
+    }
+
+    const internshipApps = await this.prisma.internshipApplication.findMany({
+      where: internshipWhere as any,
+      select: {
+        id: true,
+        startDate: true,
+        endDate: true,
+        student: {
+          select: {
+            institutionId: true,
+          },
+        },
+      },
+    });
+
+    const institutionExpectedByInterval = new Map<string, Map<string, number>>();
+
+    const getIntervalBucket = (date: Date) => {
+      return inReportRangeBuckets.find(
+        (bucket) => date >= bucket.start && date <= bucket.end,
+      );
+    };
+
+    for (const app of internshipApps) {
+      if (!app.startDate || !app.endDate || !app.student?.institutionId) {
+        continue;
+      }
+
+      const institutionId = app.student.institutionId;
+      const dueDates = getPrincipalFeedbackDueDates(app.startDate, app.endDate).filter(
+        (dueDate) => dueDate >= intervalStartBoundary && dueDate <= intervalEndBoundary,
+      );
+
+      if (!institutionExpectedByInterval.has(institutionId)) {
+        institutionExpectedByInterval.set(institutionId, new Map<string, number>());
+      }
+
+      const intervalMap = institutionExpectedByInterval.get(institutionId)!;
+
+      for (const dueDate of dueDates) {
+        const bucket = getIntervalBucket(dueDate);
+        if (!bucket) continue;
+
+        intervalMap.set(
+          bucket.keyBase,
+          (intervalMap.get(bucket.keyBase) || 0) + 1,
+        );
+      }
+    }
+
     // Group by institution and principal
     const summaryMap = new Map<string, {
       institutionId: string;
@@ -4509,6 +4859,7 @@ export class ReportGeneratorService {
       studentsVisited: Set<string>;
       followUpsRequired: number;
       lastVisitDate: Date | null;
+      intervalCompleted: Map<string, number>;
     }>();
 
     visitLogs.forEach((log) => {
@@ -4530,6 +4881,7 @@ export class ReportGeneratorService {
           studentsVisited: new Set(),
           followUpsRequired: 0,
           lastVisitDate: null,
+          intervalCompleted: new Map<string, number>(),
         });
       }
 
@@ -4560,24 +4912,81 @@ export class ReportGeneratorService {
       if (log.visitDate && (!summary.lastVisitDate || log.visitDate > summary.lastVisitDate)) {
         summary.lastVisitDate = log.visitDate;
       }
+
+      // Track completed visits per 15-day bucket.
+      if (log.status === 'COMPLETED' && log.visitDate) {
+        const bucket = getIntervalBucket(new Date(log.visitDate));
+        if (bucket) {
+          summary.intervalCompleted.set(
+            bucket.keyBase,
+            (summary.intervalCompleted.get(bucket.keyBase) || 0) + 1,
+          );
+        }
+      }
     });
 
-    const results = Array.from(summaryMap.values()).map((summary) => ({
-      institutionName: summary.institutionName,
-      principalName: summary.principalName,
-      totalVisits: summary.totalVisits,
-      physicalVisits: summary.physicalVisits,
-      virtualVisits: summary.virtualVisits,
-      telephonicVisits: summary.telephonicVisits,
-      completedVisits: summary.completedVisits,
-      draftVisits: summary.draftVisits,
-      avgSatisfactionRating: summary.ratings.length > 0
-        ? Math.round((summary.ratings.reduce((a, b) => a + b, 0) / summary.ratings.length) * 10) / 10
-        : 0,
-      studentsVisited: summary.studentsVisited.size,
-      followUpsRequired: summary.followUpsRequired,
-      lastVisitDate: summary.lastVisitDate,
-    }));
+    const globalExpectedByBucket = new Map<string, number>();
+    institutionExpectedByInterval.forEach((intervalMap) => {
+      intervalMap.forEach((count, key) => {
+        globalExpectedByBucket.set(key, (globalExpectedByBucket.get(key) || 0) + count);
+      });
+    });
+
+    const globalCompletedByBucket = new Map<string, number>();
+    summaryMap.forEach((summary) => {
+      summary.intervalCompleted.forEach((count, key) => {
+        globalCompletedByBucket.set(key, (globalCompletedByBucket.get(key) || 0) + count);
+      });
+    });
+
+    // ACTIVE_ONLY (default and supported): show only intervals with expected or completed activity
+    // within the selected date range.
+    const finalBuckets = inReportRangeBuckets.filter((bucket) =>
+      (globalExpectedByBucket.get(bucket.keyBase) || 0) > 0 ||
+      (globalCompletedByBucket.get(bucket.keyBase) || 0) > 0,
+    );
+
+    const results = Array.from(summaryMap.values()).map((summary) => {
+      const expectedMap = summary.institutionId
+        ? institutionExpectedByInterval.get(summary.institutionId) || new Map<string, number>()
+        : new Map<string, number>();
+
+      let expectedVisits = 0;
+      let completedInIntervals = 0;
+      const intervalColumns: Record<string, number> = {};
+
+      for (const bucket of finalBuckets) {
+        const expectedForBucket = expectedMap.get(bucket.keyBase) || 0;
+        const completedForBucket = summary.intervalCompleted.get(bucket.keyBase) || 0;
+
+        expectedVisits += expectedForBucket;
+        completedInIntervals += completedForBucket;
+
+        intervalColumns[bucket.expectedField] = expectedForBucket;
+        intervalColumns[bucket.completedField] = completedForBucket;
+
+      }
+
+      return {
+        institutionName: summary.institutionName,
+        principalName: summary.principalName,
+        totalVisits: summary.totalVisits,
+        expectedVisits,
+        pendingVisits: Math.max(0, expectedVisits - completedInIntervals),
+        physicalVisits: summary.physicalVisits,
+        virtualVisits: summary.virtualVisits,
+        telephonicVisits: summary.telephonicVisits,
+        completedVisits: summary.completedVisits,
+        draftVisits: summary.draftVisits,
+        avgSatisfactionRating: summary.ratings.length > 0
+          ? Math.round((summary.ratings.reduce((a, b) => a + b, 0) / summary.ratings.length) * 10) / 10
+          : 0,
+        studentsVisited: summary.studentsVisited.size,
+        followUpsRequired: summary.followUpsRequired,
+        lastVisitDate: summary.lastVisitDate,
+        ...intervalColumns,
+      };
+    });
 
     // Sort by total visits descending
     results.sort((a, b) => b.totalVisits - a.totalVisits);

@@ -326,6 +326,8 @@ export class ReportProcessor extends WorkerHost {
       'internship_by_institution': 'Internships by Institution Report',
       'industry_wise_students_stipend': 'Industry-wise Student Distribution & Stipend Analysis',
       'top_institutes_per_industry': 'Top 3 Institutes per Industry/Company',
+      'principal_visit_logs': 'Principal Visit Logs Report',
+      'principal_visit_summary': 'Principal Visit Summary Report',
     };
 
     // Column mapping - matches actual data fields from generator
@@ -646,6 +648,44 @@ export class ReportProcessor extends WorkerHost {
         { field: 'activeStudents', header: 'Active Students', type: 'number' as const, width: 14 },
         { field: 'completedStudents', header: 'Completed Students', type: 'number' as const, width: 14 },
       ],
+      'principal_visit_logs': [
+        { field: 'visitDate', header: 'Visit Date', type: 'date' as const, width: 14 },
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
+        { field: 'principalName', header: 'Principal Name', type: 'string' as const, width: 20 },
+        { field: 'studentNames', header: 'Students', type: 'string' as const, width: 30 },
+        { field: 'studentRollNumbers', header: 'Roll Numbers', type: 'string' as const, width: 20 },
+        { field: 'companyNames', header: 'Companies', type: 'string' as const, width: 30 },
+        { field: 'visitType', header: 'Visit Type', type: 'string' as const, width: 14 },
+        { field: 'visitLocation', header: 'Location', type: 'string' as const, width: 25 },
+        { field: 'visitDuration', header: 'Duration', type: 'string' as const, width: 14 },
+        { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
+        { field: 'expectedVisits', header: 'Expected Visits', type: 'number' as const, width: 14 },
+        { field: 'completedVisits', header: 'Completed Visits', type: 'number' as const, width: 14 },
+        { field: 'pendingVisits', header: 'Pending Visits', type: 'number' as const, width: 14 },
+        { field: 'intervalBucket', header: '15-Day Interval', type: 'string' as const, width: 16 },
+        { field: 'responseFromOrganisation', header: 'Response From Organisation', type: 'string' as const, width: 35 },
+        { field: 'observationsAboutIndustry', header: 'Observations About Industry', type: 'string' as const, width: 35 },
+        { field: 'followUpRequired', header: 'Follow-up Required', type: 'boolean' as const, width: 14 },
+        { field: 'nextVisitDate', header: 'Next Visit Date', type: 'date' as const, width: 14 },
+        { field: 'attendanceStatus', header: 'Attendance Status', type: 'string' as const, width: 18 },
+        { field: 'createdAt', header: 'Created At', type: 'date' as const, width: 14 },
+      ],
+      'principal_visit_summary': [
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
+        { field: 'principalName', header: 'Principal Name', type: 'string' as const, width: 20 },
+        { field: 'totalVisits', header: 'Total Visits', type: 'number' as const, width: 12 },
+        { field: 'expectedVisits', header: 'Expected Visits', type: 'number' as const, width: 14 },
+        { field: 'pendingVisits', header: 'Pending Visits', type: 'number' as const, width: 14 },
+        { field: 'physicalVisits', header: 'Physical Visits', type: 'number' as const, width: 14 },
+        { field: 'virtualVisits', header: 'Virtual Visits', type: 'number' as const, width: 14 },
+        { field: 'telephonicVisits', header: 'Telephonic Visits', type: 'number' as const, width: 16 },
+        { field: 'completedVisits', header: 'Completed', type: 'number' as const, width: 12 },
+        { field: 'draftVisits', header: 'Drafts', type: 'number' as const, width: 10 },
+        { field: 'avgSatisfactionRating', header: 'Avg Satisfaction Rating', type: 'number' as const, width: 16 },
+        { field: 'studentsVisited', header: 'Students Visited', type: 'number' as const, width: 14 },
+        { field: 'followUpsRequired', header: 'Follow-ups Required', type: 'number' as const, width: 16 },
+        { field: 'lastVisitDate', header: 'Last Visit Date', type: 'date' as const, width: 14 },
+      ],
       // Compliance reports - matches generateStudentComplianceReport output
       'student_compliance': [
         { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
@@ -694,14 +734,53 @@ export class ReportProcessor extends WorkerHost {
       }
     }
 
+    // For principal interval reports, always expose dynamic half-month interval columns
+    // (e.g., "Feb 1-15 Expected", "Feb 1-15 Completed") as separate columns.
+    const isPrincipalIntervalReport =
+      normalizedType === 'principal_visit_logs' ||
+      normalizedType === 'principal_visit_summary';
+
+    if (isPrincipalIntervalReport && data.length > 0) {
+      const firstRow = data[0];
+      const existingFields = new Set(columns.map((c) => c.field));
+      const dynamicIntervalColumns = Object.keys(firstRow)
+        .filter((key) => !existingFields.has(key))
+        .filter((key) => /\s(Expected|Completed)$/.test(key))
+        .map((key) => ({
+          field: key,
+          header: key,
+          type: this.inferColumnType(firstRow[key]),
+          width: 16,
+        }));
+
+      if (dynamicIntervalColumns.length > 0) {
+        columns = [...columns, ...dynamicIntervalColumns];
+      }
+    }
+
     // Filter columns based on user selection (if provided)
     // Apply for both predefined and inferred columns.
     if (selectedColumns && selectedColumns.length > 0) {
       this.logger.log(`Filtering to selected columns: ${selectedColumns.join(', ')}`);
 
+      const inferredColumnsByField = new Map<string, any>();
+      if (data.length > 0) {
+        const firstRow = data[0];
+        Object.keys(firstRow).forEach((key) => {
+          if (!columns.find((c) => c.field === key)) {
+            inferredColumnsByField.set(key, {
+              field: key,
+              header: key,
+              type: this.inferColumnType(firstRow[key]),
+              width: 15,
+            });
+          }
+        });
+      }
+
       // Filter to only include selected columns while preserving order
       const filteredColumns = selectedColumns
-        .map(colId => columns.find(c => c.field === colId))
+        .map(colId => columns.find(c => c.field === colId) || inferredColumnsByField.get(colId))
         .filter(Boolean);
 
       // Only use filtered columns if at least one matched

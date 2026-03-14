@@ -12,10 +12,14 @@ import { FileStorageService } from '../../infrastructure/file-storage/file-stora
 import { ExpectedCycleService } from '../../domain/internship/expected-cycle/expected-cycle.service';
 import {
   calculateExpectedMonths,
-  getTotalExpectedCount,
+  getTotalExpectedReports,
+  getTotalExpectedVisits,
   getExpectedReportsAsOfToday,
   getExpectedVisitsAsOfToday,
+  getExpectedPrincipalFeedbackVisitsAsOfToday,
   getMonthCycle,
+  getPrincipalFeedbackDueDates,
+  getTotalExpectedPrincipalFeedbackVisits,
   MONTHLY_CYCLE,
 } from '../../common/utils/monthly-cycle.util';
 import * as bcrypt from 'bcrypt';
@@ -84,6 +88,7 @@ export class PrincipalService {
           completedInternships,
           currentMonthReportsSubmitted,
           currentMonthVisitsCompleted,
+          currentMonthPrincipalFeedbackCompleted,
           activeApplicationsForCurrentMonth,
           pendingGrievances,
           totalGrievances,
@@ -141,6 +146,18 @@ export class PrincipalService {
                 student: { institutionId, user: { active: true } },
                 isSelfIdentified: true,
               },
+              visitDate: {
+                gte: currentMonthStart,
+                lte: currentMonthEnd,
+              },
+            },
+          }),
+          // Count principal feedback visits COMPLETED in current month
+          this.prisma.principalFeedback.count({
+            where: {
+              isDeleted: false,
+              institutionId,
+              status: 'COMPLETED',
               visitDate: {
                 gte: currentMonthStart,
                 lte: currentMonthEnd,
@@ -312,6 +329,7 @@ export class PrincipalService {
         // First month >15 days, last month any days, middle months >10 days
         let currentMonthExpectedReports = 0;
         let currentMonthExpectedVisits = 0;
+        let currentMonthExpectedPrincipalFeedbackVisits = 0;
 
         for (const app of activeApplicationsForCurrentMonth) {
           try {
@@ -325,6 +343,16 @@ export class PrincipalService {
               currentMonthExpectedReports++;
               currentMonthExpectedVisits++;
             }
+
+            // Principal feedback cycle: fixed 15-day due slots from configured start date
+            const principalFeedbackDueDates = getPrincipalFeedbackDueDates(
+              new Date(startDate),
+              new Date(endDate),
+            );
+            currentMonthExpectedPrincipalFeedbackVisits += principalFeedbackDueDates.filter(
+              (dueDate) =>
+                dueDate >= currentMonthStart && dueDate <= currentMonthEnd,
+            ).length;
           } catch {
             // Skip this application if any error
             continue;
@@ -355,6 +383,10 @@ export class PrincipalService {
           pending: {
             // Self-identified internships are auto-approved, so no pending approvals
             monthlyReports: Math.max(0, currentMonthExpectedReports - currentMonthReportsSubmitted),
+            principalFeedbackVisits: Math.max(
+              0,
+              currentMonthExpectedPrincipalFeedbackVisits - currentMonthPrincipalFeedbackCompleted,
+            ),
             grievances: pendingGrievances,
             joiningLetters: pendingJoiningLetters,
           },
@@ -387,6 +419,17 @@ export class PrincipalService {
             cumulative: {
               completed: applicationCounters._sum.completedVisitsCount || 0,
               expected: applicationCounters._sum.totalExpectedVisits || 0,
+            },
+          },
+          // Principal feedback visits overview - CURRENT MONTH specific data
+          principalFeedbackVisits: {
+            completed: currentMonthPrincipalFeedbackCompleted,
+            expected: currentMonthExpectedPrincipalFeedbackVisits,
+            month: currentMonth,
+            year: currentYear,
+            cycle: {
+              startDate: MONTHLY_CYCLE.PRINCIPAL_FEEDBACK_CYCLE_START_DATE,
+              intervalDays: MONTHLY_CYCLE.PRINCIPAL_FEEDBACK_INTERVAL_DAYS,
             },
           },
           // Joining letter stats (simple: total vs uploaded)
@@ -677,6 +720,8 @@ export class PrincipalService {
       .map((s) => s.internshipApplications[0]?.id)
       .filter(Boolean) as string[];
 
+    const studentIds = students.map((s) => s.id);
+
  // Fetch COMPLETED faculty visits for all applications in a single query
     const facultyVisits = applicationIds.length > 0
       ? await this.prisma.facultyVisitLog.findMany({
@@ -686,6 +731,33 @@ export class PrincipalService {
             visitDate: true,
           },
           orderBy: { visitDate: 'desc' },
+        })
+      : [];
+
+    const principalFeedbackVisits = studentIds.length > 0
+      ? await this.prisma.principalFeedbackStudent.findMany({
+          where: {
+            studentId: { in: studentIds },
+            principalFeedback: {
+              isDeleted: false,
+              status: 'COMPLETED',
+              visitDate: { not: null },
+            },
+          },
+          select: {
+            studentId: true,
+            principalFeedbackId: true,
+            principalFeedback: {
+              select: {
+                visitDate: true,
+              },
+            },
+          },
+          orderBy: {
+            principalFeedback: {
+              visitDate: 'desc',
+            },
+          },
         })
       : [];
 
@@ -704,6 +776,26 @@ export class PrincipalService {
       }
     }
 
+    const principalFeedbackMap = new Map<
+      string,
+      Array<{ principalFeedbackId: string; visitDate: Date }>
+    >();
+
+    for (const entry of principalFeedbackVisits) {
+      if (!entry.principalFeedback?.visitDate) {
+        continue;
+      }
+
+      if (!principalFeedbackMap.has(entry.studentId)) {
+        principalFeedbackMap.set(entry.studentId, []);
+      }
+
+      principalFeedbackMap.get(entry.studentId)!.push({
+        principalFeedbackId: entry.principalFeedbackId,
+        visitDate: entry.principalFeedback.visitDate,
+      });
+    }
+
     // Transform data for frontend
     const progressData = students.map((student) => {
       const application = student.internshipApplications[0];
@@ -719,6 +811,10 @@ export class PrincipalService {
       let totalExpectedVisits = 0;
       let expectedReportsAsOfNow = 0;
       let expectedVisitsAsOfNow = 0;
+      let totalExpectedPrincipalFeedbackVisits = 0;
+      let expectedPrincipalFeedbackVisitsAsOfNow = 0;
+      let completedPrincipalFeedbackVisitsCount = 0;
+      let lastPrincipalFeedbackVisit: Date | null = null;
 
       if (application) {
         const startDate = (application as any).startDate || application.joiningDate;
@@ -738,12 +834,41 @@ export class PrincipalService {
             : new Date(start.getTime() + 180 * 24 * 60 * 60 * 1000);
 
           // Use stored values if available, otherwise calculate total
-          totalExpectedReports = storedExpectedReports ?? getTotalExpectedCount(start, effectiveEnd);
-          totalExpectedVisits = storedExpectedVisits ?? getTotalExpectedCount(start, effectiveEnd);
+          totalExpectedReports = storedExpectedReports ?? getTotalExpectedReports(start, effectiveEnd);
+          totalExpectedVisits = storedExpectedVisits ?? getTotalExpectedVisits(start, effectiveEnd);
 
           // Calculate how many should be done by now using utility functions
           expectedReportsAsOfNow = getExpectedReportsAsOfToday(start, effectiveEnd);
           expectedVisitsAsOfNow = getExpectedVisitsAsOfToday(start, effectiveEnd);
+
+          totalExpectedPrincipalFeedbackVisits =
+            getTotalExpectedPrincipalFeedbackVisits(start, effectiveEnd);
+          expectedPrincipalFeedbackVisitsAsOfNow =
+            getExpectedPrincipalFeedbackVisitsAsOfToday(start, effectiveEnd);
+
+          // Count completed principal feedback visits in internship/cycle window
+          const principalCycleStart = new Date(
+            MONTHLY_CYCLE.PRINCIPAL_FEEDBACK_CYCLE_START_DATE,
+          );
+          principalCycleStart.setHours(0, 0, 0, 0);
+          const effectivePrincipalStart = start > principalCycleStart ? start : principalCycleStart;
+
+          const studentPrincipalFeedbacks = principalFeedbackMap.get(student.id) || [];
+          const matchedFeedbackIds = new Set<string>();
+
+          for (const feedback of studentPrincipalFeedbacks) {
+            if (
+              feedback.visitDate >= effectivePrincipalStart &&
+              feedback.visitDate <= effectiveEnd
+            ) {
+              matchedFeedbackIds.add(feedback.principalFeedbackId);
+              if (!lastPrincipalFeedbackVisit || feedback.visitDate > lastPrincipalFeedbackVisit) {
+                lastPrincipalFeedbackVisit = feedback.visitDate;
+              }
+            }
+          }
+
+          completedPrincipalFeedbackVisitsCount = matchedFeedbackIds.size;
         } else if (storedExpectedReports || storedExpectedVisits) {
           // Use stored values even if no startDate
           totalExpectedReports = storedExpectedReports || 0;
@@ -847,6 +972,14 @@ export class PrincipalService {
         totalExpectedVisits,
         expectedVisitsAsOfNow,
         lastFacultyVisit: visitsData?.lastVisit || null,
+        principalFeedbackVisitsCount: completedPrincipalFeedbackVisitsCount,
+        totalExpectedPrincipalFeedbackVisits,
+        expectedPrincipalFeedbackVisitsAsOfNow,
+        pendingPrincipalFeedbackVisits: Math.max(
+          0,
+          expectedPrincipalFeedbackVisitsAsOfNow - completedPrincipalFeedbackVisitsCount,
+        ),
+        lastPrincipalFeedbackVisit,
         timeline,
         application: application ? {
           id: application.id,
@@ -4467,7 +4600,7 @@ export class PrincipalService {
       // Calculate expected visits based on internship duration
       let expectedVisits = 0;
       if (startDate && endDate) {
-        expectedVisits = getTotalExpectedCount(new Date(startDate), new Date(endDate));
+        expectedVisits = getTotalExpectedVisits(new Date(startDate), new Date(endDate));
       }
 
       return {

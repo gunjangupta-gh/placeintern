@@ -506,7 +506,7 @@ const PrincipalFeedback = () => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <FileDoneOutlined className="text-primary text-lg" />
-            <Title level={4} className="!mb-0 text-base sm:text-lg">
+            <Title level={4} className="mb-0! text-base sm:text-lg">
               Principal Feedback
             </Title>
           </div>
@@ -531,23 +531,6 @@ const PrincipalFeedback = () => {
             </Button>
           </Space>
         </div>
-
-        <Row gutter={[12, 12]}>
-          <Col xs={12} sm={12} md={12}>
-            <Card size="small" className="h-full">
-              <Text type="secondary" className="text-xs sm:text-sm">Total Visits</Text>
-              <div className="text-xl sm:text-2xl font-bold">{stats.totalVisits || 0}</div>
-            </Card>
-          </Col>
-          <Col xs={12} sm={12} md={12}>
-            <Card size="small" className="h-full">
-              <Text type="secondary" className="text-xs sm:text-sm">This Month</Text>
-              <div className="text-xl sm:text-2xl font-bold">
-                {stats.visitsThisMonth || 0}
-              </div>
-            </Card>
-          </Col>
-        </Row>
 
         <Card className="overflow-hidden">
           <div className="flex flex-col gap-3 mb-3">

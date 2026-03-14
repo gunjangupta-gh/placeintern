@@ -134,6 +134,27 @@ export const MONTHLY_CYCLE_CONFIG = {
   SEND_OVERDUE_NOTIFICATIONS: true,
 
   /**
+   * PRINCIPAL FEEDBACK CYCLE SETTINGS
+   * ================================
+   */
+
+  /**
+   * Global start date for mandatory principal feedback cycle.
+   * Expected principal feedback visits are counted only from this date onward.
+   *
+   * Format: YYYY-MM-DD
+   * @default '2026-02-01'
+   */
+  PRINCIPAL_FEEDBACK_CYCLE_START_DATE: '2026-02-01',
+
+  /**
+   * Interval (in calendar days) between mandatory principal feedback visits.
+   *
+   * @default 15
+   */
+  PRINCIPAL_FEEDBACK_INTERVAL_DAYS: 15,
+
+  /**
    * AUTO-APPROVAL SETTINGS
    * ======================
    */
@@ -246,6 +267,14 @@ export function validateConfig(): { valid: boolean; errors: string[] } {
 
   if (config.MIN_INTERNSHIP_WEEKS < 1) {
     errors.push('MIN_INTERNSHIP_WEEKS must be at least 1');
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(config.PRINCIPAL_FEEDBACK_CYCLE_START_DATE)) {
+    errors.push('PRINCIPAL_FEEDBACK_CYCLE_START_DATE must be in YYYY-MM-DD format');
+  }
+
+  if (config.PRINCIPAL_FEEDBACK_INTERVAL_DAYS < 1 || config.PRINCIPAL_FEEDBACK_INTERVAL_DAYS > 90) {
+    errors.push('PRINCIPAL_FEEDBACK_INTERVAL_DAYS must be between 1 and 90');
   }
 
   return {
