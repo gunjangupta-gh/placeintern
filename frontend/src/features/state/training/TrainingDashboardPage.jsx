@@ -3,9 +3,12 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   Button,
   Card,
+  Form,
+  Modal,
   Space,
   Table,
   Typography,
+  message,
 } from "antd";
 import {
   CalendarOutlined,
@@ -16,9 +19,15 @@ import {
 import { useNavigate } from "react-router-dom";
 import {
   fetchStateTrainingDashboard,
+  fetchStateFeedbackForms,
+  fetchStatePreTestForms,
+  fetchStatePostTestForms,
+  createStateTraining,
 } from "../store/stateTrainingSlice";
+import TrainingForm from "./components/training/TrainingForm";
 
 const { Title, Text } = Typography;
+const TRAINING_FORM_STEP_TITLES = ["Basic Info", "Schedule", "Capacity", "Settings"];
 
 const asNumber = (value) => {
   const num = Number(value);
@@ -71,12 +80,52 @@ const StatCard = ({ icon: Icon, title, lines = [], onClick, variant = "primary" 
 const TrainingDashboardPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { reports } = useSelector((state) => state.stateTraining);
+  const { reports, feedbackForms, preTestForms, postTestForms } = useSelector((state) => state.stateTraining);
   const { user } = useSelector((state) => state.auth);
+  const [form] = Form.useForm();
+  const [createModalOpen, setCreateModalOpen] = React.useState(false);
+  const [formStep, setFormStep] = React.useState(0);
+  const [formLoading, setFormLoading] = React.useState(false);
 
   useEffect(() => {
     dispatch(fetchStateTrainingDashboard());
+
+    if (!feedbackForms.list?.length) {
+      dispatch(fetchStateFeedbackForms());
+    }
+    if (!preTestForms.list?.length) {
+      dispatch(fetchStatePreTestForms({ forceRefresh: true }));
+    }
+    if (!postTestForms.list?.length) {
+      dispatch(fetchStatePostTestForms({ forceRefresh: true }));
+    }
   }, [dispatch]);
+
+  const handleOpenCreateModal = () => {
+    form.resetFields();
+    setFormStep(0);
+    setCreateModalOpen(true);
+  };
+
+  const handleCloseCreateModal = () => {
+    setCreateModalOpen(false);
+    setFormStep(0);
+    form.resetFields();
+  };
+
+  const handleCreateTraining = async (values) => {
+    setFormLoading(true);
+    try {
+      await dispatch(createStateTraining(values)).unwrap();
+      message.success("Training created successfully");
+      handleCloseCreateModal();
+      dispatch(fetchStateTrainingDashboard());
+    } catch (error) {
+      message.error(error || "Failed to create training");
+    } finally {
+      setFormLoading(false);
+    }
+  };
 
   const dashboard = reports.dashboard || {};
 
@@ -238,7 +287,7 @@ const TrainingDashboardPage = () => {
             size="middle"
             type="primary"
             icon={<PlusOutlined />}
-            onClick={() => navigate("/app/training/create")}
+            onClick={handleOpenCreateModal}
           >
             Create Training
           </Button>
@@ -271,6 +320,28 @@ const TrainingDashboardPage = () => {
           pagination={false}
         />
       </Card>
+
+      <Modal
+        title={`Create Training - Step ${formStep + 1} of ${TRAINING_FORM_STEP_TITLES.length}: ${TRAINING_FORM_STEP_TITLES[formStep]}`}
+        open={createModalOpen}
+        onCancel={handleCloseCreateModal}
+        footer={null}
+        width={920}
+        destroyOnClose
+      >
+        <TrainingForm
+          form={form}
+          onSubmit={handleCreateTraining}
+          loading={formLoading}
+          submitText="Create Training"
+          feedbackForms={feedbackForms.list || []}
+          preTestForms={preTestForms.list || []}
+          postTestForms={postTestForms.list || []}
+          onCancel={handleCloseCreateModal}
+          currentStep={formStep}
+          onStepChange={setFormStep}
+        />
+      </Modal>
     </div>
   );
 };

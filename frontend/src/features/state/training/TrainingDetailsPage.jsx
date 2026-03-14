@@ -210,6 +210,7 @@ const StateTrainingDetailsPage = () => {
 
   const training = currentTraining.data;
   const stats = currentTraining.stats;
+  const trainingEnded = training?.endDate ? new Date(training.endDate) < new Date() : false;
 
   const capacityInfo = useMemo(() => {
     if (training?.capacity && typeof training.capacity === "object") {
@@ -529,7 +530,15 @@ const StateTrainingDetailsPage = () => {
             title={<span className="text-sm font-semibold">Quick Actions</span>}
           >
             <div className="space-y-2">
-              {training?.isPublished ? (
+              <Button
+                block
+                size="middle"
+                type="primary"
+                onClick={() => navigate(`${detailBasePath}/${id}/applications`)}
+              >
+                Review Applications
+              </Button>
+              {training?.isPublished && !trainingEnded ? (
                 <Button
                   block
                   size="middle"
@@ -538,7 +547,7 @@ const StateTrainingDetailsPage = () => {
                 >
                   Unpublish Training
                 </Button>
-              ) : (
+              ) : !training?.isPublished ? (
                 <Button
                   block
                   size="middle"
@@ -548,7 +557,7 @@ const StateTrainingDetailsPage = () => {
                 >
                   Publish Training
                 </Button>
-              )}
+              ) : null}
               <Button
                 block
                 size="middle"

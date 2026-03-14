@@ -327,7 +327,50 @@ const TrainingForm = ({
           <Form.Item
             name="applicationDeadline"
             label="Application Deadline"
-            rules={[{ required: true, message: "Required" }]}
+            dependencies={["startDate"]}
+            rules={[
+              { required: true, message: "Required" },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value) return Promise.resolve();
+
+                  const startDate = getFieldValue("startDate");
+                  if (!startDate) return Promise.resolve();
+
+                  const deadlineDate = dayjs(value).startOf("day");
+                  const trainingStartDate = dayjs(startDate).startOf("day");
+                  const today = dayjs().startOf("day");
+
+                  if (deadlineDate.isSame(trainingStartDate, "day")) {
+                    return Promise.reject(
+                      new Error("Application deadline cannot be on the same day as training start date"),
+                    );
+                  }
+
+                  if (deadlineDate.isAfter(trainingStartDate, "day")) {
+                    return Promise.reject(
+                      new Error("Application deadline must be before training start date"),
+                    );
+                  }
+
+                  // If training has already started (or starts today), do not allow past/today deadline.
+                  const trainingStartedOrToday =
+                    trainingStartDate.isSame(today, "day") ||
+                    trainingStartDate.isBefore(today, "day");
+                  const deadlineTodayOrPast =
+                    deadlineDate.isSame(today, "day") ||
+                    deadlineDate.isBefore(today, "day");
+
+                  if (trainingStartedOrToday && deadlineTodayOrPast) {
+                    return Promise.reject(
+                      new Error("For started trainings, application deadline must be a future date"),
+                    );
+                  }
+
+                  return Promise.resolve();
+                },
+              }),
+            ]}
           >
             <DatePicker className="w-full" format="DD MMM YYYY" />
           </Form.Item>
@@ -544,7 +587,7 @@ const TrainingForm = ({
   };
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-5xl mx-auto w-full">
       <Tabs
         activeKey={String(step)}
         onChange={(activeKey) => setStep(Number(activeKey))}
@@ -554,9 +597,23 @@ const TrainingForm = ({
         items={STEPS.map((stepItem, index) => ({
           key: String(index),
           label: (
-            <span className="inline-flex items-center gap-1.5">
+            <span
+              className={`inline-flex items-center gap-2 px-2 py-1 rounded-md border transition-all ${
+                step === index
+                  ? "border-blue-200 bg-blue-50 text-blue-700"
+                  : "border-slate-200 bg-white text-slate-600"
+              }`}
+              aria-label={`Step ${index + 1}: ${stepItem.title}`}
+            >
+              <span
+                className={`inline-flex items-center justify-center w-5 h-5 text-[10px] font-semibold rounded-full ${
+                  step === index ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                {index + 1}
+              </span>
               {stepItem.icon}
-              {stepItem.title}
+              <span className="font-medium">{stepItem.title}</span>
             </span>
           ),
         }))}

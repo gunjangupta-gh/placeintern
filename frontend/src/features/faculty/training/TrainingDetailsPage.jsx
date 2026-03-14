@@ -965,16 +965,6 @@ const TrainingDetailsPage = () => {
                 <Text type="secondary" className="block text-xs">
                   Not applied yet.
                 </Text>
-                {canApply && (
-                  <Button
-                    type="primary"
-                    size="small"
-                    className="mt-3"
-                    onClick={() => setApplyOpen(true)}
-                  >
-                    Apply Now
-                  </Button>
-                )}
               </div>
             )}
           </Card>

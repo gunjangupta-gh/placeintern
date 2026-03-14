@@ -20,6 +20,9 @@ import { Table } from 'antd';
 
 const { Text, Title } = Typography;
 
+const normalizeStatus = (status) => String(status || '').trim().toUpperCase();
+const isReviewableStatus = (status) => ['PENDING', 'SUBMITTED'].includes(normalizeStatus(status));
+
 const ApplicationReviewPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -75,7 +78,10 @@ const ApplicationReviewPage = () => {
       render: (_, record) => (
         <div>
           <Tooltip title={record.training?.title || 'Training'}>
-            <div className="font-medium text-sm text-slate-800 truncate max-w-60">
+            <div
+              className="font-medium text-sm text-slate-800 truncate max-w-60"
+              title={record.training?.title || 'Training'}
+            >
               {record.training?.title || 'Training'}
             </div>
           </Tooltip>
@@ -126,7 +132,7 @@ const ApplicationReviewPage = () => {
               }}
             />
           </Tooltip>
-          {['PENDING', 'SUBMITTED'].includes(record.status) && (
+          {isReviewableStatus(record.status) && (
             <>
               <Tooltip title="Approve">
                 <Button

@@ -119,6 +119,7 @@ const TrainingManagementPage = () => {
   const [postTestData, setPostTestData] = useState(null);
   const [feedbackData, setFeedbackData] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
+  const [coordinatorApplicationStatsByTraining, setCoordinatorApplicationStatsByTraining] = useState({});
 
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -203,6 +204,61 @@ const TrainingManagementPage = () => {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchScopedApplicationStats = async () => {
+      const list = trainings.list || [];
+
+      if (!list.length) {
+        if (mounted) setCoordinatorApplicationStatsByTraining({});
+        return;
+      }
+
+      const statsEntries = await Promise.all(
+        list.map(async (training) => {
+          try {
+            const response = await trainingCoordinatorService.getTrainingApplications(training.id, {
+              page: 1,
+              limit: 2000,
+            });
+            const applicationsPayload = response?.data || response?.applications || response;
+            const applicationsList = Array.isArray(applicationsPayload) ? applicationsPayload : [];
+
+            const scopedStats = applicationsList.reduce(
+              (acc, app) => {
+                const status = String(app?.status || "").trim().toUpperCase();
+                acc.total += 1;
+                if (status === "APPROVED") acc.approved += 1;
+                if (["PENDING", "SUBMITTED"].includes(status)) acc.pending += 1;
+                return acc;
+              },
+              { total: 0, approved: 0, pending: 0 },
+            );
+
+            return [training.id, scopedStats];
+          } catch (error) {
+            return [training.id, null];
+          }
+        }),
+      );
+
+      if (!mounted) return;
+
+      const statsMap = {};
+      statsEntries.forEach(([trainingId, stats]) => {
+        if (stats) statsMap[trainingId] = stats;
+      });
+      setCoordinatorApplicationStatsByTraining(statsMap);
+    };
+
+    fetchScopedApplicationStats();
+
+    return () => {
+      mounted = false;
+    };
+  }, [trainings.list]);
 
   const handleOpenCreateModal = () => {
     setFormMode("create");
@@ -495,22 +551,57 @@ const TrainingManagementPage = () => {
 
   // Green when all applications are approved, red when pending exists, default otherwise.
   const getViewIconColor = (training) => {
-    const summary = training?.applicationSummary || {};
-    const hasSummary =
-      summary &&
-      Object.prototype.hasOwnProperty.call(summary, "total") &&
-      Object.prototype.hasOwnProperty.call(summary, "approved") &&
-      Object.prototype.hasOwnProperty.call(summary, "pending");
+    const targetBranches = Array.isArray(training?.targetBranches)
+      ? training.targetBranches
+      : [];
+    const isTargetingCoordinatorBranch =
+      !coordinatorBranchId ||
+      !targetBranches.length ||
+      targetBranches.some((branch) => String(branch?.id) === String(coordinatorBranchId));
 
-    const total = hasSummary
-      ? Number(summary.total ?? 0)
-      : Number(training?._count?.applications ?? 0);
-    const approved = hasSummary
-      ? Number(summary.approved ?? 0)
-      : Number(Array.isArray(training?.enrolledFaculty) ? training.enrolledFaculty.length : 0);
-    const pending = hasSummary
-      ? Number(summary.pending ?? 0)
-      : Math.max(total - approved, 0);
+    if (!isTargetingCoordinatorBranch) {
+      return "#475569";
+    }
+
+    const coordinatorScopedSummaryFromApi = coordinatorApplicationStatsByTraining[training.id] || null;
+
+    const coordinatorScopedSummary =
+      coordinatorScopedSummaryFromApi ||
+      training?.coordinatorApplicationSummary ||
+      training?.branchApplicationSummary ||
+      training?.applicationSummaryForCoordinator ||
+      training?.scopedApplicationSummary ||
+      null;
+
+    const hasCoordinatorScopedSummary =
+      coordinatorScopedSummary &&
+      Object.prototype.hasOwnProperty.call(coordinatorScopedSummary, "total") &&
+      Object.prototype.hasOwnProperty.call(coordinatorScopedSummary, "approved") &&
+      Object.prototype.hasOwnProperty.call(coordinatorScopedSummary, "pending");
+
+    // For coordinator view, only trust global summary when training is mapped to a single branch.
+    const fallbackSummary = training?.applicationSummary || {};
+    const canUseFallbackSummary = targetBranches.length === 1;
+    const hasFallbackSummary =
+      canUseFallbackSummary &&
+      fallbackSummary &&
+      Object.prototype.hasOwnProperty.call(fallbackSummary, "total") &&
+      Object.prototype.hasOwnProperty.call(fallbackSummary, "approved") &&
+      Object.prototype.hasOwnProperty.call(fallbackSummary, "pending");
+
+    const resolvedSummary = hasCoordinatorScopedSummary
+      ? coordinatorScopedSummary
+      : hasFallbackSummary
+        ? fallbackSummary
+        : null;
+
+    if (!resolvedSummary) {
+      return "#475569";
+    }
+
+    const total = Number(resolvedSummary.total ?? 0);
+    const approved = Number(resolvedSummary.approved ?? 0);
+    const pending = Number(resolvedSummary.pending ?? 0);
 
     if (pending > 0) {
       return "#dc2626";

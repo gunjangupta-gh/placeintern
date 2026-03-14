@@ -23,6 +23,9 @@ const STATUS_OPTIONS = [
   { label: 'Rejected', value: 'REJECTED' },
 ];
 
+const normalizeStatus = (status) => String(status || '').trim().toUpperCase();
+const isReviewableStatus = (status) => ['PENDING', 'SUBMITTED'].includes(normalizeStatus(status));
+
 const ApplicationManagementPage = () => {
   const dispatch = useDispatch();
   const { id } = useParams();
@@ -127,13 +130,14 @@ const ApplicationManagementPage = () => {
       key: 'status',
       width: 130,
       render: (status) => {
+        const normalizedStatus = normalizeStatus(status);
         const statusConfig = {
           APPROVED: { color: 'green', icon: <CheckCircleOutlined />, label: 'Approved' },
           REJECTED: { color: 'red', icon: <CloseCircleOutlined />, label: 'Rejected' },
           PENDING: { color: 'orange', icon: <ClockCircleOutlined />, label: 'Pending' },
           SUBMITTED: { color: 'blue', icon: <ClockCircleOutlined />, label: 'Submitted' },
         };
-        const config = statusConfig[status] || { color: 'default', label: status };
+        const config = statusConfig[normalizedStatus] || { color: 'default', label: normalizedStatus || '-' };
 
         return (
           <Tag color={config.color} icon={config.icon} className="text-xs">
@@ -162,28 +166,32 @@ const ApplicationManagementPage = () => {
       title: 'Actions',
       key: 'actions',
       width: 110,
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="Approve Application">
-            <Button
-              type="text"
-              size="small"
-              icon={<CheckCircleOutlined className="text-green-600" />}
-              onClick={() => openReview(record, 'APPROVED')}
-              aria-label={`Approve application from ${record.user?.name || 'faculty'}`}
-            />
-          </Tooltip>
-          <Tooltip title="Reject Application">
-            <Button
-              type="text"
-              size="small"
-              icon={<CloseCircleOutlined className="text-red-600" />}
-              onClick={() => openReview(record, 'REJECTED')}
-              aria-label={`Reject application from ${record.user?.name || 'faculty'}`}
-            />
-          </Tooltip>
-        </Space>
-      ),
+      render: (_, record) => {
+        if (!isReviewableStatus(record.status)) return <Text type="secondary" className="text-xs">-</Text>;
+
+        return (
+          <Space size="small">
+            <Tooltip title="Approve Application">
+              <Button
+                type="text"
+                size="small"
+                icon={<CheckCircleOutlined className="text-green-600" />}
+                onClick={() => openReview(record, 'APPROVED')}
+                aria-label={`Approve application from ${record.user?.name || 'faculty'}`}
+              />
+            </Tooltip>
+            <Tooltip title="Reject Application">
+              <Button
+                type="text"
+                size="small"
+                icon={<CloseCircleOutlined className="text-red-600" />}
+                onClick={() => openReview(record, 'REJECTED')}
+                aria-label={`Reject application from ${record.user?.name || 'faculty'}`}
+              />
+            </Tooltip>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -192,12 +200,13 @@ const ApplicationManagementPage = () => {
     const sourceList = isCoordinatorRoute ? coordinatorApplications : (applications.list || []);
 
     return sourceList.filter((item) => {
+      const normalizedStatus = normalizeStatus(item.status);
       const matchesStatus =
         statusFilter === 'ALL'
           ? true
           : statusFilter === 'PENDING'
-            ? ['PENDING', 'SUBMITTED'].includes(item.status)
-            : item.status === statusFilter;
+            ? ['PENDING', 'SUBMITTED'].includes(normalizedStatus)
+            : normalizedStatus === statusFilter;
 
       if (!matchesStatus) return false;
       if (!search) return true;

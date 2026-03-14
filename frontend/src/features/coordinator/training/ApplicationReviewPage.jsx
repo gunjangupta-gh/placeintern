@@ -10,7 +10,6 @@ import {
   Segmented,
   Typography,
   message,
-  Tag,
   Tooltip,
   Descriptions,
 } from 'antd';
@@ -27,6 +26,9 @@ import TrainingEmptyState from '../../../components/training/TrainingEmptyState'
 
 const { Text } = Typography;
 const { TextArea } = Input;
+
+const normalizeStatus = (status) => String(status || '').trim().toUpperCase();
+const isReviewableStatus = (status) => ['PENDING', 'SUBMITTED'].includes(normalizeStatus(status));
 
 const ApplicationReviewPage = () => {
   const [loading, setLoading] = useState(true);
@@ -138,7 +140,10 @@ const ApplicationReviewPage = () => {
       render: (_, record) => (
         <div>
           <Tooltip title={record.training?.title || 'Training'}>
-            <div className="font-medium text-sm text-slate-800 truncate max-w-60">
+            <div
+              className="font-medium text-sm text-slate-800 truncate max-w-60"
+              title={record.training?.title || 'Training'}
+            >
               {record.training?.title || 'Training'}
             </div>
           </Tooltip>
@@ -185,7 +190,7 @@ const ApplicationReviewPage = () => {
               onClick={() => openDetails(record)}
             />
           </Tooltip>
-          {record.status === 'PENDING' && (
+          {isReviewableStatus(record.status) && (
             <>
               <Tooltip title="Approve">
                 <Button
@@ -367,7 +372,7 @@ const ApplicationReviewPage = () => {
           <Button key="close" onClick={() => setDetailsOpen(false)}>
             Close
           </Button>,
-          selected?.status === 'PENDING' && (
+          isReviewableStatus(selected?.status) && (
             <Button
               key="review"
               type="primary"
