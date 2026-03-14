@@ -559,6 +559,8 @@ export class TrainingService {
   async getUpcoming(limit = 5, branchIds?: string[], userId?: string, institutionId?: string) {
     try {
       const now = new Date();
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
       const userBranchId = userId ? await this.getUserBranchId(userId) : undefined;
       const effectiveBranchIds = this.getEffectiveBranchIds(branchIds, userBranchId);
       const branchScopeCondition: Prisma.TrainingWhereInput | undefined = effectiveBranchIds
@@ -576,7 +578,7 @@ export class TrainingService {
         where: {
           isPublished: true,
           isActive: true,
-          applicationDeadline: { gte: now },
+          applicationDeadline: { gte: todayStart },
           ...(institutionId
             ? {
                 applications: {
@@ -1240,9 +1242,15 @@ export class TrainingService {
       }
     }
 
-    // Check deadline
-    if (training.applicationDeadline && new Date(training.applicationDeadline) < new Date()) {
-      return { eligible: false, reason: 'Application deadline has passed' };
+    // Check deadline (inclusive): valid through the end of the deadline day.
+    if (training.applicationDeadline) {
+      const now = new Date();
+      const deadlineEndOfDay = new Date(training.applicationDeadline);
+      deadlineEndOfDay.setHours(23, 59, 59, 999);
+
+      if (now > deadlineEndOfDay) {
+        return { eligible: false, reason: 'Application deadline has passed' };
+      }
     }
 
     // Check capacity

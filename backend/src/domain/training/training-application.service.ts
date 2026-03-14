@@ -94,8 +94,12 @@ export class TrainingApplicationService {
         }
       }
 
-      // Check deadline
-      if (new Date() > training.applicationDeadline) {
+      // Check deadline (inclusive): allow applying until the end of the deadline day.
+      const now = new Date();
+      const deadlineEndOfDay = new Date(training.applicationDeadline);
+      deadlineEndOfDay.setHours(23, 59, 59, 999);
+
+      if (now > deadlineEndOfDay) {
         throw new BadRequestException('Application deadline has passed');
       }
 
