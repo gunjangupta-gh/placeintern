@@ -15,6 +15,7 @@ export const complianceReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'branchName', label: 'Branch', type: 'string', default: true },
       { id: 'institutionName', label: 'Institution', type: 'string', default: true, sortable: true },
       { id: 'companyName', label: 'Company', type: 'string', default: true },
+      { id: 'companyAddress', label: 'Company Address', type: 'string', default: true },
       { id: 'reportMonth', label: 'Report Month', type: 'string', default: true, sortable: true },
       { id: 'jan', label: 'Jan', type: 'number', default: true, sortable: true, description: '0 = no visit submitted, 1 = visit submitted' },
       { id: 'feb', label: 'Feb', type: 'number', default: true, sortable: true, description: '0 = no visit submitted, 1 = visit submitted' },

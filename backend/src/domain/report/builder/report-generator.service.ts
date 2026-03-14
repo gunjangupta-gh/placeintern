@@ -2729,6 +2729,7 @@ export class ReportGeneratorService {
           where: internshipAppWhere,
           select: {
             companyName: true,
+            companyAddress: true,
             startDate: true,
             endDate: true,
             joiningDate: true,
@@ -2770,6 +2771,7 @@ export class ReportGeneratorService {
           branchName: student.branch?.name ?? student.user?.branchName,
           institutionName: student.Institution?.name ?? 'N/A',
           companyName: 'N/A',
+          companyAddress: 'N/A',
           internshipStartDate: null,
           mentorName,
           requiredVisits: 0,
@@ -2828,6 +2830,7 @@ export class ReportGeneratorService {
             branchName: student.branch?.name ?? student.user?.branchName,
             institutionName: student.Institution?.name ?? 'N/A',
             companyName: app.companyName ?? 'N/A',
+            companyAddress: app.companyAddress ?? 'N/A',
             internshipStartDate: this.formatToISTDateOnly(startDate),
             mentorName,
             requiredVisits,

@@ -460,6 +460,7 @@ export class ReportProcessor extends WorkerHost {
         { field: 'branchName', header: 'Branch', type: 'string' as const, width: 15 },
         { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
         { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'companyAddress', header: 'Company Address', type: 'string' as const, width: 35 },
         { field: 'reportMonth', header: 'Report Month', type: 'string' as const, width: 14 },
         { field: 'jan', header: 'Jan', type: 'number' as const, width: 8 },
         { field: 'feb', header: 'Feb', type: 'number' as const, width: 8 },
