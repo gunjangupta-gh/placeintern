@@ -30,6 +30,7 @@ const queueLogger = new Logger('QueueModule');
         const redisHost = configService.get<string>('REDIS_HOST', 'localhost');
         const redisPort = configService.get<number>('REDIS_PORT', 6379);
         const redisPassword = configService.get<string>('REDIS_PASSWORD');
+        const queuePrefix = configService.get<string>('QUEUE_PREFIX', 'bull');
 
         const connection: any = {
           host: redisHost,
