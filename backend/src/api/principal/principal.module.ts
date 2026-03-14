@@ -11,8 +11,22 @@ import { AuditModule } from '../../infrastructure/audit/audit.module';
 import { FileStorageModule } from '../../infrastructure/file-storage/file-storage.module';
 import { InternshipModule } from '../../domain/internship/internship.module';
 
+// Training module
+import { PrincipalTrainingModule } from './training/principal-training.module';
+import { AuditService } from '../../infrastructure/audit/audit.service';
+
 @Module({
-  imports: [PrismaModule, UserModule, MentorModule, AcademicModule, AuditModule, FileStorageModule, InternshipModule],
+  imports: [
+    PrismaModule,
+    UserModule,
+    MentorModule,
+    AcademicModule,
+    AuditModule,
+    FileStorageModule,
+    InternshipModule,
+    // Training sub-module
+    PrincipalTrainingModule,
+  ],
   controllers: [PrincipalController, PrincipalVisitLogsController],
   providers: [PrincipalService, PrincipalVisitLogsService],
   exports: [PrincipalService, PrincipalVisitLogsService],

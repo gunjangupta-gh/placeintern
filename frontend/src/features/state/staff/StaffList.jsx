@@ -175,6 +175,7 @@ const StaffList = () => {
   const getRoleColor = (role) => {
     switch (role) {
       case 'TEACHER': return 'blue';
+      case 'FACULTY_COORDINATOR': return 'purple';
       default: return 'default';
     }
   };
@@ -182,6 +183,7 @@ const StaffList = () => {
   const getRoleLabel = (role) => {
     const labels = {
       TEACHER: 'Teacher',
+      FACULTY_COORDINATOR: 'Faculty Coordinator',
     };
     return labels[role] || role;
   };
@@ -385,6 +387,7 @@ const StaffList = () => {
                   onChange={(value) => handleFilterChange('role', value || '')}
                 >
                   <Select.Option value="TEACHER">Teacher</Select.Option>
+                  <Select.Option value="FACULTY_COORDINATOR">Faculty Coordinator</Select.Option>
                 </Select>
               </Col>
               <Col xs={24} sm={12} md={6}>

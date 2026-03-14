@@ -11,7 +11,8 @@ import Layouts from '../../components/Layout';
 const ROLES = {
   STATE: 'STATE_DIRECTORATE',
   PRINCIPAL: 'PRINCIPAL',
-  FACULTY: ['FACULTY', 'TEACHER', 'FACULTY_SUPERVISOR'],
+  FACULTY: ['FACULTY', 'TEACHER', 'FACULTY_SUPERVISOR', 'FACULTY_COORDINATOR'],
+  COORDINATOR: 'FACULTY_COORDINATOR',
   STUDENT: 'STUDENT',
   INDUSTRY: ['INDUSTRY', 'INDUSTRY_PARTNER', 'INDUSTRY_SUPERVISOR'],
   SYSTEM_ADMIN: 'SYSTEM_ADMIN',
@@ -54,6 +55,18 @@ import RestoreCenter from '../../features/state/restore/RestoreCenter';
 import MasterData from '../../features/state/master-data/MasterData';
 import { MonthlyCompliancePage } from '../../features/state/compliance';
 import { StudentsList } from '../../features/state/students';
+import StateTrainingDashboardPage from '../../features/state/training/TrainingDashboardPage';
+import StateTrainingManagementPage from '../../features/state/training/TrainingManagementPage';
+import StateTrainingManageFormPage from '../../features/state/training/TrainingManageFormPage';
+import StateTrainingDetailsPage from '../../features/state/training/TrainingDetailsPage';
+import StateApplicationManagementPage from '../../features/state/training/ApplicationManagementPage';
+import StateAttendanceManagementPage from '../../features/state/training/AttendanceManagementPage';
+import StateCertificateManagementPage from '../../features/state/training/CertificateManagementPage';
+import StateFeedbackFormManagementPage from '../../features/state/training/FeedbackFormManagementPage';
+import StateTestFormManagementPage from '../../features/state/training/TestFormManagementPage';
+import StateTestResponsesPage from '../../features/state/training/TestResponsesPage';
+import StateFeedbackResponsesPage from '../../features/state/training/FeedbackResponsesPage';
+import StateLessonPlanReviewPage from '../../features/state/training/LessonPlanReviewPage';
 
 // Shared
 import GrievanceList from '../../features/shared/grievances/GrievanceList';
@@ -78,6 +91,14 @@ import Grievances from '../../features/principal/grievances/Grievances';
 import SelfIdentifiedInternships from '../../features/principal/internships/SelfIdentifiedInternships';
 import BulkSelfInternshipUpload from '../../features/principal/bulk/BulkSelfInternshipUpload';
 import BulkJobHistory from '../../features/common/bulk/BulkJobHistory';
+import PrincipalTrainingOverviewPage from '../../features/principal/training/TrainingOverviewPage';
+import PrincipalApplicationReviewPage from '../../features/principal/training/ApplicationReviewPage';
+import PrincipalLessonPlanReviewPage from '../../features/principal/training/LessonPlanReviewPage';
+import PrincipalParticipationReportPage from '../../features/principal/training/ParticipationReportPage';
+import PrincipalTrainingDetailsPage from '../../features/principal/training/TrainingDetailsPage';
+import PrincipalRecommendTrainingApprovalPage from '../../features/principal/training/RecommendTrainingApprovalPage';
+import PrincipalTestResponsesPage from '../../features/principal/training/TestResponsesPage';
+import PrincipalFeedbackResponsesPage from '../../features/principal/training/FeedbackResponsesPage';
 
 // Faculty
 import FacultyDashboard from '../../features/faculty/dashboard/FacultyDashboard';
@@ -87,6 +108,24 @@ import SelfIdentifiedApproval from '../../features/faculty/approvals/SelfIdentif
 import MonthlyReportsPage from '../../features/faculty/reports/MonthlyReportsPage';
 import JoiningLettersPage from '../../features/faculty/joining-letters/JoiningLettersPage';
 import FacultyGrievances from '../../features/faculty/grievances/FacultyGrievances';
+import FacultyTrainingDashboardPage from '../../features/faculty/training/TrainingDashboardPage';
+import FacultyTrainingCalendarPage from '../../features/faculty/training/TrainingCalendarPage';
+import FacultyTrainingDetailsPage from '../../features/faculty/training/TrainingDetailsPage';
+import FacultyMyApplicationsPage from '../../features/faculty/training/MyApplicationsPage';
+import FacultyMyLessonPlansPage from '../../features/faculty/training/MyLessonPlansPage';
+import FacultyLessonPlanEditorPage from '../../features/faculty/training/LessonPlanEditorPage';
+import FacultyMyCertificatesPage from '../../features/faculty/training/MyCertificatesPage';
+import FacultyRecommendTrainingPage from '../../features/faculty/training/RecommendTrainingPage';
+
+// Coordinator
+import CoordinatorDashboard from '../../features/coordinator/dashboard/CoordinatorDashboard';
+import CoordinatorApplicationReviewPage from '../../features/coordinator/training/ApplicationReviewPage';
+import CoordinatorLessonPlanReviewPage from '../../features/coordinator/training/LessonPlanReviewPage';
+import CoordinatorTrainingManagementPage from '../../features/coordinator/training/TrainingManagementPage';
+import CoordinatorTestResponsesPage from '../../features/coordinator/training/TestResponsesPage';
+import CoordinatorFeedbackResponsesPage from '../../features/coordinator/training/FeedbackResponsesPage';
+import CoordinatorRecommendationsPage from '../../features/coordinator/training/RecommendationsPage';
+import CoordinatorRemindersPage from '../../features/coordinator/training/RemindersPage';
 
 // Student
 import StudentDashboard from '../../features/student/dashboard/StudentDashboard';
@@ -337,6 +376,282 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE]}>
               <StudentsList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL, ...ROLES.FACULTY]}>
+              <TrainingHomeRouter />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/manage"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.COORDINATOR]}>
+              <TrainingManageRouter />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/create"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.COORDINATOR]}>
+              <StateTrainingManageFormPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/:id/edit"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.COORDINATOR]}>
+              <StateTrainingManageFormPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/:id/applications"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <StateApplicationManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/:id/attendance"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <StateAttendanceManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/:id/certificates"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <StateCertificateManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/feedback-forms"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.COORDINATOR]}>
+              <StateFeedbackFormManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/test-forms"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.COORDINATOR]}>
+              <StateTestFormManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/test-responses"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <StateTestResponsesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/feedback-responses"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <StateFeedbackResponsesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/reports"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL]}>
+              <TrainingReportsRouter />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/applications"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL, ...ROLES.FACULTY]}>
+              <TrainingApplicationsRouter />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/lesson-plans"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL, ...ROLES.FACULTY]}>
+              <TrainingLessonPlansRouter />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/recommend-approvals"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
+              <PrincipalRecommendTrainingApprovalPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/lesson-plans/new"
+          element={
+            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+              <FacultyLessonPlanEditorPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/lesson-plans/new/:trainingId"
+          element={
+            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+              <FacultyLessonPlanEditorPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/lesson-plans/:id/edit"
+          element={
+            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+              <FacultyLessonPlanEditorPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/calendar"
+          element={
+            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+              <FacultyTrainingCalendarPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/certificates"
+          element={
+            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+              <FacultyMyCertificatesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/recommend"
+          element={
+            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+              <FacultyRecommendTrainingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/:id"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL, ...ROLES.FACULTY]}>
+              <TrainingDetailsRouter />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="coordinator/training/:id"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <StateTrainingDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="coordinator/training/:id/applications"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <StateApplicationManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="coordinator/training/:id/attendance"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <StateAttendanceManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="coordinator/training/:id/certificates"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <StateCertificateManagementPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Coordinator Routes */}
+        <Route
+          path="coordinator/applications"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <CoordinatorApplicationReviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="coordinator/lesson-plans"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <CoordinatorLessonPlanReviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="coordinator/test-responses"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <CoordinatorTestResponsesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="coordinator/feedback-responses"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <CoordinatorFeedbackResponsesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="coordinator/recommendations"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <CoordinatorRecommendationsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="coordinator/reminders"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.COORDINATOR]}>
+              <CoordinatorRemindersPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="principal/test-responses"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
+              <PrincipalTestResponsesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="principal/feedback-responses"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
+              <PrincipalFeedbackResponsesPage />
             </ProtectedRoute>
           }
         />
@@ -788,7 +1103,7 @@ const DashboardRouter = () => {
   if (role === ROLES.PRINCIPAL) {
     return <PrincipalDashboard />;
   }
-  // Faculty (includes TEACHER, FACULTY_SUPERVISOR)
+  // Faculty (includes TEACHER, FACULTY_SUPERVISOR, FACULTY_COORDINATOR)
   if (ROLES.FACULTY.includes(role)) {
     return <FacultyDashboard />;
   }
@@ -808,5 +1123,70 @@ const DashboardRouter = () => {
 
   return <Navigate to="/login" replace />;
 };
+
+function TrainingHomeRouter() {
+  const { user } = useSelector((state) => state.auth);
+  const role = user?.role;
+
+  if (role === ROLES.STATE) return <StateTrainingDashboardPage />;
+  if (role === ROLES.PRINCIPAL) return <PrincipalTrainingOverviewPage />;
+  if (ROLES.FACULTY.includes(role)) return <FacultyTrainingDashboardPage />;
+
+  return <Navigate to="/unauthorized" replace />;
+}
+
+function TrainingApplicationsRouter() {
+  const { user } = useSelector((state) => state.auth);
+  const role = user?.role;
+
+  if (role === ROLES.PRINCIPAL) return <PrincipalApplicationReviewPage />;
+  if (ROLES.FACULTY.includes(role)) return <FacultyMyApplicationsPage />;
+
+  return <Navigate to="/unauthorized" replace />;
+}
+
+function TrainingLessonPlansRouter() {
+  const { user } = useSelector((state) => state.auth);
+  const role = user?.role;
+
+  if (role === ROLES.STATE) return <StateLessonPlanReviewPage />;
+  if (role === ROLES.PRINCIPAL) return <PrincipalLessonPlanReviewPage />;
+  if (ROLES.FACULTY.includes(role)) return <FacultyMyLessonPlansPage />;
+
+  return <Navigate to="/unauthorized" replace />;
+}
+
+function TrainingReportsRouter() {
+  const { user } = useSelector((state) => state.auth);
+  const role = user?.role;
+
+  // State users now see stats in modal from management page
+  if (role === ROLES.STATE) return <Navigate to="/app/training/manage" replace />;
+  if (role === ROLES.PRINCIPAL) return <PrincipalParticipationReportPage />;
+
+  return <Navigate to="/unauthorized" replace />;
+}
+
+function TrainingManageRouter() {
+  const { user } = useSelector((state) => state.auth);
+  const role = user?.role;
+
+  if (role === ROLES.STATE) return <StateTrainingManagementPage />;
+  if (role === ROLES.COORDINATOR) return <CoordinatorTrainingManagementPage />;
+
+  return <Navigate to="/unauthorized" replace />;
+}
+
+function TrainingDetailsRouter() {
+  const { user } = useSelector((state) => state.auth);
+  const role = user?.role;
+
+  if (role === ROLES.STATE) return <StateTrainingDetailsPage />;
+  if (role === ROLES.PRINCIPAL) return <PrincipalTrainingDetailsPage />;
+  if (ROLES.FACULTY.includes(role)) return <FacultyTrainingDetailsPage />;
+  if (role === ROLES.COORDINATOR) return <StateTrainingDetailsPage />;
+
+  return <Navigate to="/unauthorized" replace />;
+}
 
 export default AppRoutes;

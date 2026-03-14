@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, OnApplicationShutdown, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import LRUCacheImport from 'lru-cache';
 import Redis from 'ioredis';
@@ -16,7 +16,7 @@ const TAG_STORE_MAX_KEYS_PER_TAG = 500; // Maximum keys per tag
 const TAG_STORE_CLEANUP_THRESHOLD = 0.8; // Cleanup when 80% full (more aggressive)
 
 @Injectable()
-export class LruCacheService implements OnModuleInit {
+export class LruCacheService implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(LruCacheService.name);
   private localCache: any;
   private redis: Redis;
@@ -594,5 +594,23 @@ export class LruCacheService implements OnModuleInit {
       );
     }
     // Silently ignore all other errors to prevent log spam
+  }
+
+  async onApplicationShutdown(): Promise<void> {
+    if (!this.redis) {
+      return;
+    }
+
+    try {
+      if (this.redis.status === 'ready' || this.redis.status === 'connect') {
+        await this.redis.quit();
+      } else {
+        this.redis.disconnect();
+      }
+    } catch {
+      this.redis.disconnect();
+    } finally {
+      this.redisReady = false;
+    }
   }
 }

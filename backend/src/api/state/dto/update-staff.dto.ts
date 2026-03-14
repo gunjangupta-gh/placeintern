@@ -11,6 +11,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 // Valid staff roles (excluding PRINCIPAL, STUDENT, STATE_DIRECTORATE, INDUSTRY roles)
 const STAFF_ROLES = [
   'TEACHER',
+  'FACULTY_COORDINATOR',
   'FACULTY_SUPERVISOR',
   'PLACEMENT_OFFICER',
   'ACCOUNTANT',

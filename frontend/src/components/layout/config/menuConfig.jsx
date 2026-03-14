@@ -12,7 +12,6 @@ import {
   BarChartOutlined,
   PieChartOutlined,
   AuditOutlined,
-  FileSyncOutlined,
   IdcardOutlined,
   PushpinOutlined,
   SafetyCertificateOutlined,
@@ -35,6 +34,8 @@ import {
   SendOutlined,
   CheckSquareOutlined,
   PlusOutlined,
+  CalendarOutlined,
+  BulbOutlined,
 } from "@ant-design/icons";
 import React from "react";
 
@@ -179,6 +180,43 @@ export const menuConfig = {
       },
     ],
   },
+  STATE_TRAINING: {
+    key: "state-training",
+    title: "Training",
+    icon: <CalendarOutlined />,
+    items: [
+      {
+        key: "training-dashboard",
+        label: "Dashboard",
+        icon: <DashboardOutlined />,
+        path: "/app/training",
+      },
+      {
+        key: "training-manage",
+        label: "Manage Trainings",
+        icon: <SettingOutlined />,
+        path: "/app/training/manage",
+      },
+      {
+        key: "training-test-forms",
+        label: "Test Forms",
+        icon: <FileDoneOutlined />,
+        path: "/app/training/test-forms",
+      },
+      {
+        key: "training-lesson-plans",
+        label: "Lesson Plans",
+        icon: <FileDoneOutlined />,
+        path: "/app/training/lesson-plans",
+      },
+      {
+        key: "training-feedback-forms",
+        label: "Feedback Forms",
+        icon: <FileTextOutlined />,
+        path: "/app/training/feedback-forms",
+      },
+    ],
+  },
 
   // ==========================================
   // PRINCIPAL MENUS
@@ -265,6 +303,43 @@ export const menuConfig = {
       // { key: 'bulk-job-history', label: 'Job History', icon: <HistoryOutlined />, path: '/app/bulk/job-history' },
     ],
   },
+  PRINCIPAL_TRAINING: {
+    key: "principal-training",
+    title: "Training",
+    icon: <CalendarOutlined />,
+    items: [
+      {
+        key: "principal-training-overview",
+        label: "Overview",
+        icon: <DashboardOutlined />,
+        path: "/app/training",
+      },
+      {
+        key: "principal-training-applications",
+        label: "Applications",
+        icon: <FileTextOutlined />,
+        path: "/app/training/applications",
+      },
+      {
+        key: "principal-training-lesson-plans",
+        label: "Lesson Plans",
+        icon: <FileDoneOutlined />,
+        path: "/app/training/lesson-plans",
+      },
+      {
+        key: "principal-training-recommend-approvals",
+        label: "Recommendations",
+        icon: <BulbOutlined />,
+        path: "/app/training/recommend-approvals",
+      },
+      // {
+      //   key: "principal-training-reports",
+      //   label: "Reports",
+      //   icon: <BarChartOutlined />,
+      //   path: "/app/training/reports",
+      // },
+    ],
+  },
 
   // ==========================================
   // FACULTY MENUS
@@ -324,6 +399,183 @@ export const menuConfig = {
         label: "Grievances",
         icon: <AlertOutlined />,
         path: "/app/faculty-grievances",
+      },
+    ],
+  },
+  FACULTY_TRAINING: {
+    key: "faculty-training",
+    title: "Training",
+    icon: <CalendarOutlined />,
+    items: [
+      {
+        key: "faculty-training-dashboard",
+        label: "Dashboard",
+        icon: <DashboardOutlined />,
+        path: "/app/training",
+      },
+      {
+        key: "faculty-training-calendar",
+        label: "Calendar",
+        icon: <CalendarOutlined />,
+        path: "/app/training/calendar",
+      },
+      {
+        key: "faculty-training-applications",
+        label: "My Applications",
+        icon: <FileTextOutlined />,
+        path: "/app/training/applications",
+      },
+      {
+        key: "faculty-training-lesson-plans",
+        label: "Lesson Plans",
+        icon: <FileDoneOutlined />,
+        path: "/app/training/lesson-plans",
+      },
+      {
+        key: "faculty-training-recommend",
+        label: "Recommend Training",
+        icon: <BulbOutlined />,
+        path: "/app/training/recommend",
+      },
+      // {
+      //   key: "faculty-training-certificates",
+      //   label: "Certificates",
+      //   icon: <SafetyCertificateOutlined />,
+      //   path: "/app/training/certificates",
+      // },
+    ],
+  },
+
+  // ==========================================
+  // FACULTY COORDINATOR MENUS
+  // ==========================================
+  COORDINATOR_HOME: {
+    key: "coordinator-home",
+    title: "Home",
+    icon: <DashboardOutlined />,
+    items: [
+      {
+        key: "coordinator-dashboard",
+        label: "Dashboard",
+        icon: <DashboardOutlined />,
+        path: "/app/dashboard",
+      },
+      {
+        key: "assigned-students",
+        label: "My Students",
+        icon: <TeamOutlined />,
+        path: "/app/assigned-students",
+      },
+    ],
+  },
+  COORDINATOR_SUPERVISION: {
+    key: "coordinator-supervision",
+    title: "Supervision",
+    icon: <SolutionOutlined />,
+    items: [
+      {
+        key: "visit-logs",
+        label: "Visit Logs",
+        icon: <FileDoneOutlined />,
+        path: "/app/visit-logs",
+      },
+      {
+        key: "monthly-reports",
+        label: "Monthly Reports",
+        icon: <FileTextOutlined />,
+        path: "/app/monthly-reports",
+      },
+      {
+        key: "joining-letters",
+        label: "Joining Letters",
+        icon: <SafetyCertificateOutlined />,
+        path: "/app/joining-letters",
+      },
+    ],
+  },
+  COORDINATOR_TRAINING: {
+    key: "coordinator-training",
+    title: "My Training",
+    icon: <CalendarOutlined />,
+    items: [
+      {
+        key: "coordinator-training-dashboard",
+        label: "Dashboard",
+        icon: <DashboardOutlined />,
+        path: "/app/training",
+      },
+      {
+        key: "coordinator-training-calendar",
+        label: "Calendar",
+        icon: <CalendarOutlined />,
+        path: "/app/training/calendar",
+      },
+      {
+        key: "coordinator-training-applications",
+        label: "My Applications",
+        icon: <FileTextOutlined />,
+        path: "/app/training/applications",
+      },
+      {
+        key: "coordinator-training-lesson-plans",
+        label: "My Lesson Plans",
+        icon: <FileDoneOutlined />,
+        path: "/app/training/lesson-plans",
+      },
+      {
+        key: "coordinator-training-recommend",
+        label: "Recommend Training",
+        icon: <BulbOutlined />,
+        path: "/app/training/recommend",
+      },
+    ],
+  },
+  COORDINATOR_MANAGEMENT: {
+    key: "coordinator-management",
+    title: "Training Management",
+    icon: <TeamOutlined />,
+    items: [
+         {
+        key: "coordinator-training-manage",
+        label: "Manage Trainings",
+        icon: <SettingOutlined />,
+        path: "/app/training/manage",
+      },
+      {
+        key: "coordinator-review-applications",
+        label: "Review Applications",
+        icon: <FileTextOutlined />,
+        path: "/app/coordinator/applications",
+      },
+      {
+        key: "coordinator-review-lesson-plans",
+        label: "Review Lesson Plans",
+        icon: <FileDoneOutlined />,
+        path: "/app/coordinator/lesson-plans",
+      },
+      {
+        key: "coordinator-test-forms",
+        label: "Test Forms",
+        icon: <FileDoneOutlined />,
+        path: "/app/training/test-forms",
+      },
+      {
+        key: "coordinator-feedback-forms",
+        label: "Feedback Forms",
+        icon: <FileTextOutlined />,
+        path: "/app/training/feedback-forms",
+      },
+      {
+        key: "coordinator-recommendations",
+        label: "Recommendations",
+        icon: <BulbOutlined />,
+        path: "/app/coordinator/recommendations",
+      },
+      {
+        key: "coordinator-reminders",
+        label: "Send Reminders",
+        icon: <SendOutlined />,
+        path: "/app/coordinator/reminders",
       },
     ],
   },
@@ -589,6 +841,7 @@ export const getMenuSectionsForRole = (role) => {
       sections.push(menuConfig.STATE_INSTITUTIONS);
       sections.push(menuConfig.STATE_COMPANIES);
       sections.push(menuConfig.STATE_REPORT_BUILDER);
+      sections.push(menuConfig.STATE_TRAINING);
       sections.push(menuConfig.STATE_BULK);
       sections.push(menuConfig.STATE_SYSTEM);
       break;
@@ -598,6 +851,7 @@ export const getMenuSectionsForRole = (role) => {
       sections.push(menuConfig.PRINCIPAL_PEOPLE);
       sections.push(menuConfig.PRINCIPAL_STAFF);
       sections.push(menuConfig.PRINCIPAL_INTERNSHIP);
+      sections.push(menuConfig.PRINCIPAL_TRAINING);
       sections.push(menuConfig.PRINCIPAL_OPERATIONS);
       break;
 
@@ -606,6 +860,15 @@ export const getMenuSectionsForRole = (role) => {
     case "FACULTY_SUPERVISOR":
       sections.push(menuConfig.FACULTY_HOME);
       sections.push(menuConfig.FACULTY_SUPERVISION);
+      sections.push(menuConfig.FACULTY_TRAINING);
+      sections.push(menuConfig.FACULTY_COMMUNICATION);
+      break;
+
+    case "FACULTY_COORDINATOR":
+      sections.push(menuConfig.COORDINATOR_HOME);
+      sections.push(menuConfig.COORDINATOR_SUPERVISION);
+      sections.push(menuConfig.COORDINATOR_TRAINING);
+      sections.push(menuConfig.COORDINATOR_MANAGEMENT);
       sections.push(menuConfig.FACULTY_COMMUNICATION);
       break;
 

@@ -874,12 +874,25 @@ export class GrievanceService {
   /**
    * Get assignable users for a grievance (faculty, principal, etc.)
    */
-  async getAssignableUsers(institutionId: string) {
+  async getAssignableUsers(
+    institutionId: string | undefined,
+    requesterRole?: string,
+    branchId?: string,
+    branchName?: string,
+  ) {
     try {
+      const branchFilter = requesterRole === Role.FACULTY_COORDINATOR
+        ? {
+            ...(branchId ? { branchId } : {}),
+            ...(!branchId && branchName ? { branchName: { equals: branchName, mode: 'insensitive' as const } } : {}),
+          }
+        : {};
+
       return await this.prisma.user.findMany({
         where: {
-          institutionId,
+          ...(institutionId ? { institutionId } : {}),
           active: true,
+          ...branchFilter,
           role: {
             in: [Role.TEACHER, Role.PRINCIPAL],
           },

@@ -75,10 +75,16 @@ export class GrievanceController {
   @Get('assignable-users/list')
   async getAssignableUsers(@Query('institutionId') institutionId?: string, @Request() req?: any) {
     const instId = institutionId || req?.user?.institutionId;
-    if (!instId) {
+    const isCoordinator = req?.user?.role === 'FACULTY_COORDINATOR';
+    if (!instId && !isCoordinator) {
       throw new HttpException('Institution ID is required', HttpStatus.BAD_REQUEST);
     }
-    return this.grievanceService.getAssignableUsers(instId);
+    return this.grievanceService.getAssignableUsers(
+      instId,
+      req?.user?.role,
+      req?.user?.branchId,
+      req?.user?.branchName,
+    );
   }
 
   /**
@@ -96,10 +102,10 @@ export class GrievanceController {
    * Access: TEACHER, FACULTY_SUPERVISOR, PRINCIPAL
    */
   @Get('faculty/:userId')
-  @Roles('TEACHER', 'PRINCIPAL')
+  @Roles('TEACHER', 'FACULTY_COORDINATOR', 'PRINCIPAL')
   async getGrievancesByFaculty(@Param('userId') userId: string, @Request() req: any) {
     // Faculty can only see their own assigned grievances unless they're admin
-    if (req.user.userId !== userId && !['STATE_DIRECTORATE', 'PRINCIPAL'].includes(req.user.role)) {
+    if (req.user.userId !== userId && !['STATE_DIRECTORATE', 'PRINCIPAL', 'FACULTY_COORDINATOR'].includes(req.user.role)) {
       throw new HttpException('Unauthorized', HttpStatus.FORBIDDEN);
     }
     return this.grievanceService.getGrievancesByFaculty(userId);
@@ -114,7 +120,7 @@ export class GrievanceController {
     console.log(`[GrievanceController] getGrievancesByUser called - userId param: ${userId}, req.user.userId: ${req.user?.userId}, role: ${req.user?.role}`);
 
     // Ensure users can only access their own grievances unless they're admin
-    if (req.user.userId !== userId && !['STATE_DIRECTORATE', 'PRINCIPAL'].includes(req.user.role)) {
+    if (req.user.userId !== userId && !['STATE_DIRECTORATE', 'PRINCIPAL', 'FACULTY_COORDINATOR'].includes(req.user.role)) {
       console.log(`[GrievanceController] Unauthorized - userId mismatch`);
       throw new HttpException('Unauthorized', HttpStatus.FORBIDDEN);
     }
@@ -150,7 +156,7 @@ export class GrievanceController {
     // Check access - student can see their own, faculty/admin can see all
     const isOwner = grievance.student?.userId === req.user.userId;
     const isAssigned = grievance.assignedToId === req.user.userId || grievance.facultySupervisorId === req.user.userId;
-    const isAdmin = ['STATE_DIRECTORATE', 'PRINCIPAL', 'FACULTY_SUPERVISOR', 'TEACHER'].includes(req.user.role);
+    const isAdmin = ['STATE_DIRECTORATE', 'PRINCIPAL', 'FACULTY_SUPERVISOR', 'TEACHER', 'FACULTY_COORDINATOR'].includes(req.user.role);
 
     if (!isOwner && !isAssigned && !isAdmin) {
       throw new HttpException('Grievance not found', HttpStatus.NOT_FOUND);
@@ -174,7 +180,7 @@ export class GrievanceController {
    * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR, TEACHER
    */
   @Post(':id/respond')
-  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'TEACHER')
+  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'TEACHER', 'FACULTY_COORDINATOR')
   async respondToGrievance(
     @Param('id') id: string,
     @Body() data: RespondToGrievanceDto,
@@ -188,7 +194,7 @@ export class GrievanceController {
    * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR, TEACHER
    */
   @Post(':id/escalate')
-  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'TEACHER')
+  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'TEACHER', 'FACULTY_COORDINATOR')
   async escalateGrievance(
     @Param('id') id: string,
     @Body() data: EscalateGrievanceDto,
@@ -216,7 +222,7 @@ export class GrievanceController {
    * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR, TEACHER
    */
   @Patch(':id/status')
-  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'TEACHER')
+  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'TEACHER', 'FACULTY_COORDINATOR')
   async updateGrievanceStatus(
     @Param('id') id: string,
     @Body() data: { status: GrievanceStatus; remarks?: string },

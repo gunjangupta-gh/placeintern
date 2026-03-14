@@ -20,6 +20,11 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "seed": "ts-node prisma/seed.ts",
     "seed:master-data": "ts-node prisma/seed-master-data.ts",
+    "seed:faculty-training-feedback": "ts-node prisma/seed-faculty-training-feedback-form.ts",
+    "seed:faculty-trainings-2026": "ts-node prisma/seed-faculty-trainings-2026.ts",
+    "seed:verify-trainings": "ts-node prisma/verify-training-seed.ts",
+    "seed:link-feedback-to-trainings": "ts-node prisma/link-feedback-to-trainings.ts",
+    "seed:check-feedback-links": "ts-node prisma/check-feedback-links.ts",
     "seed:analyze-companies": "ts-node prisma/analyze-companies.ts",
     "seed:normalize-companies": "ts-node prisma/normalize-company-names.ts",
     "seed:normalize-companies:dry": "ts-node prisma/normalize-company-names.ts -- --dry-run",
@@ -31,6 +36,7 @@
     "db:migration-pipeline": "ts-node scripts/migration-pipeline.ts",
     "db:migration-pipeline:dry": "cross-env DRY_RUN=true ts-node scripts/migration-pipeline.ts",
     "db:update-institutions": "ts-node scripts/update-institutions.ts",
+    "db:link-faculty-branches": "ts-node scripts/link-faculty-branches.ts",
     "db:migrate-to-postgres": "ts-node prisma/migrate-mongo-to-postgres.ts",
     "report:jan-feb": "ts-node scripts/generate-jan-feb-report.ts",
     "report:approve-monthly-status": "ts-node scripts/approve-monthly-report-statuses.ts",
@@ -90,7 +96,8 @@
     "tar": "^7.5.2",
     "uuid": "^11.1.0",
     "winston": "^3.17.0",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^5.0.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.14",
@@ -108,6 +115,7 @@
     "@types/supertest": "^6.0.0",
     "@types/tar": "^6.1.13",
     "@types/uuid": "^10.0.0",
+    "@types/xlsx": "^0.0.35",
     "@typescript-eslint/eslint-plugin": "^8.51.0",
     "@typescript-eslint/parser": "^8.51.0",
     "cross-env": "^7.0.3",

@@ -20,6 +20,7 @@ import { THROTTLE_PRESETS } from './core/config/throttle.config';
 import { StateModule } from './api/state/state.module';
 import { PrincipalModule } from './api/principal/principal.module';
 import { FacultyModule } from './api/faculty/faculty.module';
+import { CoordinatorModule } from './api/coordinator/coordinator.module';
 import { StudentPortalModule } from './api/student-portal/student-portal.module';
 import { SharedModule } from './api/shared/shared.module';
 import { SystemAdminModule } from './api/system-admin/system-admin.module';
@@ -76,6 +77,7 @@ import { BulkModule } from './bulk/bulk.module';
     StateModule,
     PrincipalModule,
     FacultyModule,
+    CoordinatorModule,
     StudentPortalModule,
     SharedModule,
     SystemAdminModule,

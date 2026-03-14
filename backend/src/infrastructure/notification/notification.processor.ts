@@ -16,6 +16,7 @@ export interface BulkNotificationJobData {
   title: string;
   body: string;
   data?: Record<string, unknown>;
+  sendInApp?: boolean;
   sendEmail?: boolean;
   emailTemplate?: string;
   emailContext?: Record<string, unknown>;
@@ -37,6 +38,7 @@ export interface SingleNotificationJobData {
   title: string;
   body: string;
   data?: Record<string, unknown>;
+  sendInApp?: boolean;
   sendEmail?: boolean;
   emailTemplate?: string;
   emailContext?: Record<string, unknown>;
@@ -119,14 +121,19 @@ export class NotificationProcessor extends WorkerHost {
       title,
       body,
       data,
+      sendInApp,
       sendEmail = false,
       emailTemplate = 'announcement',
       emailContext,
-      saveToDatabase = true,
-      sendRealtime = true,
+      saveToDatabase: saveToDatabaseOption,
+      sendRealtime: sendRealtimeOption,
       force = false,
       respectUserSettings = true,
     } = job.data;
+
+    // If sendInApp is explicitly set, use it for both saveToDatabase and sendRealtime
+    const saveToDatabase = sendInApp !== undefined ? sendInApp : (saveToDatabaseOption ?? true);
+    const sendRealtime = sendInApp !== undefined ? sendInApp : (sendRealtimeOption ?? true);
 
     const totalUsers = userIds.length;
     let sentCount = 0;

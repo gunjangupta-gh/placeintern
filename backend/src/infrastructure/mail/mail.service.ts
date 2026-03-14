@@ -1,11 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
-import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
-import * as handlebars from 'handlebars';
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectQueue } from "@nestjs/bullmq";
+import { Queue } from "bullmq";
+import { ConfigService } from "@nestjs/config";
+import * as nodemailer from "nodemailer";
+import * as handlebars from "handlebars";
+import * as fs from "fs/promises";
+import * as path from "path";
 
 interface MailData {
   to: string;
@@ -21,7 +21,7 @@ export class MailService {
   private templateCache: Map<string, handlebars.TemplateDelegate> = new Map();
 
   constructor(
-    @InjectQueue('mail') private mailQueue: Queue,
+    @InjectQueue("mail") private mailQueue: Queue,
     private configService: ConfigService,
   ) {
     this.transporter = nodemailer.createTransport({
@@ -49,7 +49,7 @@ export class MailService {
       const html = compiledTemplate(context);
 
       await this.transporter.sendMail({
-        from: this.configService.get('MAIL_FROM'),
+        from: this.configService.get("MAIL_FROM"),
         to,
         subject,
         html,
@@ -65,13 +65,15 @@ export class MailService {
   /**
    * Get compiled template from cache or load and compile it
    */
-  private async getCompiledTemplate(template: string): Promise<handlebars.TemplateDelegate> {
+  private async getCompiledTemplate(
+    template: string,
+  ): Promise<handlebars.TemplateDelegate> {
     if (this.templateCache.has(template)) {
       return this.templateCache.get(template)!;
     }
 
-    const templatePath = path.join(__dirname, 'templates', `${template}.hbs`);
-    const templateContent = await fs.readFile(templatePath, 'utf-8');
+    const templatePath = path.join(__dirname, "templates", `${template}.hbs`);
+    const templateContent = await fs.readFile(templatePath, "utf-8");
     const compiledTemplate = handlebars.compile(templateContent);
     this.templateCache.set(template, compiledTemplate);
     return compiledTemplate;
@@ -84,13 +86,13 @@ export class MailService {
     const context = {
       name: user.firstName || user.username,
       email: user.email,
-      loginUrl: `${this.configService.get('APP_URL')}/login`,
+      loginUrl: `${this.configService.get("APP_URL")}/login`,
     };
 
     await this.queueMail({
       to: user.email,
-      subject: 'Welcome to Our Platform',
-      template: 'welcome',
+      subject: "Welcome to Our Platform",
+      template: "welcome",
       context,
     });
   }
@@ -99,7 +101,7 @@ export class MailService {
    * Send password reset email
    */
   async sendPasswordResetEmail(user: any, token: string): Promise<void> {
-    const resetUrl = `${this.configService.get('APP_URL')}/reset-password?token=${token}`;
+    const resetUrl = `${this.configService.get("APP_URL")}/reset-password?token=${token}`;
     const context = {
       name: user.firstName || user.username,
       resetUrl,
@@ -108,8 +110,8 @@ export class MailService {
 
     await this.queueMail({
       to: user.email,
-      subject: 'Password Reset Request',
-      template: 'password-reset',
+      subject: "Password Reset Request",
+      template: "password-reset",
       context,
     });
   }
@@ -120,14 +122,14 @@ export class MailService {
   async sendReportReminder(user: any): Promise<void> {
     const context = {
       name: user.firstName || user.username,
-      dashboardUrl: `${this.configService.get('APP_URL')}/dashboard`,
-      reportUrl: `${this.configService.get('APP_URL')}/reports`,
+      dashboardUrl: `${this.configService.get("APP_URL")}/dashboard`,
+      reportUrl: `${this.configService.get("APP_URL")}/reports`,
     };
 
     await this.queueMail({
       to: user.email,
-      subject: 'Report Submission Reminder',
-      template: 'report-reminder',
+      subject: "Report Submission Reminder",
+      template: "report-reminder",
       context,
     });
   }
@@ -137,17 +139,17 @@ export class MailService {
    */
   async queueMail(mailData: MailData): Promise<void> {
     try {
-      await this.mailQueue.add('send-email', mailData, {
+      await this.mailQueue.add("send-email", mailData, {
         attempts: 3,
         backoff: {
-          type: 'exponential',
+          type: "exponential",
           delay: 2000,
         },
       });
 
       this.logger.log(`Email queued for ${mailData.to}`);
     } catch (error) {
-      this.logger.error('Failed to queue email', error.stack);
+      this.logger.error("Failed to queue email", error.stack);
       throw error;
     }
   }

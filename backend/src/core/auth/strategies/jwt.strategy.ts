@@ -33,6 +33,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         name: true,
         role: true,
         institutionId: true,
+        branchId: true,
+        branchName: true,
         active: true,
       },
     });
@@ -48,6 +50,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       role: user.role,                    // Single role string
       roles: payload.roles || [user.role], // Array for compatibility
       institutionId: user.institutionId,
+      branchId: user.branchId,
+      branchName: user.branchName,
     };
   }
 }

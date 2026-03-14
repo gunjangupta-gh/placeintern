@@ -63,10 +63,13 @@ export interface SendNotificationOptions {
 
   // === Delivery Options ===
 
-  /** Save notification to database (default: true) */
+  /** Send in-app notification - saves to DB and sends via WebSocket (default: true) */
+  sendInApp?: boolean;
+
+  /** Save notification to database (default: true, overridden by sendInApp if provided) */
   saveToDatabase?: boolean;
 
-  /** Send real-time via WebSocket (default: true) */
+  /** Send real-time via WebSocket (default: true, overridden by sendInApp if provided) */
   sendRealtime?: boolean;
 
   /** Send email notification (default: false) */
@@ -131,14 +134,20 @@ export class NotificationSenderService {
       title,
       body,
       data,
-      saveToDatabase = true,
-      sendRealtime = true,
+      sendInApp,
+      saveToDatabase: saveToDatabaseOption,
+      sendRealtime: sendRealtimeOption,
       sendEmail = false,
       emailTemplate,
       emailContext,
       respectUserSettings = true,
       force = false,
     } = options;
+
+    // If sendInApp is explicitly set, use it for both saveToDatabase and sendRealtime
+    // Otherwise, fall back to individual options with defaults of true
+    const saveToDatabase = sendInApp !== undefined ? sendInApp : (saveToDatabaseOption ?? true);
+    const sendRealtime = sendInApp !== undefined ? sendInApp : (sendRealtimeOption ?? true);
 
     try {
       // Check user settings if not forced
@@ -266,6 +275,7 @@ export class NotificationSenderService {
       title: notificationOptions.title,
       body: notificationOptions.body,
       data: notificationOptions.data,
+      sendInApp: notificationOptions.sendInApp,
       sendEmail: notificationOptions.sendEmail,
       emailTemplate: notificationOptions.emailTemplate,
       emailContext: notificationOptions.emailContext,

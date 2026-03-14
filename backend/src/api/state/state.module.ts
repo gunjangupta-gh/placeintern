@@ -25,6 +25,9 @@ import { AuditModule } from '../../infrastructure/audit/audit.module';
 import { FileStorageModule } from '../../infrastructure/file-storage/file-storage.module';
 import { SharedModule } from '../shared/shared.module';
 
+// Training module
+import { StateTrainingModule } from './training/state-training.module';
+
 @Module({
   imports: [
     // Domain modules with business logic services
@@ -37,6 +40,8 @@ import { SharedModule } from '../shared/shared.module';
     AuditModule,
     FileStorageModule, // For document presigned URLs
     SharedModule, // For LookupService
+    // Training sub-module
+    StateTrainingModule,
   ],
   controllers: [StateController],
   providers: [

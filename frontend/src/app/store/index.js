@@ -22,6 +22,9 @@ import sharedReducer from '../../features/shared/store/sharedSlice';
 import lookupReducer from '../../features/shared/store/lookupSlice';
 import instituteReducer from '../../store/slices/instituteSlice';
 import companyReducer from '../../store/slices/companySlice';
+import facultyTrainingReducer from '../../features/faculty/store/facultyTrainingSlice';
+import principalTrainingReducer from '../../features/principal/store/principalTrainingSlice';
+import stateTrainingReducer from '../../features/state/store/stateTrainingSlice';
 
 // Import middlewares
 import { cacheMiddleware } from '../../store/cacheMiddleware';
@@ -45,6 +48,9 @@ const appReducer = combineReducers({
   lookup: lookupReducer,
   institute: instituteReducer,
   company: companyReducer,
+  facultyTraining: facultyTrainingReducer,
+  principalTraining: principalTrainingReducer,
+  stateTraining: stateTrainingReducer,
 });
 
 // Root reducer that handles store reset

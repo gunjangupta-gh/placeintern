@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Pre-Test Reminder</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #7c3aed; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+    .content { background: #f7fafc; padding: 20px; border: 1px solid #e2e8f0; }
+    .button { display: inline-block; background: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin-top: 15px; }
+    .footer { text-align: center; padding: 20px; color: #718096; font-size: 12px; }
+    .info-box { background: #ede9fe; padding: 15px; border-radius: 5px; margin: 15px 0; }
+    .warning-box { background: #fef3c7; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #f59e0b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Pre-Test Reminder</h1>
+    </div>
+    <div class="content">
+      <p>Dear {{name}},</p>
+
+      <div class="info-box">
+        <strong>Training:</strong> {{trainingTitle}}<br>
+        <strong>Training Starts:</strong> {{startDate}}
+      </div>
+
+      {{#if customMessage}}
+      <p>{{customMessage}}</p>
+      {{else}}
+      <p>This is a reminder to complete the pre-test for your upcoming training session.</p>
+      {{/if}}
+
+      <div class="warning-box">
+        <strong>Please Note:</strong> The pre-test should be completed before the training begins. It helps us understand your current knowledge level.
+      </div>
+
+      <p>Why complete the pre-test?</p>
+      <ul>
+        <li>Helps trainers customize content to your needs</li>
+        <li>Establishes your baseline knowledge</li>
+        <li>Allows comparison with post-test results</li>
+        <li>Required for training completion certificate</li>
+      </ul>
+
+      <p>Best regards,<br>Training Coordinator</p>
+    </div>
+    <div class="footer">
+      <p>This is an automated reminder from your Training Coordinator.</p>
+    </div>
+  </div>
+</body>
+</html>

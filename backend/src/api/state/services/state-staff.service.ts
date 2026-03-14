@@ -37,7 +37,7 @@ export class StateStaffService {
     const skip = (page - 1) * limit;
 
     // Staff roles - TEACHER (excluding PRINCIPAL, STUDENT, STATE_DIRECTORATE, SYSTEM_ADMIN)
-    const staffRoles: Role[] = [Role.TEACHER];
+    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR];
 
     const where: Prisma.UserWhereInput = {
       role: role ? (role as Role) : { in: staffRoles },
@@ -156,7 +156,7 @@ export class StateStaffService {
    * Get staff member by ID
    */
   async getStaffById(id: string) {
-    const staffRoles: Role[] = [Role.TEACHER];
+    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR];
 
     const staff = await this.prisma.user.findUnique({
       where: { id, role: { in: staffRoles } },
@@ -199,7 +199,7 @@ export class StateStaffService {
     isActive?: boolean;
     active?: boolean;
   }) {
-    const staffRoles: Role[] = [Role.TEACHER];
+    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR];
 
     const existingStaff = await this.prisma.user.findUnique({
       where: { id, role: { in: staffRoles } },
@@ -258,7 +258,7 @@ export class StateStaffService {
    * Delete staff member by ID
    */
   async deleteStaff(id: string) {
-    const staffRoles: Role[] = [Role.TEACHER];
+    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR];
 
     const existingStaff = await this.prisma.user.findUnique({
       where: { id, role: { in: staffRoles } },
@@ -316,7 +316,7 @@ export class StateStaffService {
    * Uses soft delete to preserve mentor assignment history and audit trail
    */
   async deleteFaculty(id: string) {
-    const facultyRoles: Role[] = [Role.TEACHER];
+    const facultyRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR];
 
     const existingFaculty = await this.prisma.user.findUnique({
       where: { id, role: { in: facultyRoles } },

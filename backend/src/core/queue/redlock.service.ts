@@ -1,9 +1,9 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import Redlock from 'redlock';
 import Redis from 'ioredis';
 
 @Injectable()
-export class RedlockService implements OnModuleInit {
+export class RedlockService implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(RedlockService.name);
   private redlock: Redlock;
   private redis: Redis;
@@ -153,6 +153,24 @@ export class RedlockService implements OnModuleInit {
     const err = error as Error;
     if (err.message && !err.message.includes('ECONNREFUSED') && !err.message.includes('ENOTFOUND')) {
       this.handleRedisError(error);
+    }
+  }
+
+  async onApplicationShutdown(): Promise<void> {
+    if (!this.redis) {
+      return;
+    }
+
+    try {
+      if (this.redis.status === 'ready' || this.redis.status === 'connect') {
+        await this.redis.quit();
+      } else {
+        this.redis.disconnect();
+      }
+    } catch {
+      this.redis.disconnect();
+    } finally {
+      this.redisReady = false;
     }
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../../core/database/prisma.service';
 import * as os from 'os';
@@ -79,7 +79,7 @@ export interface SystemMetrics {
 }
 
 @Injectable()
-export class MetricsService {
+export class MetricsService implements OnApplicationShutdown {
   private readonly logger = new Logger(MetricsService.name);
   private readonly startTime = new Date();
   private redisClient: Redis | null = null;
@@ -125,6 +125,24 @@ export class MetricsService {
       });
     } catch (error) {
       this.logger.warn('Failed to initialize Redis client for metrics', error);
+    }
+  }
+
+  async onApplicationShutdown(): Promise<void> {
+    if (!this.redisClient) {
+      return;
+    }
+
+    try {
+      if (this.redisClient.status === 'ready' || this.redisClient.status === 'connect') {
+        await this.redisClient.quit();
+      } else {
+        this.redisClient.disconnect();
+      }
+    } catch {
+      this.redisClient.disconnect();
+    } finally {
+      this.redisClient = null;
     }
   }
 

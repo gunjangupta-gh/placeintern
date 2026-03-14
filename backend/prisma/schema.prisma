@@ -95,6 +95,27 @@ model User {
   createdAlerts   SystemAlert[]          @relation("AlertCreator")
   dismissedAlerts SystemAlertDismissal[] @relation("AlertDismissals")
 
+  // Training Module Relations
+  createdTrainings        Training[]            @relation("TrainingCreator")
+  trainingApplications    TrainingApplication[] @relation("TrainingApplicant")
+  reviewedApplications    TrainingApplication[] @relation("ApplicationReviewer")
+  trainingAttendances     TrainingAttendance[]  @relation("TrainingAttendee")
+  markedAttendances       TrainingAttendance[]  @relation("AttendanceMarker")
+  createdFeedbackForms    FeedbackForm[]        @relation("FeedbackFormCreator")
+  feedbackResponses       FeedbackResponse[]    @relation("FeedbackRespondent")
+  lessonPlans             LessonPlan[]          @relation("LessonPlanAuthor")
+  reviewedLessonPlans     LessonPlan[]          @relation("LessonPlanReviewer")
+  receivedCertificates    TrainingCertificate[] @relation("CertificateRecipient")
+  issuedCertificates      TrainingCertificate[] @relation("CertificateIssuer")
+  trainingRecommendations TrainingRecommendation[] @relation("TrainingRecommender")
+  reviewedRecommendations TrainingRecommendation[] @relation("RecommendationReviewer")
+
+  // Pre-test & Post-test Relations
+  createdPreTestForms     PreTestForm[]         @relation("PreTestFormCreator")
+  createdPostTestForms    PostTestForm[]        @relation("PostTestFormCreator")
+  preTestResponses        PreTestResponse[]     @relation("PreTestRespondent")
+  postTestResponses       PostTestResponse[]    @relation("PostTestRespondent")
+
   // Performance Indexes
   @@index([institutionId])
   @@index([role])
@@ -114,6 +135,7 @@ enum Role {
   STUDENT
   PRINCIPAL
   TEACHER
+  FACULTY_COORDINATOR
   STATE_DIRECTORATE
   SYSTEM_ADMIN
 }
@@ -360,6 +382,10 @@ model Branch {
   users    User[] // Teachers and Students with branchId
   students Student[] // Direct student relation (for backward compatibility)
 
+  // Training Module - Target disciplines for trainings
+  trainings Training[] @relation("TrainingBranches")
+  trainingRecommendations TrainingRecommendation[] @relation("RecommendationBranches")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -538,6 +564,20 @@ enum AuditAction {
   PRIVACY_POLICY_UPDATE
   CONSENT_GIVEN
   CONSENT_WITHDRAWN
+
+  // Training Operations
+  TRAINING_CREATE
+  TRAINING_UPDATE
+  TRAINING_DELETE
+  TRAINING_PUBLISH
+  TRAINING_APPLICATION_SUBMIT
+  TRAINING_APPLICATION_REVIEW
+  TRAINING_ATTENDANCE_MARK
+  TRAINING_FEEDBACK_SUBMIT
+  LESSON_PLAN_SUBMIT
+  LESSON_PLAN_REVIEW
+  CERTIFICATE_ISSUE
+  CERTIFICATE_DOWNLOAD
 }
 
 enum AuditCategory {
@@ -554,6 +594,7 @@ enum AuditCategory {
   SUPPORT // Grievances, technical queries
   USER_MANAGEMENT // User creation, updates, deletion
   SYSTEM_ADMIN // System administration operations
+  TRAINING // Training management operations
 }
 
 enum AuditSeverity {
@@ -1635,6 +1676,597 @@ enum AlertPriority {
   NORMAL
   HIGH
   URGENT
+}
+
+// =============================================
+// TRAINING CALENDAR & DEVELOPMENT SYSTEM
+// =============================================
+
+enum TrainingDeliveryMode {
+  ONLINE
+  OFFLINE
+  HYBRID
+}
+
+enum TrainingApplicationStatus {
+  SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+  WAITLISTED
+}
+
+enum TrainingDifficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum LessonPlanStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REVISION_REQUIRED
+}
+
+enum FeedbackFormPurpose {
+  TRAINING
+  GENERAL
+  SURVEY
+  EVALUATION
+}
+
+// Training Session - Calendar entries (system-wide)
+model Training {
+  id          String   @id @default(uuid())
+  title       String
+  description String?  @db.Text
+
+  // Provider/Partner 
+  providedBy      String?
+  trainerName     String?
+  trainerBio      String?
+  trainerContact  String?
+
+  // Schedule
+  startDate       DateTime
+  endDate         DateTime
+  startTime         DateTime?
+  endTime           DateTime?
+  duration        Int?      // Total duration in hours
+  applicationDeadline DateTime
+
+  // Location & Delivery
+  deliveryMode    TrainingDeliveryMode @default(OFFLINE)
+  venue           String?   // For offline/hybrid
+  address         String?
+  city            String?
+  state           String?
+  meetingLink     String?   // For online/hybrid
+
+  // Capacity & Prerequisites
+  capacity        Int
+  prerequisites   String?   @db.Text
+  difficulty      TrainingDifficulty @default(INTERMEDIATE)
+
+  //cost
+  cost            Float?    // Cost of the training (if applicable)
+
+  // Learning Outcomes (stored as JSON array)
+  learningOutcomes Json?    // ["Outcome 1", "Outcome 2", ...]
+
+  // Target Disciplines (linked to Branch)
+  targetBranches  Branch[]  @relation("TrainingBranches")
+  designation      String?   // e.g., "For Computer Science Faculty"
+
+  // Feedback Form (optional, global form assigned to this training)
+  feedbackFormId  String?
+  feedbackForm    FeedbackForm? @relation(fields: [feedbackFormId], references: [id])
+
+  // Pre-test Form (optional, for prerequisites assessment before training)
+  preTestFormId   String?
+  preTestForm     PreTestForm? @relation(fields: [preTestFormId], references: [id])
+
+  // Post-test Form (optional, for learning assessment after training)
+  postTestFormId  String?
+  postTestForm    PostTestForm? @relation(fields: [postTestFormId], references: [id])
+
+  // Status
+  isActive        Boolean   @default(true)
+  isPublished     Boolean   @default(false)
+  publishedAt     DateTime?
+
+  // Creator
+  createdById     String
+  createdBy       User      @relation("TrainingCreator", fields: [createdById], references: [id])
+
+  // Relations
+  applications        TrainingApplication[]
+  attendances         TrainingAttendance[]
+  lessonPlans         LessonPlan[]
+  certificates        TrainingCertificate[]
+  feedbackResponses   FeedbackResponse[]    @relation("TrainingFeedback")
+  preTestResponses    PreTestResponse[]     @relation("TrainingPreTest")
+  postTestResponses   PostTestResponse[]    @relation("TrainingPostTest")
+  sourceRecommendations TrainingRecommendation[] @relation("ImplementedRecommendation")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([startDate])
+  @@index([endDate])
+  @@index([isActive, isPublished])
+  @@index([deliveryMode])
+  @@index([applicationDeadline])
+  @@index([createdById])
+  @@map("trainings")
+}
+
+// Training Application - Faculty enrollment
+model TrainingApplication {
+  id          String   @id @default(uuid())
+
+  // Applicant
+  userId      String
+  user        User     @relation("TrainingApplicant", fields: [userId], references: [id])
+
+  // Training
+  trainingId  String
+  training    Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+
+  // Application Details
+  relevanceToTeaching  String?  @db.Text  // How is this relevant to your teaching?
+  expectedApplication  String?  @db.Text  // How will you apply this learning?
+
+  // Status & Workflow
+  status      TrainingApplicationStatus @default(SUBMITTED)
+  appliedAt   DateTime  @default(now())
+  reviewedAt  DateTime?
+  reviewedById String?
+  reviewedBy  User?     @relation("ApplicationReviewer", fields: [reviewedById], references: [id])
+  reviewComments String?
+
+  // Flags
+  isActive    Boolean   @default(true)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, trainingId])  // One application per user per training
+  @@index([userId])
+  @@index([trainingId])
+  @@index([status])
+  @@index([userId, status])
+  @@index([trainingId, status])
+  @@map("training_applications")
+}
+
+// Training Attendance - Time-stamped attendance
+model TrainingAttendance {
+  id          String   @id @default(uuid())
+
+  // Attendee
+  userId      String
+  user        User     @relation("TrainingAttendee", fields: [userId], references: [id])
+
+  // Training
+  trainingId  String
+  training    Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+
+  // Attendance Details
+  markedAt    DateTime @default(now())
+  markedById  String?  // Who marked (self or admin)
+  markedBy    User?    @relation("AttendanceMarker", fields: [markedById], references: [id])
+
+  // For multi-day trainings
+  attendanceDate DateTime @default(now())  // Which day of training
+
+  // Location verification (captured when marking attendance)
+  latitude    Float?
+  longitude   Float?
+  locationAddress String?  // Reverse geocoded or user-provided address
+  ipAddress   String?
+  userAgent   String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, trainingId, attendanceDate])  // One attendance per day per training
+  @@index([userId])
+  @@index([trainingId])
+  @@index([attendanceDate])
+  @@index([trainingId, attendanceDate])
+  @@map("training_attendances")
+}
+
+// Feedback Form - Global reusable templates
+model FeedbackForm {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+
+  // Questions stored as JSON array
+  // Example: [{ "id": "q1", "type": "rating", "question": "Rate quality", "required": true, "options": {"min": 1, "max": 5} }]
+  questions   Json
+
+  // Purpose/Category
+  purpose     FeedbackFormPurpose @default(GENERAL)
+
+  // Status
+  isActive    Boolean  @default(true)
+  isPublished Boolean  @default(false)
+
+  // Creator
+  createdById String
+  createdBy   User     @relation("FeedbackFormCreator", fields: [createdById], references: [id])
+
+  // Relations
+  trainings   Training[]
+  responses   FeedbackResponse[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([purpose])
+  @@index([isActive, isPublished])
+  @@index([createdById])
+  @@map("feedback_forms")
+}
+
+// Feedback Response - Global responses (can be linked to training or standalone)
+model FeedbackResponse {
+  id          String   @id @default(uuid())
+
+  // Respondent
+  userId      String
+  user        User     @relation("FeedbackRespondent", fields: [userId], references: [id])
+
+  // Form
+  feedbackFormId String
+  feedbackForm   FeedbackForm @relation(fields: [feedbackFormId], references: [id])
+
+  // Optional Training Link (null for general feedback)
+  trainingId  String?
+  training    Training? @relation("TrainingFeedback", fields: [trainingId], references: [id], onDelete: Cascade)
+
+  // Responses stored as JSON
+  // Example: { "q1": 5, "q2": "Great training!", "q3": ["option1", "option2"] }
+  responses   Json
+
+  submittedAt DateTime @default(now())
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, feedbackFormId, trainingId])  // One response per form per context
+  @@index([userId])
+  @@index([feedbackFormId])
+  @@index([trainingId])
+  @@index([submittedAt])
+  @@map("feedback_responses")
+}
+
+// Lesson Plan - Post-training curriculum integration
+model LessonPlan {
+  id          String   @id @default(uuid())
+
+  // Faculty
+  userId      String
+  user        User     @relation("LessonPlanAuthor", fields: [userId], references: [id])
+
+  // Training
+  trainingId  String
+  training    Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+
+  // Lesson Plan Content
+  title              String
+  courseOrSemester   String?   // Which course/semester this applies to
+  connectionToTraining String? @db.Text  // How training connects to this lesson
+  learningObjectives Json?     // Array of objectives
+  newSkillsTechnologies String? @db.Text
+  deliveryMethods    String?   @db.Text  // Lectures, labs, projects, etc.
+  handsOnActivities  String?   @db.Text
+  assessmentMethods  String?   @db.Text
+  industryConnections String?  @db.Text
+  resourceRequirements String? @db.Text
+  implementationTimeline String?
+  expectedOutcomes   String?   @db.Text
+
+  // Attachments
+  attachments        String[]  @default([])
+
+  // Status & Review
+  status             LessonPlanStatus @default(DRAFT)
+  submittedAt        DateTime?
+  dueDate            DateTime?  // 2-4 weeks after training
+
+  // Review
+  reviewedById       String?
+  reviewedBy         User?     @relation("LessonPlanReviewer", fields: [reviewedById], references: [id])
+  reviewedAt         DateTime?
+  reviewComments     String?   @db.Text
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([userId, trainingId])  // One lesson plan per training per faculty
+  @@index([userId])
+  @@index([trainingId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([userId, status])
+  @@map("lesson_plans")
+}
+
+// Training Certificate - Completion certificates
+model TrainingCertificate {
+  id          String   @id @default(uuid())
+
+  // Certificate Number (unique identifier for verification)
+  certificateNumber String @unique
+
+  // Recipient
+  userId      String
+  user        User     @relation("CertificateRecipient", fields: [userId], references: [id])
+
+  // Training
+  trainingId  String
+  training    Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+
+  // Certificate Details
+  issuedAt    DateTime @default(now())
+  issuedById  String?
+  issuedBy    User?    @relation("CertificateIssuer", fields: [issuedById], references: [id])
+
+  // File
+  certificateUrl String?
+  downloadCount  Int     @default(0)
+
+  // Verification
+  isValid     Boolean  @default(true)
+  revokedAt   DateTime?
+  revokedReason String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, trainingId])  // One certificate per training per user
+  @@index([userId])
+  @@index([trainingId])
+  @@index([certificateNumber])
+  @@index([issuedAt])
+  @@map("training_certificates")
+}
+
+// Training Recommendation - Faculty suggestions for new trainings
+enum TrainingRecommendationStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  IMPLEMENTED
+}
+
+enum TrainingRecommendationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model TrainingRecommendation {
+  id          String   @id @default(uuid())
+
+  // Recommender (Faculty)
+  userId      String
+  user        User     @relation("TrainingRecommender", fields: [userId], references: [id])
+
+  // Recommendation Details
+  title              String
+  description        String   @db.Text
+  targetAudience     String?  // Who should attend (e.g., "CSE Faculty", "All Faculty")
+  suggestedDuration  Int?     // Suggested duration in hours
+  suggestedMode      TrainingDeliveryMode?
+  suggestedDifficulty TrainingDifficulty?
+
+  // Topics & Outcomes
+  topicsCovered      String?  @db.Text  // Main topics to be covered
+  learningOutcomes   String?  @db.Text  // Expected learning outcomes
+  relevanceReason    String?  @db.Text  // Why this training is needed
+
+  // Additional Info
+  suggestedTrainer   String?  // Name/org of suggested trainer if any
+  resourceLinks      String[] @default([])  // Reference links/resources
+  estimatedBudget    Float?   // Estimated cost if known
+
+  // Target Branches (optional)
+  targetBranches     Branch[] @relation("RecommendationBranches")
+
+  // Priority & Status
+  priority           TrainingRecommendationPriority @default(MEDIUM)
+  status             TrainingRecommendationStatus @default(PENDING)
+
+  // Review
+  reviewedById       String?
+  reviewedBy         User?    @relation("RecommendationReviewer", fields: [reviewedById], references: [id])
+  reviewedAt         DateTime?
+  reviewComments     String?  @db.Text
+  rejectionReason    String?  @db.Text
+
+  // If implemented, link to the actual training
+  implementedTrainingId String?
+  implementedTraining   Training? @relation("ImplementedRecommendation", fields: [implementedTrainingId], references: [id])
+
+  // Voting/Support (optional feature)
+  supportCount       Int      @default(0)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+  @@index([userId, status])
+  @@map("training_recommendations")
+}
+
+// =============================================
+// PRE-TEST & POST-TEST FORMS
+// =============================================
+
+enum TestFormPurpose {
+  PRE_TEST
+  POST_TEST
+  ASSESSMENT
+  QUIZ
+}
+
+// Pre-Test Form - Prerequisites assessment before training
+model PreTestForm {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+
+  // Questions stored as JSON array (same format as FeedbackForm)
+  // Example: [{ "id": "q1", "type": "multiChoice", "question": "What is your experience level?", "required": true, "options": {"choices": ["Beginner", "Intermediate", "Advanced"]} }]
+  questions   Json
+
+  // Purpose/Category
+  purpose     TestFormPurpose @default(PRE_TEST)
+
+  // Passing criteria (optional)
+  passingScore Float?  // Minimum percentage to pass (e.g., 70.0)
+
+  // Status
+  isActive    Boolean  @default(true)
+  isPublished Boolean  @default(false)
+
+  // Creator
+  createdById String
+  createdBy   User     @relation("PreTestFormCreator", fields: [createdById], references: [id])
+
+  // Relations
+  trainings   Training[]
+  responses   PreTestResponse[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([purpose])
+  @@index([isActive, isPublished])
+  @@index([createdById])
+  @@map("pre_test_forms")
+}
+
+// Post-Test Form - Learning assessment after training
+model PostTestForm {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+
+  // Questions stored as JSON array (same format as FeedbackForm)
+  questions   Json
+
+  // Purpose/Category
+  purpose     TestFormPurpose @default(POST_TEST)
+
+  // Passing criteria (optional)
+  passingScore Float?  // Minimum percentage to pass (e.g., 70.0)
+
+  // Status
+  isActive    Boolean  @default(true)
+  isPublished Boolean  @default(false)
+
+  // Creator
+  createdById String
+  createdBy   User     @relation("PostTestFormCreator", fields: [createdById], references: [id])
+
+  // Relations
+  trainings   Training[]
+  responses   PostTestResponse[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([purpose])
+  @@index([isActive, isPublished])
+  @@index([createdById])
+  @@map("post_test_forms")
+}
+
+// Pre-Test Response - Faculty's pre-test submission
+model PreTestResponse {
+  id          String   @id @default(uuid())
+
+  // Respondent
+  userId      String
+  user        User     @relation("PreTestRespondent", fields: [userId], references: [id])
+
+  // Form
+  preTestFormId String
+  preTestForm   PreTestForm @relation(fields: [preTestFormId], references: [id])
+
+  // Training Link
+  trainingId  String
+  training    Training @relation("TrainingPreTest", fields: [trainingId], references: [id], onDelete: Cascade)
+
+  // Responses stored as JSON
+  // Example: { "q1": "Intermediate", "q2": true, "q3": ["option1", "option2"] }
+  responses   Json
+
+  // Scoring (if applicable)
+  score       Float?   // Percentage score (0-100)
+  passed      Boolean? // Whether user passed based on passingScore
+
+  submittedAt DateTime @default(now())
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, preTestFormId, trainingId])  // One response per form per training
+  @@index([userId])
+  @@index([preTestFormId])
+  @@index([trainingId])
+  @@index([submittedAt])
+  @@map("pre_test_responses")
+}
+
+// Post-Test Response - Faculty's post-test submission
+model PostTestResponse {
+  id          String   @id @default(uuid())
+
+  // Respondent
+  userId      String
+  user        User     @relation("PostTestRespondent", fields: [userId], references: [id])
+
+  // Form
+  postTestFormId String
+  postTestForm   PostTestForm @relation(fields: [postTestFormId], references: [id])
+
+  // Training Link
+  trainingId  String
+  training    Training @relation("TrainingPostTest", fields: [trainingId], references: [id], onDelete: Cascade)
+
+  // Responses stored as JSON
+  responses   Json
+
+  // Scoring (if applicable)
+  score       Float?   // Percentage score (0-100)
+  passed      Boolean? // Whether user passed based on passingScore
+
+  submittedAt DateTime @default(now())
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, postTestFormId, trainingId])  // One response per form per training
+  @@index([userId])
+  @@index([postTestFormId])
+  @@index([trainingId])
+  @@index([submittedAt])
+  @@map("post_test_responses")
 }
 
 // =============================================

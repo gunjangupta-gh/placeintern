@@ -5,8 +5,17 @@ import { AuditModule } from '../../infrastructure/audit/audit.module';
 import { FileStorageModule } from '../../infrastructure/file-storage/file-storage.module';
 import { InternshipModule } from '../../domain/internship/internship.module';
 
+// Training module
+import { FacultyTrainingModule } from './training/faculty-training.module';
+
 @Module({
-  imports: [AuditModule, FileStorageModule, InternshipModule],
+  imports: [
+    AuditModule,
+    FileStorageModule,
+    InternshipModule,
+    // Training sub-module
+    FacultyTrainingModule,
+  ],
   controllers: [FacultyController],
   providers: [FacultyService],
   exports: [FacultyService],

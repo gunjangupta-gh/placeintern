@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Training Enrollment Reminder</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+    .content { background: #f7fafc; padding: 20px; border: 1px solid #e2e8f0; }
+    .button { display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin-top: 15px; }
+    .footer { text-align: center; padding: 20px; color: #718096; font-size: 12px; }
+    .info-box { background: #dbeafe; padding: 15px; border-radius: 5px; margin: 15px 0; }
+    .warning-box { background: #fef3c7; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #f59e0b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Training Enrollment Reminder</h1>
+    </div>
+    <div class="content">
+      <p>Dear {{name}},</p>
+
+      <div class="info-box">
+        <strong>Training:</strong> {{trainingTitle}}<br>
+        <strong>Starts:</strong> {{startDate}}<br>
+        <strong>Application Deadline:</strong> {{deadline}}
+      </div>
+
+      {{#if customMessage}}
+      <p>{{customMessage}}</p>
+      {{else}}
+      <p>This is a reminder to enroll for the upcoming training session. Don't miss this opportunity to enhance your skills!</p>
+      {{/if}}
+
+      <div class="warning-box">
+        <strong>Important:</strong> The application deadline is <strong>{{deadline}}</strong>. Please ensure you enroll before this date.
+      </div>
+
+      <p>Benefits of attending this training:</p>
+      <ul>
+        <li>Enhance your professional skills</li>
+        <li>Stay updated with latest practices</li>
+        <li>Earn training certificates</li>
+        <li>Contribute to your professional development</li>
+      </ul>
+
+      <p>Best regards,<br>Training Coordinator</p>
+    </div>
+    <div class="footer">
+      <p>This is an automated reminder from your Training Coordinator.</p>
+    </div>
+  </div>
+</body>
+</html>

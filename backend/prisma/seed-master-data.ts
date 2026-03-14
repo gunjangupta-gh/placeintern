@@ -118,40 +118,48 @@ async function main() {
     }
   }
 
+  const resolveBranchKey = (branchName: string | null | undefined): keyof typeof branchMap | null => {
+    if (!branchName) return null;
+
+    const branchNameUpper = branchName.toUpperCase();
+
+    if (branchNameUpper.includes('COMPUTER') || branchNameUpper.includes('CSE')) {
+      return 'CSE';
+    }
+    if (branchNameUpper.includes('ELECTRICAL') && !branchNameUpper.includes('ELECTRONICS')) {
+      return 'EE';
+    }
+    if (branchNameUpper.includes('ELECTRONICS') || branchNameUpper.includes('ECE')) {
+      return 'ECE';
+    }
+    if (branchNameUpper.includes('MECHANICAL') || branchNameUpper.includes('ME')) {
+      return 'ME';
+    }
+    if (branchNameUpper.includes('CIVIL') || branchNameUpper.includes('CE')) {
+      return 'CE';
+    }
+    if (branchNameUpper.includes('LEATHER') || branchNameUpper.includes('LT')) {
+      return 'LT';
+    }
+    if (branchNameUpper.includes('IT') || branchNameUpper.includes('INFORMATION')) {
+      return 'CSE';
+    }
+
+    return null;
+  };
+
   // 4. Update Students with Global Branches
   console.log('\n👥 Updating Students with Global Branches...');
 
-  // Get all students
+  // Get all students with their user relation (branchName is on User, not Student)
   const students = await prisma.student.findMany({
-    select: { id: true, branchName: true, branchId: true },
+    select: { id: true, branchId: true, user: { select: { branchName: true } } },
   });
 
   let updatedCount = 0;
   for (const student of students) {
-    // Try to match by branchName first
-    let matchedBranchId: string | null = null;
-
-    if (student.branchName) {
-      // Extract short name from branchName
-      const branchNameUpper = student.branchName.toUpperCase();
-
-      if (branchNameUpper.includes('COMPUTER') || branchNameUpper.includes('CSE')) {
-        matchedBranchId = branchMap['CSE'];
-      } else if (branchNameUpper.includes('ELECTRICAL') && !branchNameUpper.includes('ELECTRONICS')) {
-        matchedBranchId = branchMap['EE'];
-      } else if (branchNameUpper.includes('ELECTRONICS') || branchNameUpper.includes('ECE')) {
-        matchedBranchId = branchMap['ECE'];
-      } else if (branchNameUpper.includes('MECHANICAL') || branchNameUpper.includes('ME')) {
-        matchedBranchId = branchMap['ME'];
-      } else if (branchNameUpper.includes('CIVIL') || branchNameUpper.includes('CE')) {
-        matchedBranchId = branchMap['CE'];
-      } else if (branchNameUpper.includes('LEATHER') || branchNameUpper.includes('LT')) {
-        matchedBranchId = branchMap['LT'];
-      } else if (branchNameUpper.includes('IT') || branchNameUpper.includes('INFORMATION')) {
-        // Map IT to CSE
-        matchedBranchId = branchMap['CSE'];
-      }
-    }
+    const matchedBranchKey = resolveBranchKey(student.user?.branchName);
+    const matchedBranchId = matchedBranchKey ? branchMap[matchedBranchKey] : null;
 
     if (matchedBranchId) {
       await prisma.student.update({
@@ -168,29 +176,32 @@ async function main() {
 
   const users = await prisma.user.findMany({
     where: { branchName: { not: null } },
-    select: { id: true, branchName: true },
+    select: { id: true, branchName: true, branchId: true },
   });
 
   let userUpdatedCount = 0;
   for (const user of users) {
-    if (user.branchName) {
-      const branchNameUpper = user.branchName.toUpperCase();
-      let newBranchName: string | null = null;
+    const matchedBranchKey = resolveBranchKey(user.branchName);
+    if (!matchedBranchKey) {
+      continue;
+    }
 
-      if (branchNameUpper.includes('IT') || branchNameUpper === 'IT') {
-        newBranchName = 'CSE'; // Map IT to CSE
-      }
+    const normalizedBranchName = matchedBranchKey;
+    const matchedBranchId = branchMap[matchedBranchKey];
+    const shouldUpdate = user.branchName !== normalizedBranchName || user.branchId !== matchedBranchId;
 
-      if (newBranchName) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { branchName: newBranchName },
-        });
-        userUpdatedCount++;
-      }
+    if (shouldUpdate) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          branchName: normalizedBranchName,
+          branchId: matchedBranchId,
+        },
+      });
+      userUpdatedCount++;
     }
   }
-  console.log(`  ✅ Updated ${userUpdatedCount} users with standardized branch names`);
+  console.log(`  ✅ Updated ${userUpdatedCount} users with standardized branch mapping`);
 
   // 6. Summary
   console.log('\n🎉 Master Data Seed Complete!');
