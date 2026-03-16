@@ -65,7 +65,7 @@ export class StateInstitutionService {
           select: {
             users: {
               where: {
-                role: { in: [Role.TEACHER] },
+                role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
               },
             },
             // Count only active students for consistency with all other calculations
@@ -361,7 +361,7 @@ export class StateInstitutionService {
         by: ['institutionId'],
         where: {
           institutionId: { in: institutionIds },
-          role: { in: [Role.TEACHER] },
+          role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
           active: true,
         },
         _count: true,
@@ -1023,7 +1023,7 @@ export class StateInstitutionService {
       this.prisma.user.count({
         where: {
           institutionId: id,
-          role: { in: [Role.TEACHER] },
+          role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
           active: true,
         },
       }),
@@ -1699,7 +1699,7 @@ export class StateInstitutionService {
       Promise.all([
         this.prisma.student.count({ where: { institutionId: id, user: { active: true } } }),
         this.prisma.user.count({
-          where: { institutionId: id, role: { in: [Role.TEACHER] }, active: true },
+          where: { institutionId: id, role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] }, active: true },
         }),
         this.prisma.internshipApplication.count({
           where: { student: { institutionId: id, user: { active: true } }, isActive: true, status: ApplicationStatus.APPLIED },

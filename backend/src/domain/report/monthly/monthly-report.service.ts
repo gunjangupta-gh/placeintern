@@ -65,7 +65,6 @@ export class MonthlyReportService {
         throw new BadRequestException('Report for this month already exists');
       }
 
-      // Auto-approve reports on submission (no manual review required)
       const submissionTime = new Date();
       const report = await this.prisma.monthlyReport.create({
         data: {
@@ -78,10 +77,9 @@ export class MonthlyReportService {
             { month: 'long' },
           ),
           reportFileUrl: data.reportFileUrl,
-          status: MonthlyReportStatus.APPROVED, // Auto-approved
-          isApproved: true, // Mark as approved
+          status: MonthlyReportStatus.SUBMITTED,
+          isApproved: false,
           submittedAt: submissionTime,
-          approvedAt: submissionTime, // Set approval time to submission time
         },
         include: {
           student: {
@@ -174,26 +172,17 @@ export class MonthlyReportService {
     }
   }
 
-  // DEPRECATED: Reports are now auto-approved on submission.
-  // This method is kept for backward compatibility but returns early without making changes.
-  // All reports are automatically approved when submitted via submitReport().
   async reviewReport(
     id: string,
     mentorId: string,
     status: ReviewReportDto['status'],
     reviewComments?: string,
   ) {
-    this.logger.warn(
-      `reviewReport() is deprecated. Reports are now auto-approved on submission. ` +
-      `Called with id=${id}, mentorId=${mentorId}, status=${status}`
-    );
-
-    // Return the existing report without modifications
     const report = await this.prisma.monthlyReport.findUnique({
       where: { id },
       include: {
         student: { select: { id: true, user: { select: { name: true, rollNumber: true } } } },
-        application: { select: { id: true } },
+        application: { select: { id: true, mentorId: true } },
       },
     });
 
@@ -201,20 +190,46 @@ export class MonthlyReportService {
       throw new NotFoundException('Report not found');
     }
 
-    // Log that this deprecated method was called
+    if (report.application?.mentorId && report.application.mentorId !== mentorId) {
+      throw new BadRequestException('You are not authorized to review this report');
+    }
+
+    const isApproved = status === MonthlyReportStatus.APPROVED;
+    const reviewedAt = new Date();
+
+    const updated = await this.prisma.monthlyReport.update({
+      where: { id },
+      data: {
+        status,
+        isApproved,
+        approvedAt: isApproved ? reviewedAt : null,
+        approvedBy: isApproved ? mentorId : null,
+        reviewedAt,
+        reviewedBy: mentorId,
+        reviewComments: reviewComments || null,
+      },
+      include: {
+        student: { select: { id: true, user: { select: { name: true, rollNumber: true } } } },
+        application: { select: { id: true } },
+      },
+    });
+
+    await this.cache.del(`reports:student:${report.studentId}`);
+    await this.cache.del(`reports:mentor:${mentorId}`);
+
     this.auditService.log({
-      action: AuditAction.MONTHLY_REPORT_UPDATE,
+      action: isApproved ? AuditAction.MONTHLY_REPORT_APPROVE : AuditAction.MONTHLY_REPORT_REJECT,
       entityType: 'MonthlyReport',
       entityId: id,
       userId: mentorId,
       category: AuditCategory.INTERNSHIP_WORKFLOW,
-      severity: AuditSeverity.LOW,
-      description: `Deprecated reviewReport() called - reports are now auto-approved`,
+      severity: AuditSeverity.MEDIUM,
+      description: `Monthly report ${isApproved ? 'approved' : 'reviewed'} by faculty`,
       oldValues: { status: report.status },
-      newValues: { attemptedStatus: status, reviewComments },
+      newValues: { status, reviewComments },
     }).catch(() => {});
 
-    return report;
+    return updated;
   }
 
   async getReportStatistics(institutionId: string) {
@@ -241,24 +256,19 @@ export class MonthlyReportService {
             return acc;
           }, {} as Record<string, number>);
 
-          // With auto-approval, all new reports go directly to APPROVED status.
-          // 'pending' (SUBMITTED) should be 0 for new reports, but we keep counting
-          // for any legacy reports that may still exist in SUBMITTED state.
           const approved = countsByStatus[MonthlyReportStatus.APPROVED] ?? 0;
-          const pending = countsByStatus[MonthlyReportStatus.SUBMITTED] ?? 0; // Legacy reports only
-          const rejected = countsByStatus[MonthlyReportStatus.REJECTED] ?? 0; // Legacy reports only
-          const needsRevision = countsByStatus[MonthlyReportStatus.REVISION_REQUIRED] ?? 0; // Legacy reports only
+          const pending = countsByStatus[MonthlyReportStatus.SUBMITTED] ?? 0;
+          const rejected = countsByStatus[MonthlyReportStatus.REJECTED] ?? 0;
+          const needsRevision = countsByStatus[MonthlyReportStatus.REVISION_REQUIRED] ?? 0;
 
-          // Total is now primarily the approved count since all submissions are auto-approved
           const total = approved + pending + rejected + needsRevision;
 
           return {
             total,
-            pending, // Should be 0 for new reports (kept for backwards compatibility)
-            approved, // This is now the main metric - all submitted reports are approved
-            rejected, // Legacy only
-            needsRevision, // Legacy only
-            // Submission rate is now effectively approval rate since auto-approval is enabled
+            pending,
+            approved,
+            rejected,
+            needsRevision,
             submissionRate: total > 0 ? Math.round((approved / total) * 100) : 0,
           };
         },

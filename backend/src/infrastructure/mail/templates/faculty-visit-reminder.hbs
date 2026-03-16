@@ -23,6 +23,9 @@
 
       <div class="highlight">
         <strong>Action Required:</strong>
+        {{#if month}}
+          Pending cycle: <strong>{{month}} {{year}}</strong>.<br />
+        {{/if}}
         {{#if pendingCount}}
           You have <strong>{{pendingCount}} student(s)</strong> pending faculty visits.
         {{else}}

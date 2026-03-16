@@ -110,11 +110,11 @@ export class StateDashboardService {
             where: { user: { active: true }, Institution: { isActive: true } },
           }),
           this.prisma.user.count({
-            where: { role: { in: [Role.TEACHER] }, active: true },
+            where: { role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] }, active: true },
           }),
           this.prisma.user.count({
             where: {
-              role: { in: [Role.TEACHER] },
+              role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
               active: true,
             },
           }),
@@ -1417,7 +1417,7 @@ export class StateDashboardService {
             const mentorCounts = await this.prisma.user.groupBy({
               by: ["institutionId"],
               where: {
-                role: { in: [Role.TEACHER] },
+                role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
                 active: true,
                 institutionId: { not: null },
                 Institution: { isActive: true },

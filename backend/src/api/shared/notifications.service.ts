@@ -510,6 +510,7 @@ export class NotificationsService {
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
+    const currentMonthLabel = this.formatMonthYear(currentMonth, currentYear);
 
     const [pendingReportsCount, submittedThisMonthCount, latestVisitWithFeedback] = await Promise.all([
       this.prisma.monthlyReport.count({
@@ -553,7 +554,7 @@ export class NotificationsService {
       alerts.push({
         id: 'student-pending-reports',
         title: 'Monthly Progress Report Pending',
-        body: `You have ${pendingReportsCount} pending monthly report(s). Please submit soon.`,
+        body: `You have ${pendingReportsCount} pending monthly report(s) for ${currentMonthLabel}. Please submit soon.`,
         type: 'warning',
         priority: 95,
         source: 'role-generated',
@@ -563,7 +564,7 @@ export class NotificationsService {
       alerts.push({
         id: 'student-reports-submitted',
         title: 'Monthly Report Updated',
-        body: 'Your monthly progress submission is up to date for this month.',
+        body: `Your monthly progress submission is up to date for ${currentMonthLabel}.`,
         type: 'success',
         priority: 65,
         source: 'role-generated',
@@ -616,6 +617,9 @@ export class NotificationsService {
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    const currentMonthLabel = this.formatMonthYear(currentMonth, currentYear);
 
     const [pendingReportReviews, draftVisitReports, visitsMissingFeedback] = await Promise.all([
       this.prisma.monthlyReport.count({
@@ -658,7 +662,7 @@ export class NotificationsService {
       alerts.push({
         id: 'faculty-pending-report-reviews',
         title: 'Pending Report Submissions',
-        body: `${pendingReportReviews} monthly report(s) are waiting for your review.`,
+        body: `${pendingReportReviews} monthly report(s) for ${currentMonthLabel} are waiting for your review.`,
         type: 'warning',
         priority: 95,
         source: 'role-generated',
@@ -682,7 +686,7 @@ export class NotificationsService {
       alerts.push({
         id: 'faculty-missing-feedback',
         title: 'Feedback Details Missing',
-        body: `${visitsMissingFeedback} recent visit report(s) need observation/feedback details updated.`,
+        body: `${visitsMissingFeedback} visit report(s) in ${currentMonthLabel} need observation/feedback details updated.`,
         type: 'info',
         priority: 80,
         source: 'role-generated',
@@ -699,6 +703,7 @@ export class NotificationsService {
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
+    const currentMonthLabel = this.formatMonthYear(currentMonth, currentYear);
     const startOfCurrentMonth = new Date(currentYear, currentMonth - 1, 1);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
@@ -816,7 +821,7 @@ export class NotificationsService {
       alerts.push({
         id: 'principal-overdue-reports',
         title: 'Monthly Report Compliance Pending',
-        body: `${overdueReportsCount} student(s) have not submitted this month’s report.`,
+        body: `${overdueReportsCount} student(s) have not submitted monthly reports for ${currentMonthLabel}.`,
         type: 'warning',
         priority: 94,
         source: 'role-generated',
@@ -890,6 +895,14 @@ export class NotificationsService {
         feeReminders: true,
       },
     };
+  }
+
+  private formatMonthYear(month: number, year: number): string {
+    const date = new Date(year, month - 1, 1);
+    return date.toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric',
+    });
   }
 
   // ============ NOTIFICATION SENDING METHODS ============

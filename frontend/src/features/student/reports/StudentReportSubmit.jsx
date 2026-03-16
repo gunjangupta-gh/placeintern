@@ -55,6 +55,8 @@ const StudentReportSubmit = () => {
   const [editingReport, setEditingReport] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [fileList, setFileList] = useState([]);
+  const [versionModalVisible, setVersionModalVisible] = useState(false);
+  const [selectedVersionReport, setSelectedVersionReport] = useState(null);
 
   // Auto month detection states
   const [autoMonthSelection, setAutoMonthSelection] = useState(true);
@@ -278,7 +280,7 @@ const StudentReportSubmit = () => {
         reportFileUrl: fileUrl,
       })).unwrap();
 
-      toast.success('Report uploaded successfully!');
+      toast.success('Report uploaded and submitted for faculty approval');
       handleCloseModal();
       fetchReports();
       // Refresh dashboard, applications, and reports to update counts and pending tags
@@ -314,6 +316,51 @@ const StudentReportSubmit = () => {
     if (url) openFileWithPresignedUrl(url);
   }, []);
 
+  const handleOpenVersionHistory = useCallback((report) => {
+    setSelectedVersionReport(report);
+    setVersionModalVisible(true);
+  }, []);
+
+  const handleCloseVersionHistory = useCallback(() => {
+    setVersionModalVisible(false);
+    setSelectedVersionReport(null);
+  }, []);
+
+  const formatVersionTimestamp = useCallback((value) => {
+    if (!value) return '-';
+    const parsed = dayjs(value);
+    return parsed.isValid() ? parsed.format('DD MMM YYYY, hh:mm A') : '-';
+  }, []);
+
+  const getVersionHistory = useCallback((report) => {
+    const history = Array.isArray(report?.fileVersions) ? [...report.fileVersions] : [];
+    if (history.length > 0) return history;
+
+    if (report?.reportFileUrl) {
+      return [{
+        version: 1,
+        fileUrl: report.reportFileUrl,
+        uploadedAt: report.submittedAt || new Date().toISOString(),
+        reviewStatus: report.status || null,
+      }];
+    }
+
+    return [];
+  }, []);
+
+  const renderVersionStatusTag = useCallback((status) => {
+    if (!status) return null;
+
+    const normalized = String(status).toUpperCase();
+    if (normalized === 'APPROVED') return <Tag color="success" className="ml-2">Approved</Tag>;
+    if (normalized === 'REJECTED') return <Tag color="error" className="ml-2">Rejected</Tag>;
+    if (normalized === 'SUBMITTED' || normalized === 'UNDER_REVIEW') {
+      return <Tag color="processing" className="ml-2">Pending</Tag>;
+    }
+
+    return <Tag className="ml-2">{normalized}</Tag>;
+  }, []);
+
   // Replace report
   const handleReplace = useCallback((report) => {
     showMonthlyReportGuideline(() => {
@@ -331,6 +378,8 @@ const StudentReportSubmit = () => {
     const config = {
       APPROVED: { color: 'success', icon: <CheckCircleOutlined />, text: 'Approved' },
       SUBMITTED: { color: 'processing', icon: <ClockCircleOutlined />, text: 'Submitted' },
+      UNDER_REVIEW: { color: 'processing', icon: <ClockCircleOutlined />, text: 'Under Review' },
+      REVISION_REQUIRED: { color: 'warning', icon: <ExclamationCircleOutlined />, text: 'Revision Required' },
       PENDING: { color: 'warning', icon: <ExclamationCircleOutlined />, text: 'Pending' },
       DRAFT: { color: 'default', icon: <FileTextOutlined />, text: 'Draft' },
       REJECTED: { color: 'error', icon: <ExclamationCircleOutlined />, text: 'Rejected' },
@@ -367,16 +416,28 @@ const StudentReportSubmit = () => {
       key: 'file',
       ellipsis: true,
       render: (_, record) => (
-        <div className="flex items-center gap-2">
-          {record.reportFileUrl && (
-            <div
-              className="w-1.5 h-1.5 rounded-full"
-              style={{ backgroundColor: token.colorSuccess }}
-            />
+        <div className="flex items-center gap-2 justify-between w-full">
+          <div className="flex items-center gap-2">
+            {record.reportFileUrl && (
+              <div
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: token.colorSuccess }}
+              />
+            )}
+            <Text className="text-sm" style={{ color: record.reportFileUrl ? token.colorText : token.colorTextTertiary }}>
+              {record.reportFileUrl ? 'Report uploaded' : 'No file'}
+            </Text>
+          </div>
+          {(record.fileVersions?.length || 0) > 0 && (
+            <Button
+              type="link"
+              size="small"
+              className="px-0"
+              onClick={() => handleOpenVersionHistory(record)}
+            >
+              v{record.fileVersions.length}
+            </Button>
           )}
-          <Text className="text-sm" style={{ color: record.reportFileUrl ? token.colorText : token.colorTextTertiary }}>
-            {record.reportFileUrl ? 'Report uploaded' : 'No file'}
-          </Text>
         </div>
       ),
     },
@@ -445,7 +506,7 @@ const StudentReportSubmit = () => {
   const stats = {
     total: reports.length,
     approved: reports.filter(r => r.status === 'APPROVED').length,
-    pending: reports.filter(r => r.status === 'PENDING' || r.status === 'SUBMITTED' || r.status === 'DRAFT').length,
+    pending: reports.filter(r => ['PENDING', 'SUBMITTED', 'UNDER_REVIEW', 'DRAFT', 'REVISION_REQUIRED'].includes(r.status)).length,
   };
 
   const isLoading = loading || reportsLoading;
@@ -614,7 +675,7 @@ const StudentReportSubmit = () => {
               showSizeChanger: false,
               className: 'px-4 pb-4',
             }}
-            className="[&_.ant-table-thead>tr>th]:!bg-background-secondary [&_.ant-table-thead>tr>th]:!text-xs [&_.ant-table-thead>tr>th]:!font-semibold [&_.ant-table-thead>tr>th]:!py-3 [&_.ant-table-tbody>tr>td]:!py-3"
+            className="[&_.ant-table-thead>tr>th]:bg-background-secondary! [&_.ant-table-thead>tr>th]:text-xs! [&_.ant-table-thead>tr>th]:font-semibold! [&_.ant-table-thead>tr>th]:py-3! [&_.ant-table-tbody>tr>td]:py-3!"
           />
         )}
       </Card>
@@ -768,6 +829,74 @@ const StudentReportSubmit = () => {
             </>
           )}
         </div>
+      </Modal>
+
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <FileTextOutlined style={{ color: token.colorPrimary }} />
+            <span>Version History</span>
+          </div>
+        }
+        open={versionModalVisible}
+        onCancel={handleCloseVersionHistory}
+        footer={[
+          <Button key="close" onClick={handleCloseVersionHistory} className="rounded-lg">
+            Close
+          </Button>,
+        ]}
+        width={560}
+        destroyOnClose
+      >
+        {(() => {
+          const versionHistory = getVersionHistory(selectedVersionReport);
+          return (
+        <div className="pt-3 space-y-3">
+          {selectedVersionReport?.reportMonth && selectedVersionReport?.reportYear && (
+            <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>
+              {MONTH_NAMES[selectedVersionReport.reportMonth - 1]} {selectedVersionReport.reportYear}
+            </Text>
+          )}
+
+          {versionHistory.length === 0 ? (
+            <Text type="secondary">No version history available</Text>
+          ) : (
+            versionHistory.map((versionItem, index) => (
+              <div
+                key={`${versionItem?.fileUrl || 'version'}-${index}`}
+                className="rounded-lg border p-3 flex items-center justify-between gap-3"
+                style={{ borderColor: token.colorBorderSecondary }}
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center">
+                    <Text strong className="text-sm block" style={{ color: token.colorText }}>
+                      v{typeof versionItem?.version === 'number' ? versionItem.version : index + 1}
+                    </Text>
+                    {renderVersionStatusTag(versionItem?.reviewStatus)}
+                  </div>
+                  <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>
+                    {formatVersionTimestamp(versionItem?.uploadedAt)}
+                  </Text>
+                  {(versionItem?.uploadedBy || versionItem?.uploaderRole) && (
+                    <Text className="text-xs block" style={{ color: token.colorTextQuaternary }}>
+                      {versionItem?.uploadedBy || 'Unknown'} {versionItem?.uploaderRole ? `(${versionItem.uploaderRole})` : ''}
+                    </Text>
+                  )}
+                </div>
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() => openFileWithPresignedUrl(versionItem?.fileUrl)}
+                  disabled={!versionItem?.fileUrl}
+                >
+                  Open
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+          );
+        })()}
       </Modal>
     </div>
   );

@@ -71,7 +71,7 @@ const getCurrentUser = () => {
 const SectionTitle = ({ title }) => (
   <div className="flex items-center gap-2 mb-4">
     <div className="w-1 h-5 bg-primary rounded-full" />
-    <Title level={5} className="!mb-0 text-text-primary">{title}</Title>
+    <Title level={5} className="mb-0! text-text-primary">{title}</Title>
   </div>
 );
 
@@ -152,6 +152,7 @@ const PrincipalDashboard = () => {
 
     // Fetch main dashboard data - other data fetched on-demand when clicking cards
     dispatch(fetchPrincipalDashboard());
+    dispatch(fetchMentorCoverage());
   }, [dispatch]);
 
   // Update institution name from dashboard stats
@@ -290,7 +291,7 @@ const PrincipalDashboard = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <Title level={4} className="!mb-0 text-text-primary">
+              <Title level={4} className="mb-0! text-text-primary">
                 Principal Dashboard
               </Title>
               {lastFetched && (
@@ -801,7 +802,7 @@ const PrincipalDashboard = () => {
           {(dashboardStats?.unassignedStudents || 0) === 0 ? (
             <div className="text-center py-8">
               <CheckCircleOutlined className="text-5xl text-success mb-4" />
-              <Title level={4} className="!mb-2 text-success">All Students Assigned!</Title>
+              <Title level={4} className="mb-2! text-success">All Students Assigned!</Title>
               <Text type="secondary">
                 All students with active internships have been assigned to mentors.
               </Text>
@@ -848,7 +849,7 @@ const PrincipalDashboard = () => {
           {(stats?.grievances?.total || 0) === 0 ? (
             <div className="text-center py-8">
               <CheckCircleOutlined className="text-5xl text-success mb-4" />
-              <Title level={4} className="!mb-2 text-success">No Grievances!</Title>
+              <Title level={4} className="mb-2! text-success">No Grievances!</Title>
               <Text type="secondary">
                 There are no student grievances at this time.
               </Text>

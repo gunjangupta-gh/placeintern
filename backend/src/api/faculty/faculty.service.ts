@@ -126,6 +126,128 @@ export class FacultyService {
     });
   }
 
+  private isCountedReportStatus(status?: MonthlyReportStatus | string | null): boolean {
+    if (!status) return false;
+    const countedStatuses: MonthlyReportStatus[] = [
+      MonthlyReportStatus.SUBMITTED,
+      MonthlyReportStatus.UNDER_REVIEW,
+      MonthlyReportStatus.APPROVED,
+    ];
+    return countedStatuses.includes(status as MonthlyReportStatus);
+  }
+
+  private async getReportFileVersions(
+    reportId: string,
+    currentFileUrl?: string | null,
+    currentStatus?: MonthlyReportStatus | string | null,
+  ) {
+    const logs = await this.prisma.auditLog.findMany({
+      where: {
+        entityType: 'MonthlyReport',
+        entityId: reportId,
+        action: {
+          in: [
+            AuditAction.MONTHLY_REPORT_SUBMIT,
+            AuditAction.MONTHLY_REPORT_UPDATE,
+            AuditAction.MONTHLY_REPORT_APPROVE,
+            AuditAction.MONTHLY_REPORT_REJECT,
+          ],
+        },
+      },
+      select: {
+        action: true,
+        timestamp: true,
+        userName: true,
+        userRole: true,
+        newValues: true,
+      },
+      orderBy: { timestamp: 'asc' },
+    });
+
+    const versions: Array<{
+      version: number;
+      fileUrl: string;
+      uploadedAt: Date;
+      uploadedBy?: string | null;
+      uploaderRole?: Role;
+      reviewStatus?: MonthlyReportStatus | string | null;
+      reviewedAt?: Date;
+      reviewedBy?: string | null;
+      reviewerRole?: Role;
+    }> = [];
+    const mergeWindowMs = 2 * 60 * 1000;
+
+    for (const log of logs) {
+      const isUploadAction =
+        log.action === AuditAction.MONTHLY_REPORT_SUBMIT ||
+        log.action === AuditAction.MONTHLY_REPORT_UPDATE;
+      const isReviewAction =
+        log.action === AuditAction.MONTHLY_REPORT_APPROVE ||
+        log.action === AuditAction.MONTHLY_REPORT_REJECT;
+
+      if (isReviewAction) {
+        const activeVersion = versions[versions.length - 1];
+        if (!activeVersion) continue;
+
+        activeVersion.reviewStatus = log.action === AuditAction.MONTHLY_REPORT_APPROVE
+          ? MonthlyReportStatus.APPROVED
+          : MonthlyReportStatus.REJECTED;
+        activeVersion.reviewedAt = log.timestamp;
+        activeVersion.reviewedBy = log.userName;
+        activeVersion.reviewerRole = log.userRole;
+        continue;
+      }
+
+      if (!isUploadAction) continue;
+
+      const values = log.newValues as Record<string, unknown> | null;
+      const fileUrl = typeof values?.reportFileUrl === 'string' ? values.reportFileUrl : null;
+      if (!fileUrl) continue;
+
+      const lastVersion = versions[versions.length - 1];
+      const shouldMergeWithPrevious =
+        !!lastVersion &&
+        !lastVersion.reviewStatus &&
+        lastVersion.fileUrl === fileUrl &&
+        (lastVersion.uploadedBy || null) === (log.userName || null) &&
+        (lastVersion.uploaderRole || null) === (log.userRole || null) &&
+        Math.abs(log.timestamp.getTime() - lastVersion.uploadedAt.getTime()) <= mergeWindowMs;
+
+      if (shouldMergeWithPrevious) {
+        continue;
+      }
+
+      versions.push({
+        version: versions.length + 1,
+        fileUrl,
+        uploadedAt: log.timestamp,
+        uploadedBy: log.userName,
+        uploaderRole: log.userRole,
+      });
+    }
+
+    if (
+      currentFileUrl &&
+      (versions.length === 0 || versions[versions.length - 1].fileUrl !== currentFileUrl)
+    ) {
+      versions.push({
+        version: versions.length + 1,
+        fileUrl: currentFileUrl,
+        uploadedAt: new Date(),
+        reviewStatus: currentStatus || null,
+      });
+    }
+
+    if (versions.length > 0) {
+      const latestVersion = versions[versions.length - 1];
+      if (!latestVersion.reviewStatus && currentStatus) {
+        latestVersion.reviewStatus = currentStatus;
+      }
+    }
+
+    return versions;
+  }
+
   /**
    * Build optional fields object using only valid Prisma FacultyVisitLog schema fields
    * This ensures type safety and prevents unknown field errors
@@ -1524,8 +1646,15 @@ export class FacultyService {
       this.prisma.monthlyReport.count({ where }),
     ]);
 
+    const reportsWithVersions = await Promise.all(
+      reports.map(async (report) => ({
+        ...report,
+        fileVersions: await this.getReportFileVersions(report.id, report.reportFileUrl, report.status),
+      }))
+    );
+
     return {
-      reports,
+      reports: reportsWithVersions,
       total,
       page,
       limit,
@@ -2023,6 +2152,10 @@ export class FacultyService {
       },
     });
 
+    if (report.applicationId && !this.isCountedReportStatus(oldStatus)) {
+      await this.expectedCycleService.incrementReportCount(report.applicationId);
+    }
+
     // Get faculty for audit
     const faculty = await this.prisma.user.findUnique({ where: { id: facultyId } });
 
@@ -2089,11 +2222,17 @@ export class FacultyService {
       data: {
         status: 'REJECTED',
         isApproved: false,
+        approvedAt: null,
+        approvedBy: null,
         reviewedAt: new Date(),
         reviewedBy: facultyId,
         reviewComments: reason,
       },
     });
+
+    if (report.applicationId && this.isCountedReportStatus(oldStatus)) {
+      await this.expectedCycleService.decrementReportCount(report.applicationId);
+    }
 
     // Get faculty for audit
     const faculty = await this.prisma.user.findUnique({ where: { id: facultyId } });
@@ -2173,8 +2312,8 @@ export class FacultyService {
       },
     });
 
-    // Decrement report count for the application
-    if (report.applicationId) {
+    // Decrement report count only for statuses that contribute to submittedReportsCount.
+    if (report.applicationId && this.isCountedReportStatus(report.status)) {
       await this.expectedCycleService.decrementReportCount(report.applicationId);
     }
 
@@ -2699,7 +2838,7 @@ export class FacultyService {
       reportYear,
     });
 
-    // Check if report already exists for this month
+    // Check if report already exists for this month (re-upload updates same record)
     const existingReport = await this.prisma.monthlyReport.findFirst({
       where: {
         applicationId: appId,
@@ -2708,10 +2847,6 @@ export class FacultyService {
         isDeleted: false,
       },
     });
-
-    if (existingReport) {
-      throw new BadRequestException(`Report for ${month}/${year} already exists`);
-    }
 
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'];
@@ -2742,6 +2877,7 @@ export class FacultyService {
     }
 
     let report;
+    let shouldIncrementReportCount = false;
 
     try {
       report = await this.prisma.monthlyReport.create({
@@ -2751,14 +2887,13 @@ export class FacultyService {
           reportMonth,
           reportYear,
           monthName: monthNames[reportMonth - 1] || `Month ${reportMonth}`,
-          status: 'APPROVED', // Auto-approve when faculty uploads on behalf of student
-          isApproved: true,
-          approvedAt: new Date(),
-          approvedBy: facultyId,
+          status: 'SUBMITTED',
+          isApproved: false,
           submittedAt: new Date(),
           reportFileUrl: reportFileKey, // Store the key, not the full URL
         },
       });
+      shouldIncrementReportCount = true;
     } catch (error) {
       if (!this.isMonthlyReportUniqueConstraintError(error)) {
         throw error;
@@ -2779,36 +2914,112 @@ export class FacultyService {
         },
       });
 
-      if (conflictingActiveReport) {
-        throw new BadRequestException(`Report for ${month}/${year} already exists`);
+      if (!conflictingActiveReport) {
+        report = await this.prisma.monthlyReport.create({
+          data: {
+            applicationId: appId,
+            studentId: application.studentId,
+            reportMonth,
+            reportYear,
+            monthName: monthNames[reportMonth - 1] || `Month ${reportMonth}`,
+            status: 'SUBMITTED',
+            isApproved: false,
+            submittedAt: new Date(),
+            reportFileUrl: reportFileKey,
+          },
+        });
+        shouldIncrementReportCount = true;
+      } else if (conflictingActiveReport.status === MonthlyReportStatus.APPROVED) {
+        report = await this.prisma.monthlyReport.update({
+          where: { id: conflictingActiveReport.id },
+          data: {
+            reportFileUrl: reportFileKey,
+            status: MonthlyReportStatus.SUBMITTED,
+            isApproved: false,
+            approvedAt: null,
+            approvedBy: null,
+            reviewedAt: null,
+            reviewedBy: null,
+            reviewComments: null,
+            submittedAt: new Date(),
+          },
+        });
+        shouldIncrementReportCount = false;
+      } else {
+        shouldIncrementReportCount = !this.isCountedReportStatus(conflictingActiveReport.status);
+        report = await this.prisma.monthlyReport.update({
+          where: { id: conflictingActiveReport.id },
+          data: {
+            reportFileUrl: reportFileKey,
+            status: MonthlyReportStatus.SUBMITTED,
+            isApproved: false,
+            approvedAt: null,
+            approvedBy: null,
+            reviewedAt: null,
+            reviewedBy: null,
+            reviewComments: null,
+            submittedAt: new Date(),
+          },
+        });
       }
+    }
 
-      report = await this.prisma.monthlyReport.create({
+    if (existingReport) {
+      shouldIncrementReportCount = shouldIncrementReportCount || !this.isCountedReportStatus(existingReport.status);
+      report = await this.prisma.monthlyReport.update({
+        where: { id: existingReport.id },
         data: {
-          applicationId: appId,
-          studentId: application.studentId,
-          reportMonth,
-          reportYear,
-          monthName: monthNames[reportMonth - 1] || `Month ${reportMonth}`,
-          status: 'APPROVED',
-          isApproved: true,
-          approvedAt: new Date(),
-          approvedBy: facultyId,
-          submittedAt: new Date(),
           reportFileUrl: reportFileKey,
+          status: MonthlyReportStatus.SUBMITTED,
+          isApproved: false,
+          approvedAt: null,
+          approvedBy: null,
+          reviewedAt: null,
+          reviewedBy: null,
+          reviewComments: null,
+          submittedAt: new Date(),
         },
       });
     }
 
-    // Increment report count for the application
-    await this.expectedCycleService.incrementReportCount(appId);
+    if (shouldIncrementReportCount) {
+      await this.expectedCycleService.incrementReportCount(appId);
+    }
+
+    const faculty = await this.prisma.user.findUnique({ where: { id: facultyId } });
+    this.auditService.log({
+      action: AuditAction.MONTHLY_REPORT_UPDATE,
+      entityType: 'MonthlyReport',
+      entityId: report.id,
+      userId: facultyId,
+      userName: faculty?.name,
+      userRole: faculty?.role || Role.TEACHER,
+      description: `Monthly report file uploaded for ${monthNames[reportMonth - 1]} ${reportYear}`,
+      category: AuditCategory.INTERNSHIP_WORKFLOW,
+      severity: AuditSeverity.LOW,
+      institutionId: faculty?.institutionId || undefined,
+      oldValues: {
+        previousReportFileUrl: existingReport?.reportFileUrl,
+        previousStatus: existingReport?.status,
+      },
+      newValues: {
+        reportFileUrl: report.reportFileUrl,
+        status: report.status,
+        manualApprovalRequired: true,
+      },
+    }).catch(() => {});
+
+    const fileVersions = await this.getReportFileVersions(report.id, report.reportFileUrl, report.status);
 
     await this.cache.invalidateByTags(['reports', `application:${appId}`]);
 
     return {
       success: true,
-      message: 'Monthly report uploaded successfully',
-      data: report,
+      message: 'Monthly report uploaded successfully and sent for faculty approval',
+      data: {
+        ...report,
+        fileVersions,
+      },
     };
   }
 

@@ -104,6 +104,128 @@ export class StudentService {
     });
   }
 
+  private isCountedReportStatus(status?: MonthlyReportStatus | string | null): boolean {
+    if (!status) return false;
+    const countedStatuses: MonthlyReportStatus[] = [
+      MonthlyReportStatus.SUBMITTED,
+      MonthlyReportStatus.UNDER_REVIEW,
+      MonthlyReportStatus.APPROVED,
+    ];
+    return countedStatuses.includes(status as MonthlyReportStatus);
+  }
+
+  private async getReportFileVersions(
+    reportId: string,
+    currentFileUrl?: string | null,
+    currentStatus?: MonthlyReportStatus | string | null,
+  ) {
+    const logs = await this.prisma.auditLog.findMany({
+      where: {
+        entityType: 'MonthlyReport',
+        entityId: reportId,
+        action: {
+          in: [
+            AuditAction.MONTHLY_REPORT_SUBMIT,
+            AuditAction.MONTHLY_REPORT_UPDATE,
+            AuditAction.MONTHLY_REPORT_APPROVE,
+            AuditAction.MONTHLY_REPORT_REJECT,
+          ],
+        },
+      },
+      select: {
+        action: true,
+        timestamp: true,
+        userName: true,
+        userRole: true,
+        newValues: true,
+      },
+      orderBy: { timestamp: 'asc' },
+    });
+
+    const versions: Array<{
+      version: number;
+      fileUrl: string;
+      uploadedAt: Date;
+      uploadedBy?: string | null;
+      uploaderRole?: Role;
+      reviewStatus?: MonthlyReportStatus | string | null;
+      reviewedAt?: Date;
+      reviewedBy?: string | null;
+      reviewerRole?: Role;
+    }> = [];
+    const mergeWindowMs = 2 * 60 * 1000;
+
+    for (const log of logs) {
+      const isUploadAction =
+        log.action === AuditAction.MONTHLY_REPORT_SUBMIT ||
+        log.action === AuditAction.MONTHLY_REPORT_UPDATE;
+      const isReviewAction =
+        log.action === AuditAction.MONTHLY_REPORT_APPROVE ||
+        log.action === AuditAction.MONTHLY_REPORT_REJECT;
+
+      if (isReviewAction) {
+        const activeVersion = versions[versions.length - 1];
+        if (!activeVersion) continue;
+
+        activeVersion.reviewStatus = log.action === AuditAction.MONTHLY_REPORT_APPROVE
+          ? MonthlyReportStatus.APPROVED
+          : MonthlyReportStatus.REJECTED;
+        activeVersion.reviewedAt = log.timestamp;
+        activeVersion.reviewedBy = log.userName;
+        activeVersion.reviewerRole = log.userRole;
+        continue;
+      }
+
+      if (!isUploadAction) continue;
+
+      const values = log.newValues as Record<string, unknown> | null;
+      const fileUrl = typeof values?.reportFileUrl === 'string' ? values.reportFileUrl : null;
+      if (!fileUrl) continue;
+
+      const lastVersion = versions[versions.length - 1];
+      const shouldMergeWithPrevious =
+        !!lastVersion &&
+        !lastVersion.reviewStatus &&
+        lastVersion.fileUrl === fileUrl &&
+        (lastVersion.uploadedBy || null) === (log.userName || null) &&
+        (lastVersion.uploaderRole || null) === (log.userRole || null) &&
+        Math.abs(log.timestamp.getTime() - lastVersion.uploadedAt.getTime()) <= mergeWindowMs;
+
+      if (shouldMergeWithPrevious) {
+        continue;
+      }
+
+      versions.push({
+        version: versions.length + 1,
+        fileUrl,
+        uploadedAt: log.timestamp,
+        uploadedBy: log.userName,
+        uploaderRole: log.userRole,
+      });
+    }
+
+    if (
+      currentFileUrl &&
+      (versions.length === 0 || versions[versions.length - 1].fileUrl !== currentFileUrl)
+    ) {
+      versions.push({
+        version: versions.length + 1,
+        fileUrl: currentFileUrl,
+        uploadedAt: new Date(),
+        reviewStatus: currentStatus || null,
+      });
+    }
+
+    if (versions.length > 0) {
+      const latestVersion = versions[versions.length - 1];
+      if (!latestVersion.reviewStatus && currentStatus) {
+        latestVersion.reviewStatus = currentStatus;
+      }
+    }
+
+    return versions;
+  }
+
   // REMOVED: calculateExpectedReportPeriods function - was used by removed generateExpectedReports
   // Expected counts are now calculated via ExpectedCycleService using getTotalExpectedCount()
 
@@ -1289,9 +1411,9 @@ export class StudentService {
   }
 
   /**
-   * Submit monthly report with AUTO-APPROVAL
-   * - If a DRAFT report exists, update it with file and auto-approve
-   * - If no report exists, create and auto-approve
+   * Submit monthly report for faculty review
+   * - If a non-approved report exists, update it with latest file and mark SUBMITTED
+   * - If no report exists, create with SUBMITTED status
    * - Check submission window and mark overdue if applicable
    */
   async submitMonthlyReport(
@@ -1429,16 +1551,22 @@ export class StudentService {
         existingReport.periodEndDate ||
         new Date(reportDto.reportYear, reportDto.reportMonth, 0, 23, 59, 59);
 
-      // Update existing report with file and AUTO-APPROVE
+      const shouldIncrementReportCount = !this.isCountedReportStatus(existingReport.status);
+
+      // Update existing report and submit for manual faculty approval
       const updated = await this.prisma.monthlyReport.update({
         where: { id: existingReport.id },
         data: {
           reportFileUrl: reportDto.reportFileUrl,
           monthName:
             reportDto.monthName || MONTH_NAMES[reportDto.reportMonth - 1],
-          status: MonthlyReportStatus.APPROVED, // AUTO-APPROVAL
-          isApproved: true,
-          approvedAt: now,
+          status: MonthlyReportStatus.SUBMITTED,
+          isApproved: false,
+          approvedAt: null,
+          approvedBy: null,
+          reviewedAt: null,
+          reviewedBy: null,
+          reviewComments: null,
           submittedAt: now,
           submissionWindowStart:
             existingReport.submissionWindowStart || submissionWindowStart,
@@ -1468,25 +1596,30 @@ export class StudentService {
             reportId: updated.id,
             reportMonth: reportDto.reportMonth,
             reportYear: reportDto.reportYear,
-            status: MonthlyReportStatus.APPROVED,
+            status: MonthlyReportStatus.SUBMITTED,
             isOverdue,
-            autoApproved: true,
+            previousReportFileUrl: existingReport.reportFileUrl,
+            reportFileUrl: reportDto.reportFileUrl,
+            manualApprovalRequired: true,
           },
         })
         .catch(() => {});
 
       await this.cache.invalidateByTags(["reports", `student:${studentId}`, `student:dashboard:${studentId}`]);
 
-      // Increment submitted reports counter
-      // Note: We know status is not APPROVED here (checked earlier on line 1143)
-      await this.expectedCycleService.incrementReportCount(
-        reportDto.applicationId
-      );
+      if (shouldIncrementReportCount) {
+        await this.expectedCycleService.incrementReportCount(
+          reportDto.applicationId
+        );
+      }
+
+      const fileVersions = await this.getReportFileVersions(updated.id, updated.reportFileUrl, updated.status);
 
       return {
         ...updated,
-        message: "Report submitted and auto-approved successfully",
-        autoApproved: true,
+        message: "Report submitted successfully and sent for faculty approval",
+        autoApproved: false,
+        fileVersions,
       };
     }
 
@@ -1505,7 +1638,7 @@ export class StudentService {
       59
     );
 
-    // Create new report with AUTO-APPROVAL
+    // Create new report with SUBMITTED status for manual faculty approval
     let report;
     let shouldIncrementReportCount = true;
 
@@ -1525,9 +1658,8 @@ export class StudentService {
           reportFileUrl: reportDto.reportFileUrl,
           monthName:
             reportDto.monthName || MONTH_NAMES[reportDto.reportMonth - 1],
-          status: MonthlyReportStatus.APPROVED, // AUTO-APPROVAL
-          isApproved: true,
-          approvedAt: now,
+          status: MonthlyReportStatus.SUBMITTED,
+          isApproved: false,
           submittedAt: now,
           submissionWindowStart,
           submissionWindowEnd,
@@ -1567,9 +1699,8 @@ export class StudentService {
             reportFileUrl: reportDto.reportFileUrl,
             monthName:
               reportDto.monthName || MONTH_NAMES[reportDto.reportMonth - 1],
-            status: MonthlyReportStatus.APPROVED,
-            isApproved: true,
-            approvedAt: now,
+            status: MonthlyReportStatus.SUBMITTED,
+            isApproved: false,
             submittedAt: now,
             submissionWindowStart,
             submissionWindowEnd,
@@ -1581,18 +1712,22 @@ export class StudentService {
         });
         shouldIncrementReportCount = true;
       } else if (conflictingReport.status === MonthlyReportStatus.APPROVED) {
-        report = conflictingReport;
-        shouldIncrementReportCount = false;
+        throw new BadRequestException("Report has already been approved");
       } else {
+        shouldIncrementReportCount = !this.isCountedReportStatus(conflictingReport.status);
         report = await this.prisma.monthlyReport.update({
           where: { id: conflictingReport.id },
           data: {
             reportFileUrl: reportDto.reportFileUrl,
             monthName:
               reportDto.monthName || MONTH_NAMES[reportDto.reportMonth - 1],
-            status: MonthlyReportStatus.APPROVED,
-            isApproved: true,
-            approvedAt: now,
+            status: MonthlyReportStatus.SUBMITTED,
+            isApproved: false,
+            approvedAt: null,
+            approvedBy: null,
+            reviewedAt: null,
+            reviewedBy: null,
+            reviewComments: null,
             submittedAt: now,
             submissionWindowStart:
               conflictingReport.submissionWindowStart || submissionWindowStart,
@@ -1626,9 +1761,10 @@ export class StudentService {
           reportId: report.id,
           reportMonth: reportDto.reportMonth,
           reportYear: reportDto.reportYear,
-          status: MonthlyReportStatus.APPROVED,
+          status: MonthlyReportStatus.SUBMITTED,
           isOverdue,
-          autoApproved: true,
+          reportFileUrl: reportDto.reportFileUrl,
+          manualApprovalRequired: true,
         },
       })
       .catch(() => {});
@@ -1642,10 +1778,13 @@ export class StudentService {
       );
     }
 
+    const fileVersions = await this.getReportFileVersions(report.id, report.reportFileUrl, report.status);
+
     return {
       ...report,
-      message: "Report submitted and auto-approved successfully",
-      autoApproved: true,
+      message: "Report submitted successfully and sent for faculty approval",
+      autoApproved: false,
+      fileVersions,
     };
   }
 
@@ -1687,13 +1826,23 @@ export class StudentService {
       status: existing.status,
     };
 
+    if (
+      reportDto.status === MonthlyReportStatus.APPROVED ||
+      reportDto.status === MonthlyReportStatus.REJECTED ||
+      reportDto.status === MonthlyReportStatus.UNDER_REVIEW
+    ) {
+      throw new BadRequestException(
+        "Students cannot set review status directly. Submit report for faculty review."
+      );
+    }
+
     const updated = await this.prisma.monthlyReport.update({
       where: { id },
       data: {
         reportFileUrl: reportDto.reportFileUrl,
         monthName: reportDto.monthName,
         status: reportDto.status,
-        reviewComments: reportDto.reviewComments,
+        reviewComments: undefined,
         submittedAt:
           reportDto.status === MonthlyReportStatus.SUBMITTED
             ? new Date()
@@ -1755,11 +1904,10 @@ export class StudentService {
       },
     });
 
-    // Decrement the submitted reports counter ONLY if report was APPROVED
-    // DRAFT/SUBMITTED/REJECTED reports were never counted, so don't decrement
+    // Decrement counter for statuses that contribute to submittedReportsCount.
     if (
       existing.applicationId &&
-      existing.status === MonthlyReportStatus.APPROVED
+      this.isCountedReportStatus(existing.status)
     ) {
       await this.expectedCycleService.decrementReportCount(
         existing.applicationId
@@ -2054,12 +2202,19 @@ export class StudentService {
       return true;
     });
 
+    const reportsWithVersions = await Promise.all(
+      validReports.map(async (report) => ({
+        ...report,
+        fileVersions: await this.getReportFileVersions(report.id, report.reportFileUrl, report.status),
+      }))
+    );
+
     return {
-      reports: validReports,
-      total: validReports.length,
+      reports: reportsWithVersions,
+      total: reportsWithVersions.length,
       page,
       limit,
-      totalPages: Math.ceil(validReports.length / limit),
+      totalPages: Math.ceil(reportsWithVersions.length / limit),
     };
   }
 
@@ -2262,7 +2417,14 @@ export class StudentService {
       orderBy: [{ reportYear: "asc" }, { reportMonth: "asc" }],
     });
 
-    return this.formatReportsWithStatus(reports, application);
+    const reportsWithVersions = await Promise.all(
+      reports.map(async (report) => ({
+        ...report,
+        fileVersions: await this.getReportFileVersions(report.id, report.reportFileUrl, report.status),
+      }))
+    );
+
+    return this.formatReportsWithStatus(reportsWithVersions, application);
   }
 
   /**
@@ -2381,12 +2543,14 @@ export class StudentService {
     }
 
     const submissionStatus = this.getReportSubmissionStatus(report);
+    const fileVersions = await this.getReportFileVersions(report.id, report.reportFileUrl, report.status);
 
     return {
       ...report,
       submissionStatus,
       autoApproved:
         report.isApproved && report.status === MonthlyReportStatus.APPROVED,
+      fileVersions,
     };
   }
 
@@ -2535,6 +2699,7 @@ export class StudentService {
             reportId: updated.id,
             reportMonth: reportDto.reportMonth,
             reportYear: reportDto.reportYear,
+            previousReportFileUrl: existingReport.reportFileUrl,
             reportFileUrl: reportDto.reportFileUrl,
           },
         })

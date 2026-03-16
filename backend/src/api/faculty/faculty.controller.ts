@@ -624,7 +624,7 @@ export class FacultyController {
   }
 
   @Post('students/:id/reset-password')
-  @Roles(Role.TEACHER, Role.TEACHER)
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Reset assigned student password' })
   @ApiResponse({ status: 200, description: 'Student password reset successfully' })
   async resetStudentPassword(

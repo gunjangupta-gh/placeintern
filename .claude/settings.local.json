@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh -o StrictHostKeyChecking=no -i \"D:\\\\chrome download\\\\gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"echo ''Connection successful''\")",
+      "Bash(where:*)",
+      "Bash(dir \"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\")",
+      "Bash(dir \"C:\\\\Program Files \\(x86\\)\\\\PuTTY\\\\plink.exe\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -batch -ssh -i \"D:\\\\chrome download\\\\gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"echo ''Connection successful'' && uname -a\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -batch -ssh -i \"D:\\\\chrome download\\\\gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"mkdir -p /root/backups && mkdir -p /root/scripts\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -batch -ssh -i \"D:\\\\chrome download\\\\gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"echo ''#!/bin/bash'' > /root/scripts/pg_backup.sh\")",
+      "Bash(cmd /c \"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -batch -ssh -i \"D:\\\\chrome download\\\\gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"echo IyEvYmluL2Jhc2gKCiMgUG9zdGdyZVNRTCBCYWNrdXAgU2NyaXB0CgpEQl9OQU1FPXBsYWNlaW50ZXJuCkRCX1VTRVI9cGxhY2VpbnRlcm4KREI9UEFTU1dPUkQ9UGxhY2VpbnRlcm4xMjMKREJfSE9TVD0xMjcuMC4wLjEKREJfUE9SVD01NDMyCgpCQUNLVVBfRElSPS9yb290L2JhY2t1cHMKUkVURU5USU9OX0RBWVM9NQpUSU1FU1RBTVA9XCQoZGF0ZSArJVklbSVkXyVIJU0lUykKQkFDS1VQX0ZJTEU9XCR7QkFDS1VQX0RJUn0vXCR7REJfTkFNRX1fXCR7VElNRVNUQU1QfS5zcWwuZ3oKCm1rZGlyIC1wIFwkQkFDS1VQX0RJUgpleHBvcnQgUEdQQVNTV09SRD1cJERCX1BBU1NXT1JECgplY2hvICJbXCQoZGF0ZSldIFN0YXJ0aW5nIGJhY2t1cCBvZiBkYXRhYmFzZTogXCREQl9OQU1FIgpwZ19kdW1wIC1oIFwkREJfSE9TVCAtcCBcJERCX1BPUlQgLVUgXCREQl9VU0VSIC1kIFwkREJfTkFNRSB8IGd6aXAgPiBcJEJBQ0tVUF9GSUxFCgppZiBbIFwkPyAtZXEgMCBdOyB0aGVuCiAgICBlY2hvICJbXCQoZGF0ZSldIEJhY2t1cCBzdWNjZXNzZnVsOiBcJEJBQ0tVUF9GSUxFIgogICAgZHUgLWggXCRCQUNLVVBfRklMRQplbHNlCiAgICBlY2hvICJbXCQoZGF0ZSldIEVSUk9SOiBCYWNrdXAgZmFpbGVkISIKICAgIGV4aXQgMQpmaQoKZWNobyAiW1wkKGRhdGUpXSBDbGVhbmluZyB1cCBiYWNrdXBzIG9sZGVyIHRoYW4gXCRSRVRFTlRJT05fREFZUyBkYXlzLi4uIgpmaW5kIFwkQkFDS1VQX0RJUiAtbmFtZSAiKi5zcWwuZ3oiIC10eXBlIGYgLW10aW1lICtcJFJFVEVOVElPTl9EQVlTIC1kZWxldGUKCmVjaG8gIltcJChkYXRlKV0gQ3VycmVudCBiYWNrdXBzOiIKbHMgLWxoIFwkQkFDS1VQX0RJUi8qLnNxbC5neiAyPi9kZXYvbnVsbAplY2hvICJbXCQoZGF0ZSldIEJhY2t1cCBwcm9jZXNzIGNvbXBsZXRlZCIK | base64 -d > /root/scripts/pg_backup.sh\")",
+      "Bash(/mnt/c/Program\\\\ Files/PuTTY/plink.exe:*)",
+      "Bash(echo:*)",
+      "Bash(\"/c/Program Files/PuTTY/plink.exe\" -batch -ssh -i \"/d/chrome download/gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"echo test\")",
+      "Bash(\"/c/Program Files/PuTTY/plink.exe\" -batch -ssh -i \"/d/chrome download/gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"chmod +x /root/scripts/pg_backup.sh && cat /root/scripts/pg_backup.sh\")",
+      "Bash(\"/c/Program Files/PuTTY/plink.exe\" -batch -ssh -i \"/d/chrome download/gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"/root/scripts/pg_backup.sh\")",
+      "Bash(\"/c/Program Files/PuTTY/plink.exe\" -batch -ssh -i \"/d/chrome download/gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"sed -i ''1s/.*/#!/bin/bash/'' /root/scripts/pg_backup.sh && head -1 /root/scripts/pg_backup.sh\")",
+      "Bash(\"/c/Program Files/PuTTY/plink.exe\" -batch -ssh -i \"/d/chrome download/gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"sed -i ''1s|.*|#!/bin/bash|'' /root/scripts/pg_backup.sh && head -1 /root/scripts/pg_backup.sh\")",
+      "Bash(\"/c/Program Files/PuTTY/plink.exe\" -batch -ssh -i \"/d/chrome download/gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"bash /root/scripts/pg_backup.sh\")"
+    ]
+  }
+}

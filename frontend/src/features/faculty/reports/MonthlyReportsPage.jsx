@@ -49,8 +49,11 @@ import {
   selectStudents,
   viewMonthlyReport,
   deleteMonthlyReport,
+  approveMonthlyReport,
+  rejectMonthlyReport,
 } from '../store/facultySlice';
 import ProfileAvatar from '../../../components/common/ProfileAvatar';
+import { openFileWithPresignedUrl } from '../../../utils/imageUtils';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -58,6 +61,92 @@ const MONTH_NAMES = [
 ];
 
 const { Title, Text, Paragraph } = Typography;
+
+const formatVersionTimestamp = (value) => {
+  if (!value) return '-';
+  const parsed = dayjs(value);
+  return parsed.isValid() ? parsed.format('DD MMM YYYY, hh:mm A') : '-';
+};
+
+const getVersionLabel = (versionItem, index) => {
+  if (typeof versionItem?.version === 'number') return `v${versionItem.version}`;
+  return `v${index + 1}`;
+};
+
+const getVersionStatusTag = (status) => {
+  if (!status) return null;
+
+  const normalized = String(status).toUpperCase();
+  if (normalized === 'APPROVED') {
+    return <Tag color="green" className="ml-2">Approved</Tag>;
+  }
+  if (normalized === 'REJECTED') {
+    return <Tag color="red" className="ml-2">Rejected</Tag>;
+  }
+  if (normalized === 'SUBMITTED' || normalized === 'UNDER_REVIEW') {
+    return <Tag color="blue" className="ml-2">Pending</Tag>;
+  }
+
+  return <Tag className="ml-2">{normalized}</Tag>;
+};
+
+const renderVersionHistory = (
+  versions = [],
+  currentFileUrl = null,
+  currentSubmittedAt = null,
+  currentStatus = null,
+) => {
+  let history = Array.isArray(versions) ? [...versions] : [];
+
+  if (history.length === 0 && currentFileUrl) {
+    history = [{
+      version: 1,
+      fileUrl: currentFileUrl,
+      uploadedAt: currentSubmittedAt || new Date().toISOString(),
+      reviewStatus: currentStatus || null,
+      uploadedBy: null,
+      uploaderRole: null,
+    }];
+  }
+
+  if (history.length === 0) {
+    return <Text type="secondary">No version history available</Text>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {history.map((versionItem, index) => (
+        <div
+          key={`${versionItem?.fileUrl || 'version'}-${index}`}
+          className="rounded-lg p-2 border flex items-center justify-between gap-2"
+        >
+          <div className="min-w-0">
+            <div className="font-medium text-xs flex items-center">
+              {getVersionLabel(versionItem, index)}
+              {getVersionStatusTag(versionItem?.reviewStatus)}
+            </div>
+            <div className="text-xs truncate" style={{ color: '#6b7280' }}>
+              {formatVersionTimestamp(versionItem?.uploadedAt)}
+            </div>
+            {(versionItem?.uploadedBy || versionItem?.uploaderRole) && (
+              <div className="text-[11px] truncate" style={{ color: '#9ca3af' }}>
+                {versionItem?.uploadedBy || 'Unknown'} {versionItem?.uploaderRole ? `(${versionItem.uploaderRole})` : ''}
+              </div>
+            )}
+          </div>
+          <Button
+            type="link"
+            size="small"
+            onClick={() => openFileWithPresignedUrl(versionItem?.fileUrl)}
+            disabled={!versionItem?.fileUrl}
+          >
+            Open
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const getStatusConfig = (status) => {
   const configs = {
@@ -85,6 +174,10 @@ const MonthlyReportsPage = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [detailDrawer, setDetailDrawer] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [rejectReason, setRejectReason] = useState('Please revise and upload again.');
+  const [rejectingReportId, setRejectingReportId] = useState(null);
+  const [isRejecting, setIsRejecting] = useState(false);
 
   // Upload modal states
   const [modalVisible, setModalVisible] = useState(false);
@@ -169,6 +262,53 @@ const MonthlyReportsPage = () => {
     }
   };
 
+  const handleApproveReport = async (reportId) => {
+    try {
+      await dispatch(approveMonthlyReport({ reportId, remarks: 'Approved by faculty' })).unwrap();
+      toast.success('Report approved successfully');
+      dispatch(fetchMonthlyReports({ page: 1, limit: 1000, forceRefresh: true }));
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to approve report';
+      toast.error(errorMessage);
+    }
+  };
+
+  const openRejectModal = (reportId) => {
+    setRejectingReportId(reportId);
+    setRejectReason('Please revise and upload again.');
+    setRejectModalVisible(true);
+  };
+
+  const closeRejectModal = () => {
+    if (isRejecting) return;
+    setRejectModalVisible(false);
+    setRejectingReportId(null);
+    setRejectReason('Please revise and upload again.');
+  };
+
+  const handleRejectReport = async () => {
+    if (!rejectingReportId) return;
+
+    const trimmedReason = rejectReason.trim();
+    if (trimmedReason.length < 10) {
+      toast.error('Rejection reason must be at least 10 characters');
+      return;
+    }
+
+    setIsRejecting(true);
+    try {
+      await dispatch(rejectMonthlyReport({ reportId: rejectingReportId, reason: trimmedReason })).unwrap();
+      toast.success('Report rejected');
+      closeRejectModal();
+      dispatch(fetchMonthlyReports({ page: 1, limit: 1000, forceRefresh: true }));
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to reject report';
+      toast.error(errorMessage);
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
   const handleViewDetails = (report) => {
     setSelectedReport(report);
     setDetailDrawer(true);
@@ -243,7 +383,7 @@ const MonthlyReportsPage = () => {
 
       await dispatch(uploadMonthlyReport(formData)).unwrap();
 
-      toast.success('Report uploaded successfully!');
+      toast.success('Report uploaded and submitted for faculty approval');
       handleCloseModal();
       dispatch(fetchMonthlyReports({ page: 1, limit: 1000, forceRefresh: true }));
     } catch (error) {
@@ -381,14 +521,14 @@ const MonthlyReportsPage = () => {
       width: '20%',
       render: (_, record) => (
         <Space size="small">
-          {/* <Tooltip title="View Details">
+          <Tooltip title="View Details">
             <Button
               type="text"
               size="small"
               icon={<FileTextOutlined />}
               onClick={() => handleViewDetails(record)}
             />
-          </Tooltip> */}
+          </Tooltip>
           {record.reportFileUrl && (
             <Tooltip title="View Report">
               <Button
@@ -396,6 +536,27 @@ const MonthlyReportsPage = () => {
                 size="small"
                 icon={<EyeOutlined />}
                 onClick={() => handleViewReport(record)}
+              />
+            </Tooltip>
+          )}
+          {record.status !== 'APPROVED' && (
+            <Tooltip title="Approve Report">
+              <Button
+                type="text"
+                size="small"
+                icon={<CheckCircleOutlined />}
+                onClick={() => handleApproveReport(record.id)}
+              />
+            </Tooltip>
+          )}
+          {record.status !== 'APPROVED' && (
+            <Tooltip title="Reject Report">
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<CloseCircleOutlined />}
+                onClick={() => openRejectModal(record.id)}
               />
             </Tooltip>
           )}
@@ -654,6 +815,15 @@ const MonthlyReportsPage = () => {
                     </Paragraph>
                   </div>
                 )}
+                <div>
+                  <Text className="text-[10px] uppercase font-bold block mb-1" style={{ color: token.colorTextTertiary }}>Version History</Text>
+                  {renderVersionHistory(
+                    selectedReport.fileVersions || [],
+                    selectedReport.reportFileUrl,
+                    selectedReport.submittedAt,
+                    selectedReport.status,
+                  )}
+                </div>
               </div>
             </div>
 
@@ -822,6 +992,42 @@ const MonthlyReportsPage = () => {
             className="rounded-lg"
             style={{ padding: '10px 12px' }}
           />
+        </div>
+      </Modal>
+
+      {/* Reject Reason Modal */}
+      <Modal
+        title="Reject Report"
+        open={rejectModalVisible}
+        onCancel={closeRejectModal}
+        onOk={handleRejectReport}
+        okText="Reject"
+        okButtonProps={{
+          danger: true,
+          loading: isRejecting,
+          disabled: rejectReason.trim().length < 10,
+        }}
+        cancelButtonProps={{ disabled: isRejecting }}
+        destroyOnClose
+      >
+        <div className="pt-2 space-y-2">
+          <Text className="text-xs font-semibold" style={{ color: token.colorTextSecondary }}>
+            Rejection Reason
+          </Text>
+          <Input.TextArea
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Enter rejection reason"
+            autoSize={{ minRows: 4, maxRows: 6 }}
+            maxLength={500}
+            showCount
+          />
+          <Text
+            className="text-xs"
+            style={{ color: rejectReason.trim().length >= 10 ? token.colorTextTertiary : token.colorError }}
+          >
+            Minimum 10 characters required.
+          </Text>
         </div>
       </Modal>
     </div>

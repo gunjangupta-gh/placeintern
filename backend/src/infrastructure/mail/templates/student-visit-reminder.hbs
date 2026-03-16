@@ -23,6 +23,9 @@
 
       <div class="highlight">
         <strong>Reminder:</strong> You have <strong>{{upcomingCount}} upcoming faculty visit(s)</strong>.
+        {{#if month}}
+          <br />Schedule month: <strong>{{month}} {{year}}</strong>.
+        {{/if}}
         <br />Next visit is scheduled for <strong>{{nextVisitDate}}</strong>.
       </div>
 

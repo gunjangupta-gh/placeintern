@@ -3114,7 +3114,7 @@ export class PrincipalService {
     const facultyList = await this.prisma.user.findMany({
       where: {
         institutionId,
-        role: { in: [Role.TEACHER] },
+        role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
         active: true,
       },
       select: { id: true, name: true },
@@ -4072,7 +4072,7 @@ export class PrincipalService {
 
     const where: any = {
       institutionId: principal.institutionId,
-      role: 'TEACHER',
+      role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
       active: true,
     };
 
@@ -4364,7 +4364,7 @@ export class PrincipalService {
     const faculty = await this.prisma.user.findFirst({
       where: {
         id: facultyId,
-        role: { in: ['TEACHER'] },
+        role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
       },
       select: {
         id: true,
@@ -4737,7 +4737,7 @@ export class PrincipalService {
       this.prisma.user.findMany({
         where: {
           institutionId,
-          role: { in: [Role.TEACHER] },
+          role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
           active: true,
         },
         select: {
