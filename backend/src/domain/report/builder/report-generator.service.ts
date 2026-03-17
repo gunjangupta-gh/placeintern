@@ -4,7 +4,6 @@ import { PrismaService } from '../../../core/database/prisma.service';
 import { ReportType } from './interfaces/report.interface';
 import {
   getMonthCycle,
-  getPrincipalFeedbackDueDates,
 } from '../../../common/utils/monthly-cycle.util';
 
 /**
@@ -4495,12 +4494,11 @@ export class ReportGeneratorService {
       );
     };
 
-    // Calculate expected due slots per institution per interval bucket.
+    // Calculate expected visits per institution from unique active internship companies.
     const internshipWhere: Record<string, unknown> = {
       isSelfIdentified: true,
       isActive: true,
-      startDate: { not: null },
-      endDate: { not: null },
+      companyName: { not: null },
     };
 
     if (filters?.institutionId) {
@@ -4510,8 +4508,7 @@ export class ReportGeneratorService {
     const internshipApps = await this.prisma.internshipApplication.findMany({
       where: internshipWhere as any,
       select: {
-        startDate: true,
-        endDate: true,
+        companyName: true,
         student: {
           select: {
             institutionId: true,
@@ -4520,71 +4517,77 @@ export class ReportGeneratorService {
       },
     });
 
-    const institutionExpectedByInterval = new Map<string, Map<string, number>>();
-
+    const institutionCompanies = new Map<string, Set<string>>();
     for (const app of internshipApps) {
-      if (!app.startDate || !app.endDate || !app.student?.institutionId) {
-        continue;
+      const institutionId = app.student?.institutionId;
+      const companyName = app.companyName?.trim();
+      if (!institutionId || !companyName) continue;
+
+      if (!institutionCompanies.has(institutionId)) {
+        institutionCompanies.set(institutionId, new Set<string>());
       }
 
-      const institutionId = app.student.institutionId;
-      const dueDates = getPrincipalFeedbackDueDates(app.startDate, app.endDate).filter(
-        (dueDate) => dueDate >= intervalStartBoundary && dueDate <= intervalEndBoundary,
-      );
-
-      if (!institutionExpectedByInterval.has(institutionId)) {
-        institutionExpectedByInterval.set(institutionId, new Map<string, number>());
-      }
-
-      const intervalMap = institutionExpectedByInterval.get(institutionId)!;
-      for (const dueDate of dueDates) {
-        const bucket = getIntervalBucket(dueDate);
-        if (!bucket) continue;
-
-        intervalMap.set(
-          bucket.keyBase,
-          (intervalMap.get(bucket.keyBase) || 0) + 1,
-        );
-      }
+      institutionCompanies.get(institutionId)!.add(companyName.toLowerCase());
     }
 
-    // Calculate completed counts per institution/principal per interval bucket.
-    const principalCompletedByInterval = new Map<string, Map<string, number>>();
+    const institutionExpectedCompanyCount = new Map<string, number>();
+    institutionCompanies.forEach((companySet, institutionId) => {
+      institutionExpectedCompanyCount.set(institutionId, companySet.size);
+    });
+
+    // Calculate completed company coverage per institution/principal.
+    const principalCompletedCompanies = new Map<string, Set<string>>();
+    const principalCompletedCompaniesByInterval = new Map<string, Map<string, Set<string>>>();
 
     for (const log of visitLogs) {
       if (log.status !== 'COMPLETED' || !log.visitDate) {
         continue;
       }
 
-      const bucket = getIntervalBucket(new Date(log.visitDate));
-      if (!bucket) continue;
-
       const institutionId = log.institutionId || '';
       const principalId = log.principalId || '';
       const key = `${institutionId}::${principalId}`;
+      const companiesInLog = new Set(
+        log.students
+          .map((s) => s.student?.internshipApplications?.[0]?.companyName?.trim().toLowerCase())
+          .filter((companyName): companyName is string => Boolean(companyName)),
+      );
 
-      if (!principalCompletedByInterval.has(key)) {
-        principalCompletedByInterval.set(key, new Map<string, number>());
+      if (!principalCompletedCompanies.has(key)) {
+        principalCompletedCompanies.set(key, new Set<string>());
       }
 
-      const intervalMap = principalCompletedByInterval.get(key)!;
-      intervalMap.set(
-        bucket.keyBase,
-        (intervalMap.get(bucket.keyBase) || 0) + 1,
-      );
+      const completedCompanies = principalCompletedCompanies.get(key)!;
+      companiesInLog.forEach((companyName) => completedCompanies.add(companyName));
+
+      const bucket = getIntervalBucket(new Date(log.visitDate));
+      if (!bucket) continue;
+
+      if (!principalCompletedCompaniesByInterval.has(key)) {
+        principalCompletedCompaniesByInterval.set(key, new Map<string, Set<string>>());
+      }
+
+      const intervalMap = principalCompletedCompaniesByInterval.get(key)!;
+      if (!intervalMap.has(bucket.keyBase)) {
+        intervalMap.set(bucket.keyBase, new Set<string>());
+      }
+
+      const intervalCompanies = intervalMap.get(bucket.keyBase)!;
+      companiesInLog.forEach((companyName) => intervalCompanies.add(companyName));
     }
 
     const globalExpectedByBucket = new Map<string, number>();
-    institutionExpectedByInterval.forEach((intervalMap) => {
-      intervalMap.forEach((count, key) => {
-        globalExpectedByBucket.set(key, (globalExpectedByBucket.get(key) || 0) + count);
-      });
+    const totalExpectedCompanyVisits = Array.from(institutionExpectedCompanyCount.values())
+      .reduce((sum, count) => sum + count, 0);
+
+    inReportRangeBuckets.forEach((bucket) => {
+      globalExpectedByBucket.set(bucket.keyBase, totalExpectedCompanyVisits);
     });
 
     const globalCompletedByBucket = new Map<string, number>();
-    principalCompletedByInterval.forEach((intervalMap) => {
-      intervalMap.forEach((count, key) => {
-        globalCompletedByBucket.set(key, (globalCompletedByBucket.get(key) || 0) + count);
+    principalCompletedCompaniesByInterval.forEach((intervalMap) => {
+      intervalMap.forEach((companySet, key) => {
+        globalCompletedByBucket.set(key, (globalCompletedByBucket.get(key) || 0) + companySet.size);
       });
     });
 
@@ -4615,19 +4618,15 @@ export class ReportGeneratorService {
       const institutionId = log.institutionId || '';
       const principalId = log.principalId || '';
       const principalKey = `${institutionId}::${principalId}`;
-      const expectedMap = institutionExpectedByInterval.get(institutionId) || new Map<string, number>();
-      const completedMap = principalCompletedByInterval.get(principalKey) || new Map<string, number>();
+      const completedMap = principalCompletedCompaniesByInterval.get(principalKey) || new Map<string, Set<string>>();
+      const completedCompanyCount = principalCompletedCompanies.get(principalKey)?.size || 0;
 
-      let expectedVisits = 0;
-      let completedVisits = 0;
+      const expectedVisits = institutionExpectedCompanyCount.get(institutionId) || 0;
       const intervalColumns: Record<string, number> = {};
 
       for (const bucket of finalBuckets) {
-        const expectedForBucket = expectedMap.get(bucket.keyBase) || 0;
-        const completedForBucket = completedMap.get(bucket.keyBase) || 0;
-
-        expectedVisits += expectedForBucket;
-        completedVisits += completedForBucket;
+        const expectedForBucket = expectedVisits;
+        const completedForBucket = completedMap.get(bucket.keyBase)?.size || 0;
 
         intervalColumns[bucket.expectedField] = expectedForBucket;
         intervalColumns[bucket.completedField] = completedForBucket;
@@ -4651,8 +4650,8 @@ export class ReportGeneratorService {
         visitDuration: log.visitDuration ?? 'N/A',
         status: statusMap[log.status] || log.status,
         expectedVisits,
-        completedVisits,
-        pendingVisits: Math.max(0, expectedVisits - completedVisits),
+        completedVisits: completedCompanyCount,
+        pendingVisits: Math.max(0, expectedVisits - completedCompanyCount),
         intervalBucket,
         responseFromOrganisation: log.responseFromOrganisation ?? '',
         observationsAboutIndustry: log.observationsAboutIndustry ?? '',
@@ -4705,7 +4704,18 @@ export class ReportGeneratorService {
           select: { id: true, name: true },
         },
         students: {
-          select: { studentId: true },
+          select: {
+            studentId: true,
+            student: {
+              select: {
+                internshipApplications: {
+                  where: { isActive: true },
+                  select: { companyName: true },
+                  take: 1,
+                },
+              },
+            },
+          },
         },
       },
       orderBy: { visitDate: 'desc' },
@@ -4785,12 +4795,11 @@ export class ReportGeneratorService {
       (bucket) => bucket.end >= intervalStartBoundary && bucket.start <= intervalEndBoundary,
     );
 
-    // Get internship applications once and calculate expected due slots per institution bucket.
+    // Get internship applications once and calculate expected visits by unique company per institution.
     const internshipWhere: Record<string, unknown> = {
       isSelfIdentified: true,
       isActive: true,
-      startDate: { not: null },
-      endDate: { not: null },
+      companyName: { not: null },
     };
 
     if (filters?.institutionId) {
@@ -4800,9 +4809,7 @@ export class ReportGeneratorService {
     const internshipApps = await this.prisma.internshipApplication.findMany({
       where: internshipWhere as any,
       select: {
-        id: true,
-        startDate: true,
-        endDate: true,
+        companyName: true,
         student: {
           select: {
             institutionId: true,
@@ -4811,7 +4818,18 @@ export class ReportGeneratorService {
       },
     });
 
-    const institutionExpectedByInterval = new Map<string, Map<string, number>>();
+    const institutionCompanies = new Map<string, Set<string>>();
+    for (const app of internshipApps) {
+      const institutionId = app.student?.institutionId;
+      const companyName = app.companyName?.trim();
+      if (!institutionId || !companyName) continue;
+
+      if (!institutionCompanies.has(institutionId)) {
+        institutionCompanies.set(institutionId, new Set<string>());
+      }
+
+      institutionCompanies.get(institutionId)!.add(companyName.toLowerCase());
+    }
 
     const getIntervalBucket = (date: Date) => {
       return inReportRangeBuckets.find(
@@ -4819,32 +4837,10 @@ export class ReportGeneratorService {
       );
     };
 
-    for (const app of internshipApps) {
-      if (!app.startDate || !app.endDate || !app.student?.institutionId) {
-        continue;
-      }
-
-      const institutionId = app.student.institutionId;
-      const dueDates = getPrincipalFeedbackDueDates(app.startDate, app.endDate).filter(
-        (dueDate) => dueDate >= intervalStartBoundary && dueDate <= intervalEndBoundary,
-      );
-
-      if (!institutionExpectedByInterval.has(institutionId)) {
-        institutionExpectedByInterval.set(institutionId, new Map<string, number>());
-      }
-
-      const intervalMap = institutionExpectedByInterval.get(institutionId)!;
-
-      for (const dueDate of dueDates) {
-        const bucket = getIntervalBucket(dueDate);
-        if (!bucket) continue;
-
-        intervalMap.set(
-          bucket.keyBase,
-          (intervalMap.get(bucket.keyBase) || 0) + 1,
-        );
-      }
-    }
+    const institutionExpectedCompanyCount = new Map<string, number>();
+    institutionCompanies.forEach((companySet, institutionId) => {
+      institutionExpectedCompanyCount.set(institutionId, companySet.size);
+    });
 
     // Group by institution and principal
     const summaryMap = new Map<string, {
@@ -4860,9 +4856,10 @@ export class ReportGeneratorService {
       draftVisits: number;
       ratings: number[];
       studentsVisited: Set<string>;
+      completedCompanies: Set<string>;
       followUpsRequired: number;
       lastVisitDate: Date | null;
-      intervalCompleted: Map<string, number>;
+      intervalCompletedCompanies: Map<string, Set<string>>;
     }>();
 
     visitLogs.forEach((log) => {
@@ -4882,9 +4879,10 @@ export class ReportGeneratorService {
           draftVisits: 0,
           ratings: [],
           studentsVisited: new Set(),
+          completedCompanies: new Set(),
           followUpsRequired: 0,
           lastVisitDate: null,
-          intervalCompleted: new Map<string, number>(),
+          intervalCompletedCompanies: new Map<string, Set<string>>(),
         });
       }
 
@@ -4918,27 +4916,38 @@ export class ReportGeneratorService {
 
       // Track completed visits per 15-day bucket.
       if (log.status === 'COMPLETED' && log.visitDate) {
+        const companiesInLog = new Set(
+          log.students
+            .map((s) => s.student?.internshipApplications?.[0]?.companyName?.trim().toLowerCase())
+            .filter((companyName): companyName is string => Boolean(companyName)),
+        );
+
+        companiesInLog.forEach((companyName) => summary.completedCompanies.add(companyName));
+
         const bucket = getIntervalBucket(new Date(log.visitDate));
         if (bucket) {
-          summary.intervalCompleted.set(
-            bucket.keyBase,
-            (summary.intervalCompleted.get(bucket.keyBase) || 0) + 1,
-          );
+          if (!summary.intervalCompletedCompanies.has(bucket.keyBase)) {
+            summary.intervalCompletedCompanies.set(bucket.keyBase, new Set<string>());
+          }
+
+          const intervalCompanies = summary.intervalCompletedCompanies.get(bucket.keyBase)!;
+          companiesInLog.forEach((companyName) => intervalCompanies.add(companyName));
         }
       }
     });
 
     const globalExpectedByBucket = new Map<string, number>();
-    institutionExpectedByInterval.forEach((intervalMap) => {
-      intervalMap.forEach((count, key) => {
-        globalExpectedByBucket.set(key, (globalExpectedByBucket.get(key) || 0) + count);
-      });
+    const totalExpectedCompanyVisits = Array.from(institutionExpectedCompanyCount.values())
+      .reduce((sum, count) => sum + count, 0);
+
+    inReportRangeBuckets.forEach((bucket) => {
+      globalExpectedByBucket.set(bucket.keyBase, totalExpectedCompanyVisits);
     });
 
     const globalCompletedByBucket = new Map<string, number>();
     summaryMap.forEach((summary) => {
-      summary.intervalCompleted.forEach((count, key) => {
-        globalCompletedByBucket.set(key, (globalCompletedByBucket.get(key) || 0) + count);
+      summary.intervalCompletedCompanies.forEach((companySet, key) => {
+        globalCompletedByBucket.set(key, (globalCompletedByBucket.get(key) || 0) + companySet.size);
       });
     });
 
@@ -4950,20 +4959,14 @@ export class ReportGeneratorService {
     );
 
     const results = Array.from(summaryMap.values()).map((summary) => {
-      const expectedMap = summary.institutionId
-        ? institutionExpectedByInterval.get(summary.institutionId) || new Map<string, number>()
-        : new Map<string, number>();
-
-      let expectedVisits = 0;
-      let completedInIntervals = 0;
+      const expectedVisits = summary.institutionId
+        ? (institutionExpectedCompanyCount.get(summary.institutionId) || 0)
+        : 0;
       const intervalColumns: Record<string, number> = {};
 
       for (const bucket of finalBuckets) {
-        const expectedForBucket = expectedMap.get(bucket.keyBase) || 0;
-        const completedForBucket = summary.intervalCompleted.get(bucket.keyBase) || 0;
-
-        expectedVisits += expectedForBucket;
-        completedInIntervals += completedForBucket;
+        const expectedForBucket = expectedVisits;
+        const completedForBucket = summary.intervalCompletedCompanies.get(bucket.keyBase)?.size || 0;
 
         intervalColumns[bucket.expectedField] = expectedForBucket;
         intervalColumns[bucket.completedField] = completedForBucket;
@@ -4975,11 +4978,11 @@ export class ReportGeneratorService {
         principalName: summary.principalName,
         totalVisits: summary.totalVisits,
         expectedVisits,
-        pendingVisits: Math.max(0, expectedVisits - completedInIntervals),
+        pendingVisits: Math.max(0, expectedVisits - summary.completedCompanies.size),
         physicalVisits: summary.physicalVisits,
         virtualVisits: summary.virtualVisits,
         telephonicVisits: summary.telephonicVisits,
-        completedVisits: summary.completedVisits,
+        completedVisits: summary.completedCompanies.size,
         draftVisits: summary.draftVisits,
         avgSatisfactionRating: summary.ratings.length > 0
           ? Math.round((summary.ratings.reduce((a, b) => a + b, 0) / summary.ratings.length) * 10) / 10

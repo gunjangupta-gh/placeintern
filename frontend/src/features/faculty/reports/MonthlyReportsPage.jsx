@@ -626,6 +626,21 @@ const MonthlyReportsPage = () => {
           </div>
         </div>
 
+        <Alert
+          type="info"
+          showIcon
+          className="rounded-xl !mb-3"
+          message="Manual Approval Steps"
+          description={
+            <div className="text-sm !space-y-1">
+              <div>1. Open the submitted report from the Actions column and review the file content.</div>
+              <div>2. Click Approve to finalize the monthly report for that month.</div>
+              <div>3. If changes are needed, click Reject and provide a clear reason for correction.</div>
+              <div>4. After rejection, the student can upload a corrected report again for the same month.</div>
+            </div>
+          }
+        />
+
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card size="small" className="rounded-xl shadow-sm" style={{ borderColor: token.colorBorder }}>
