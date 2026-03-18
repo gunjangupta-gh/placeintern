@@ -8,6 +8,7 @@ import 'dotenv/config';
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run') || args.includes('-d');
 const VERBOSE = args.includes('--verbose') || args.includes('-v');
+const FILE_PATH_ARG = args.find(arg => !arg.startsWith('-'));
 
 if (DRY_RUN) {
   console.log('\n*** DRY RUN MODE - No changes will be made to the database ***\n');
@@ -21,7 +22,7 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter } as any);
 
 // Path to the Excel file
-const EXCEL_FILE_PATH = 'D:\\placeintern\\FDP 2026 Annual Training Plan (Final) .xlsx';
+const EXCEL_FILE_PATH = FILE_PATH_ARG || process.env.EXCEL_FILE_PATH || 'D:\\placeintern\\FDP 2026 Annual Training Plan (Final) .xlsx';
 
 interface NominationData {
   trainingTitle: string;

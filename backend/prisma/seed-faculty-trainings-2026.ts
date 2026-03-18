@@ -11,8 +11,12 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter } as any);
 
+// Parse command line arguments
+const args = process.argv.slice(2);
+const FILE_PATH_ARG = args.find(arg => !arg.startsWith('-'));
+
 // Path to the Excel file
-const EXCEL_FILE_PATH = 'D:\\placeintern\\FDP 2026 Annual Training Plan (Final) .xlsx';
+const EXCEL_FILE_PATH = FILE_PATH_ARG || process.env.EXCEL_FILE_PATH || 'D:\\placeintern\\FDP 2026 Annual Training Plan (Final) .xlsx';
 
 interface TrainingData {
   title: string;
