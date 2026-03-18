@@ -45,12 +45,12 @@ const LessonPlanReviewPage = () => {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [form] = Form.useForm();
 
-  const fetchLessonPlans = useCallback(async (isRefresh = false, page = 1) => {
+  const fetchLessonPlans = useCallback(async (isRefresh = false, page = 1, limit = pagination.limit) => {
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
 
-      const params = { page, limit: pagination.limit };
+      const params = { page, limit };
       if (statusFilter && statusFilter !== 'ALL') params.status = statusFilter;
 
       const response = await trainingCoordinatorService.getLessonPlans(params);
@@ -61,6 +61,7 @@ const LessonPlanReviewPage = () => {
         setPagination(prev => ({
           ...prev,
           page: response.pagination.page,
+          limit: response.pagination.limit || limit,
           total: response.pagination.total,
         }));
       }
@@ -104,8 +105,12 @@ const LessonPlanReviewPage = () => {
 
   const handleTableChange = (pag) => {
     setPagination(prev => ({ ...prev, page: pag.current, limit: pag.pageSize }));
-    fetchLessonPlans(false, pag.current);
+    fetchLessonPlans(false, pag.current, pag.pageSize);
   };
+
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, [statusFilter]);
 
   const filteredLessonPlans = lessonPlans.filter((lp) => {
     if (!searchText) return true;

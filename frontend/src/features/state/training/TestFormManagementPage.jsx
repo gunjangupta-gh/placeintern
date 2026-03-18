@@ -71,6 +71,8 @@ const TestFormManagementPage = () => {
   const [responsesLoading, setResponsesLoading] = useState(false);
   const [editing, setEditing] = useState(null);
   const [searchText, setSearchText] = useState("");
+  const [formsPagination, setFormsPagination] = useState({ current: 1, pageSize: 10 });
+  const [responsesPagination, setResponsesPagination] = useState({ current: 1, pageSize: 10 });
   const [questions, setQuestions] = useState([]);
   const [form] = Form.useForm();
 
@@ -403,6 +405,21 @@ const TestFormManagementPage = () => {
     );
   }, [currentForms.list, searchText]);
 
+  useEffect(() => {
+    setFormsPagination((prev) => ({ ...prev, current: 1 }));
+  }, [searchText, activeTab]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredForms.length / formsPagination.pageSize));
+    if (formsPagination.current > maxPage) {
+      setFormsPagination((prev) => ({ ...prev, current: maxPage }));
+    }
+  }, [filteredForms.length, formsPagination.current, formsPagination.pageSize]);
+
+  useEffect(() => {
+    setResponsesPagination((prev) => ({ ...prev, current: 1 }));
+  }, [responsesData.length, responsesModalOpen]);
+
   const searchResultCount = searchText ? filteredForms.length : null;
 
   const tabItems = [
@@ -607,7 +624,20 @@ const TestFormManagementPage = () => {
               dataSource={filteredForms}
               loading={currentForms.loading}
               size="small"
-              pagination={{ pageSize: 10, size: 'small' }}
+              pagination={{
+                current: formsPagination.current,
+                pageSize: formsPagination.pageSize,
+                total: filteredForms.length,
+                size: 'small',
+                showSizeChanger: true,
+                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
+              }}
+              onChange={(pagination) => {
+                setFormsPagination({
+                  current: pagination.current,
+                  pageSize: pagination.pageSize,
+                });
+              }}
               scroll={{ x: 'max-content' }}
             />
           </div>
@@ -1010,7 +1040,20 @@ const TestFormManagementPage = () => {
                     rowKey="id"
                     columns={responseColumns}
                     dataSource={responsesData}
-                    pagination={{ pageSize: 10, size: "small" }}
+                    pagination={{
+                      current: responsesPagination.current,
+                      pageSize: responsesPagination.pageSize,
+                      total: responsesData.length,
+                      size: "small",
+                      showSizeChanger: true,
+                      showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
+                    }}
+                    onChange={(pagination) => {
+                      setResponsesPagination({
+                        current: pagination.current,
+                        pageSize: pagination.pageSize,
+                      });
+                    }}
                     size="small"
                     scroll={{ x: 800 }}
                   />
