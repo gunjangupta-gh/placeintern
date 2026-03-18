@@ -37,6 +37,7 @@ const ApplicationManagementPage = () => {
   const [selected, setSelected] = useState(null);
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [tablePagination, setTablePagination] = useState({ current: 1, pageSize: 10 });
   const [coordinatorLoading, setCoordinatorLoading] = useState(false);
   const [coordinatorApplications, setCoordinatorApplications] = useState([]);
   const [form] = Form.useForm();
@@ -217,6 +218,17 @@ const ApplicationManagementPage = () => {
     });
   }, [applications.list, coordinatorApplications, isCoordinatorRoute, searchText, statusFilter]);
 
+  useEffect(() => {
+    setTablePagination((prev) => ({ ...prev, current: 1 }));
+  }, [searchText, statusFilter, id, isCoordinatorRoute]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredApplications.length / tablePagination.pageSize));
+    if (tablePagination.current > maxPage) {
+      setTablePagination((prev) => ({ ...prev, current: maxPage }));
+    }
+  }, [filteredApplications.length, tablePagination.current, tablePagination.pageSize]);
+
   const searchResultCount = searchText ? filteredApplications.length : null;
 
   return (
@@ -265,7 +277,20 @@ const ApplicationManagementPage = () => {
               dataSource={filteredApplications}
               loading={isCoordinatorRoute ? coordinatorLoading : applications.loading}
               size="small"
-              pagination={{ pageSize: 10, size: 'small', showSizeChanger: true }}
+              pagination={{
+                current: tablePagination.current,
+                pageSize: tablePagination.pageSize,
+                total: filteredApplications.length,
+                size: 'small',
+                showSizeChanger: true,
+                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
+              }}
+              onChange={(pagination) => {
+                setTablePagination({
+                  current: pagination.current,
+                  pageSize: pagination.pageSize,
+                });
+              }}
               aria-label="Applications table"
               scroll={{ x: 'max-content' }}
             />

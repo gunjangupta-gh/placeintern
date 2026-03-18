@@ -42,12 +42,12 @@ const RecommendationsPage = () => {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [form] = Form.useForm();
 
-  const fetchRecommendations = useCallback(async (isRefresh = false, page = 1) => {
+  const fetchRecommendations = useCallback(async (isRefresh = false, page = 1, limit = pagination.limit) => {
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
 
-      const params = { page, limit: pagination.limit };
+      const params = { page, limit };
       if (statusFilter && statusFilter !== 'ALL') params.status = statusFilter;
 
       const response = await trainingCoordinatorService.getRecommendations(params);
@@ -58,6 +58,7 @@ const RecommendationsPage = () => {
         setPagination(prev => ({
           ...prev,
           page: response.pagination.page,
+          limit: response.pagination.limit || limit,
           total: response.pagination.total,
         }));
       }
@@ -101,8 +102,12 @@ const RecommendationsPage = () => {
 
   const handleTableChange = (pag) => {
     setPagination(prev => ({ ...prev, page: pag.current, limit: pag.pageSize }));
-    fetchRecommendations(false, pag.current);
+    fetchRecommendations(false, pag.current, pag.pageSize);
   };
+
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, [statusFilter]);
 
   const getRecommendationTitle = (record) => {
     return record?.title || record?.trainingTitle || 'Training Recommendation';
