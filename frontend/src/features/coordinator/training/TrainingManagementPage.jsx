@@ -41,7 +41,6 @@ import TrainingForm from "../../state/training/components/training/TrainingForm"
 import trainingCoordinatorService from "../../../services/training-coordinator.service";
 import {
   fetchStateTrainings,
-  fetchStateTrainingAttendance,
   fetchStateFeedbackForms,
   fetchStatePreTestForms,
   fetchStatePostTestForms,
@@ -100,7 +99,7 @@ const TrainingManagementPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useSelector((state) => state.auth);
-  const { trainings, feedbackForms, preTestForms, postTestForms, attendance } = useSelector(
+  const { trainings, feedbackForms, preTestForms, postTestForms } = useSelector(
     (state) => state.stateTraining,
   );
   const [searchText, setSearchText] = useState("");
@@ -109,6 +108,7 @@ const TrainingManagementPage = () => {
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [statsModalOpen, setStatsModalOpen] = useState(false);
   const [selectedTraining, setSelectedTraining] = useState(null);
+  const [attendanceData, setAttendanceData] = useState(null);
   const [testModalOpen, setTestModalOpen] = useState(false);
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [actionTraining, setActionTraining] = useState(null);
@@ -339,8 +339,16 @@ const TrainingManagementPage = () => {
 
   const handleViewAttendance = async (training) => {
     setSelectedTraining(training);
-    await dispatch(fetchStateTrainingAttendance({ trainingId: training.id }));
+    setAttendanceData(null);
     setStatsModalOpen(true);
+
+    try {
+      const response = await trainingCoordinatorService.getTrainingAttendance(training.id);
+      setAttendanceData(response?.data || response || null);
+    } catch (error) {
+      setAttendanceData(null);
+      message.error("Failed to load attendance");
+    }
   };
 
   const handleViewTestResponses = async (training) => {
@@ -373,11 +381,20 @@ const TrainingManagementPage = () => {
     if (!trainingToOpen) return;
 
     setSelectedTraining(trainingToOpen);
-    dispatch(fetchStateTrainingAttendance({ trainingId: trainingToOpen.id }));
+    setAttendanceData(null);
     setStatsModalOpen(true);
 
+    trainingCoordinatorService
+      .getTrainingAttendance(trainingToOpen.id)
+      .then((response) => {
+        setAttendanceData(response?.data || response || null);
+      })
+      .catch(() => {
+        setAttendanceData(null);
+      });
+
     navigate(location.pathname, { replace: true, state: {} });
-  }, [location.state, location.pathname, trainings.list, dispatch, navigate]);
+  }, [location.state, location.pathname, trainings.list, navigate]);
 
   const handleTogglePublish = async (training) => {
     try {
@@ -747,13 +764,6 @@ const TrainingManagementPage = () => {
       ),
     },
   ];
-
-  const attendanceData = useMemo(() => {
-    if (!selectedTraining || !attendance.list) {
-      return null;
-    }
-    return attendance.list;
-  }, [selectedTraining, attendance.list]);
 
   // Generate date columns for attendance table
   const trainingDates = useMemo(() => {
@@ -1347,7 +1357,11 @@ const TrainingManagementPage = () => {
       {/* Attendance Modal */}
       <Modal
         open={statsModalOpen}
-        onCancel={() => setStatsModalOpen(false)}
+        onCancel={() => {
+          setStatsModalOpen(false);
+          setSelectedTraining(null);
+          setAttendanceData(null);
+        }}
         footer={null}
         width={900}
         centered
@@ -1411,7 +1425,11 @@ const TrainingManagementPage = () => {
                       &times;
                     </span>
                   }
-                  onClick={() => setStatsModalOpen(false)}
+                  onClick={() => {
+                    setStatsModalOpen(false);
+                    setSelectedTraining(null);
+                    setAttendanceData(null);
+                  }}
                   className="hover:bg-slate-100 shrink-0"
                 />
               </div>

@@ -16,6 +16,12 @@ const initialState = {
   },
   applications: {
     list: [],
+    pagination: {
+      page: 1,
+      limit: 10,
+      total: 0,
+      totalPages: 1,
+    },
     loading: false,
     error: null,
   },
@@ -191,8 +197,9 @@ export const fetchStateApplications = createAsyncThunk(
     try {
       const state = getState();
       const lastFetched = state.stateTraining.lastFetched.applications;
+      const hasQueryParams = Object.keys(params || {}).some((key) => key !== 'forceRefresh');
 
-      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
+      if (!params?.forceRefresh && !hasQueryParams && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true };
       }
 
@@ -703,7 +710,14 @@ const stateTrainingSlice = createSlice({
       .addCase(fetchStateApplications.fulfilled, (state, action) => {
         state.applications.loading = false;
         if (!action.payload?.cached) {
-          state.applications.list = action.payload?.data || action.payload?.items || action.payload || [];
+          const list = action.payload?.data || action.payload?.items || action.payload || [];
+          state.applications.list = Array.isArray(list) ? list : [];
+          state.applications.pagination = {
+            page: action.payload?.pagination?.page || 1,
+            limit: action.payload?.pagination?.limit || state.applications.pagination.limit || 10,
+            total: action.payload?.pagination?.total || (Array.isArray(list) ? list.length : 0),
+            totalPages: action.payload?.pagination?.totalPages || 1,
+          };
           state.lastFetched.applications = Date.now();
         }
       })

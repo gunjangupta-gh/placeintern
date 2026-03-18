@@ -279,7 +279,6 @@ const RemindersPage = () => {
         </Tooltip>
       ),
       key: 'enrollments',
-      width: 70,
       render: (_, record) => (
         <Badge
           count={record.pendingEnrollments?.length || 0}
@@ -297,7 +296,6 @@ const RemindersPage = () => {
         </Tooltip>
       ),
       key: 'preTests',
-      width: 60,
       render: (_, record) => (
         <Badge
           count={record.pendingPreTests?.length || 0}
@@ -315,7 +313,6 @@ const RemindersPage = () => {
         </Tooltip>
       ),
       key: 'postTests',
-      width: 60,
       render: (_, record) => (
         <Badge
           count={record.pendingPostTests?.length || 0}
@@ -333,7 +330,6 @@ const RemindersPage = () => {
         </Tooltip>
       ),
       key: 'lessonPlans',
-      width: 60,
       render: (_, record) => (
         <Badge
           count={record.pendingLessonPlans?.length || 0}
@@ -351,7 +347,6 @@ const RemindersPage = () => {
         </Tooltip>
       ),
       key: 'feedback',
-      width: 80,
       render: (_, record) => (
         <Badge
           count={record.pendingFeedbacks?.length || 0}
@@ -370,15 +365,19 @@ const RemindersPage = () => {
       dataIndex: 'trainingTitle',
       key: 'title',
       render: (title) => (
-        <div className="font-medium text-sm text-slate-800 whitespace-normal wrap-break-word leading-5">
-          {title || '-'}
-        </div>
+        <Tooltip title={title || 'Training'}>
+          <div
+            className="font-medium text-sm text-slate-800 truncate max-w-72"
+            title={title || 'Training'}
+          >
+            {title || '-'}
+          </div>
+        </Tooltip>
       ),
     },
     {
       title: 'Training Date',
       key: 'trainingDate',
-      width: 190,
       render: (_, record) => {
         const start = record.trainingStartDate ? new Date(record.trainingStartDate) : null;
         const end = record.trainingEndDate ? new Date(record.trainingEndDate) : null;
@@ -400,13 +399,11 @@ const RemindersPage = () => {
       title: 'Pending',
       dataIndex: 'pendingCount',
       key: 'pendingCount',
-      width: 80,
       render: (count) => <Badge count={count} style={{ backgroundColor: '#faad14' }} />,
     },
     {
       title: '',
       key: 'actions',
-      width: 100,
       render: (_, record) => (
         <Button
           type="primary"

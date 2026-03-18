@@ -339,31 +339,10 @@ const TrainingForm = ({
 
                   const deadlineDate = dayjs(value).startOf("day");
                   const trainingStartDate = dayjs(startDate).startOf("day");
-                  const today = dayjs().startOf("day");
-
-                  if (deadlineDate.isSame(trainingStartDate, "day")) {
-                    return Promise.reject(
-                      new Error("Application deadline cannot be on the same day as training start date"),
-                    );
-                  }
 
                   if (deadlineDate.isAfter(trainingStartDate, "day")) {
                     return Promise.reject(
-                      new Error("Application deadline must be before training start date"),
-                    );
-                  }
-
-                  // If training has already started (or starts today), do not allow past/today deadline.
-                  const trainingStartedOrToday =
-                    trainingStartDate.isSame(today, "day") ||
-                    trainingStartDate.isBefore(today, "day");
-                  const deadlineTodayOrPast =
-                    deadlineDate.isSame(today, "day") ||
-                    deadlineDate.isBefore(today, "day");
-
-                  if (trainingStartedOrToday && deadlineTodayOrPast) {
-                    return Promise.reject(
-                      new Error("For started trainings, application deadline must be a future date"),
+                      new Error("Application deadline must be on or before training start date"),
                     );
                   }
 

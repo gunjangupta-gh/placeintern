@@ -13,6 +13,7 @@ import TrainingEmptyState from '../../../components/training/TrainingEmptyState'
 import { TableRowSkeleton } from '../../../components/training/skeletons/TrainingSkeletons';
 import { fetchStateApplications, reviewStateApplication } from '../store/stateTrainingSlice';
 import trainingCoordinatorService from '../../../services/training-coordinator.service';
+import trainingAdminService from '../../../services/training-admin.service';
 
 const { Text } = Typography;
 
@@ -40,12 +41,21 @@ const ApplicationManagementPage = () => {
   const [tablePagination, setTablePagination] = useState({ current: 1, pageSize: 10 });
   const [coordinatorLoading, setCoordinatorLoading] = useState(false);
   const [coordinatorApplications, setCoordinatorApplications] = useState([]);
+  const [coordinatorPagination, setCoordinatorPagination] = useState({ page: 1, limit: 10, total: 0 });
   const [form] = Form.useForm();
 
   useEffect(() => {
     if (!id) return;
+    const params = {
+      page: tablePagination.current,
+      limit: tablePagination.pageSize,
+    };
+    if (statusFilter !== 'ALL') {
+      params.status = statusFilter;
+    }
+
     if (!isCoordinatorRoute) {
-      dispatch(fetchStateApplications({ trainingId: id }));
+      dispatch(fetchStateApplications({ trainingId: id, ...params, forceRefresh: true }));
       return;
     }
 
@@ -53,14 +63,20 @@ const ApplicationManagementPage = () => {
     const fetchCoordinatorApplications = async () => {
       try {
         setCoordinatorLoading(true);
-        const response = await trainingCoordinatorService.getTrainingApplications(id, { page: 1, limit: 2000 });
+        const response = await trainingCoordinatorService.getTrainingApplications(id, params);
         const list = response?.data || response?.applications || [];
         if (mounted) {
           setCoordinatorApplications(Array.isArray(list) ? list : []);
+          setCoordinatorPagination({
+            page: response?.pagination?.page || params.page,
+            limit: response?.pagination?.limit || params.limit,
+            total: response?.pagination?.total || (Array.isArray(list) ? list.length : 0),
+          });
         }
       } catch (error) {
         if (mounted) {
           setCoordinatorApplications([]);
+          setCoordinatorPagination((prev) => ({ ...prev, total: 0 }));
         }
       } finally {
         if (mounted) {
@@ -74,11 +90,18 @@ const ApplicationManagementPage = () => {
     return () => {
       mounted = false;
     };
-  }, [dispatch, id, isCoordinatorRoute]);
+  }, [
+    dispatch,
+    id,
+    isCoordinatorRoute,
+    tablePagination.current,
+    tablePagination.pageSize,
+    statusFilter,
+  ]);
 
   const isLoading = isCoordinatorRoute
     ? coordinatorLoading && coordinatorApplications.length === 0
-    : applications.loading && !applications.list;
+    : applications.loading && !(applications.list?.length > 0);
 
   const openReview = (record, defaultStatus = 'APPROVED') => {
     setSelected(record);
@@ -98,12 +121,33 @@ const ApplicationManagementPage = () => {
       setReviewOpen(false);
       if (isCoordinatorRoute) {
         setCoordinatorLoading(true);
-        const response = await trainingCoordinatorService.getTrainingApplications(id, { page: 1, limit: 2000 });
+        const params = {
+          page: tablePagination.current,
+          limit: tablePagination.pageSize,
+        };
+        if (statusFilter !== 'ALL') {
+          params.status = statusFilter;
+        }
+        const response = await trainingCoordinatorService.getTrainingApplications(id, params);
         const list = response?.data || response?.applications || [];
         setCoordinatorApplications(Array.isArray(list) ? list : []);
+        setCoordinatorPagination({
+          page: response?.pagination?.page || params.page,
+          limit: response?.pagination?.limit || params.limit,
+          total: response?.pagination?.total || (Array.isArray(list) ? list.length : 0),
+        });
         setCoordinatorLoading(false);
       } else {
-        dispatch(fetchStateApplications({ trainingId: id, forceRefresh: true }));
+        const params = {
+          trainingId: id,
+          page: tablePagination.current,
+          limit: tablePagination.pageSize,
+          forceRefresh: true,
+        };
+        if (statusFilter !== 'ALL') {
+          params.status = statusFilter;
+        }
+        dispatch(fetchStateApplications(params));
       }
     } catch (error) {
       message.error(error || 'Failed to review application');
@@ -222,13 +266,6 @@ const ApplicationManagementPage = () => {
     setTablePagination((prev) => ({ ...prev, current: 1 }));
   }, [searchText, statusFilter, id, isCoordinatorRoute]);
 
-  useEffect(() => {
-    const maxPage = Math.max(1, Math.ceil(filteredApplications.length / tablePagination.pageSize));
-    if (tablePagination.current > maxPage) {
-      setTablePagination((prev) => ({ ...prev, current: maxPage }));
-    }
-  }, [filteredApplications.length, tablePagination.current, tablePagination.pageSize]);
-
   const searchResultCount = searchText ? filteredApplications.length : null;
 
   return (
@@ -280,7 +317,11 @@ const ApplicationManagementPage = () => {
               pagination={{
                 current: tablePagination.current,
                 pageSize: tablePagination.pageSize,
-                total: filteredApplications.length,
+                total: searchText
+                  ? filteredApplications.length
+                  : (isCoordinatorRoute
+                    ? coordinatorPagination.total
+                    : (applications.pagination?.total || applications.list?.length || 0)),
                 size: 'small',
                 showSizeChanger: true,
                 showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,

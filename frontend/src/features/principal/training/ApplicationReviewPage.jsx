@@ -28,6 +28,7 @@ const ApplicationReviewPage = () => {
   const navigate = useNavigate();
   const { applications } = useSelector((state) => state.principalTraining);
   const { user } = useSelector((state) => state.auth);
+  const [tablePagination, setTablePagination] = useState({ page: 1, limit: 10 });
   const [reviewOpen, setReviewOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const [searchText, setSearchText] = useState('');
@@ -36,8 +37,8 @@ const ApplicationReviewPage = () => {
   const isLoading = applications.loading && !applications.list;
 
   useEffect(() => {
-    dispatch(fetchPrincipalApplications());
-  }, [dispatch]);
+    dispatch(fetchPrincipalApplications({ page: tablePagination.page, limit: tablePagination.limit, forceRefresh: true }));
+  }, [dispatch, tablePagination.page, tablePagination.limit]);
 
   const openReview = (record, defaultStatus = 'APPROVED') => {
     setSelected(record);
@@ -174,12 +175,16 @@ const ApplicationReviewPage = () => {
     );
   }, [applications.list, searchText]);
 
+  const handleTableChange = (pag) => {
+    setTablePagination({ page: pag.current, limit: pag.pageSize });
+  };
+
   return (
     <div className="p-4 training-ui">
       {/* Header Section */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Title level={4} className="!mb-0 text-lg">
+          <Title level={4} className="mb-0! text-lg">
             Application Review
           </Title>
         </div>
@@ -231,8 +236,13 @@ const ApplicationReviewPage = () => {
               dataSource={filteredApplications}
               loading={applications.loading}
               size="small"
+              onChange={handleTableChange}
               pagination={{
-                pageSize: 10,
+                current: tablePagination.page,
+                pageSize: tablePagination.limit,
+                total: searchText
+                  ? filteredApplications.length
+                  : (applications.pagination?.total || applications.list?.length || 0),
                 showSizeChanger: true,
                 showTotal: (total, range) => (
                   <Text className="text-[10px] text-slate-600">

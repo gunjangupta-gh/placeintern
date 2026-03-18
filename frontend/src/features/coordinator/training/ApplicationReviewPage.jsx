@@ -45,7 +45,7 @@ const ApplicationReviewPage = () => {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [form] = Form.useForm();
 
-  const fetchApplications = useCallback(async (isRefresh = false, page = 1, limit = pagination.limit) => {
+  const fetchApplications = useCallback(async (isRefresh = false, page = 1, limit = 10) => {
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
@@ -57,25 +57,23 @@ const ApplicationReviewPage = () => {
       const apps = response?.data || response?.applications || response;
       setApplications(Array.isArray(apps) ? apps : []);
 
-      if (response?.pagination) {
-        setPagination(prev => ({
-          ...prev,
-          page: response.pagination.page,
-          limit: response.pagination.limit || limit,
-          total: response.pagination.total,
-        }));
-      }
+      setPagination(prev => ({
+        ...prev,
+        page: response?.pagination?.page || page,
+        limit: response?.pagination?.limit || limit,
+        total: response?.pagination?.total || (Array.isArray(apps) ? apps.length : 0),
+      }));
     } catch (err) {
       message.error('Failed to load applications');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [statusFilter, pagination.limit]);
+  }, [statusFilter]);
 
   useEffect(() => {
-    fetchApplications();
-  }, [fetchApplications]);
+    fetchApplications(false, pagination.page, pagination.limit);
+  }, [fetchApplications, pagination.page, pagination.limit]);
 
   const openReview = (record, defaultStatus = 'APPROVED') => {
     setSelected(record);
@@ -105,7 +103,6 @@ const ApplicationReviewPage = () => {
 
   const handleTableChange = (pag) => {
     setPagination(prev => ({ ...prev, page: pag.current, limit: pag.pageSize }));
-    fetchApplications(false, pag.current, pag.pageSize);
   };
 
   useEffect(() => {
@@ -306,7 +303,7 @@ const ApplicationReviewPage = () => {
               pagination={{
                 current: pagination.page,
                 pageSize: pagination.limit,
-                total: pagination.total,
+                total: searchText ? filteredApplications.length : pagination.total,
                 showSizeChanger: true,
                 showTotal: (total, range) => (
                   <Text className="text-[10px] text-slate-600">

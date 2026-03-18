@@ -5,6 +5,12 @@ import { CACHE_DURATIONS, isCacheValid } from '../../../utils/cacheConfig';
 const initialState = {
   trainings: {
     list: [],
+    pagination: {
+      page: 1,
+      limit: 10,
+      total: 0,
+      totalPages: 1,
+    },
     loading: false,
     error: null,
   },
@@ -26,6 +32,12 @@ const initialState = {
   },
   applications: {
     list: [],
+    pagination: {
+      page: 1,
+      limit: 10,
+      total: 0,
+      totalPages: 1,
+    },
     loading: false,
     error: null,
   },
@@ -77,14 +89,16 @@ export const fetchPrincipalTrainings = createAsyncThunk(
   'principalTraining/fetchTrainings',
   async (params = {}, { getState, rejectWithValue }) => {
     try {
+      const { forceRefresh, ...apiParams } = params || {};
       const state = getState();
       const lastFetched = state.principalTraining.lastFetched.trainings;
+      const hasQueryParams = Object.keys(params || {}).some((key) => key !== 'forceRefresh');
 
-      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
+      if (!params?.forceRefresh && !hasQueryParams && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true };
       }
 
-      const response = await trainingPrincipalService.getTrainings(params);
+      const response = await trainingPrincipalService.getTrainings(apiParams);
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch trainings');
@@ -127,6 +141,7 @@ export const fetchPrincipalCalendar = createAsyncThunk(
   'principalTraining/fetchCalendar',
   async (params = {}, { getState, rejectWithValue }) => {
     try {
+      const { forceRefresh, ...apiParams } = params || {};
       const state = getState();
       const lastFetched = state.principalTraining.lastFetched.calendar;
 
@@ -134,7 +149,7 @@ export const fetchPrincipalCalendar = createAsyncThunk(
         return { cached: true };
       }
 
-      const response = await trainingPrincipalService.getCalendar(params);
+      const response = await trainingPrincipalService.getCalendar(apiParams);
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch calendar');
@@ -173,14 +188,16 @@ export const fetchPrincipalApplications = createAsyncThunk(
   'principalTraining/fetchApplications',
   async (params = {}, { getState, rejectWithValue }) => {
     try {
+      const { forceRefresh, ...apiParams } = params || {};
       const state = getState();
       const lastFetched = state.principalTraining.lastFetched.applications;
+      const hasQueryParams = Object.keys(params || {}).some((key) => key !== 'forceRefresh');
 
-      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
+      if (!params?.forceRefresh && !hasQueryParams && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true };
       }
 
-      const response = await trainingPrincipalService.getApplications(params);
+      const response = await trainingPrincipalService.getApplications(apiParams);
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch applications');
@@ -236,6 +253,7 @@ export const fetchPrincipalLessonPlans = createAsyncThunk(
   'principalTraining/fetchLessonPlans',
   async (params = {}, { getState, rejectWithValue }) => {
     try {
+      const { forceRefresh, ...apiParams } = params || {};
       const state = getState();
       const lastFetched = state.principalTraining.lastFetched.lessonPlans;
 
@@ -243,7 +261,7 @@ export const fetchPrincipalLessonPlans = createAsyncThunk(
         return { cached: true };
       }
 
-      const response = await trainingPrincipalService.getLessonPlans(params);
+      const response = await trainingPrincipalService.getLessonPlans(apiParams);
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch lesson plans');
@@ -373,6 +391,7 @@ export const fetchPrincipalRecommendations = createAsyncThunk(
   'principalTraining/fetchRecommendations',
   async (params = {}, { getState, rejectWithValue }) => {
     try {
+      const { forceRefresh, ...apiParams } = params || {};
       const state = getState();
       const lastFetched = state.principalTraining.lastFetched.recommendations;
 
@@ -380,7 +399,7 @@ export const fetchPrincipalRecommendations = createAsyncThunk(
         return { cached: true };
       }
 
-      const response = await trainingPrincipalService.getRecommendations(params);
+      const response = await trainingPrincipalService.getRecommendations(apiParams);
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch recommendations');
@@ -427,7 +446,14 @@ const principalTrainingSlice = createSlice({
       .addCase(fetchPrincipalTrainings.fulfilled, (state, action) => {
         state.trainings.loading = false;
         if (!action.payload?.cached) {
-          state.trainings.list = action.payload?.data || action.payload?.items || action.payload || [];
+          const list = action.payload?.data || action.payload?.items || action.payload || [];
+          state.trainings.list = Array.isArray(list) ? list : [];
+          state.trainings.pagination = {
+            page: action.payload?.pagination?.page || 1,
+            limit: action.payload?.pagination?.limit || state.trainings.pagination.limit || 10,
+            total: action.payload?.pagination?.total || (Array.isArray(list) ? list.length : 0),
+            totalPages: action.payload?.pagination?.totalPages || 1,
+          };
           state.lastFetched.trainings = Date.now();
         }
       })
@@ -473,7 +499,14 @@ const principalTrainingSlice = createSlice({
       .addCase(fetchPrincipalApplications.fulfilled, (state, action) => {
         state.applications.loading = false;
         if (!action.payload?.cached) {
-          state.applications.list = action.payload?.data || action.payload?.items || action.payload || [];
+          const list = action.payload?.data || action.payload?.items || action.payload || [];
+          state.applications.list = Array.isArray(list) ? list : [];
+          state.applications.pagination = {
+            page: action.payload?.pagination?.page || 1,
+            limit: action.payload?.pagination?.limit || state.applications.pagination.limit || 10,
+            total: action.payload?.pagination?.total || (Array.isArray(list) ? list.length : 0),
+            totalPages: action.payload?.pagination?.totalPages || 1,
+          };
           state.lastFetched.applications = Date.now();
         }
       })

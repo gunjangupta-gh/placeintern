@@ -96,11 +96,15 @@ const TrainingOverviewPage = () => {
   const [lessonPlanModalOpen, setLessonPlanModalOpen] = useState(false);
   const [lessonPlanLoading, setLessonPlanLoading] = useState(false);
   const [lessonPlanData, setLessonPlanData] = useState([]);
+  const [tablePagination, setTablePagination] = useState({ page: 1, limit: 10 });
 
   const isLoading = trainings.loading && !trainings.list;
 
   useEffect(() => {
-    dispatch(fetchPrincipalTrainings());
+    dispatch(fetchPrincipalTrainings({ page: tablePagination.page, limit: tablePagination.limit, forceRefresh: true }));
+  }, [dispatch, tablePagination.page, tablePagination.limit]);
+
+  useEffect(() => {
     dispatch(fetchPrincipalTrainingDashboard());
   }, [dispatch]);
 
@@ -269,12 +273,15 @@ const TrainingOverviewPage = () => {
       key: "title",
       render: (text, record) => (
         <div>
-          <Text
-            className="font-medium cursor-pointer hover:text-primary transition-colors"
-            onClick={() => navigate(`/app/training/${record.id}`)}
-          >
-            {text}
-          </Text>
+          <Tooltip title={text || "Training"}>
+            <div
+              className="font-medium cursor-pointer hover:text-primary transition-colors truncate max-w-72"
+              title={text || "Training"}
+              onClick={() => navigate(`/app/training/${record.id}`)}
+            >
+              {text || "Training"}
+            </div>
+          </Tooltip>
           <div className="text-xs text-text-secondary mt-0.5">
             {record.providedBy || "Training Provider"}
           </div>
@@ -604,8 +611,15 @@ const TrainingOverviewPage = () => {
                 dataSource={filteredTrainings}
                 loading={trainings.loading}
                 size="small"
+                onChange={(pagination) => {
+                  setTablePagination({ page: pagination.current, limit: pagination.pageSize });
+                }}
                 pagination={{
-                  pageSize: 10,
+                  current: tablePagination.page,
+                  pageSize: tablePagination.limit,
+                  total: searchText
+                    ? filteredTrainings.length
+                    : (trainings.pagination?.total || trainings.list?.length || 0),
                   showSizeChanger: true,
                   showTotal: (total, range) => (
                     <Text className="text-xs">
