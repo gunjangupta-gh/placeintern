@@ -7,6 +7,7 @@ import {
   IsEnum,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Designation } from '../../../generated/prisma/client';
 
 // Valid staff roles (excluding PRINCIPAL, STUDENT, STATE_DIRECTORATE, INDUSTRY roles)
 const STAFF_ROLES = [
@@ -57,6 +58,11 @@ export class UpdateStaffDto {
   @IsOptional()
   @IsString()
   designation?: string;
+
+  @ApiPropertyOptional({ description: 'Designation enum', enum: Designation })
+  @IsOptional()
+  @IsEnum(Designation)
+  designationEnum?: Designation;
 
   @ApiPropertyOptional({ description: 'Active status' })
   @IsOptional()
