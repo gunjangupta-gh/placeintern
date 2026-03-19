@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsDateString, IsInt, IsEnum, IsArray, IsBoolean, Min, IsUUID, IsNumber } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TrainingDeliveryMode, TrainingDifficulty } from '../../../generated/prisma/client';
+import { TrainingDeliveryMode, TrainingDifficulty, Designation } from '../../../generated/prisma/client';
 
 export class CreateTrainingDto {
   @ApiProperty({ description: 'Training title' })
@@ -126,6 +126,12 @@ export class CreateTrainingDto {
   @IsArray()
   @IsUUID('4', { each: true })
   targetBranchIds?: string[];
+
+  @ApiPropertyOptional({ description: 'Target designations for filtering', enum: Designation, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(Designation, { each: true })
+  targetDesignations?: Designation[];
 
   @ApiPropertyOptional({ description: 'Feedback form ID to assign' })
   @IsOptional()

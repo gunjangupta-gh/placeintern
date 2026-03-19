@@ -29,6 +29,34 @@ import { useBranches } from "../../../../shared/hooks/useLookup";
 
 const { Title, Text } = Typography;
 const ALL_BRANCHES_VALUE = "__ALL_BRANCHES__";
+const ALL_DESIGNATIONS_VALUE = "__ALL_DESIGNATIONS__";
+
+// Designation options matching backend enum
+const DESIGNATION_OPTIONS = [
+  { value: ALL_DESIGNATIONS_VALUE, label: "All Designations" },
+  { value: "PRINCIPAL", label: "Principal" },
+  { value: "HOD", label: "HOD" },
+  { value: "SENIOR_LECTURER", label: "Senior Lecturer" },
+  { value: "LECTURER", label: "Lecturer" },
+  { value: "ASSISTANT_PROFESSOR", label: "Assistant Professor" },
+  { value: "FOREMAN_INSTRUCTOR", label: "Foreman Instructor" },
+  { value: "WORKSHOP_INSTRUCTOR", label: "Workshop Instructor" },
+  { value: "WORKSHOP_SUPERINTENDENT", label: "Workshop Superintendent" },
+  { value: "WORKSHOP_FOREMAN", label: "Workshop Foreman" },
+  { value: "LAB_TECHNICIAN", label: "Lab Technician" },
+  { value: "TECHNICIAN", label: "Technician" },
+  { value: "INSTRUCTOR", label: "Instructor" },
+  { value: "SYSTEM_ANALYST", label: "System Analyst" },
+  { value: "SYSTEM_ADMINISTRATOR", label: "System Administrator" },
+  { value: "SYSTEM_MANAGER", label: "System Manager" },
+  { value: "PROGRAMMER", label: "Programmer" },
+  { value: "NETWORK_ENGINEER", label: "Network Engineer" },
+  { value: "COMPUTER_OPERATOR", label: "Computer Operator" },
+  { value: "LIBRARIAN", label: "Librarian" },
+  { value: "TPO", label: "TPO" },
+  { value: "FASHION_DESIGNER", label: "Fashion Designer" },
+  { value: "PEON", label: "Peon" },
+];
 
 const FormSection = ({ icon: Icon, title, children }) => (
   <div className="mb-4">
@@ -149,6 +177,17 @@ const TrainingForm = ({
       ? []
       : selectedTargetBranchIds;
 
+    // Handle targetDesignations - empty array means "All Designations"
+    const selectedTargetDesignations = Array.isArray(values.targetDesignations)
+      ? values.targetDesignations.filter(Boolean)
+      : [];
+
+    const normalizedTargetDesignations = selectedTargetDesignations.includes(
+      ALL_DESIGNATIONS_VALUE,
+    )
+      ? []
+      : selectedTargetDesignations;
+
     const payload = {
       ...values,
       title: values.title?.trim(),
@@ -167,6 +206,7 @@ const TrainingForm = ({
           : Number(values.duration),
       learningOutcomes: parseLearningOutcomes(values.learningOutcomes),
       targetBranchIds: normalizedTargetBranchIds,
+      targetDesignations: normalizedTargetDesignations,
     };
     onSubmit(payload);
   };
@@ -183,6 +223,23 @@ const TrainingForm = ({
         form.setFieldValue(
           "targetBranchIds",
           selectedValues.filter((value) => value !== ALL_BRANCHES_VALUE),
+        );
+      }
+    }
+  };
+
+  const handleTargetDesignationsChange = (selectedValues = []) => {
+    if (!Array.isArray(selectedValues)) return;
+
+    if (selectedValues.includes(ALL_DESIGNATIONS_VALUE) && selectedValues.length > 1) {
+      const latestValue = selectedValues[selectedValues.length - 1];
+
+      if (latestValue === ALL_DESIGNATIONS_VALUE) {
+        form.setFieldValue("targetDesignations", [ALL_DESIGNATIONS_VALUE]);
+      } else {
+        form.setFieldValue(
+          "targetDesignations",
+          selectedValues.filter((value) => value !== ALL_DESIGNATIONS_VALUE),
         );
       }
     }
@@ -479,6 +536,24 @@ const TrainingForm = ({
               placeholder="Select specific branches or All Branches"
               allowClear
               onChange={handleTargetBranchesChange}
+            />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      <Row gutter={12}>
+        <Col xs={24}>
+          <Form.Item
+            name="targetDesignations"
+            label="Target Designations"
+            extra="Select specific designations or choose All Designations. Training will be visible only if both branch AND designation match."
+          >
+            <Select
+              mode="multiple"
+              options={DESIGNATION_OPTIONS}
+              placeholder="Select specific designations or All Designations"
+              allowClear
+              onChange={handleTargetDesignationsChange}
             />
           </Form.Item>
         </Col>

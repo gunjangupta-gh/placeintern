@@ -56,6 +56,8 @@ export const PUNJAB_PSU_COMPANIES: CompanyMapping = {
   'puncom mohali': 'Punjab Communications Limited, Mohali',
     'pwd (b&amp;r': 'Public Works Department Punjab',
     'pwd (b&amp;r)': 'Public Works Department Punjab',
+    'pwd (b&r': 'Public Works Department Punjab',
+    'pwd (b&r)': 'Public Works Department Punjab',
   'pwd(b & r)': 'Public Works Department Punjab',
   'pwd (b and r)': 'Public Works Department Punjab',
   'pwd b&r division no.1': 'Public Works Department Punjab',
@@ -73,6 +75,8 @@ export const PUNJAB_PSU_COMPANIES: CompanyMapping = {
   'sub divisional engineer, provincial sub div. no.2, pwd (b&r), bathinda': 'Public Works Department Punjab',
     'sub divisional engineer, provincial sub div. no.2, pwd (b&amp;r), bathinda': 'Public Works Department Punjab',
   'sub divisional engineer, provincial sub div. no.2, pwd (b&amp;amp;r), bathinda': 'Public Works Department Punjab',
+  'pwd b&r bathinda': 'Public Works Department Punjab',
+  'pwd b&r bahinda': 'Public Works Department Punjab',
 
   // Punjab Water Supply and Sewerage Board
   'punjab water supply and sewerage board': 'Punjab Water Supply and Sewerage Board',
@@ -107,12 +111,14 @@ export const MANUFACTURING_COMPANIES: CompanyMapping = {
   'sonalika': 'Sonalika International Tractors Ltd.',
   'sonalika international tractors ltd': 'Sonalika International Tractors Ltd.',
   'sonalika international tractors ltd.': 'Sonalika International Tractors Ltd.',
+  'sonalika international tractors limited': 'Sonalika International Tractors Ltd.',
   'sonalika tractors limited': 'Sonalika International Tractors Ltd.',
   'sonlika': 'Sonalika International Tractors Ltd.',
 
   'logiclab ditial solution': 'LogicLab Digital Solutions',
   // Swaraj Tractors / Mahindra Swaraj (15+ variations)
   'swaraj engines limited mohali': 'Swaraj Engines Limited, Mohali',
+  'swaraj engines ltd mohali': 'Swaraj Engines Limited, Mohali',
   'swaraj tractor': 'Swaraj Engines Limited',
   'swaraj tractors': 'Swaraj Engines Limited',
   'swaraj tractors chapar chiri': 'Swaraj Engines Limited, Chapar Chiri',
@@ -125,7 +131,10 @@ export const MANUFACTURING_COMPANIES: CompanyMapping = {
     '⁀mahindra &amp; mahindra (swaraj division)': 'Swaraj Engines Limited',
     'mahindra &amp;amp; mahindra ( swaraj division ) phase 4 , mohali': 'Swaraj Engines Limited, Mohali',
     'mahindra &amp;amp; mahindra ( swaraj division), phase 4, mohali': 'Swaraj Engines Limited, Mohali',
+    'mahindra & mahindra ( swaraj division ) phase 4 , mohali': 'Swaraj Engines Limited, Mohali',
+    'mahindra & mahindra ( swaraj division), phase 4, mohali': 'Swaraj Engines Limited, Mohali',
   'mahindra &mahindra ltd (swaraj division)': 'Swaraj Engines Limited',
+    'mahindra &mahindra (swaraj division)': 'Swaraj Engines Limited',
   'mahindra and mahindra swaraj': 'Swaraj Engines Limited',
 
   // Subros Limited
@@ -136,6 +145,7 @@ export const MANUFACTURING_COMPANIES: CompanyMapping = {
 
   // Maruti Suzuki
   'maruti suzuki, mukerian': 'Maruti Suzuki India Limited',
+  'maruti suzuki india , mukerian': 'Maruti Suzuki India Limited',
   'maruti suzuki': 'Maruti Suzuki India Limited',
 
   // Mahindra (various)
@@ -151,6 +161,8 @@ export const MANUFACTURING_COMPANIES: CompanyMapping = {
   // MAHLE Anand
   'mahle anand thermal system private limited': 'MAHLE Anand Thermal Systems',
   'mahle anand thermal systems': 'MAHLE Anand Thermal Systems',
+  'mahle anand thermal systems pvt ltd': 'MAHLE Anand Thermal Systems',
+  'mahle anand thermal systems pvt. ltd.': 'MAHLE Anand Thermal Systems',
 
   // Tata Motors / Sukhbir
   'sukhbir agro and energy ltd': 'Sukhbir Agro Energy Limited',
@@ -296,10 +308,12 @@ export const IT_COMPANIES: CompanyMapping = {
   'devout tech consultant': 'Devout Tech Consultants',
   'devout tech consultants': 'Devout Tech Consultants',
   'solitaire infosys pvt. ltd': 'Solitaire Infosys',
+  'solitaire infosys pvt. ltd.': 'Solitaire Infosys',
   'surya company': 'Surya Contractor',
   'surya contractor': 'Surya Contractor',
   'solitaire infosys': 'Solitaire Infosys',
   'solitaire infosys pvt ltd': 'Solitaire Infosys',
+  'solitaire infosys pvt ltd.': 'Solitaire Infosys',
   'solitaire infosys pvt.ltd': 'Solitaire Infosys',
 
   // Sortiq Solutions (25+ variations)
@@ -454,6 +468,8 @@ export const RESEARCH_EDUCATION: CompanyMapping = {
   'csir-central scientific instruments organisation (csio), chandigarh,india': 'CSIR, Chandigarh',
   'central scientific instruments organisation (csio), chandigarh': 'CSIR, Chandigarh',
   'csir central scientific and instrumentation research chandigarh': 'CSIR, Chandigarh',
+  'csir csio chandigarh': 'CSIR, Chandigarh',
+  'csir- csio , chandigarh': 'CSIR, Chandigarh',
 
   // C-DAC - Centre for Development of Advanced Computing
   'c-dac': 'C-DAC, Mohali',
@@ -470,11 +486,17 @@ export const RESEARCH_EDUCATION: CompanyMapping = {
   'ciht, hoshiarpur': 'Central Institute of Hand Tools',
   'ciht extension center, hoshiarpur': 'Central Institute of Hand Tools',
   'ciht extension center hoshiarpur': 'Central Institute of Hand Tools',
+  'ciht extension centre, hoshiarpur': 'Central Institute of Hand Tools',
+  'ciht extension centre, government of india society, ministry of micro, small and medium enterprises': 'Central Institute of Hand Tools',
   'ciht-extension center,hoshiarpur': 'Central Institute of Hand Tools',
   'ciht-extension center, hoshiarpur': 'Central Institute of Hand Tools',
   'ciht-extension center hoshiarpur': 'Central Institute of Hand Tools',
   'ciht- extension center hoshiarpur': 'Central Institute of Hand Tools',
+  'ciht jalandhar': 'Central Institute of Hand Tools',
   'c. i. h. t jalandhar': 'Central Institute of Hand Tools',
+  'center institute of hand tools': 'Central Institute of Hand Tools',
+  'center institute of hand tool': 'Central Institute of Hand Tools',
+  'center institute of handtools': 'Central Institute of Hand Tools',
   'central institute of hand tools': 'Central Institute of Hand Tools',
   'central institute of hands tool': 'Central Institute of Hand Tools',
   'central institute of hands tools': 'Central Institute of Hand Tools',
@@ -507,6 +529,8 @@ export const RESEARCH_EDUCATION: CompanyMapping = {
   // GNA
   'gna': 'GNA University',
   'gna university': 'GNA University',
+  'gna gears': 'GNA Gears Limited',
+  'gna gears ltd.': 'GNA Gears Limited',
   'gna gears limited': 'GNA Gears Limited',
 
   // Multi Skill Development Centre (30+ variations)
@@ -549,6 +573,7 @@ export const RAILWAYS_HEAVY: CompanyMapping = {
 
   // Patiala Locomotive Works
   'patiala locomotive works': 'Patiala Locomotive Works',
+  'patiala locomotive works (plw)': 'Patiala Locomotive Works',
 };
 
 /**
@@ -657,6 +682,7 @@ export const AGRO_SUGAR: CompanyMapping = {
   'the batala cooperative sugar mills limited': 'The Batala Co-operative Sugar Mills',
   'batala sugar mills': 'The Batala Co-operative Sugar Mills',
   'the batala co-operative sugar mills': 'The Batala Co-operative Sugar Mills',
+  'the batala co operative sugar mill': 'The Batala Co-operative Sugar Mills',
 
   // Ajnala Sugar Mills
   'the ajnala co-operative sugar mills ltd.': 'The Ajnala Co-operative Sugar Mills',
@@ -700,6 +726,7 @@ export const ELECTRICAL_COMPANIES: CompanyMapping = {
   'gs autos international limited': 'GS Autos International',
   'gs auto international': 'GS Autos International',
   'g. s. auto international ltd ludhiana': 'GS Autos International',
+  'g.s auto international ltd ludhiana': 'GS Autos International',
   'gs autos international': 'GS Autos International',
     'g s auto internationl': 'GS Autos International',
     'g.s auto internationl': 'GS Autos International',
@@ -729,6 +756,7 @@ export const ELECTRICAL_COMPANIES: CompanyMapping = {
 
   // MSG Electric
   'msg electric system pvt ltd': 'MSG Electric Systems',
+  'msg electric system pvt.ltd': 'MSG Electric Systems',
   'msg electric systems': 'MSG Electric Systems',
 
   // Square A Control
@@ -759,6 +787,7 @@ export const ELECTRICAL_COMPANIES: CompanyMapping = {
 
   // Guru Kirpa Automation
   'guru kirpa automation pvt. ltd. mandi gobindgarh': 'Guru Kirpa Automation',
+  'gurukirpa automation pvt lt': 'Guru Kirpa Automation',
 
   // Unistar Innovative
   'unistar innovative engineers and services': 'Unistar Innovative Engineers',
@@ -775,6 +804,7 @@ export const ELECTRICAL_COMPANIES: CompanyMapping = {
   'deltron ( a division of continental device india private limited )': 'Deltron',
   'deltron (a division of cdil)': 'Deltron',
   'deltron ( a division of continental device india pvt ltd )': 'Deltron',
+  'deltron pvt ltd': 'Deltron',
 
   // Saini Power Group
   'saini power group': 'Saini Power Group',
@@ -802,6 +832,8 @@ export const OTHER_INDUSTRIES: CompanyMapping = {
   'lbpl': 'LBPL',
   'gill agriculture implements pvt lmt': 'Gill Agriculture Implements PVT LTD',
   'ludhaiana bevrages privated limited': 'Ludhiana Beverages',
+  'ludhiana beverages ltd': 'Ludhiana Beverages',
+  'keyoffice automation': 'Key Office Automation',
   // Galley Machines (variations)
   'galley india machines': 'Galley Machines India',
   'galley machines india': 'Galley Machines India',
@@ -813,6 +845,7 @@ export const OTHER_INDUSTRIES: CompanyMapping = {
   // Jaewoo Machines
   'jaewoo machines': 'Jaewoo Machines',
   'jaewoo machines pvt ltd': 'Jaewoo Machines',
+  'jaewoo machines pvt. ltd.': 'Jaewoo Machines',
 
   // Marshall Industries
   'marshall industries, batala': 'Marshall Industries',
@@ -836,6 +869,7 @@ export const OTHER_INDUSTRIES: CompanyMapping = {
   'aiacs pvt. ltd.': 'AIACS Pvt. Ltd.',
   'aiacs pvt. ltd': 'AIACS Pvt. Ltd.',
   'aiacs pvt ltd': 'AIACS Pvt. Ltd.',
+  'aiacs pvt ltd.': 'AIACS Pvt. Ltd.',
   'aiacs pvt.ltd.': 'AIACS Pvt. Ltd.',
 
   // Federal Mogul Goetze
@@ -873,6 +907,7 @@ export const OTHER_INDUSTRIES: CompanyMapping = {
   'fermex solutions llp- fermenters manufacturer in india': 'Fermex',
   'innomatics info private limted': 'Innomatics Info Private Limited',
   'mrc private ltd.company': 'MRC Private Limited',
+  'mrc private ltd. company': 'MRC Private Limited',
   'mrc private limited': 'MRC Private Limited',
 
   // Jagatjit Group

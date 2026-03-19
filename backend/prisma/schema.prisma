@@ -27,8 +27,9 @@ model User {
   branch     Branch? @relation(fields: [branchId], references: [id])
   branchName String? // Cached for quick access
 
-  designation String? // Only for TEACHER/PRINCIPAL
-  role        Role?
+  designation     String?      // Only for TEACHER/PRINCIPAL (legacy - kept for backward compatibility)
+  designationEnum Designation? // Enum-based designation for filtering
+  role            Role?
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
 
@@ -129,6 +130,8 @@ model User {
   @@index([branchId])
   @@index([institutionId, branchId])
   @@index([role, branchId])
+  @@index([designationEnum])
+  @@index([role, designationEnum])
 }
 
 enum Role {
@@ -138,6 +141,34 @@ enum Role {
   FACULTY_COORDINATOR
   STATE_DIRECTORATE
   SYSTEM_ADMIN
+  ADMIN_STAFF
+}
+
+// Faculty/Staff Designation - for TEACHER/PRINCIPAL roles
+enum Designation {
+  PRINCIPAL
+  HOD
+  SENIOR_LECTURER
+  LECTURER
+  ASSISTANT_PROFESSOR
+  FOREMAN_INSTRUCTOR
+  WORKSHOP_INSTRUCTOR
+  WORKSHOP_SUPERINTENDENT
+  WORKSHOP_FOREMAN
+  LAB_TECHNICIAN
+  TECHNICIAN
+  INSTRUCTOR
+  SYSTEM_ANALYST
+  SYSTEM_ADMINISTRATOR
+  SYSTEM_MANAGER
+  PROGRAMMER
+  NETWORK_ENGINEER
+  COMPUTER_OPERATOR
+  LIBRARIAN
+  TPO
+  FASHION_DESIGNER
+  PEON
+  OTHER
 }
 
 // Student Information linked with admissiontype, category, batch, fees, results, documents, and scholarship
@@ -1757,8 +1788,9 @@ model Training {
   learningOutcomes Json?    // ["Outcome 1", "Outcome 2", ...]
 
   // Target Disciplines (linked to Branch)
-  targetBranches  Branch[]  @relation("TrainingBranches")
-  designation      String?   // e.g., "For Computer Science Faculty"
+  targetBranches     Branch[]      @relation("TrainingBranches")
+  designation        String?       // e.g., "For Computer Science Faculty" (legacy display text)
+  targetDesignations Designation[] // Target designations for filtering (e.g., [LECTURER, SENIOR_LECTURER])
 
   // Feedback Form (optional, global form assigned to this training)
   feedbackFormId  String?

@@ -22,6 +22,7 @@ import {
   Space,
   Progress,
   Steps,
+  Tag,
   Switch,
   Timeline,
   Tooltip,
@@ -377,7 +378,9 @@ const TrainingDetailsPage = () => {
     }
   };
 
-  const canApply = !status?.status && capacityInfo.available > 0;
+  const trainingEnded =
+    training?.endDate && new Date(training.endDate) < new Date();
+  const canApply = !status?.status && capacityInfo.available > 0 && !trainingEnded;
   const canWithdraw = ["PENDING", "SUBMITTED"].includes(status?.status);
   const isApproved = status?.status === "APPROVED";
 
@@ -394,9 +397,6 @@ const TrainingDetailsPage = () => {
   const totalDays = trainingAttendance?.totalDays || 0;
   const attendancePercent = totalDays > 0 ? Math.round((attendedDays / totalDays) * 100) : 0;
 
-  // Check if training has ended
-  const trainingEnded =
-    training?.endDate && new Date(training.endDate) < new Date();
   const trainingOngoing = useMemo(() => {
     if (!training?.startDate || !training?.endDate) return false;
     const today = new Date();
@@ -679,6 +679,7 @@ const TrainingDetailsPage = () => {
             <Space className="mb-1.5" wrap>
               <DeliveryModeBadge mode={training?.deliveryMode} />
               <DifficultyBadge level={training?.difficulty} />
+              {trainingEnded && <Tag color="default">Completed</Tag>}
             </Space>
             <Title level={4} className="mb-1! mt-0 leading-tight">
               {training?.title || "Training"}

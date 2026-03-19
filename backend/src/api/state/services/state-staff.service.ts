@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
-import { Prisma, Role, AuditAction, AuditCategory, AuditSeverity } from '../../../generated/prisma/client';
+import { Prisma, Role, Designation, AuditAction, AuditCategory, AuditSeverity } from '../../../generated/prisma/client';
 import * as bcrypt from 'bcrypt';
 import { BCRYPT_SALT_ROUNDS } from '../../../core/auth/services/auth.service';
 
@@ -37,7 +37,7 @@ export class StateStaffService {
     const skip = (page - 1) * limit;
 
     // Staff roles - TEACHER (excluding PRINCIPAL, STUDENT, STATE_DIRECTORATE, SYSTEM_ADMIN)
-    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR];
+    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF];
 
     const where: Prisma.UserWhereInput = {
       role: role ? (role as Role) : { in: staffRoles },
@@ -76,6 +76,7 @@ export class StateStaffService {
           role: true,
           branchName: true,
           designation: true,
+          designationEnum: true,
           active: true,
           createdAt: true,
           lastLoginAt: true,
@@ -109,6 +110,7 @@ export class StateStaffService {
     phoneNo?: string;
     branchName?: string;
     designation?: string;
+    designationEnum?: string;
   }) {
     const institution = await this.prisma.institution.findUnique({
       where: { id: data.institutionId },
@@ -139,6 +141,7 @@ export class StateStaffService {
         phoneNo: data.phoneNo,
         branchName: data.branchName,
         designation: data.designation,
+        designationEnum: data.designationEnum ? (data.designationEnum as Designation) : undefined,
         active: true,
         hasChangedDefaultPassword: false,
       },
@@ -156,7 +159,7 @@ export class StateStaffService {
    * Get staff member by ID
    */
   async getStaffById(id: string) {
-    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR];
+    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF];
 
     const staff = await this.prisma.user.findUnique({
       where: { id, role: { in: staffRoles } },
@@ -168,6 +171,7 @@ export class StateStaffService {
         role: true,
         branchName: true,
         designation: true,
+        designationEnum: true,
         active: true,
         createdAt: true,
         lastLoginAt: true,
@@ -196,10 +200,11 @@ export class StateStaffService {
     phoneNo?: string;
     branchName?: string;
     designation?: string;
+    designationEnum?: string;
     isActive?: boolean;
     active?: boolean;
   }) {
-    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR];
+    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF];
 
     const existingStaff = await this.prisma.user.findUnique({
       where: { id, role: { in: staffRoles } },
@@ -238,6 +243,7 @@ export class StateStaffService {
     if (data.phoneNo !== undefined) updateData.phoneNo = data.phoneNo;
     if (data.branchName !== undefined) updateData.branchName = data.branchName;
     if (data.designation !== undefined) updateData.designation = data.designation;
+    if (data.designationEnum !== undefined) updateData.designationEnum = data.designationEnum as Designation;
     if (data.isActive !== undefined) updateData.active = data.isActive;
     if (data.active !== undefined) updateData.active = data.active;
 
@@ -258,7 +264,7 @@ export class StateStaffService {
    * Delete staff member by ID
    */
   async deleteStaff(id: string) {
-    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR];
+    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF];
 
     const existingStaff = await this.prisma.user.findUnique({
       where: { id, role: { in: staffRoles } },

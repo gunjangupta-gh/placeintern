@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException,
 import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
-import { AuditAction, AuditCategory, AuditSeverity, Prisma, Role } from '../../generated/prisma/client';
+import { AuditAction, AuditCategory, AuditSeverity, Prisma, Role, Designation } from '../../generated/prisma/client';
 import { CreateTrainingDto, UpdateTrainingDto, TrainingFilterDto, CalendarFilterDto } from './dto';
 
 @Injectable()
@@ -54,6 +54,7 @@ export class TrainingService {
           targetBranches: dto.targetBranchIds?.length
             ? { connect: dto.targetBranchIds.map((id) => ({ id })) }
             : undefined,
+          targetDesignations: dto.targetDesignations || [],
         },
         include: {
           targetBranches: true,
@@ -134,6 +135,7 @@ export class TrainingService {
                 connect: dto.targetBranchIds.map((branchId) => ({ id: branchId })),
               }
             : undefined,
+          targetDesignations: dto.targetDesignations,
         },
         include: {
           targetBranches: true,
@@ -294,6 +296,7 @@ export class TrainingService {
     try {
       const { page = 1, limit = 20, search, year, month, deliveryMode, difficulty, branchIds, isPublished, isActive, startDateFrom, startDateTo } = filters;
       const userBranchId = userId ? await this.getUserBranchId(userId) : undefined;
+      const userDesignation = userId ? await this.getUserDesignation(userId) : undefined;
       const effectiveBranchIds = this.getEffectiveBranchIds(branchIds, userBranchId);
 
       // Build branch filtering condition
@@ -307,6 +310,17 @@ export class TrainingService {
             }
           : { targetBranches: { none: {} } }
         : undefined;
+
+      // Build designation filtering condition
+      const designationScopeCondition = userId
+        ? this.buildDesignationScopeCondition(userDesignation ?? null)
+        : undefined;
+
+      // Combine branch and designation conditions with AND logic (both must match)
+      const combinedScopeCondition = this.buildCombinedScopeCondition(
+        branchScopeCondition,
+        designationScopeCondition,
+      );
 
       const where: Prisma.TrainingWhereInput = {
         ...(includeUnpublished ? {} : { isPublished: true }),
@@ -368,8 +382,9 @@ export class TrainingService {
         }
       }
 
-      if (branchScopeCondition) {
-        where.AND = [...(Array.isArray(where.AND) ? where.AND : []), branchScopeCondition];
+      // Apply combined scope condition (branch AND designation must match)
+      if (combinedScopeCondition) {
+        where.AND = [...(Array.isArray(where.AND) ? where.AND : []), combinedScopeCondition];
       }
 
       const [trainings, total] = await Promise.all([
@@ -459,6 +474,7 @@ export class TrainingService {
     try {
       const { year = new Date().getFullYear(), month, branchIds, deliveryMode } = filters;
       const userBranchId = userId ? await this.getUserBranchId(userId) : undefined;
+      const userDesignation = userId ? await this.getUserDesignation(userId) : undefined;
       const effectiveBranchIds = this.getEffectiveBranchIds(branchIds, userBranchId);
       const branchScopeCondition: Prisma.TrainingWhereInput | undefined = effectiveBranchIds
         ? effectiveBranchIds.length > 0
@@ -471,7 +487,18 @@ export class TrainingService {
           : { targetBranches: { none: {} } }
         : undefined;
 
-      const cacheKey = `training:calendar:${year}:${month || 'all'}:${effectiveBranchIds?.join(',') || 'all'}:${deliveryMode || 'all'}`;
+      // Build designation filtering condition
+      const designationScopeCondition = userId
+        ? this.buildDesignationScopeCondition(userDesignation ?? null)
+        : undefined;
+
+      // Combine branch and designation conditions with AND logic (both must match)
+      const combinedScopeCondition = this.buildCombinedScopeCondition(
+        branchScopeCondition,
+        designationScopeCondition,
+      );
+
+      const cacheKey = `training:calendar:${year}:${month || 'all'}:${effectiveBranchIds?.join(',') || 'all'}:${userDesignation || 'all'}:${deliveryMode || 'all'}`;
 
       return await this.cache.getOrSet(
         cacheKey,
@@ -508,8 +535,9 @@ export class TrainingService {
             ...(deliveryMode ? { deliveryMode } : {}),
           };
 
-          if (branchScopeCondition) {
-            where.AND = [...(Array.isArray(where.AND) ? where.AND : []), branchScopeCondition];
+          // Apply combined scope condition (branch AND designation must match)
+          if (combinedScopeCondition) {
+            where.AND = [...(Array.isArray(where.AND) ? where.AND : []), combinedScopeCondition];
           }
 
           const trainings = await this.prisma.training.findMany({
@@ -562,6 +590,7 @@ export class TrainingService {
       const todayStart = new Date(now);
       todayStart.setHours(0, 0, 0, 0);
       const userBranchId = userId ? await this.getUserBranchId(userId) : undefined;
+      const userDesignation = userId ? await this.getUserDesignation(userId) : undefined;
       const effectiveBranchIds = this.getEffectiveBranchIds(branchIds, userBranchId);
       const branchScopeCondition: Prisma.TrainingWhereInput | undefined = effectiveBranchIds
         ? effectiveBranchIds.length > 0
@@ -573,6 +602,17 @@ export class TrainingService {
             }
           : { targetBranches: { none: {} } }
         : undefined;
+
+      // Build designation filtering condition
+      const designationScopeCondition = userId
+        ? this.buildDesignationScopeCondition(userDesignation ?? null)
+        : undefined;
+
+      // Combine branch and designation conditions with AND logic (both must match)
+      const combinedScopeCondition = this.buildCombinedScopeCondition(
+        branchScopeCondition,
+        designationScopeCondition,
+      );
 
       const trainings = await this.prisma.training.findMany({
         where: {
@@ -589,7 +629,7 @@ export class TrainingService {
                 },
               }
             : {}),
-          ...(branchScopeCondition ? { AND: [branchScopeCondition] } : {}),
+          ...(combinedScopeCondition ? { AND: [combinedScopeCondition] } : {}),
         },
         include: {
           targetBranches: { select: { id: true, name: true, shortName: true } },
@@ -1857,6 +1897,18 @@ export class TrainingService {
     return matchedBranch?.id || null;
   }
 
+  /**
+   * Get user's designation enum
+   */
+  private async getUserDesignation(userId: string): Promise<Designation | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { designationEnum: true },
+    });
+
+    return user?.designationEnum || null;
+  }
+
   private getEffectiveBranchIds(
     requestedBranchIds?: string[],
     userBranchId?: string | null,
@@ -1874,5 +1926,63 @@ export class TrainingService {
     }
 
     return requestedBranchIds.includes(userBranchId) ? [userBranchId] : [];
+  }
+
+  /**
+   * Build designation-based scope condition for training filtering
+   * Logic: Training is visible if designation matches OR training has no target designations
+   * Exception: OTHER designation cannot see trainings with specific target designations
+   */
+  private buildDesignationScopeCondition(
+    userDesignation: Designation | null,
+  ): Prisma.TrainingWhereInput | undefined {
+    // If user has no designation, they can only see trainings without target designations
+    if (!userDesignation) {
+      return { targetDesignations: { isEmpty: true } };
+    }
+
+    // If user has OTHER designation, they can only see trainings without target designations
+    if (userDesignation === Designation.OTHER) {
+      return { targetDesignations: { isEmpty: true } };
+    }
+
+    // User can see trainings where:
+    // - targetDesignations is empty (open to all), OR
+    // - targetDesignations contains user's designation
+    return {
+      OR: [
+        { targetDesignations: { isEmpty: true } },
+        { targetDesignations: { has: userDesignation } },
+      ],
+    };
+  }
+
+  /**
+   * Build combined branch AND designation scope condition (restrictive)
+   * Training is visible if:
+   * - Branch matches (or no target branches), AND
+   * - Designation matches (or no target designations)
+   */
+  private buildCombinedScopeCondition(
+    branchScopeCondition: Prisma.TrainingWhereInput | undefined,
+    designationScopeCondition: Prisma.TrainingWhereInput | undefined,
+  ): Prisma.TrainingWhereInput | undefined {
+    // If neither scope is defined, no filtering needed
+    if (!branchScopeCondition && !designationScopeCondition) {
+      return undefined;
+    }
+
+    // If only one scope is defined, use it
+    if (!branchScopeCondition) {
+      return designationScopeCondition;
+    }
+    if (!designationScopeCondition) {
+      return branchScopeCondition;
+    }
+
+    // Both scopes defined: use AND logic (restrictive - both must match)
+    return {
+      AND: [branchScopeCondition, designationScopeCondition],
+    };
   }
 }

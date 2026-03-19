@@ -57,6 +57,7 @@ import {
 
 const { Text } = Typography;
 const ALL_BRANCHES_VALUE = "__ALL_BRANCHES__";
+const ALL_DESIGNATIONS_VALUE = "__ALL_DESIGNATIONS__";
 
 const TrainingManagementPage = () => {
   const dispatch = useDispatch();
@@ -160,6 +161,11 @@ const TrainingManagementPage = () => {
     const existingTargetBranchIds =
       training.targetBranches?.map((branch) => branch.id) || [];
 
+    // Handle targetDesignations - empty array means "All Designations"
+    const existingTargetDesignations = Array.isArray(training.targetDesignations) && training.targetDesignations.length > 0
+      ? training.targetDesignations
+      : [ALL_DESIGNATIONS_VALUE];
+
     // Populate form with training data
     form.setFieldsValue({
       title: training.title,
@@ -185,6 +191,7 @@ const TrainingManagementPage = () => {
       targetBranchIds: existingTargetBranchIds.length
         ? existingTargetBranchIds
         : [ALL_BRANCHES_VALUE],
+      targetDesignations: existingTargetDesignations,
       prerequisites: training.prerequisites,
       learningOutcomes: Array.isArray(training.learningOutcomes)
         ? training.learningOutcomes.join("\n")

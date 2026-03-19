@@ -41,6 +41,17 @@ const TrainingManageFormPage = () => {
   useEffect(() => {
     if (isEdit && currentTraining.data) {
       const training = currentTraining.data;
+
+      // Extract branch IDs from targetBranches relation, or use empty with "All Branches" marker
+      const targetBranchIds = Array.isArray(training.targetBranches) && training.targetBranches.length > 0
+        ? training.targetBranches.map((branch) => branch.id)
+        : ['__ALL_BRANCHES__'];
+
+      // Handle targetDesignations - empty array means "All Designations"
+      const targetDesignations = Array.isArray(training.targetDesignations) && training.targetDesignations.length > 0
+        ? training.targetDesignations
+        : ['__ALL_DESIGNATIONS__'];
+
       form.setFieldsValue({
         ...training,
         startDate: training.startDate ? dayjs(training.startDate) : null,
@@ -53,6 +64,8 @@ const TrainingManageFormPage = () => {
         learningOutcomes: Array.isArray(training.learningOutcomes)
           ? training.learningOutcomes.join('\n')
           : training.learningOutcomes,
+        targetBranchIds,
+        targetDesignations,
       });
     }
   }, [isEdit, currentTraining.data, form]);

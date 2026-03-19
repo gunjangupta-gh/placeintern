@@ -7,6 +7,41 @@ import { createStaff, updateStaff } from '../store/stateSlice';
 import stateService from '../../../services/state.service';
 import { useLookup } from '../../shared/hooks/useLookup';
 
+// Role options matching Prisma Role enum (for staff management)
+const ROLE_OPTIONS = [
+  { value: 'TEACHER', label: 'Teacher' },
+  { value: 'FACULTY_COORDINATOR', label: 'Faculty Coordinator' },
+  { value: 'PRINCIPAL', label: 'Principal' },
+  { value: 'ADMIN_STAFF', label: 'Admin Staff' },
+];
+
+// Designation options matching Prisma Designation enum
+const DESIGNATION_OPTIONS = [
+  { value: 'PRINCIPAL', label: 'Principal' },
+  { value: 'HOD', label: 'HOD' },
+  { value: 'SENIOR_LECTURER', label: 'Senior Lecturer' },
+  { value: 'LECTURER', label: 'Lecturer' },
+  { value: 'ASSISTANT_PROFESSOR', label: 'Assistant Professor' },
+  { value: 'FOREMAN_INSTRUCTOR', label: 'Foreman Instructor' },
+  { value: 'WORKSHOP_INSTRUCTOR', label: 'Workshop Instructor' },
+  { value: 'WORKSHOP_SUPERINTENDENT', label: 'Workshop Superintendent' },
+  { value: 'WORKSHOP_FOREMAN', label: 'Workshop Foreman' },
+  { value: 'LAB_TECHNICIAN', label: 'Lab Technician' },
+  { value: 'TECHNICIAN', label: 'Technician' },
+  { value: 'INSTRUCTOR', label: 'Instructor' },
+  { value: 'SYSTEM_ANALYST', label: 'System Analyst' },
+  { value: 'SYSTEM_ADMINISTRATOR', label: 'System Administrator' },
+  { value: 'SYSTEM_MANAGER', label: 'System Manager' },
+  { value: 'PROGRAMMER', label: 'Programmer' },
+  { value: 'NETWORK_ENGINEER', label: 'Network Engineer' },
+  { value: 'COMPUTER_OPERATOR', label: 'Computer Operator' },
+  { value: 'LIBRARIAN', label: 'Librarian' },
+  { value: 'TPO', label: 'TPO' },
+  { value: 'FASHION_DESIGNER', label: 'Fashion Designer' },
+  { value: 'PEON', label: 'Peon' },
+  { value: 'OTHER', label: 'Other' },
+];
+
 const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
   const dispatch = useDispatch();
   const isEditMode = !!staffId;
@@ -41,7 +76,7 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
         role: data.role,
         institutionId: data.institutionId,
         branchName: data.branchName,
-        designation: data.designation,
+        designationEnum: data.designationEnum,
         active: data.active !== false,
       });
     } catch (error) {
@@ -167,17 +202,12 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
                 label="Role"
                 rules={[{ required: true, message: 'Please select a role' }]}
               >
-                <Select placeholder="Select role">
-                  <Select.Option value="TEACHER">Teacher</Select.Option>
-                  <Select.Option value="FACULTY_COORDINATOR">Faculty Coordinator</Select.Option>
-                  <Select.Option value="FACULTY_SUPERVISOR">Faculty Supervisor</Select.Option>
-                  <Select.Option value="PLACEMENT_OFFICER">Placement Officer</Select.Option>
-                  <Select.Option value="ACCOUNTANT">Accountant</Select.Option>
-                  <Select.Option value="ADMISSION_OFFICER">Admission Officer</Select.Option>
-                  <Select.Option value="EXAMINATION_OFFICER">Examination Officer</Select.Option>
-                  <Select.Option value="PMS_OFFICER">PMS Officer</Select.Option>
-                  <Select.Option value="EXTRACURRICULAR_HEAD">Extracurricular Head</Select.Option>
-                </Select>
+                <Select
+                  placeholder="Select role"
+                  options={ROLE_OPTIONS}
+                  showSearch
+                  optionFilterProp="label"
+                />
               </Form.Item>
             </Col>
 
@@ -219,8 +249,14 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
             </Col>
 
             <Col xs={24} md={12}>
-              <Form.Item name="designation" label="Designation">
-                <Input placeholder="Enter designation (e.g., Assistant Professor)" />
+              <Form.Item name="designationEnum" label="Designation">
+                <Select
+                  placeholder="Select designation"
+                  options={DESIGNATION_OPTIONS}
+                  showSearch
+                  optionFilterProp="label"
+                  allowClear
+                />
               </Form.Item>
             </Col>
           </Row>

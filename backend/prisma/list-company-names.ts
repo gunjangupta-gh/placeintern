@@ -22,16 +22,16 @@ const exact = exactIndex !== -1 ? (args[exactIndex + 1] || '').toLowerCase() : n
 const limit = limitIndex !== -1 ? Number(args[limitIndex + 1]) || null : null;
 
 async function main() {
-  console.log('\n╔════════════════════════════════════════════════════════════╗');
-  console.log('║        Company Names Listing Script                       ║');
-  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log('\n============================================================');
+  console.log('Company Names Listing Script');
+  console.log('============================================================\n');
 
   if (contains) {
-    console.log(`🔎 Filter: contains "${contains}"\n`);
+    console.log(`Filter: contains "${contains}"\n`);
   }
 
   if (exact) {
-    console.log(`🔎 Filter: exact "${exact}"\n`);
+    console.log(`Filter: exact "${exact}"\n`);
   }
 
   const companyCounts = await prisma.internshipApplication.groupBy({
@@ -62,13 +62,13 @@ async function main() {
     results = results.slice(0, limit);
   }
 
-  console.log(`📊 Unique company names: ${results.length}\n`);
+  console.log(`Unique company names: ${results.length}\n`);
 
   results.forEach((item, index) => {
     console.log(`${(index + 1).toString().padStart(3)}. ${item.name} (${item.count})`);
   });
 
-  console.log('\n✅ Done.');
+  console.log('\nDone.');
 }
 
 main()

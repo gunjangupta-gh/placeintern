@@ -16,7 +16,11 @@
       "Bash(\"/c/Program Files/PuTTY/plink.exe\" -batch -ssh -i \"/d/chrome download/gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"/root/scripts/pg_backup.sh\")",
       "Bash(\"/c/Program Files/PuTTY/plink.exe\" -batch -ssh -i \"/d/chrome download/gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"sed -i ''1s/.*/#!/bin/bash/'' /root/scripts/pg_backup.sh && head -1 /root/scripts/pg_backup.sh\")",
       "Bash(\"/c/Program Files/PuTTY/plink.exe\" -batch -ssh -i \"/d/chrome download/gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"sed -i ''1s|.*|#!/bin/bash|'' /root/scripts/pg_backup.sh && head -1 /root/scripts/pg_backup.sh\")",
-      "Bash(\"/c/Program Files/PuTTY/plink.exe\" -batch -ssh -i \"/d/chrome download/gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"bash /root/scripts/pg_backup.sh\")"
+      "Bash(\"/c/Program Files/PuTTY/plink.exe\" -batch -ssh -i \"/d/chrome download/gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"bash /root/scripts/pg_backup.sh\")",
+      "Bash(npx tsx:*)",
+      "Bash(npx prisma migrate deploy:*)",
+      "Bash(npx prisma:*)",
+      "Bash(node:*)"
     ]
   }
 }
