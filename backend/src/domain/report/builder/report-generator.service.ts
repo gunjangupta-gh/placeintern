@@ -1494,6 +1494,11 @@ export class ReportGeneratorService {
       include: {
         Institution: { select: { name: true } },
         Student: { select: { id: true } }, // Include Student relation for accurate reporting
+        mentorAssignments: {
+          where: { isActive: true },
+          select: { id: true },
+          take: 1,
+        },
       },
       take,
       skip,
@@ -1536,6 +1541,7 @@ export class ReportGeneratorService {
         email: user.email,
         phoneNo: user.phoneNo,
         role: user.role,
+        isMentor: user.mentorAssignments.length > 0 ? 'Yes' : 'No',
         institutionName: user.Institution?.name ?? 'N/A',
         rollNumber: user.rollNumber,
         designation: user.designation,

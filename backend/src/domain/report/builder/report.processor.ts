@@ -328,6 +328,7 @@ export class ReportProcessor extends WorkerHost {
       'top_institutes_per_industry': 'Top 3 Institutes per Industry/Company',
       'principal_visit_logs': 'Principal Visit Logs Report',
       'principal_visit_summary': 'Principal Visit Summary Report',
+      'user_login_activity': 'User Login Activity Report',
     };
 
     // Column mapping - matches actual data fields from generator
@@ -686,6 +687,30 @@ export class ReportProcessor extends WorkerHost {
         { field: 'studentsVisited', header: 'Students Visited', type: 'number' as const, width: 14 },
         { field: 'followUpsRequired', header: 'Follow-ups Required', type: 'number' as const, width: 16 },
         { field: 'lastVisitDate', header: 'Last Visit Date', type: 'date' as const, width: 14 },
+      ],
+      'user_login_activity': [
+        { field: 'userId', header: 'User ID', type: 'string' as const, width: 18 },
+        { field: 'userName', header: 'User Name', type: 'string' as const, width: 20 },
+        { field: 'email', header: 'Email', type: 'string' as const, width: 28 },
+        { field: 'phoneNo', header: 'Phone', type: 'string' as const, width: 15 },
+        { field: 'role', header: 'Role', type: 'string' as const, width: 16 },
+        { field: 'isMentor', header: 'Is Mentor', type: 'string' as const, width: 12 },
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 28 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 14 },
+        { field: 'designation', header: 'Designation', type: 'string' as const, width: 18 },
+        { field: 'accountCreatedAt', header: 'Account Created', type: 'date' as const, width: 18 },
+        { field: 'loginCount', header: 'Login Count', type: 'number' as const, width: 12 },
+        { field: 'lastLoginAt', header: 'Last Login', type: 'date' as const, width: 18 },
+        { field: 'previousLoginAt', header: 'Previous Login', type: 'date' as const, width: 18 },
+        { field: 'lastLoginIp', header: 'Last Login IP', type: 'string' as const, width: 18 },
+        { field: 'hasChangedPassword', header: 'Password Changed', type: 'boolean' as const, width: 15 },
+        { field: 'passwordChangedAt', header: 'Password Changed At', type: 'date' as const, width: 20 },
+        { field: 'daysSinceLastLogin', header: 'Days Since Last Login', type: 'number' as const, width: 18 },
+        { field: 'daysSinceCreation', header: 'Days Since Creation', type: 'number' as const, width: 16 },
+        { field: 'isActive', header: 'Active', type: 'boolean' as const, width: 10 },
+        { field: 'userActive', header: 'User Account Active', type: 'boolean' as const, width: 16 },
+        { field: 'studentActive', header: 'Student Record Active', type: 'boolean' as const, width: 16 },
+        { field: 'status', header: 'Login Status', type: 'string' as const, width: 16 },
       ],
       // Compliance reports - matches generateStudentComplianceReport output
       'student_compliance': [

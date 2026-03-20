@@ -14,6 +14,7 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'email', label: 'Email', type: 'string', default: true, sortable: true },
       { id: 'phoneNo', label: 'Phone', type: 'string', default: false },
       { id: 'role', label: 'Role', type: 'string', default: true, sortable: true },
+      { id: 'isMentor', label: 'Is Mentor', type: 'string', default: true, sortable: true },
       { id: 'institutionName', label: 'Institution', type: 'string', default: true, sortable: true },
       { id: 'rollNumber', label: 'Roll Number', type: 'string', default: false },
       { id: 'designation', label: 'Designation', type: 'string', default: false },
@@ -89,7 +90,7 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'dateRange', label: 'Date Range', type: 'dateRange', required: false },
     ],
     groupBy: ['institutionName', 'role', 'status'],
-    sortableColumns: ['userName', 'email', 'role', 'loginCount', 'lastLoginAt', 'accountCreatedAt', 'daysSinceLastLogin'],
+    sortableColumns: ['userName', 'email', 'role', 'isMentor', 'loginCount', 'lastLoginAt', 'accountCreatedAt', 'daysSinceLastLogin'],
     exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
