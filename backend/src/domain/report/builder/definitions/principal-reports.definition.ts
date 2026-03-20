@@ -9,7 +9,7 @@ export const principalReportDefinitions: Record<string, ReportDefinition> = {
     icon: 'audit',
     availableFor: ['STATE_DIRECTORATE', 'PRINCIPAL', 'SYSTEM_ADMIN'],
     columns: [
-      { id: 'visitDate', label: 'Visit Date', type: 'date', default: true, sortable: true },
+      { id: 'visitDate', label: 'Visit Date', type: 'string', default: true, sortable: true },
       { id: 'institutionName', label: 'Institution', type: 'string', default: true, sortable: true },
       { id: 'principalName', label: 'Principal Name', type: 'string', default: true, sortable: true },
       { id: 'companyNames', label: 'Companies', type: 'string', default: true },

@@ -651,7 +651,7 @@ export class ReportProcessor extends WorkerHost {
         { field: 'completedStudents', header: 'Completed Students', type: 'number' as const, width: 14 },
       ],
       'principal_visit_logs': [
-        { field: 'visitDate', header: 'Visit Date', type: 'date' as const, width: 14 },
+        { field: 'visitDate', header: 'Visit Date', type: 'string' as const, width: 14 },
         { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
         { field: 'principalName', header: 'Principal Name', type: 'string' as const, width: 20 },
         { field: 'companyNames', header: 'Companies', type: 'string' as const, width: 30 },

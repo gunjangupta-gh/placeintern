@@ -4432,7 +4432,7 @@ export class ReportGeneratorService {
       const attendanceStatus = `${presentCount} Present, ${absentCount} Absent`;
 
       return {
-        visitDate: log.visitDate,
+        visitDate: this.formatToISTDateOnly(log.visitDate),
         institutionName: log.institution?.name ?? 'N/A',
         principalName: log.principal?.name ?? 'N/A',
         companyNames,
