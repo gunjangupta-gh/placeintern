@@ -654,17 +654,11 @@ export class ReportProcessor extends WorkerHost {
         { field: 'visitDate', header: 'Visit Date', type: 'date' as const, width: 14 },
         { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
         { field: 'principalName', header: 'Principal Name', type: 'string' as const, width: 20 },
-        { field: 'studentNames', header: 'Students', type: 'string' as const, width: 30 },
-        { field: 'studentRollNumbers', header: 'Roll Numbers', type: 'string' as const, width: 20 },
         { field: 'companyNames', header: 'Companies', type: 'string' as const, width: 30 },
         { field: 'visitType', header: 'Visit Type', type: 'string' as const, width: 14 },
         { field: 'visitLocation', header: 'Location', type: 'string' as const, width: 25 },
         { field: 'visitDuration', header: 'Duration', type: 'string' as const, width: 14 },
         { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
-        { field: 'expectedVisits', header: 'Expected Company Visits', type: 'number' as const, width: 18 },
-        { field: 'completedVisits', header: 'Completed Visits', type: 'number' as const, width: 14 },
-        { field: 'pendingVisits', header: 'Pending Visits', type: 'number' as const, width: 14 },
-        { field: 'intervalBucket', header: '15-Day Interval', type: 'string' as const, width: 16 },
         { field: 'responseFromOrganisation', header: 'Response From Organisation', type: 'string' as const, width: 35 },
         { field: 'observationsAboutIndustry', header: 'Observations About Industry', type: 'string' as const, width: 35 },
         { field: 'followUpRequired', header: 'Follow-up Required', type: 'boolean' as const, width: 14 },
@@ -676,12 +670,10 @@ export class ReportProcessor extends WorkerHost {
         { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
         { field: 'principalName', header: 'Principal Name', type: 'string' as const, width: 20 },
         { field: 'totalVisits', header: 'Total Visits', type: 'number' as const, width: 12 },
-        { field: 'expectedVisits', header: 'Expected Company Visits', type: 'number' as const, width: 18 },
-        { field: 'pendingVisits', header: 'Pending Visits', type: 'number' as const, width: 14 },
         { field: 'physicalVisits', header: 'Physical Visits', type: 'number' as const, width: 14 },
         { field: 'virtualVisits', header: 'Virtual Visits', type: 'number' as const, width: 14 },
         { field: 'telephonicVisits', header: 'Telephonic Visits', type: 'number' as const, width: 16 },
-        { field: 'completedVisits', header: 'Completed', type: 'number' as const, width: 12 },
+        { field: 'completedVisitLogs', header: 'Completed Visit Logs', type: 'number' as const, width: 16 },
         { field: 'draftVisits', header: 'Drafts', type: 'number' as const, width: 10 },
         { field: 'avgSatisfactionRating', header: 'Avg Satisfaction Rating', type: 'number' as const, width: 16 },
         { field: 'studentsVisited', header: 'Students Visited', type: 'number' as const, width: 14 },
@@ -757,30 +749,6 @@ export class ReportProcessor extends WorkerHost {
         }));
       } else {
         columns = [];
-      }
-    }
-
-    // For principal interval reports, always expose dynamic half-month interval columns
-    // (e.g., "Feb 1-15 Expected", "Feb 1-15 Completed") as separate columns.
-    const isPrincipalIntervalReport =
-      normalizedType === 'principal_visit_logs' ||
-      normalizedType === 'principal_visit_summary';
-
-    if (isPrincipalIntervalReport && data.length > 0) {
-      const firstRow = data[0];
-      const existingFields = new Set(columns.map((c) => c.field));
-      const dynamicIntervalColumns = Object.keys(firstRow)
-        .filter((key) => !existingFields.has(key))
-        .filter((key) => /\s(Expected|Completed)$/.test(key))
-        .map((key) => ({
-          field: key,
-          header: key,
-          type: this.inferColumnType(firstRow[key]),
-          width: 16,
-        }));
-
-      if (dynamicIntervalColumns.length > 0) {
-        columns = [...columns, ...dynamicIntervalColumns];
       }
     }
 

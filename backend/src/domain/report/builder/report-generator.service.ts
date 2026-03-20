@@ -4420,197 +4420,7 @@ export class ReportGeneratorService {
       CANCELLED: 'Cancelled',
     };
 
-    // Build half-month interval buckets (1-15 and 16-end).
-    const now = new Date();
-    const configuredCycleStart = new Date('2026-02-01');
-    configuredCycleStart.setHours(0, 0, 0, 0);
-
-    const filterRangeStart = filters?.dateRange?.[0] ? new Date(filters.dateRange[0]) : null;
-    const filterRangeEnd = filters?.dateRange?.[1] ? new Date(filters.dateRange[1]) : null;
-
-    const intervalStartBoundary = filterRangeStart && !isNaN(filterRangeStart.getTime())
-      ? filterRangeStart
-      : configuredCycleStart;
-    intervalStartBoundary.setHours(0, 0, 0, 0);
-
-    const intervalEndBoundary = filterRangeEnd && !isNaN(filterRangeEnd.getTime())
-      ? filterRangeEnd
-      : now;
-    intervalEndBoundary.setHours(23, 59, 59, 999);
-
-    const intervalBuckets: Array<{
-      keyBase: string;
-      label: string;
-      start: Date;
-      end: Date;
-      expectedField: string;
-      completedField: string;
-    }> = [];
-
-    if (intervalStartBoundary <= intervalEndBoundary) {
-      const cursor = new Date(
-        intervalStartBoundary.getFullYear(),
-        intervalStartBoundary.getMonth(),
-        1,
-      );
-      cursor.setHours(0, 0, 0, 0);
-
-      while (cursor <= intervalEndBoundary) {
-        const year = cursor.getFullYear();
-        const monthIndex = cursor.getMonth();
-        const monthNumber = monthIndex + 1;
-        const monthName = cursor.toLocaleString('en-US', { month: 'short' });
-        const monthEndDate = new Date(year, monthNumber, 0);
-        monthEndDate.setHours(23, 59, 59, 999);
-
-        const firstHalfStart = new Date(year, monthIndex, 1, 0, 0, 0, 0);
-        const firstHalfEnd = new Date(year, monthIndex, 15, 23, 59, 59, 999);
-        const secondHalfStart = new Date(year, monthIndex, 16, 0, 0, 0, 0);
-        const secondHalfEnd = monthEndDate;
-
-        intervalBuckets.push({
-          keyBase: `${year}_${String(monthNumber).padStart(2, '0')}_01_15`,
-          label: `${monthName} 1-15`,
-          start: firstHalfStart,
-          end: firstHalfEnd,
-          expectedField: `${monthName} 1-15 Expected`,
-          completedField: `${monthName} 1-15 Completed`,
-        });
-
-        intervalBuckets.push({
-          keyBase: `${year}_${String(monthNumber).padStart(2, '0')}_16_end`,
-          label: `${monthName} 16-End`,
-          start: secondHalfStart,
-          end: secondHalfEnd,
-          expectedField: `${monthName} 16-End Expected`,
-          completedField: `${monthName} 16-End Completed`,
-        });
-
-        cursor.setMonth(cursor.getMonth() + 1);
-      }
-    }
-
-    const inReportRangeBuckets = intervalBuckets.filter(
-      (bucket) => bucket.end >= intervalStartBoundary && bucket.start <= intervalEndBoundary,
-    );
-
-    const getIntervalBucket = (date: Date) => {
-      return inReportRangeBuckets.find(
-        (bucket) => date >= bucket.start && date <= bucket.end,
-      );
-    };
-
-    // Calculate expected visits per institution from unique active internship companies.
-    const internshipWhere: Record<string, unknown> = {
-      isSelfIdentified: true,
-      isActive: true,
-      companyName: { not: null },
-    };
-
-    if (filters?.institutionId) {
-      internshipWhere.student = { institutionId: filters.institutionId };
-    }
-
-    const internshipApps = await this.prisma.internshipApplication.findMany({
-      where: internshipWhere as any,
-      select: {
-        companyName: true,
-        student: {
-          select: {
-            institutionId: true,
-          },
-        },
-      },
-    });
-
-    const institutionCompanies = new Map<string, Set<string>>();
-    for (const app of internshipApps) {
-      const institutionId = app.student?.institutionId;
-      const companyName = app.companyName?.trim();
-      if (!institutionId || !companyName) continue;
-
-      if (!institutionCompanies.has(institutionId)) {
-        institutionCompanies.set(institutionId, new Set<string>());
-      }
-
-      institutionCompanies.get(institutionId)!.add(companyName.toLowerCase());
-    }
-
-    const institutionExpectedCompanyCount = new Map<string, number>();
-    institutionCompanies.forEach((companySet, institutionId) => {
-      institutionExpectedCompanyCount.set(institutionId, companySet.size);
-    });
-
-    // Calculate completed company coverage per institution/principal.
-    const principalCompletedCompanies = new Map<string, Set<string>>();
-    const principalCompletedCompaniesByInterval = new Map<string, Map<string, Set<string>>>();
-
-    for (const log of visitLogs) {
-      if (log.status !== 'COMPLETED' || !log.visitDate) {
-        continue;
-      }
-
-      const institutionId = log.institutionId || '';
-      const principalId = log.principalId || '';
-      const key = `${institutionId}::${principalId}`;
-      const companiesInLog = new Set(
-        log.students
-          .map((s) => s.student?.internshipApplications?.[0]?.companyName?.trim().toLowerCase())
-          .filter((companyName): companyName is string => Boolean(companyName)),
-      );
-
-      if (!principalCompletedCompanies.has(key)) {
-        principalCompletedCompanies.set(key, new Set<string>());
-      }
-
-      const completedCompanies = principalCompletedCompanies.get(key)!;
-      companiesInLog.forEach((companyName) => completedCompanies.add(companyName));
-
-      const bucket = getIntervalBucket(new Date(log.visitDate));
-      if (!bucket) continue;
-
-      if (!principalCompletedCompaniesByInterval.has(key)) {
-        principalCompletedCompaniesByInterval.set(key, new Map<string, Set<string>>());
-      }
-
-      const intervalMap = principalCompletedCompaniesByInterval.get(key)!;
-      if (!intervalMap.has(bucket.keyBase)) {
-        intervalMap.set(bucket.keyBase, new Set<string>());
-      }
-
-      const intervalCompanies = intervalMap.get(bucket.keyBase)!;
-      companiesInLog.forEach((companyName) => intervalCompanies.add(companyName));
-    }
-
-    const globalExpectedByBucket = new Map<string, number>();
-    const totalExpectedCompanyVisits = Array.from(institutionExpectedCompanyCount.values())
-      .reduce((sum, count) => sum + count, 0);
-
-    inReportRangeBuckets.forEach((bucket) => {
-      globalExpectedByBucket.set(bucket.keyBase, totalExpectedCompanyVisits);
-    });
-
-    const globalCompletedByBucket = new Map<string, number>();
-    principalCompletedCompaniesByInterval.forEach((intervalMap) => {
-      intervalMap.forEach((companySet, key) => {
-        globalCompletedByBucket.set(key, (globalCompletedByBucket.get(key) || 0) + companySet.size);
-      });
-    });
-
-    // ACTIVE_ONLY (default and supported): show only intervals with expected or completed activity
-    // within the selected date range.
-    const finalBuckets = inReportRangeBuckets.filter((bucket) =>
-      (globalExpectedByBucket.get(bucket.keyBase) || 0) > 0 ||
-      (globalCompletedByBucket.get(bucket.keyBase) || 0) > 0,
-    );
-
     return visitLogs.map((log) => {
-      const studentNames = log.students
-        .map((s) => s.student?.user?.name || 'Unknown')
-        .join(', ');
-      const studentRollNumbers = log.students
-        .map((s) => s.student?.user?.rollNumber || '-')
-        .join(', ');
       const companyNames = log.students
         .map((s) => s.student?.internshipApplications?.[0]?.companyName || '-')
         .filter((name, index, arr) => arr.indexOf(name) === index)
@@ -4621,51 +4431,21 @@ export class ReportGeneratorService {
       const absentCount = log.students.filter((s) => s.isPresent === false).length;
       const attendanceStatus = `${presentCount} Present, ${absentCount} Absent`;
 
-      const institutionId = log.institutionId || '';
-      const principalId = log.principalId || '';
-      const principalKey = `${institutionId}::${principalId}`;
-      const completedMap = principalCompletedCompaniesByInterval.get(principalKey) || new Map<string, Set<string>>();
-      const completedCompanyCount = principalCompletedCompanies.get(principalKey)?.size || 0;
-
-      const expectedVisits = institutionExpectedCompanyCount.get(institutionId) || 0;
-      const intervalColumns: Record<string, number> = {};
-
-      for (const bucket of finalBuckets) {
-        const expectedForBucket = expectedVisits;
-        const completedForBucket = completedMap.get(bucket.keyBase)?.size || 0;
-
-        intervalColumns[bucket.expectedField] = expectedForBucket;
-        intervalColumns[bucket.completedField] = completedForBucket;
-
-      }
-
-      const currentBucket = log.visitDate
-        ? getIntervalBucket(new Date(log.visitDate))
-        : undefined;
-      const intervalBucket = currentBucket?.label || 'Outside configured range';
-
       return {
         visitDate: log.visitDate,
         institutionName: log.institution?.name ?? 'N/A',
         principalName: log.principal?.name ?? 'N/A',
-        studentNames,
-        studentRollNumbers,
         companyNames,
         visitType: visitTypeMap[log.visitType] || log.visitType,
         visitLocation: log.visitLocation ?? 'N/A',
         visitDuration: log.visitDuration ?? 'N/A',
         status: statusMap[log.status] || log.status,
-        expectedVisits,
-        completedVisits: completedCompanyCount,
-        pendingVisits: Math.max(0, expectedVisits - completedCompanyCount),
-        intervalBucket,
         responseFromOrganisation: log.responseFromOrganisation ?? '',
         observationsAboutIndustry: log.observationsAboutIndustry ?? '',
         followUpRequired: log.followUpRequired,
         nextVisitDate: log.nextVisitDate,
         attendanceStatus,
         createdAt: log.createdAt,
-        ...intervalColumns,
       };
     });
   }
@@ -4727,127 +4507,6 @@ export class ReportGeneratorService {
       orderBy: { visitDate: 'desc' },
     });
 
-    // Build half-month interval buckets (1-15 and 16-end) for report columns.
-    const now = new Date();
-    const configuredCycleStart = new Date('2026-02-01');
-    configuredCycleStart.setHours(0, 0, 0, 0);
-
-    const filterRangeStart = filters?.dateRange?.[0] ? new Date(filters.dateRange[0]) : null;
-    const filterRangeEnd = filters?.dateRange?.[1] ? new Date(filters.dateRange[1]) : null;
-
-    const intervalStartBoundary = filterRangeStart && !isNaN(filterRangeStart.getTime())
-      ? filterRangeStart
-      : configuredCycleStart;
-    intervalStartBoundary.setHours(0, 0, 0, 0);
-
-    const intervalEndBoundary = filterRangeEnd && !isNaN(filterRangeEnd.getTime())
-      ? filterRangeEnd
-      : now;
-    intervalEndBoundary.setHours(23, 59, 59, 999);
-
-    const intervalBuckets: Array<{
-      keyBase: string;
-      label: string;
-      start: Date;
-      end: Date;
-      expectedField: string;
-      completedField: string;
-    }> = [];
-
-    if (intervalStartBoundary <= intervalEndBoundary) {
-      const cursor = new Date(
-        intervalStartBoundary.getFullYear(),
-        intervalStartBoundary.getMonth(),
-        1,
-      );
-      cursor.setHours(0, 0, 0, 0);
-
-      while (cursor <= intervalEndBoundary) {
-        const year = cursor.getFullYear();
-        const monthIndex = cursor.getMonth();
-        const monthNumber = monthIndex + 1;
-        const monthName = cursor.toLocaleString('en-US', { month: 'short' });
-        const monthEndDate = new Date(year, monthNumber, 0);
-        monthEndDate.setHours(23, 59, 59, 999);
-
-        const firstHalfStart = new Date(year, monthIndex, 1, 0, 0, 0, 0);
-        const firstHalfEnd = new Date(year, monthIndex, 15, 23, 59, 59, 999);
-        const secondHalfStart = new Date(year, monthIndex, 16, 0, 0, 0, 0);
-        const secondHalfEnd = monthEndDate;
-
-        intervalBuckets.push({
-          keyBase: `${year}_${String(monthNumber).padStart(2, '0')}_01_15`,
-          label: `${monthName} 1-15`,
-          start: firstHalfStart,
-          end: firstHalfEnd,
-          expectedField: `${monthName} 1-15 Expected`,
-          completedField: `${monthName} 1-15 Completed`,
-        });
-
-        intervalBuckets.push({
-          keyBase: `${year}_${String(monthNumber).padStart(2, '0')}_16_end`,
-          label: `${monthName} 16-End`,
-          start: secondHalfStart,
-          end: secondHalfEnd,
-          expectedField: `${monthName} 16-End Expected`,
-          completedField: `${monthName} 16-End Completed`,
-        });
-
-        cursor.setMonth(cursor.getMonth() + 1);
-      }
-    }
-
-    const inReportRangeBuckets = intervalBuckets.filter(
-      (bucket) => bucket.end >= intervalStartBoundary && bucket.start <= intervalEndBoundary,
-    );
-
-    // Get internship applications once and calculate expected visits by unique company per institution.
-    const internshipWhere: Record<string, unknown> = {
-      isSelfIdentified: true,
-      isActive: true,
-      companyName: { not: null },
-    };
-
-    if (filters?.institutionId) {
-      internshipWhere.student = { institutionId: filters.institutionId };
-    }
-
-    const internshipApps = await this.prisma.internshipApplication.findMany({
-      where: internshipWhere as any,
-      select: {
-        companyName: true,
-        student: {
-          select: {
-            institutionId: true,
-          },
-        },
-      },
-    });
-
-    const institutionCompanies = new Map<string, Set<string>>();
-    for (const app of internshipApps) {
-      const institutionId = app.student?.institutionId;
-      const companyName = app.companyName?.trim();
-      if (!institutionId || !companyName) continue;
-
-      if (!institutionCompanies.has(institutionId)) {
-        institutionCompanies.set(institutionId, new Set<string>());
-      }
-
-      institutionCompanies.get(institutionId)!.add(companyName.toLowerCase());
-    }
-
-    const getIntervalBucket = (date: Date) => {
-      return inReportRangeBuckets.find(
-        (bucket) => date >= bucket.start && date <= bucket.end,
-      );
-    };
-
-    const institutionExpectedCompanyCount = new Map<string, number>();
-    institutionCompanies.forEach((companySet, institutionId) => {
-      institutionExpectedCompanyCount.set(institutionId, companySet.size);
-    });
-
     // Group by institution and principal
     const summaryMap = new Map<string, {
       institutionId: string;
@@ -4862,10 +4521,8 @@ export class ReportGeneratorService {
       draftVisits: number;
       ratings: number[];
       studentsVisited: Set<string>;
-      completedCompanies: Set<string>;
       followUpsRequired: number;
       lastVisitDate: Date | null;
-      intervalCompletedCompanies: Map<string, Set<string>>;
     }>();
 
     visitLogs.forEach((log) => {
@@ -4885,10 +4542,8 @@ export class ReportGeneratorService {
           draftVisits: 0,
           ratings: [],
           studentsVisited: new Set(),
-          completedCompanies: new Set(),
           followUpsRequired: 0,
           lastVisitDate: null,
-          intervalCompletedCompanies: new Map<string, Set<string>>(),
         });
       }
 
@@ -4920,75 +4575,17 @@ export class ReportGeneratorService {
         summary.lastVisitDate = log.visitDate;
       }
 
-      // Track completed visits per 15-day bucket.
-      if (log.status === 'COMPLETED' && log.visitDate) {
-        const companiesInLog = new Set(
-          log.students
-            .map((s) => s.student?.internshipApplications?.[0]?.companyName?.trim().toLowerCase())
-            .filter((companyName): companyName is string => Boolean(companyName)),
-        );
-
-        companiesInLog.forEach((companyName) => summary.completedCompanies.add(companyName));
-
-        const bucket = getIntervalBucket(new Date(log.visitDate));
-        if (bucket) {
-          if (!summary.intervalCompletedCompanies.has(bucket.keyBase)) {
-            summary.intervalCompletedCompanies.set(bucket.keyBase, new Set<string>());
-          }
-
-          const intervalCompanies = summary.intervalCompletedCompanies.get(bucket.keyBase)!;
-          companiesInLog.forEach((companyName) => intervalCompanies.add(companyName));
-        }
-      }
     });
-
-    const globalExpectedByBucket = new Map<string, number>();
-    const totalExpectedCompanyVisits = Array.from(institutionExpectedCompanyCount.values())
-      .reduce((sum, count) => sum + count, 0);
-
-    inReportRangeBuckets.forEach((bucket) => {
-      globalExpectedByBucket.set(bucket.keyBase, totalExpectedCompanyVisits);
-    });
-
-    const globalCompletedByBucket = new Map<string, number>();
-    summaryMap.forEach((summary) => {
-      summary.intervalCompletedCompanies.forEach((companySet, key) => {
-        globalCompletedByBucket.set(key, (globalCompletedByBucket.get(key) || 0) + companySet.size);
-      });
-    });
-
-    // ACTIVE_ONLY (default and supported): show only intervals with expected or completed activity
-    // within the selected date range.
-    const finalBuckets = inReportRangeBuckets.filter((bucket) =>
-      (globalExpectedByBucket.get(bucket.keyBase) || 0) > 0 ||
-      (globalCompletedByBucket.get(bucket.keyBase) || 0) > 0,
-    );
 
     const results = Array.from(summaryMap.values()).map((summary) => {
-      const expectedVisits = summary.institutionId
-        ? (institutionExpectedCompanyCount.get(summary.institutionId) || 0)
-        : 0;
-      const intervalColumns: Record<string, number> = {};
-
-      for (const bucket of finalBuckets) {
-        const expectedForBucket = expectedVisits;
-        const completedForBucket = summary.intervalCompletedCompanies.get(bucket.keyBase)?.size || 0;
-
-        intervalColumns[bucket.expectedField] = expectedForBucket;
-        intervalColumns[bucket.completedField] = completedForBucket;
-
-      }
-
       return {
         institutionName: summary.institutionName,
         principalName: summary.principalName,
         totalVisits: summary.totalVisits,
-        expectedVisits,
-        pendingVisits: Math.max(0, expectedVisits - summary.completedCompanies.size),
         physicalVisits: summary.physicalVisits,
         virtualVisits: summary.virtualVisits,
         telephonicVisits: summary.telephonicVisits,
-        completedVisits: summary.completedCompanies.size,
+        completedVisitLogs: summary.completedVisits,
         draftVisits: summary.draftVisits,
         avgSatisfactionRating: summary.ratings.length > 0
           ? Math.round((summary.ratings.reduce((a, b) => a + b, 0) / summary.ratings.length) * 10) / 10
@@ -4996,7 +4593,6 @@ export class ReportGeneratorService {
         studentsVisited: summary.studentsVisited.size,
         followUpsRequired: summary.followUpsRequired,
         lastVisitDate: summary.lastVisitDate,
-        ...intervalColumns,
       };
     });
 
