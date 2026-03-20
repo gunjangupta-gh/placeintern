@@ -15,7 +15,6 @@ export const principalReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'companyNames', label: 'Companies', type: 'string', default: true },
       { id: 'visitType', label: 'Visit Type', type: 'string', default: true, sortable: true },
       { id: 'visitLocation', label: 'Location', type: 'string', default: true },
-      { id: 'visitDuration', label: 'Duration', type: 'string', default: true },
       { id: 'status', label: 'Status', type: 'string', default: true, sortable: true },
       { id: 'responseFromOrganisation', label: 'Response From Organisation', type: 'string', default: true },
       { id: 'observationsAboutIndustry', label: 'Observations About Industry', type: 'string', default: true },

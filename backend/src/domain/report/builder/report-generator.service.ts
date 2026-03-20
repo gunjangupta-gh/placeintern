@@ -4438,7 +4438,6 @@ export class ReportGeneratorService {
         companyNames,
         visitType: visitTypeMap[log.visitType] || log.visitType,
         visitLocation: log.visitLocation ?? 'N/A',
-        visitDuration: log.visitDuration ?? 'N/A',
         status: statusMap[log.status] || log.status,
         responseFromOrganisation: log.responseFromOrganisation ?? '',
         observationsAboutIndustry: log.observationsAboutIndustry ?? '',

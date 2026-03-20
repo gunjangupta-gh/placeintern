@@ -657,7 +657,6 @@ export class ReportProcessor extends WorkerHost {
         { field: 'companyNames', header: 'Companies', type: 'string' as const, width: 30 },
         { field: 'visitType', header: 'Visit Type', type: 'string' as const, width: 14 },
         { field: 'visitLocation', header: 'Location', type: 'string' as const, width: 25 },
-        { field: 'visitDuration', header: 'Duration', type: 'string' as const, width: 14 },
         { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
         { field: 'responseFromOrganisation', header: 'Response From Organisation', type: 'string' as const, width: 35 },
         { field: 'observationsAboutIndustry', header: 'Observations About Industry', type: 'string' as const, width: 35 },
