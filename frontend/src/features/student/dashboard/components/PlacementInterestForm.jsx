@@ -17,8 +17,8 @@ const PLAN_AFTER_DIPLOMA = {
 };
 
 const JOB_LOCATION_PREFERENCE = {
-  WITHIN_DISTRICT: 'WITHIN_DISTRICT',
-  ANYWHERE_IN_PUNJAB: 'ANYWHERE_IN_PUNJAB',
+  WITHIN_PUNJAB: 'WITHIN_PUNJAB',
+  OUTSIDE_PUNJAB: 'OUTSIDE_PUNJAB',
 };
 
 const EXPECTED_SALARY_RANGE = {
@@ -112,19 +112,19 @@ const PlacementInterestForm = ({ form, initialData = null, onValuesChange }) => 
           >
             <Radio.Group className="w-full">
               <Space direction="vertical" className="w-full" size={8}>
-                <Radio value={JOB_LOCATION_PREFERENCE.WITHIN_DISTRICT} className="w-full !m-0">
+                <Radio value={JOB_LOCATION_PREFERENCE.WITHIN_PUNJAB} className="w-full !m-0">
                   <OptionCard
                     icon={<EnvironmentOutlined />}
-                    label="Within District / In Punjab"
-                    selected={form.getFieldValue('interestedForPrivateJob') === JOB_LOCATION_PREFERENCE.WITHIN_DISTRICT}
+                    label="Within Punjab"
+                    selected={form.getFieldValue('interestedForPrivateJob') === JOB_LOCATION_PREFERENCE.WITHIN_PUNJAB}
                     color={token.colorInfo}
                   />
                 </Radio>
-                <Radio value={JOB_LOCATION_PREFERENCE.ANYWHERE_IN_PUNJAB} className="w-full !m-0">
+                <Radio value={JOB_LOCATION_PREFERENCE.OUTSIDE_PUNJAB} className="w-full !m-0">
                   <OptionCard
                     icon={<EnvironmentOutlined />}
-                    label="Anywhere in Punjab"
-                    selected={form.getFieldValue('interestedForPrivateJob') === JOB_LOCATION_PREFERENCE.ANYWHERE_IN_PUNJAB}
+                    label="Outside Punjab"
+                    selected={form.getFieldValue('interestedForPrivateJob') === JOB_LOCATION_PREFERENCE.OUTSIDE_PUNJAB}
                     color={token.colorInfo}
                   />
                 </Radio>

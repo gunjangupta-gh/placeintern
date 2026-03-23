@@ -2185,8 +2185,8 @@ enum PlanAfterDiploma {
 }
 
 enum JobLocationPreference {
-  WITHIN_DISTRICT
-  ANYWHERE_IN_PUNJAB
+  WITHIN_PUNJAB
+  OUTSIDE_PUNJAB
 }
 
 enum ExpectedSalaryRange {
