@@ -8,8 +8,8 @@ export enum PlanAfterDiploma {
 }
 
 export enum JobLocationPreference {
-  WITHIN_DISTRICT = 'WITHIN_DISTRICT',
-  ANYWHERE_IN_PUNJAB = 'ANYWHERE_IN_PUNJAB',
+  WITHIN_PUNJAB = 'WITHIN_PUNJAB',
+  OUTSIDE_PUNJAB = 'OUTSIDE_PUNJAB',
 }
 
 export enum ExpectedSalaryRange {
@@ -30,7 +30,7 @@ export class CreateStudentPlacementInterestDto {
   @ApiPropertyOptional({
     enum: JobLocationPreference,
     description: 'Job location preference (only if planAfterDiploma is PRIVATE_JOB)',
-    example: JobLocationPreference.WITHIN_DISTRICT,
+    example: JobLocationPreference.WITHIN_PUNJAB,
   })
   @ValidateIf((o) => o.planAfterDiploma === PlanAfterDiploma.PRIVATE_JOB)
   @IsEnum(JobLocationPreference)
