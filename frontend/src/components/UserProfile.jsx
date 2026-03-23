@@ -39,6 +39,32 @@ import MaskedField from './common/MaskedField';
 
 const { Title, Text } = Typography;
 
+const DESIGNATION_OPTIONS = [
+  { value: 'Principal', label: 'Principal' },
+  { value: 'HOD', label: 'HOD' },
+  { value: 'Senior Lecturer', label: 'Senior Lecturer' },
+  { value: 'Lecturer', label: 'Lecturer' },
+  { value: 'Assistant Professor', label: 'Assistant Professor' },
+  { value: 'Foreman Instructor', label: 'Foreman Instructor' },
+  { value: 'Workshop Instructor', label: 'Workshop Instructor' },
+  { value: 'Workshop Superintendent', label: 'Workshop Superintendent' },
+  { value: 'Workshop Foreman', label: 'Workshop Foreman' },
+  { value: 'Lab Technician', label: 'Lab Technician' },
+  { value: 'Technician', label: 'Technician' },
+  { value: 'Instructor', label: 'Instructor' },
+  { value: 'System Analyst', label: 'System Analyst' },
+  { value: 'System Administrator', label: 'System Administrator' },
+  { value: 'System Manager', label: 'System Manager' },
+  { value: 'Programmer', label: 'Programmer' },
+  { value: 'Network Engineer', label: 'Network Engineer' },
+  { value: 'Computer Operator', label: 'Computer Operator' },
+  { value: 'Librarian', label: 'Librarian' },
+  { value: 'TPO', label: 'TPO' },
+  { value: 'Fashion Designer', label: 'Fashion Designer' },
+  { value: 'Peon', label: 'Peon' },
+  { value: 'Other', label: 'Other' },
+];
+
 const UserProfile = ({ visible, onClose }) => {
   const [form] = Form.useForm();
   const [userData, setUserData] = useState(null);
@@ -416,11 +442,14 @@ const UserProfile = ({ visible, onClose }) => {
                             name="designation"
                             label="Designation"
                           >
-                            <Input
+                            <Select
                               size="small"
-                              prefix={<IdcardOutlined className="text-text-tertiary" />}
-                              placeholder="Enter designation"
+                              allowClear
+                              showSearch
+                              optionFilterProp="label"
+                              placeholder="Select designation"
                               className="rounded-lg"
+                              options={DESIGNATION_OPTIONS}
                             />
                           </Form.Item>
 
