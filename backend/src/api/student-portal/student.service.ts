@@ -18,6 +18,9 @@ import {
   AuditCategory,
   AuditSeverity,
   Role,
+  PlanAfterDiploma,
+  JobLocationPreference,
+  ExpectedSalaryRange,
 } from "../../generated/prisma/client";
 import { AuditService } from "../../infrastructure/audit/audit.service";
 import {
@@ -2937,6 +2940,243 @@ export class StudentService {
         assignmentId: assignment?.id || null,
         assignmentDate: assignment?.assignmentDate || null,
       },
+    };
+  }
+
+  // =============================================
+  // STUDENT PLACEMENT INTEREST METHODS
+  // =============================================
+
+  /**
+   * Get student's placement interest (returns null if not filled)
+   */
+  async getPlacementInterest(userId: string) {
+    const student = await this.prisma.student.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException("Student not found");
+    }
+
+    const placementInterest = await this.prisma.studentPlacementInterest.findUnique({
+      where: { studentId: student.id },
+    });
+
+    return {
+      data: placementInterest,
+      isFilled: !!placementInterest,
+    };
+  }
+
+  /**
+   * Check if student has filled placement interest form
+   */
+  async hasFilledPlacementInterest(userId: string): Promise<boolean> {
+    const student = await this.prisma.student.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException("Student not found");
+    }
+
+    const placementInterest = await this.prisma.studentPlacementInterest.findUnique({
+      where: { studentId: student.id },
+      select: { id: true },
+    });
+
+    return !!placementInterest;
+  }
+
+  /**
+   * Submit placement interest form
+   */
+  async submitPlacementInterest(
+    userId: string,
+    data: {
+      planAfterDiploma: PlanAfterDiploma;
+      interestedForPrivateJob?: JobLocationPreference;
+      expectedSalary?: ExpectedSalaryRange;
+    }
+  ) {
+    const student = await this.prisma.student.findUnique({
+      where: { userId },
+      include: { user: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException("Student not found");
+    }
+
+    // Check if already submitted
+    const existing = await this.prisma.studentPlacementInterest.findUnique({
+      where: { studentId: student.id },
+    });
+
+    if (existing) {
+      throw new BadRequestException(
+        "Placement interest form has already been submitted. Use update instead."
+      );
+    }
+
+    // Validate: If plan is PRIVATE_JOB, job location and salary should be provided
+    if (data.planAfterDiploma === PlanAfterDiploma.PRIVATE_JOB) {
+      if (!data.interestedForPrivateJob) {
+        throw new BadRequestException(
+          "Job location preference is required for private job option"
+        );
+      }
+      if (!data.expectedSalary) {
+        throw new BadRequestException(
+          "Expected salary range is required for private job option"
+        );
+      }
+    } else {
+      // Clear job-specific fields if plan is not PRIVATE_JOB
+      data.interestedForPrivateJob = undefined;
+      data.expectedSalary = undefined;
+    }
+
+    const placementInterest = await this.prisma.studentPlacementInterest.create({
+      data: {
+        studentId: student.id,
+        planAfterDiploma: data.planAfterDiploma,
+        interestedForPrivateJob: data.interestedForPrivateJob,
+        expectedSalary: data.expectedSalary,
+      },
+    });
+
+    // Audit placement interest submission
+    this.auditService
+      .log({
+        action: AuditAction.STUDENT_PROFILE_UPDATE,
+        entityType: "StudentPlacementInterest",
+        entityId: placementInterest.id,
+        userId,
+        userName: student.user?.name,
+        userRole: student.user?.role || Role.STUDENT,
+        description: `Placement interest form submitted: ${data.planAfterDiploma}`,
+        category: AuditCategory.PROFILE_MANAGEMENT,
+        severity: AuditSeverity.LOW,
+        institutionId: student.institutionId || undefined,
+        newValues: {
+          planAfterDiploma: data.planAfterDiploma,
+          interestedForPrivateJob: data.interestedForPrivateJob,
+          expectedSalary: data.expectedSalary,
+        },
+      })
+      .catch(() => {});
+
+    await this.cache.invalidateByTags([
+      "student",
+      `student:${student.id}`,
+      `student:dashboard:${student.id}`,
+    ]);
+
+    return {
+      success: true,
+      message: "Placement interest form submitted successfully",
+      data: placementInterest,
+    };
+  }
+
+  /**
+   * Update placement interest form
+   */
+  async updatePlacementInterest(
+    userId: string,
+    data: {
+      planAfterDiploma?: PlanAfterDiploma;
+      interestedForPrivateJob?: JobLocationPreference;
+      expectedSalary?: ExpectedSalaryRange;
+    }
+  ) {
+    const student = await this.prisma.student.findUnique({
+      where: { userId },
+      include: { user: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException("Student not found");
+    }
+
+    // Check if exists
+    const existing = await this.prisma.studentPlacementInterest.findUnique({
+      where: { studentId: student.id },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(
+        "Placement interest form not found. Please submit first."
+      );
+    }
+
+    const oldValues = {
+      planAfterDiploma: existing.planAfterDiploma,
+      interestedForPrivateJob: existing.interestedForPrivateJob,
+      expectedSalary: existing.expectedSalary,
+    };
+
+    // Determine final plan
+    const finalPlan = data.planAfterDiploma || existing.planAfterDiploma;
+
+    // Build update data
+    const updateData: any = {};
+
+    if (data.planAfterDiploma !== undefined) {
+      updateData.planAfterDiploma = data.planAfterDiploma;
+    }
+
+    // Handle job-specific fields based on plan
+    if (finalPlan === PlanAfterDiploma.PRIVATE_JOB) {
+      if (data.interestedForPrivateJob !== undefined) {
+        updateData.interestedForPrivateJob = data.interestedForPrivateJob;
+      }
+      if (data.expectedSalary !== undefined) {
+        updateData.expectedSalary = data.expectedSalary;
+      }
+    } else {
+      // Clear job-specific fields if plan is not PRIVATE_JOB
+      updateData.interestedForPrivateJob = null;
+      updateData.expectedSalary = null;
+    }
+
+    const updated = await this.prisma.studentPlacementInterest.update({
+      where: { studentId: student.id },
+      data: updateData,
+    });
+
+    // Audit placement interest update
+    this.auditService
+      .log({
+        action: AuditAction.STUDENT_PROFILE_UPDATE,
+        entityType: "StudentPlacementInterest",
+        entityId: updated.id,
+        userId,
+        userName: student.user?.name,
+        userRole: student.user?.role || Role.STUDENT,
+        description: `Placement interest form updated`,
+        category: AuditCategory.PROFILE_MANAGEMENT,
+        severity: AuditSeverity.LOW,
+        institutionId: student.institutionId || undefined,
+        oldValues,
+        newValues: updateData,
+      })
+      .catch(() => {});
+
+    await this.cache.invalidateByTags([
+      "student",
+      `student:${student.id}`,
+      `student:dashboard:${student.id}`,
+    ]);
+
+    return {
+      success: true,
+      message: "Placement interest form updated successfully",
+      data: updated,
     };
   }
 }

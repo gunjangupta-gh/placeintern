@@ -187,6 +187,45 @@ export const studentService = {
   },
 
   // =====================
+  // Placement Interest
+  // =====================
+  /**
+   * Get placement interest form data
+   * @returns {Promise<{data: object|null, isFilled: boolean}>}
+   */
+  async getPlacementInterest() {
+    const response = await API.get('/student/placement-interest');
+    return response.data;
+  },
+
+  /**
+   * Check if placement interest form is filled
+   * @returns {Promise<{isFilled: boolean}>}
+   */
+  async hasFilledPlacementInterest() {
+    const response = await API.get('/student/placement-interest/status');
+    return response.data;
+  },
+
+  /**
+   * Submit placement interest form
+   * @param {object} data - { planAfterDiploma, interestedForPrivateJob?, expectedSalary? }
+   */
+  async submitPlacementInterest(data) {
+    const response = await API.post('/student/placement-interest', data);
+    return response.data;
+  },
+
+  /**
+   * Update placement interest form
+   * @param {object} data - { planAfterDiploma?, interestedForPrivateJob?, expectedSalary? }
+   */
+  async updatePlacementInterest(data) {
+    const response = await API.put('/student/placement-interest', data);
+    return response.data;
+  },
+
+  // =====================
   // Unmasked Contact Details (for masked reveal feature)
   // =====================
   /**

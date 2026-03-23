@@ -24,6 +24,7 @@ import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { Role } from '../../generated/prisma/client';
 import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
+import { CreateStudentPlacementInterestDto, UpdateStudentPlacementInterestDto } from './dto/student-placement-interest.dto';
 
 @ApiTags('Student Portal')
 @Controller('student')
@@ -472,5 +473,50 @@ export class StudentController {
       search,
       limit: limit ? parseInt(limit, 10) : undefined,
     });
+  }
+
+  // =============================================
+  // PLACEMENT INTEREST ENDPOINTS
+  // =============================================
+
+  @Get('placement-interest')
+  @Roles(Role.STUDENT)
+  @ApiOperation({ summary: 'Get student placement interest form data' })
+  @ApiResponse({ status: 200, description: 'Placement interest retrieved successfully' })
+  async getPlacementInterest(@Req() req) {
+    return this.studentService.getPlacementInterest(req.user.userId);
+  }
+
+  @Get('placement-interest/status')
+  @Roles(Role.STUDENT)
+  @ApiOperation({ summary: 'Check if placement interest form is filled' })
+  @ApiResponse({ status: 200, description: 'Returns whether form is filled' })
+  async hasFilledPlacementInterest(@Req() req) {
+    const isFilled = await this.studentService.hasFilledPlacementInterest(req.user.userId);
+    return { isFilled };
+  }
+
+  @Post('placement-interest')
+  @Roles(Role.STUDENT)
+  @ApiOperation({ summary: 'Submit placement interest form' })
+  @ApiResponse({ status: 201, description: 'Placement interest submitted successfully' })
+  @ApiResponse({ status: 400, description: 'Form already submitted or validation error' })
+  async submitPlacementInterest(
+    @Req() req,
+    @Body() createDto: CreateStudentPlacementInterestDto,
+  ) {
+    return this.studentService.submitPlacementInterest(req.user.userId, createDto);
+  }
+
+  @Put('placement-interest')
+  @Roles(Role.STUDENT)
+  @ApiOperation({ summary: 'Update placement interest form' })
+  @ApiResponse({ status: 200, description: 'Placement interest updated successfully' })
+  @ApiResponse({ status: 404, description: 'Form not found' })
+  async updatePlacementInterest(
+    @Req() req,
+    @Body() updateDto: UpdateStudentPlacementInterestDto,
+  ) {
+    return this.studentService.updatePlacementInterest(req.user.userId, updateDto);
   }
 }
