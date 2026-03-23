@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, memo } from "react";
+import React, { useState, useCallback, useMemo, memo, useEffect } from "react";
 import {
   Row,
   Col,
@@ -57,6 +57,7 @@ import {
   calculateExpectedReportMonths,
   getReportDueDate,
 } from "../../../utils/monthlyCycle";
+import { PlacementInterestModal } from "./components";
 
 dayjs.extend(isSameOrBefore);
 
@@ -416,6 +417,32 @@ const StudentDashboard = () => {
   const [joiningViewModalVisible, setJoiningViewModalVisible] = useState(false);
   const [pendingFieldsModalVisible, setPendingFieldsModalVisible] =
     useState(false);
+  const [placementInterestModalVisible, setPlacementInterestModalVisible] =
+    useState(false);
+  const [placementInterestChecked, setPlacementInterestChecked] = useState(false);
+
+  // Check if placement interest form needs to be shown
+  useEffect(() => {
+    const checkPlacementInterest = async () => {
+      if (placementInterestChecked) return;
+
+      try {
+        const response = await studentService.hasFilledPlacementInterest();
+        if (!response.isFilled) {
+          setPlacementInterestModalVisible(true);
+        }
+        setPlacementInterestChecked(true);
+      } catch (err) {
+        console.error('Error checking placement interest:', err);
+        setPlacementInterestChecked(true);
+      }
+    };
+
+    // Only check after profile is loaded
+    if (profile && !isLoading) {
+      checkPlacementInterest();
+    }
+  }, [profile, isLoading, placementInterestChecked]);
 
   // Internship selector state
   const [selectedInternshipIndex, setSelectedInternshipIndex] = useState(0);
@@ -1366,6 +1393,17 @@ const StudentDashboard = () => {
             />
           </div>
         </Modal>
+
+        {/* Placement Interest Form Modal - shown until form is filled */}
+        <PlacementInterestModal
+          open={placementInterestModalVisible}
+          onClose={() => setPlacementInterestModalVisible(false)}
+          onSuccess={() => {
+            setPlacementInterestModalVisible(false);
+            setPlacementInterestChecked(true);
+          }}
+          closable={false}
+        />
       </div>
     </Spin>
   );
