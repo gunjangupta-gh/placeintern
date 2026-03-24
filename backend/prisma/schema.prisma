@@ -144,8 +144,9 @@ enum Role {
   ADMIN_STAFF
 }
 
-// Faculty/Staff Designation - for TEACHER/PRINCIPAL roles
+// Faculty/Staff Designation - for TEACHER/PRINCIPAL/ADMIN_STAFF roles
 enum Designation {
+  // Faculty/Teacher Designations
   PRINCIPAL
   HOD
   SENIOR_LECTURER
@@ -168,6 +169,24 @@ enum Designation {
   TPO
   FASHION_DESIGNER
   PEON
+
+  // Admin Staff Designations
+  ASSTT_DIRECTOR
+  ADDITIONAL_DIRECTOR
+  DEPUTY_DIRECTOR_STAFF
+  DEPUTY_DIRECTOR_CONDUCT
+  DEPUTY_DIRECTOR_PLANNING
+  DIRECTOR_ACADEMICS
+  REGISTRAR
+  HOD_CONTROLLER_EXAMINATIONS
+  DEMONSTRATOR
+  STENOTYPIST
+  CLERK
+  JR_SCALE_STENOGRAPHER
+  JUNIOR_ASSTT
+  SR_ASSTT
+  SUPDT_GRADE_2
+
   OTHER
 }
 
@@ -228,6 +247,11 @@ model Student {
   Institution   Institution? @relation(fields: [institutionId], references: [id])
   branchId      String?
   branch        Branch?      @relation(fields: [branchId], references: [id])
+
+  // Pre-Placement Offer (PPO)
+  prePlacementOfferReceived Boolean?   // null = not responded, true = received PPO, false = no PPO
+  prePlacementOfferMarkedAt DateTime?  // When the student marked their PPO status
+  prePlacementOfferCompany  String?    // Company name if PPO received
 
   // Relations
   document               Document[]

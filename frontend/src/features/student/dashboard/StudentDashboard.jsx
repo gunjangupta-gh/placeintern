@@ -58,7 +58,7 @@ import {
   calculateExpectedReportMonths,
   getReportDueDate,
 } from "../../../utils/monthlyCycle";
-import { PlacementInterestModal } from "./components";
+import { PlacementInterestModal, PPOAlert } from "./components";
 
 dayjs.extend(isSameOrBefore);
 
@@ -984,6 +984,9 @@ const StudentDashboard = () => {
             </Col>
           </Row>
         </Card>
+
+        {/* Pre-Placement Offer Alert */}
+        <PPOAlert />
 
         {/* Current Internship Status Section */}
         <Card 

@@ -920,7 +920,7 @@ export class TrainingService {
             _count: { _all: true },
           }),
           this.prisma.user.findMany({
-            where: { role: 'TEACHER', active: true },
+            where: { role: { in: ['TEACHER', 'ADMIN_STAFF'] }, active: true },
             select: {
               id: true,
               branchId: true,
@@ -1442,7 +1442,7 @@ export class TrainingService {
         this.prisma.user.findMany({
           where: {
             ...userFilter,
-            role: Role.TEACHER,
+            role: { in: [Role.TEACHER, Role.ADMIN_STAFF] },
             active: true,
           },
           select: {

@@ -226,6 +226,27 @@ export const studentService = {
   },
 
   // =====================
+  // Pre-Placement Offer (PPO)
+  // =====================
+  /**
+   * Get PPO status for current student
+   * @returns {Promise<{hasMarked: boolean, received: boolean|null, companyName: string|null, markedAt: string|null}>}
+   */
+  async getPPOStatus() {
+    const response = await API.get('/student/ppo/status');
+    return response.data;
+  },
+
+  /**
+   * Submit or update PPO status
+   * @param {object} data - { received: boolean, companyName?: string }
+   */
+  async submitPPOStatus(data) {
+    const response = await API.post('/student/ppo', data);
+    return response.data;
+  },
+
+  // =====================
   // Unmasked Contact Details (for masked reveal feature)
   // =====================
   /**

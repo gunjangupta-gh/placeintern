@@ -8,3 +8,4 @@ export { default as GrievancesCard } from './GrievancesCard';
 export { default as JoiningLetterCard } from './JoiningLetterCard';
 export { default as PlacementInterestForm } from './PlacementInterestForm';
 export { default as PlacementInterestModal } from './PlacementInterestModal';
+export { default as PPOAlert } from './PPOAlert';

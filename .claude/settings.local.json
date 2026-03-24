@@ -21,7 +21,8 @@
       "Bash(npx prisma migrate deploy:*)",
       "Bash(npx prisma:*)",
       "Bash(node:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npx tsc --noEmit)"
     ]
   }
 }

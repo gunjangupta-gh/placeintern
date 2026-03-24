@@ -3179,4 +3179,108 @@ export class StudentService {
       data: updated,
     };
   }
+
+  // =============================================
+  // PRE-PLACEMENT OFFER (PPO) METHODS
+  // =============================================
+
+  /**
+   * Get PPO status for a student
+   */
+  async getPPOStatus(userId: string) {
+    const student = await this.prisma.student.findFirst({
+      where: { userId },
+      select: {
+        id: true,
+        prePlacementOfferReceived: true,
+        prePlacementOfferMarkedAt: true,
+        prePlacementOfferCompany: true,
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException("Student not found");
+    }
+
+    return {
+      hasMarked: student.prePlacementOfferReceived !== null,
+      received: student.prePlacementOfferReceived,
+      companyName: student.prePlacementOfferCompany,
+      markedAt: student.prePlacementOfferMarkedAt,
+    };
+  }
+
+  /**
+   * Submit or update PPO status
+   */
+  async submitPPOStatus(userId: string, dto: { received: boolean; companyName?: string }) {
+    const student = await this.prisma.student.findFirst({
+      where: { userId },
+      include: { user: { select: { name: true, role: true } } },
+    });
+
+    if (!student) {
+      throw new NotFoundException("Student not found");
+    }
+
+    const oldValues = {
+      prePlacementOfferReceived: student.prePlacementOfferReceived,
+      prePlacementOfferCompany: student.prePlacementOfferCompany,
+    };
+
+    const updated = await this.prisma.student.update({
+      where: { id: student.id },
+      data: {
+        prePlacementOfferReceived: dto.received,
+        prePlacementOfferCompany: dto.received ? dto.companyName || null : null,
+        prePlacementOfferMarkedAt: new Date(),
+      },
+      select: {
+        id: true,
+        prePlacementOfferReceived: true,
+        prePlacementOfferMarkedAt: true,
+        prePlacementOfferCompany: true,
+      },
+    });
+
+    // Audit PPO submission
+    this.auditService
+      .log({
+        action: AuditAction.STUDENT_PROFILE_UPDATE,
+        entityType: "Student",
+        entityId: student.id,
+        userId,
+        userName: student.user?.name,
+        userRole: student.user?.role || Role.STUDENT,
+        description: `Pre-placement offer status updated: ${dto.received ? 'Received' : 'Not received'}${dto.received && dto.companyName ? ` from ${dto.companyName}` : ''}`,
+        category: AuditCategory.PROFILE_MANAGEMENT,
+        severity: AuditSeverity.MEDIUM,
+        institutionId: student.institutionId || undefined,
+        oldValues,
+        newValues: {
+          prePlacementOfferReceived: dto.received,
+          prePlacementOfferCompany: dto.received ? dto.companyName : null,
+        },
+      })
+      .catch(() => {});
+
+    await this.cache.invalidateByTags([
+      "student",
+      `student:${student.id}`,
+      `student:dashboard:${student.id}`,
+    ]);
+
+    return {
+      success: true,
+      message: dto.received
+        ? "Congratulations! PPO status recorded successfully"
+        : "PPO status recorded successfully",
+      data: {
+        hasMarked: true,
+        received: updated.prePlacementOfferReceived,
+        companyName: updated.prePlacementOfferCompany,
+        markedAt: updated.prePlacementOfferMarkedAt,
+      },
+    };
+  }
 }

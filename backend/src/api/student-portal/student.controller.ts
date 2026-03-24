@@ -24,7 +24,7 @@ import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { Role } from '../../generated/prisma/client';
 import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
-import { CreateStudentPlacementInterestDto, UpdateStudentPlacementInterestDto } from './dto/student-placement-interest.dto';
+import { CreateStudentPlacementInterestDto, UpdateStudentPlacementInterestDto, SubmitPPODto } from './dto/student-placement-interest.dto';
 
 @ApiTags('Student Portal')
 @Controller('student')
@@ -518,5 +518,28 @@ export class StudentController {
     @Body() updateDto: UpdateStudentPlacementInterestDto,
   ) {
     return this.studentService.updatePlacementInterest(req.user.userId, updateDto);
+  }
+
+  // =============================================
+  // PRE-PLACEMENT OFFER (PPO) ENDPOINTS
+  // =============================================
+
+  @Get('ppo/status')
+  @Roles(Role.STUDENT)
+  @ApiOperation({ summary: 'Get PPO status for current student' })
+  @ApiResponse({ status: 200, description: 'PPO status retrieved successfully' })
+  async getPPOStatus(@Req() req) {
+    return this.studentService.getPPOStatus(req.user.userId);
+  }
+
+  @Post('ppo')
+  @Roles(Role.STUDENT)
+  @ApiOperation({ summary: 'Submit or update PPO status' })
+  @ApiResponse({ status: 200, description: 'PPO status submitted successfully' })
+  async submitPPOStatus(
+    @Req() req,
+    @Body() dto: SubmitPPODto,
+  ) {
+    return this.studentService.submitPPOStatus(req.user.userId, dto);
   }
 }

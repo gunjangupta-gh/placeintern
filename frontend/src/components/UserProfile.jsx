@@ -40,6 +40,7 @@ import MaskedField from './common/MaskedField';
 const { Title, Text } = Typography;
 
 const DESIGNATION_OPTIONS = [
+  // Faculty/Teacher Designations
   { value: 'Principal', label: 'Principal' },
   { value: 'HOD', label: 'HOD' },
   { value: 'Senior Lecturer', label: 'Senior Lecturer' },
@@ -62,6 +63,22 @@ const DESIGNATION_OPTIONS = [
   { value: 'TPO', label: 'TPO' },
   { value: 'Fashion Designer', label: 'Fashion Designer' },
   { value: 'Peon', label: 'Peon' },
+  // Admin Staff Designations
+  { value: 'Asstt. Director', label: 'Asstt. Director' },
+  { value: 'Additional Director', label: 'Additional Director' },
+  { value: 'Deputy Director (Staff)', label: 'Deputy Director (Staff)' },
+  { value: 'Deputy Director (Conduct)', label: 'Deputy Director (Conduct)' },
+  { value: 'Deputy Director (Planning)', label: 'Deputy Director (Planning)' },
+  { value: 'Director (Academics)', label: 'Director (Academics)' },
+  { value: 'Registrar', label: 'Registrar' },
+  { value: 'HOD - Controller (Examinations)', label: 'HOD - Controller (Examinations)' },
+  { value: 'Demonstrator', label: 'Demonstrator' },
+  { value: 'Stenotypist', label: 'Stenotypist' },
+  { value: 'Clerk', label: 'Clerk' },
+  { value: 'Jr. Scale Stenographer', label: 'Jr. Scale Stenographer' },
+  { value: 'Junior Asstt.', label: 'Junior Asstt.' },
+  { value: 'Sr. Asstt.', label: 'Sr. Asstt.' },
+  { value: 'Supdt. Grade 2', label: 'Supdt. Grade 2' },
   { value: 'Other', label: 'Other' },
 ];
 

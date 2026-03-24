@@ -8,6 +8,50 @@ import StaffModal from './StaffModal';
 import { getImageUrl } from '../../../utils/imageUtils';
 import { useInstitutions } from '../../shared/hooks/useLookup';
 
+// Designation options for filter
+const DESIGNATION_OPTIONS = [
+  // Faculty/Teacher Designations
+  { value: 'PRINCIPAL', label: 'Principal' },
+  { value: 'HOD', label: 'HOD' },
+  { value: 'SENIOR_LECTURER', label: 'Senior Lecturer' },
+  { value: 'LECTURER', label: 'Lecturer' },
+  { value: 'ASSISTANT_PROFESSOR', label: 'Assistant Professor' },
+  { value: 'FOREMAN_INSTRUCTOR', label: 'Foreman Instructor' },
+  { value: 'WORKSHOP_INSTRUCTOR', label: 'Workshop Instructor' },
+  { value: 'WORKSHOP_SUPERINTENDENT', label: 'Workshop Superintendent' },
+  { value: 'WORKSHOP_FOREMAN', label: 'Workshop Foreman' },
+  { value: 'LAB_TECHNICIAN', label: 'Lab Technician' },
+  { value: 'TECHNICIAN', label: 'Technician' },
+  { value: 'INSTRUCTOR', label: 'Instructor' },
+  { value: 'SYSTEM_ANALYST', label: 'System Analyst' },
+  { value: 'SYSTEM_ADMINISTRATOR', label: 'System Administrator' },
+  { value: 'SYSTEM_MANAGER', label: 'System Manager' },
+  { value: 'PROGRAMMER', label: 'Programmer' },
+  { value: 'NETWORK_ENGINEER', label: 'Network Engineer' },
+  { value: 'COMPUTER_OPERATOR', label: 'Computer Operator' },
+  { value: 'LIBRARIAN', label: 'Librarian' },
+  { value: 'TPO', label: 'TPO' },
+  { value: 'FASHION_DESIGNER', label: 'Fashion Designer' },
+  { value: 'PEON', label: 'Peon' },
+  // Admin Staff Designations
+  { value: 'ASSTT_DIRECTOR', label: 'Asstt. Director' },
+  { value: 'ADDITIONAL_DIRECTOR', label: 'Additional Director' },
+  { value: 'DEPUTY_DIRECTOR_STAFF', label: 'Deputy Director (Staff)' },
+  { value: 'DEPUTY_DIRECTOR_CONDUCT', label: 'Deputy Director (Conduct)' },
+  { value: 'DEPUTY_DIRECTOR_PLANNING', label: 'Deputy Director (Planning)' },
+  { value: 'DIRECTOR_ACADEMICS', label: 'Director (Academics)' },
+  { value: 'REGISTRAR', label: 'Registrar' },
+  { value: 'HOD_CONTROLLER_EXAMINATIONS', label: 'HOD - Controller (Examinations)' },
+  { value: 'DEMONSTRATOR', label: 'Demonstrator' },
+  { value: 'STENOTYPIST', label: 'Stenotypist' },
+  { value: 'CLERK', label: 'Clerk' },
+  { value: 'JR_SCALE_STENOGRAPHER', label: 'Jr. Scale Stenographer' },
+  { value: 'JUNIOR_ASSTT', label: 'Junior Asstt.' },
+  { value: 'SR_ASSTT', label: 'Sr. Asstt.' },
+  { value: 'SUPDT_GRADE_2', label: 'Supdt. Grade 2' },
+  { value: 'OTHER', label: 'Other' },
+];
+
 const StaffList = () => {
   const { modal } = App.useApp();
   const dispatch = useDispatch();
@@ -21,6 +65,7 @@ const StaffList = () => {
     institutionId: '',
     role: '',
     branchName: '',
+    designationEnum: '',
     active: '',
   });
   const [tableParams, setTableParams] = useState({
@@ -155,6 +200,7 @@ const StaffList = () => {
       institutionId: '',
       role: '',
       branchName: '',
+      designationEnum: '',
       active: '',
     });
     setSearchText('');
@@ -176,6 +222,8 @@ const StaffList = () => {
     switch (role) {
       case 'TEACHER': return 'blue';
       case 'FACULTY_COORDINATOR': return 'purple';
+      case 'PRINCIPAL': return 'gold';
+      case 'ADMIN_STAFF': return 'cyan';
       default: return 'default';
     }
   };
@@ -184,6 +232,8 @@ const StaffList = () => {
     const labels = {
       TEACHER: 'Teacher',
       FACULTY_COORDINATOR: 'Faculty Coordinator',
+      PRINCIPAL: 'Principal',
+      ADMIN_STAFF: 'Admin Staff',
     };
     return labels[role] || role;
   };
@@ -388,6 +438,8 @@ const StaffList = () => {
                 >
                   <Select.Option value="TEACHER">Teacher</Select.Option>
                   <Select.Option value="FACULTY_COORDINATOR">Faculty Coordinator</Select.Option>
+                  <Select.Option value="PRINCIPAL">Principal</Select.Option>
+                  <Select.Option value="ADMIN_STAFF">Admin Staff</Select.Option>
                 </Select>
               </Col>
               <Col xs={24} sm={12} md={6}>
@@ -395,6 +447,18 @@ const StaffList = () => {
                   placeholder="Branch"
                   value={filters.branchName}
                   onChange={(e) => handleFilterChange('branchName', e.target.value)}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Select
+                  placeholder="Designation"
+                  style={{ width: '100%' }}
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  value={filters.designationEnum || undefined}
+                  onChange={(value) => handleFilterChange('designationEnum', value || '')}
+                  options={DESIGNATION_OPTIONS}
                 />
               </Col>
               <Col xs={24} sm={12} md={6}>
