@@ -56,6 +56,25 @@ const DESIGNATION_OPTIONS = [
   { value: "TPO", label: "TPO" },
   { value: "FASHION_DESIGNER", label: "Fashion Designer" },
   { value: "PEON", label: "Peon" },
+  { value: "ASSTT_DIRECTOR", label: "Assistant Director" },
+  { value: "ADDITIONAL_DIRECTOR", label: "Additional Director" },
+  { value: "DEPUTY_DIRECTOR_STAFF", label: "Deputy Director (Staff)" },
+  { value: "DEPUTY_DIRECTOR_CONDUCT", label: "Deputy Director (Conduct)" },
+  { value: "DEPUTY_DIRECTOR_PLANNING", label: "Deputy Director (Planning)" },
+  { value: "DIRECTOR_ACADEMICS", label: "Director (Academics)" },
+  { value: "REGISTRAR", label: "Registrar" },
+  {
+    value: "HOD_CONTROLLER_EXAMINATIONS",
+    label: "HOD / Controller Examinations",
+  },
+  { value: "DEMONSTRATOR", label: "Demonstrator" },
+  { value: "STENOTYPIST", label: "Stenotypist" },
+  { value: "CLERK", label: "Clerk" },
+  { value: "JR_SCALE_STENOGRAPHER", label: "Jr. Scale Stenographer" },
+  { value: "JUNIOR_ASSTT", label: "Junior Assistant" },
+  { value: "SR_ASSTT", label: "Senior Assistant" },
+  { value: "SUPDT_GRADE_2", label: "Superintendent Grade 2" },
+  { value: "OTHER", label: "Other" },
 ];
 
 const FormSection = ({ icon: Icon, title, children }) => (
