@@ -18,7 +18,7 @@ import { TrainingCertificateService } from '../../../domain/training/training-ce
 @ApiBearerAuth()
 @Controller('faculty/training/certificates')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
+@Roles(Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF)
 export class FacultyCertificateController {
   constructor(private readonly certificateService: TrainingCertificateService) {}
 

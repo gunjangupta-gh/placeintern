@@ -3,7 +3,7 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { AuditAction, AuditCategory, AuditSeverity, Prisma } from '../../generated/prisma/client';
-import { MarkAttendanceDto, BulkMarkAttendanceDto, AttendanceFilterDto, MarkSelfAttendanceDto } from './dto';
+import { MarkAttendanceDto, BulkMarkAttendanceDto, AttendanceFilterDto, MarkSelfAttendanceDto, MarkBackdatedAttendanceDto } from './dto';
 
 @Injectable()
 export class TrainingAttendanceService {
@@ -711,6 +711,222 @@ export class TrainingAttendanceService {
         uniqueUsers: t.uniqueUsers.size,
       })),
       records: attendance.slice(0, 100), // Limit records
+    };
+  }
+
+  /**
+   * Mark backdated attendance for last month's trainings (Faculty)
+   */
+  async markBackdatedAttendance(dto: MarkBackdatedAttendanceDto, userId: string) {
+    try {
+      this.logger.log(`User ${userId} marking backdated attendance for training ${dto.trainingId}`);
+
+      const training = await this.prisma.training.findUnique({
+        where: { id: dto.trainingId },
+      });
+
+      if (!training) {
+        throw new NotFoundException('Training not found');
+      }
+
+      // Check if user has approved application
+      const application = await this.prisma.trainingApplication.findUnique({
+        where: { userId_trainingId: { userId, trainingId: dto.trainingId } },
+      });
+
+      if (!application || application.status !== 'APPROVED') {
+        throw new ForbiddenException('You must have an approved application to mark attendance');
+      }
+
+      const now = new Date();
+
+      // Parse dates consistently using UTC to avoid timezone issues
+      // The attendanceDate comes as ISO string like "2026-02-15"
+      const attendanceDateStr = dto.attendanceDate.split('T')[0]; // Ensure we only use date part
+      const [attYear, attMonth, attDay] = attendanceDateStr.split('-').map(Number);
+      const dateOnly = new Date(Date.UTC(attYear, attMonth - 1, attDay));
+
+      // Training dates from database - extract date parts using UTC
+      const trainingStartUTC = new Date(training.startDate);
+      const trainingEndUTC = new Date(training.endDate);
+      const trainingStart = new Date(Date.UTC(trainingStartUTC.getUTCFullYear(), trainingStartUTC.getUTCMonth(), trainingStartUTC.getUTCDate()));
+      const trainingEnd = new Date(Date.UTC(trainingEndUTC.getUTCFullYear(), trainingEndUTC.getUTCMonth(), trainingEndUTC.getUTCDate()));
+
+      this.logger.debug(`Backdated attendance check: attendanceDate=${attendanceDateStr}, trainingStart=${trainingStart.toISOString()}, trainingEnd=${trainingEnd.toISOString()}`);
+
+      // Check if the attendance date falls within training period
+      if (dateOnly < trainingStart || dateOnly > trainingEnd) {
+        this.logger.warn(`Attendance date ${attendanceDateStr} is outside training period ${trainingStart.toISOString()} to ${trainingEnd.toISOString()}`);
+        throw new BadRequestException('Attendance date must be within the training period');
+      }
+
+      // Calculate last month boundaries using UTC
+      const lastMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+      const lastMonthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999));
+
+      // Allow backdated attendance only for trainings that ended within last month
+      if (trainingEnd < lastMonthStart || trainingEnd > lastMonthEnd) {
+        this.logger.warn(`Training end date ${trainingEnd.toISOString()} is outside last month window ${lastMonthStart.toISOString()} to ${lastMonthEnd.toISOString()}`);
+        throw new BadRequestException('Backdated attendance is only allowed for trainings that ended in the last month');
+      }
+
+      // Check if already marked for this date
+      const existing = await this.prisma.trainingAttendance.findFirst({
+        where: {
+          userId,
+          trainingId: dto.trainingId,
+          attendanceDate: {
+            gte: dateOnly,
+            lt: new Date(dateOnly.getTime() + 24 * 60 * 60 * 1000),
+          },
+        },
+      });
+
+      if (existing) {
+        throw new BadRequestException('Attendance already marked for this date');
+      }
+
+      const attendance = await this.prisma.trainingAttendance.create({
+        data: {
+          userId,
+          trainingId: dto.trainingId,
+          attendanceDate: dateOnly,
+          markedAt: now,
+          markedById: userId,
+          latitude: dto.latitude,
+          longitude: dto.longitude,
+          locationAddress: dto.locationAddress,
+        },
+        include: {
+          user: { select: { id: true, name: true } },
+          training: { select: { id: true, title: true } },
+        },
+      });
+
+      this.auditService.log({
+        action: AuditAction.TRAINING_ATTENDANCE_MARK,
+        entityType: 'TrainingAttendance',
+        entityId: attendance.id,
+        userId,
+        category: AuditCategory.PROFILE_MANAGEMENT,
+        severity: AuditSeverity.LOW,
+        description: `Marked backdated attendance for "${training.title}" on ${dateOnly.toISOString().split('T')[0]}`,
+      }).catch(() => {});
+
+      return attendance;
+    } catch (error) {
+      this.logger.error(`Failed to mark backdated attendance: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Get last month's trainings with pending attendance (Faculty)
+   */
+  async getLastMonthTrainingsWithPendingAttendance(userId: string) {
+    const now = new Date();
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+    // Get approved applications for trainings that ended last month
+    const applications = await this.prisma.trainingApplication.findMany({
+      where: {
+        userId,
+        status: 'APPROVED',
+        training: {
+          endDate: {
+            gte: lastMonthStart,
+            lte: lastMonthEnd,
+          },
+        },
+      },
+      include: {
+        training: {
+          select: {
+            id: true,
+            title: true,
+            startDate: true,
+            endDate: true,
+            deliveryMode: true,
+            duration: true,
+          },
+        },
+      },
+    });
+
+    if (applications.length === 0) {
+      return { trainings: [], totalPendingDays: 0 };
+    }
+
+    const trainingIds = applications.map((app) => app.trainingId);
+
+    // Get existing attendance for these trainings
+    const existingAttendance = await this.prisma.trainingAttendance.findMany({
+      where: {
+        userId,
+        trainingId: { in: trainingIds },
+      },
+      select: {
+        trainingId: true,
+        attendanceDate: true,
+      },
+    });
+
+    // Group attendance by training
+    const attendanceByTraining = existingAttendance.reduce((acc, att) => {
+      if (!acc[att.trainingId]) {
+        acc[att.trainingId] = new Set<string>();
+      }
+      acc[att.trainingId].add(att.attendanceDate.toISOString().split('T')[0]);
+      return acc;
+    }, {} as Record<string, Set<string>>);
+
+    // Calculate pending attendance for each training
+    const trainingsWithPending = applications.map((app) => {
+      const training = app.training;
+      const trainingStartUTC = new Date(training.startDate);
+      const trainingEndUTC = new Date(training.endDate);
+
+      // Generate all training dates using UTC to avoid timezone issues
+      const allDates: string[] = [];
+      const currentDate = new Date(Date.UTC(
+        trainingStartUTC.getUTCFullYear(),
+        trainingStartUTC.getUTCMonth(),
+        trainingStartUTC.getUTCDate()
+      ));
+      const endDate = new Date(Date.UTC(
+        trainingEndUTC.getUTCFullYear(),
+        trainingEndUTC.getUTCMonth(),
+        trainingEndUTC.getUTCDate()
+      ));
+
+      while (currentDate <= endDate) {
+        allDates.push(currentDate.toISOString().split('T')[0]);
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+      }
+
+      const markedDates = attendanceByTraining[training.id] || new Set<string>();
+      const pendingDates = allDates.filter((date) => !markedDates.has(date));
+      const totalDays = allDates.length;
+      const attendedDays = markedDates.size;
+      const pendingDays = pendingDates.length;
+
+      return {
+        training,
+        totalDays,
+        attendedDays,
+        pendingDays,
+        pendingDates,
+        markedDates: Array.from(markedDates),
+        attendanceRate: totalDays > 0 ? (attendedDays / totalDays) * 100 : 0,
+      };
+    }).filter((t) => t.pendingDays > 0);
+
+    const totalPendingDays = trainingsWithPending.reduce((sum, t) => sum + t.pendingDays, 0);
+
+    return {
+      trainings: trainingsWithPending,
+      totalPendingDays,
     };
   }
 }

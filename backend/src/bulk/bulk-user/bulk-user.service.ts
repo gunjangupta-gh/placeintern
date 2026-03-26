@@ -163,6 +163,9 @@ function getBranchCode(courseName: string): string | null {
 export class BulkUserService {
   private readonly logger = new Logger(BulkUserService.name);
 
+  // Valid roles that can be used in bulk upload
+  private readonly validRoles = ['TEACHER'];
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
@@ -760,9 +763,8 @@ export class BulkUserService {
       {
         'Name of the Faculty': 'Jane Smith',
         'Email': 'jane.smith@example.com',
-        'Contact Number': '9876543211',
-        'Name of the College': 'Government Polytechnic College Bathinda',
-        'Course': 'Electronics',
+        'Phone': '9876543211',
+        'Role': 'TEACHER',
         'Designation': 'Assistant Professor',
         'Role': 'FACULTY_SUPERVISOR',
       },

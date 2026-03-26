@@ -130,7 +130,6 @@ const ActiveSessions = ({ realtimeStats, connected, onRefreshSessions }) => {
       STATE_DIRECTORATE: 'purple',
       PRINCIPAL: 'blue',
       FACULTY: 'cyan',
-      FACULTY_SUPERVISOR: 'cyan',
       TEACHER: 'geekblue',
       STUDENT: 'green',
       INDUSTRY: 'orange',

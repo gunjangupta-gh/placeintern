@@ -136,3 +136,43 @@ export class PPOStatusResponseDto {
   @ApiPropertyOptional({ description: 'When PPO status was marked' })
   markedAt?: Date | null;
 }
+
+// =============================================
+// PRE-PLACEMENT OFFER (PPO) DTOs
+// =============================================
+
+import { IsBoolean, IsString, MaxLength } from 'class-validator';
+
+export class SubmitPPODto {
+  @ApiProperty({
+    description: 'Whether student received a pre-placement offer',
+    example: true,
+  })
+  @IsBoolean()
+  received: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Company name if PPO received',
+    example: 'Infosys',
+    maxLength: 200,
+  })
+  @ValidateIf((o) => o.received === true)
+  @IsString()
+  @MaxLength(200)
+  @IsOptional()
+  companyName?: string;
+}
+
+export class PPOStatusResponseDto {
+  @ApiProperty({ description: 'Whether PPO status has been marked' })
+  hasMarked: boolean;
+
+  @ApiPropertyOptional({ description: 'Whether student received PPO (null if not marked)' })
+  received?: boolean | null;
+
+  @ApiPropertyOptional({ description: 'Company name if PPO received' })
+  companyName?: string | null;
+
+  @ApiPropertyOptional({ description: 'When PPO status was marked' })
+  markedAt?: Date | null;
+}

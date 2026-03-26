@@ -39,7 +39,6 @@ const ROLES = [
   { value: 'STATE_DIRECTORATE', label: 'State Directorate', color: 'purple' },
   { value: 'PRINCIPAL', label: 'Principal', color: 'blue' },
   { value: 'FACULTY', label: 'Faculty', color: 'cyan' },
-  { value: 'FACULTY_SUPERVISOR', label: 'Faculty Supervisor', color: 'cyan' },
   { value: 'TEACHER', label: 'Teacher', color: 'geekblue' },
   { value: 'STUDENT', label: 'Student', color: 'green' },
   { value: 'INDUSTRY', label: 'Industry', color: 'orange' },

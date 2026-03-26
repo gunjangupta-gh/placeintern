@@ -93,6 +93,12 @@ const initialState = {
     loading: false,
     error: null,
   },
+  backdatedAttendance: {
+    trainings: [],
+    totalPendingDays: 0,
+    loading: false,
+    error: null,
+  },
   lastFetched: {
     trainings: null,
     trainingsKey: null,
@@ -108,6 +114,7 @@ const initialState = {
     recommendations: null,
     pendingTests: null,
     pendingLessonPlans: null,
+    backdatedAttendance: null,
   },
 };
 
@@ -410,6 +417,37 @@ export const markSelfAttendance = createAsyncThunk(
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to mark attendance');
+    }
+  }
+);
+
+export const fetchLastMonthPendingAttendance = createAsyncThunk(
+  'facultyTraining/fetchLastMonthPendingAttendance',
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.facultyTraining.lastFetched.backdatedAttendance;
+
+      if (isCacheValid(lastFetched, CACHE_DURATIONS.DEFAULT)) {
+        return { cached: true };
+      }
+
+      const response = await trainingService.getLastMonthPendingAttendance();
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch last month pending attendance');
+    }
+  }
+);
+
+export const markBackdatedAttendance = createAsyncThunk(
+  'facultyTraining/markBackdatedAttendance',
+  async (data, { rejectWithValue }) => {
+    try {
+      const response = await trainingService.markBackdatedAttendance(data);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to mark backdated attendance');
     }
   }
 );
@@ -1319,6 +1357,29 @@ const facultyTrainingSlice = createSlice({
       .addCase(fetchPendingLessonPlans.rejected, (state, action) => {
         state.pendingLessonPlans.loading = false;
         state.pendingLessonPlans.error = action.payload;
+      })
+
+      // Backdated Attendance
+      .addCase(fetchLastMonthPendingAttendance.pending, (state) => {
+        state.backdatedAttendance.loading = true;
+        state.backdatedAttendance.error = null;
+      })
+      .addCase(fetchLastMonthPendingAttendance.fulfilled, (state, action) => {
+        state.backdatedAttendance.loading = false;
+        if (!action.payload?.cached) {
+          const payload = unwrapPayload(action.payload) || {};
+          state.backdatedAttendance.trainings = payload.trainings || [];
+          state.backdatedAttendance.totalPendingDays = payload.totalPendingDays || 0;
+          state.lastFetched.backdatedAttendance = Date.now();
+        }
+      })
+      .addCase(fetchLastMonthPendingAttendance.rejected, (state, action) => {
+        state.backdatedAttendance.loading = false;
+        state.backdatedAttendance.error = action.payload;
+      })
+      .addCase(markBackdatedAttendance.fulfilled, (state) => {
+        // Invalidate backdated attendance cache to refetch
+        state.lastFetched.backdatedAttendance = null;
       });
   },
 });

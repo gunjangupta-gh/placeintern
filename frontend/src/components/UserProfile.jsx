@@ -277,7 +277,6 @@ const UserProfile = ({ visible, onClose }) => {
       PRINCIPAL: { color: 'purple', label: 'Principal' },
       STUDENT: { color: 'blue', label: 'Student' },
       TEACHER: { color: 'green', label: 'Teacher' },
-      FACULTY_SUPERVISOR: { color: 'cyan', label: 'Faculty Supervisor' },
       INDUSTRY: { color: 'orange', label: 'Industry' },
       STATE_DIRECTORATE: { color: 'red', label: 'State Directorate' },
       SYSTEM_ADMIN: { color: 'magenta', label: 'System Admin' },

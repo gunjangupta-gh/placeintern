@@ -52,6 +52,7 @@ const TrainingCalendarPage = () => {
   const [viewMode, setViewMode] = useState("calendar");
   const [searchText, setSearchText] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [trainingFilter, setTrainingFilter] = useState("all"); // "all" or "my"
 
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [filters, setFilters] = useState({
@@ -72,6 +73,7 @@ const TrainingCalendarPage = () => {
     const params = {
       ...filters,
       forceRefresh: true,
+      myOnly: trainingFilter === "my",
     };
 
     // Add pagination only for list view
@@ -96,8 +98,8 @@ const TrainingCalendarPage = () => {
       }
     });
 
-    dispatch(fetchCalendar(filters));
-  }, [dispatch, filters, viewMode, pagination.current, pagination.pageSize, searchText]);
+    dispatch(fetchCalendar({ ...filters, myOnly: trainingFilter === "my" }));
+  }, [dispatch, filters, viewMode, pagination.current, pagination.pageSize, searchText, trainingFilter]);
 
   // Keyboard navigation for calendar
   const handleKeyDown = useCallback(
@@ -312,6 +314,15 @@ const TrainingCalendarPage = () => {
           </Title>
         </div>
         <Space size="small">
+          <Segmented
+            size="middle"
+            value={trainingFilter}
+            onChange={setTrainingFilter}
+            options={[
+              { value: "all", label: "All Trainings" },
+              { value: "my", label: "My Trainings" },
+            ]}
+          />
           <Button size="middle" icon={<AimOutlined />} onClick={jumpToToday}>
             Today
           </Button>

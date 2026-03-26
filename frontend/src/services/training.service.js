@@ -99,6 +99,16 @@ const trainingService = {
     return response.data;
   },
 
+  async getLastMonthPendingAttendance() {
+    const response = await API.get('/faculty/training/attendance/last-month-pending');
+    return response.data;
+  },
+
+  async markBackdatedAttendance(data) {
+    const response = await API.post('/faculty/training/attendance/mark-backdated', data);
+    return response.data;
+  },
+
   // Feedback
   async getFeedbackForm(trainingId) {
     const response = await API.get(`/faculty/training/feedback/training/${trainingId}/form`);

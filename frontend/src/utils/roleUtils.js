@@ -10,7 +10,7 @@ export const normalizeRole = (roleRaw) => {
       return 'principal';
     case 'FACULTY':
     case 'TEACHER':
-    case 'FACULTY_SUPERVISOR':
+    case 'FACULTY_COORDINATOR':
       return 'faculty';
     case 'STUDENT':
       return 'student';

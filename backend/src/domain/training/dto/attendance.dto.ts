@@ -86,4 +86,33 @@ export class MarkSelfAttendanceDto {
   @IsOptional()
   @IsString()
   locationAddress?: string;
+
+  @ApiPropertyOptional({ description: 'Flag for backdated attendance (last month trainings)' })
+  @IsOptional()
+  isBackdated?: boolean;
+}
+
+export class MarkBackdatedAttendanceDto {
+  @ApiProperty({ description: 'Training ID' })
+  @IsUUID()
+  trainingId: string;
+
+  @ApiProperty({ description: 'Attendance date for backdated marking' })
+  @IsDateString()
+  attendanceDate: string;
+
+  @ApiPropertyOptional({ description: 'Latitude of attendance location' })
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @ApiPropertyOptional({ description: 'Longitude of attendance location' })
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  @ApiPropertyOptional({ description: 'Address of attendance location' })
+  @IsOptional()
+  @IsString()
+  locationAddress?: string;
 }

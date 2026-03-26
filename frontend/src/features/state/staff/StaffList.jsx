@@ -230,6 +230,8 @@ const StaffList = () => {
 
   const getRoleLabel = (role) => {
     const labels = {
+      STUDENT: 'Student',
+      PRINCIPAL: 'Principal',
       TEACHER: 'Teacher',
       FACULTY_COORDINATOR: 'Faculty Coordinator',
       PRINCIPAL: 'Principal',
@@ -436,9 +438,9 @@ const StaffList = () => {
                   value={filters.role || undefined}
                   onChange={(value) => handleFilterChange('role', value || '')}
                 >
+                  <Select.Option value="PRINCIPAL">Principal</Select.Option>
                   <Select.Option value="TEACHER">Teacher</Select.Option>
                   <Select.Option value="FACULTY_COORDINATOR">Faculty Coordinator</Select.Option>
-                  <Select.Option value="PRINCIPAL">Principal</Select.Option>
                   <Select.Option value="ADMIN_STAFF">Admin Staff</Select.Option>
                 </Select>
               </Col>

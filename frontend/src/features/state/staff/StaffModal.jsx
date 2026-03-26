@@ -219,12 +219,12 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
                 label="Role"
                 rules={[{ required: true, message: 'Please select a role' }]}
               >
-                <Select
-                  placeholder="Select role"
-                  options={ROLE_OPTIONS}
-                  showSearch
-                  optionFilterProp="label"
-                />
+                <Select placeholder="Select role">
+                  <Select.Option value="PRINCIPAL">Principal</Select.Option>
+                  <Select.Option value="TEACHER">Teacher</Select.Option>
+                  <Select.Option value="FACULTY_COORDINATOR">Faculty Coordinator</Select.Option>
+                  <Select.Option value="ADMIN_STAFF">Admin Staff</Select.Option>
+                </Select>
               </Form.Item>
             </Col>
 

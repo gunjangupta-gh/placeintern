@@ -13,13 +13,13 @@ import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { Role } from '../../../generated/prisma/client';
 import { TrainingAttendanceService } from '../../../domain/training/training-attendance.service';
-import { MarkSelfAttendanceDto } from '../../../domain/training/dto';
+import { MarkSelfAttendanceDto, MarkBackdatedAttendanceDto } from '../../../domain/training/dto';
 
 @ApiTags('Faculty - Attendance')
 @ApiBearerAuth()
 @Controller('faculty/training/attendance')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
+@Roles(Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF)
 export class FacultyAttendanceController {
   constructor(private readonly attendanceService: TrainingAttendanceService) {}
 
@@ -45,5 +45,17 @@ export class FacultyAttendanceController {
   @ApiOperation({ summary: 'Get attendance summary' })
   async getAttendanceSummary(@Req() req) {
     return this.attendanceService.getUserAttendanceSummary(req.user.userId);
+  }
+
+  @Get('last-month-pending')
+  @ApiOperation({ summary: 'Get last month trainings with pending attendance' })
+  async getLastMonthPendingAttendance(@Req() req) {
+    return this.attendanceService.getLastMonthTrainingsWithPendingAttendance(req.user.userId);
+  }
+
+  @Post('mark-backdated')
+  @ApiOperation({ summary: 'Mark backdated attendance for last month trainings' })
+  async markBackdatedAttendance(@Body() dto: MarkBackdatedAttendanceDto, @Req() req) {
+    return this.attendanceService.markBackdatedAttendance(dto, req.user.userId);
   }
 }

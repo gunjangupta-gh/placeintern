@@ -11,11 +11,12 @@ import Layouts from '../../components/Layout';
 const ROLES = {
   STATE: 'STATE_DIRECTORATE',
   PRINCIPAL: 'PRINCIPAL',
-  FACULTY: ['FACULTY', 'TEACHER', 'FACULTY_SUPERVISOR', 'FACULTY_COORDINATOR'],
+  FACULTY: ['FACULTY', 'TEACHER', 'FACULTY_COORDINATOR'],
   COORDINATOR: 'FACULTY_COORDINATOR',
   STUDENT: 'STUDENT',
   INDUSTRY: ['INDUSTRY', 'INDUSTRY_PARTNER', 'INDUSTRY_SUPERVISOR'],
   SYSTEM_ADMIN: 'SYSTEM_ADMIN',
+  ADMIN_STAFF: 'ADMIN_STAFF',
 };
 
 // All dashboard-accessible roles
@@ -26,6 +27,7 @@ const ALL_ROLES = [
   ROLES.STUDENT,
   ...ROLES.INDUSTRY,
   ROLES.SYSTEM_ADMIN,
+  ROLES.ADMIN_STAFF,
 ];
 
 // Auth
@@ -382,7 +384,7 @@ const AppRoutes = () => {
         <Route
           path="training"
           element={
-            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL, ...ROLES.FACULTY]}>
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL, ...ROLES.FACULTY, ROLES.ADMIN_STAFF]}>
               <TrainingHomeRouter />
             </ProtectedRoute>
           }
@@ -478,7 +480,7 @@ const AppRoutes = () => {
         <Route
           path="training/applications"
           element={
-            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL, ...ROLES.FACULTY]}>
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL, ...ROLES.FACULTY, ROLES.ADMIN_STAFF]}>
               <TrainingApplicationsRouter />
             </ProtectedRoute>
           }
@@ -486,7 +488,7 @@ const AppRoutes = () => {
         <Route
           path="training/lesson-plans"
           element={
-            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL, ...ROLES.FACULTY]}>
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL, ...ROLES.FACULTY, ROLES.ADMIN_STAFF]}>
               <TrainingLessonPlansRouter />
             </ProtectedRoute>
           }
@@ -502,7 +504,7 @@ const AppRoutes = () => {
         <Route
           path="training/lesson-plans/new"
           element={
-            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+            <ProtectedRoute allowedRoles={[...ROLES.FACULTY, ROLES.ADMIN_STAFF]}>
               <FacultyLessonPlanEditorPage />
             </ProtectedRoute>
           }
@@ -510,7 +512,7 @@ const AppRoutes = () => {
         <Route
           path="training/lesson-plans/new/:trainingId"
           element={
-            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+            <ProtectedRoute allowedRoles={[...ROLES.FACULTY, ROLES.ADMIN_STAFF]}>
               <FacultyLessonPlanEditorPage />
             </ProtectedRoute>
           }
@@ -518,7 +520,7 @@ const AppRoutes = () => {
         <Route
           path="training/lesson-plans/:id/edit"
           element={
-            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+            <ProtectedRoute allowedRoles={[...ROLES.FACULTY, ROLES.ADMIN_STAFF]}>
               <FacultyLessonPlanEditorPage />
             </ProtectedRoute>
           }
@@ -526,7 +528,7 @@ const AppRoutes = () => {
         <Route
           path="training/calendar"
           element={
-            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+            <ProtectedRoute allowedRoles={[...ROLES.FACULTY, ROLES.ADMIN_STAFF]}>
               <FacultyTrainingCalendarPage />
             </ProtectedRoute>
           }
@@ -534,7 +536,7 @@ const AppRoutes = () => {
         <Route
           path="training/certificates"
           element={
-            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+            <ProtectedRoute allowedRoles={[...ROLES.FACULTY, ROLES.ADMIN_STAFF]}>
               <FacultyMyCertificatesPage />
             </ProtectedRoute>
           }
@@ -542,7 +544,7 @@ const AppRoutes = () => {
         <Route
           path="training/recommend"
           element={
-            <ProtectedRoute allowedRoles={ROLES.FACULTY}>
+            <ProtectedRoute allowedRoles={[...ROLES.FACULTY, ROLES.ADMIN_STAFF]}>
               <FacultyRecommendTrainingPage />
             </ProtectedRoute>
           }
@@ -550,7 +552,7 @@ const AppRoutes = () => {
         <Route
           path="training/:id"
           element={
-            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL, ...ROLES.FACULTY]}>
+            <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL, ...ROLES.FACULTY, ROLES.ADMIN_STAFF]}>
               <TrainingDetailsRouter />
             </ProtectedRoute>
           }
@@ -1103,9 +1105,13 @@ const DashboardRouter = () => {
   if (role === ROLES.PRINCIPAL) {
     return <PrincipalDashboard />;
   }
-  // Faculty (includes TEACHER, FACULTY_SUPERVISOR, FACULTY_COORDINATOR)
+  // Faculty (includes TEACHER, FACULTY_COORDINATOR)
   if (ROLES.FACULTY.includes(role)) {
     return <FacultyDashboard />;
+  }
+  // Admin Staff - uses Faculty Training Dashboard
+  if (role === ROLES.ADMIN_STAFF) {
+    return <FacultyTrainingDashboardPage />;
   }
   // Student
   if (role === ROLES.STUDENT) {
@@ -1131,6 +1137,7 @@ function TrainingHomeRouter() {
   if (role === ROLES.STATE) return <StateTrainingDashboardPage />;
   if (role === ROLES.PRINCIPAL) return <PrincipalTrainingOverviewPage />;
   if (ROLES.FACULTY.includes(role)) return <FacultyTrainingDashboardPage />;
+  if (role === ROLES.ADMIN_STAFF) return <FacultyTrainingDashboardPage />;
 
   return <Navigate to="/unauthorized" replace />;
 }
@@ -1141,6 +1148,7 @@ function TrainingApplicationsRouter() {
 
   if (role === ROLES.PRINCIPAL) return <PrincipalApplicationReviewPage />;
   if (ROLES.FACULTY.includes(role)) return <FacultyMyApplicationsPage />;
+  if (role === ROLES.ADMIN_STAFF) return <FacultyMyApplicationsPage />;
 
   return <Navigate to="/unauthorized" replace />;
 }
@@ -1152,6 +1160,7 @@ function TrainingLessonPlansRouter() {
   if (role === ROLES.STATE) return <StateLessonPlanReviewPage />;
   if (role === ROLES.PRINCIPAL) return <PrincipalLessonPlanReviewPage />;
   if (ROLES.FACULTY.includes(role)) return <FacultyMyLessonPlansPage />;
+  if (role === ROLES.ADMIN_STAFF) return <FacultyMyLessonPlansPage />;
 
   return <Navigate to="/unauthorized" replace />;
 }
@@ -1185,6 +1194,7 @@ function TrainingDetailsRouter() {
   if (role === ROLES.PRINCIPAL) return <PrincipalTrainingDetailsPage />;
   if (ROLES.FACULTY.includes(role)) return <FacultyTrainingDetailsPage />;
   if (role === ROLES.COORDINATOR) return <StateTrainingDetailsPage />;
+  if (role === ROLES.ADMIN_STAFF) return <FacultyTrainingDetailsPage />;
 
   return <Navigate to="/unauthorized" replace />;
 }

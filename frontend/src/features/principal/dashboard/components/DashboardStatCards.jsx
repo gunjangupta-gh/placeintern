@@ -96,6 +96,7 @@ export const BasicStatisticsGrid = ({
   totalMentors = 0,
   unassignedStudents = 0,
   partnerCompanies = 0,
+  staffBreakdown = { totalStaff: 0, mentors: 0, adminStaff: 0 },
   loading = false,
   onViewStudents,
   onViewMentors,
@@ -117,7 +118,11 @@ export const BasicStatisticsGrid = ({
     {
       title: 'Total Mentors',
       value: totalMentors,
-      subtitle: 'Active mentor profiles',
+      subtitle: (
+        <span>
+          Staff: {staffBreakdown.totalStaff} | Admin: {staffBreakdown.adminStaff}
+        </span>
+      ),
       icon: <UserOutlined />,
       iconBgClass: 'bg-success-light',
       iconColorClass: '',
@@ -274,6 +279,147 @@ export const SubmissionStatusGrid = ({
       <div className="grid grid-cols-2  lg:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, idx) => (
           <Card key={idx} className="h-40 border-border shadow-sm rounded-xl bg-surface" loading />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
+      {cards.map((card, idx) => (
+        <DashboardStatCard key={idx} {...card} />
+      ))}
+    </div>
+  );
+};
+
+// Staff Summary Grid (Total Staff, Mentors, Admin Staff)
+export const StaffSummaryGrid = ({
+  totalStaff = 0,
+  totalMentors = 0,
+  totalAdminStaff = 0,
+  loading = false,
+  onViewStaff,
+}) => {
+  const cards = [
+    {
+      title: 'Total Staff',
+      value: totalStaff,
+      subtitle: 'All staff members',
+      icon: <TeamOutlined />,
+      iconBgClass: 'bg-info-light',
+      iconColorClass: '',
+      valueColorClass: 'text-info',
+      hasViewMore: true,
+      onViewMore: onViewStaff,
+    },
+    {
+      title: 'Mentors',
+      value: totalMentors,
+      subtitle: 'Teaching faculty',
+      icon: <UserOutlined />,
+      iconBgClass: 'bg-success-light',
+      iconColorClass: '',
+      valueColorClass: 'text-success',
+      hasViewMore: true,
+      onViewMore: onViewStaff,
+    },
+    {
+      title: 'Admin Staff',
+      value: totalAdminStaff,
+      subtitle: 'Administrative personnel',
+      icon: <BankOutlined />,
+      iconBgClass: 'bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
+      iconColorClass: '',
+      valueColorClass: 'text-purple-600 dark:text-purple-400',
+      hasViewMore: true,
+      onViewMore: onViewStaff,
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-3 gap-4">
+        {Array.from({ length: 3 }).map((_, idx) => (
+          <Card key={idx} className="h-32 border-border shadow-sm rounded-xl bg-surface" loading />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      {cards.map((card, idx) => (
+        <DashboardStatCard key={idx} {...card} />
+      ))}
+    </div>
+  );
+};
+
+// Training Statistics Grid (4 cards for training metrics)
+export const TrainingStatisticsGrid = ({
+  trainingsConducted = 0,
+  facultyRegistered = 0,
+  hoursDelivered = 0,
+  completed40Hours = 0,
+  facultyCompleted = 0,
+  facultyOngoing = 0,
+  facultyYetToStart = 0,
+  loading = false,
+  onViewTraining,
+}) => {
+  const cards = [
+    {
+      title: 'Trainings Conducted',
+      value: trainingsConducted,
+      subtitle: 'Total programs completed',
+      icon: <BarChartOutlined />,
+      iconBgClass: 'bg-info-light',
+      iconColorClass: '',
+      valueColorClass: 'text-info',
+      hasViewMore: true,
+      onViewMore: onViewTraining,
+    },
+    {
+      title: 'Faculty Registered',
+      value: facultyRegistered,
+      subtitle: `${facultyCompleted} completed, ${facultyOngoing} ongoing`,
+      icon: <TeamOutlined />,
+      iconBgClass: 'bg-success-light',
+      iconColorClass: '',
+      valueColorClass: 'text-success',
+      hasViewMore: true,
+      onViewMore: onViewTraining,
+    },
+    {
+      title: 'Hours Delivered',
+      value: hoursDelivered,
+      subtitle: 'Total training hours',
+      icon: <FileTextOutlined />,
+      iconBgClass: 'bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
+      iconColorClass: '',
+      valueColorClass: 'text-purple-600 dark:text-purple-400',
+      hasViewMore: true,
+      onViewMore: onViewTraining,
+    },
+    {
+      title: 'Completed 40+ Hours',
+      value: completed40Hours,
+      subtitle: `${facultyYetToStart} yet to start`,
+      icon: <CheckCircleOutlined />,
+      iconBgClass: 'bg-warning-light',
+      iconColorClass: '',
+      valueColorClass: 'text-warning',
+      hasViewMore: true,
+      onViewMore: onViewTraining,
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, idx) => (
+          <Card key={idx} className="h-32 border-border shadow-sm rounded-xl bg-surface" loading />
         ))}
       </div>
     );

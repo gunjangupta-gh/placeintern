@@ -15,7 +15,6 @@ import { Designation } from '../../../generated/prisma/client';
 const STAFF_ROLES = [
   'TEACHER',
   'FACULTY_COORDINATOR',
-  'FACULTY_SUPERVISOR',
   'PLACEMENT_OFFICER',
   'ACCOUNTANT',
   'ADMISSION_OFFICER',

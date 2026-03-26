@@ -41,8 +41,9 @@ import {
   selectInternshipStats,
   selectInternshipStatsLoading,
 } from '../store/principalSlice';
+import { fetchPrincipalTrainingDashboard } from '../store/principalTrainingSlice';
 import FacultyWorkloadCard from './components/FacultyWorkloadCard';
-import { BasicStatisticsGrid, SubmissionStatusGrid } from './components/DashboardStatCards';
+import { BasicStatisticsGrid, SubmissionStatusGrid, TrainingStatisticsGrid } from './components/DashboardStatCards';
 import MonthlyReportsModal from './components/MonthlyReportsModal';
 import FacultyVisitsModal from './components/FacultyVisitsModal';
 import JoiningLettersModal from './components/JoiningLettersModal';
@@ -108,6 +109,8 @@ const PrincipalDashboard = () => {
   const lastFetched = useSelector(selectMostRecentFetch);
   const internshipStats = useSelector(selectInternshipStats);
   const internshipStatsLoading = useSelector(selectInternshipStatsLoading);
+  const trainingDashboard = useSelector((state) => state.principalTraining?.reports?.dashboard);
+  const trainingDashboardLoading = useSelector((state) => state.principalTraining?.reports?.loading);
 
   // Memoized stats derived from Redux data
   const stats = useMemo(() => {
@@ -126,6 +129,8 @@ const PrincipalDashboard = () => {
         total: staffData.total || 0,
         active: staffData.active || 0,
         inactive: (staffData.total || 0) - (staffData.active || 0),
+        teachers: staffData.teachers || 0,
+        adminStaff: staffData.adminStaff || 0,
       },
       internships: dashboardStats.internships || {},
       pending: dashboardStats.pending || {},
@@ -153,6 +158,7 @@ const PrincipalDashboard = () => {
     // Fetch main dashboard data - other data fetched on-demand when clicking cards
     dispatch(fetchPrincipalDashboard());
     dispatch(fetchMentorCoverage());
+    dispatch(fetchPrincipalTrainingDashboard());
   }, [dispatch]);
 
   // Update institution name from dashboard stats
@@ -177,9 +183,15 @@ const PrincipalDashboard = () => {
   // Memoized data for BasicStatisticsGrid - uses dashboard data, details fetched on-demand
   const basicStatsData = useMemo(() => ({
     totalStudents: stats?.students?.active || 0,
-    totalMentors: mentorCoverage?.totalMentors || stats?.staff?.total || 0,
+    totalMentors: stats?.staff?.teachers || mentorCoverage?.totalMentors || 0,
     unassignedStudents: dashboardStats?.unassignedStudents || 0,
     partnerCompanies: stats?.partnerCompanies || 0,
+    // Staff breakdown for the modal
+    staffBreakdown: {
+      totalStaff: stats?.staff?.total || 0,
+      mentors: stats?.staff?.teachers || 0,
+      adminStaff: stats?.staff?.adminStaff || 0,
+    },
   }), [stats, mentorCoverage, dashboardStats]);
 
   // Memoized data for SubmissionStatusGrid
@@ -247,6 +259,24 @@ const PrincipalDashboard = () => {
     month: 'long',
     day: 'numeric',
   }), []);
+
+  // Training stats from training dashboard
+  const trainingStats = useMemo(() => {
+    if (!trainingDashboard) return null;
+    const metrics = trainingDashboard.trainingMetrics || {};
+    const faculty = trainingDashboard.facultyMetrics || {};
+    const completion = trainingDashboard.completionMetrics || {};
+    return {
+      trainingsConducted: metrics.totalTrainingsConducted || 0,
+      facultyRegistered: metrics.totalFacultyRegistered || 0,
+      hoursDelivered: metrics.totalTrainingHoursDelivered || 0,
+      facultyCompleted: faculty.facultyWithCompletedTrainings || 0,
+      facultyOngoing: faculty.facultyWithOngoingTrainings || 0,
+      facultyYetToStart: faculty.facultyYetToStart || 0,
+      completed40Hours: completion.facultyCompleted40Hours || 0,
+    };
+  }, [trainingDashboard]);
+
 
   // Conditional returns - AFTER all hooks
   if (dashboardLoading && !stats) {
@@ -329,7 +359,7 @@ const PrincipalDashboard = () => {
               setStudentsModal({ visible: true });
             }}
             onViewMentors={() => {
-              dispatch(fetchMentorCoverage());
+              dispatch(fetchMentorCoverage({ forceRefresh: true }));
               setMentorsModal({ visible: true });
             }}
             onViewUnassigned={() => setUnassignedModal({ visible: true })}
@@ -363,6 +393,24 @@ const PrincipalDashboard = () => {
             onViewGrievances={() => setGrievancesModal({ visible: true })}
           />
         </div>
+
+        {/* Training Statistics Section */}
+        {trainingStats && (
+          <div>
+            <SectionTitle title="Training Statistics" />
+            <TrainingStatisticsGrid
+              trainingsConducted={trainingStats.trainingsConducted}
+              facultyRegistered={trainingStats.facultyRegistered}
+              hoursDelivered={trainingStats.hoursDelivered}
+              completed40Hours={trainingStats.completed40Hours}
+              facultyCompleted={trainingStats.facultyCompleted}
+              facultyOngoing={trainingStats.facultyOngoing}
+              facultyYetToStart={trainingStats.facultyYetToStart}
+              loading={trainingDashboardLoading}
+              onViewTraining={() => navigate('/app/principal/training')}
+            />
+          </div>
+        )}
 
         {/* Tabs for Internship Details and Faculty Workload */}
         <div className="mt-6">
