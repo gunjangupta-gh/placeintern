@@ -182,9 +182,9 @@ export const fetchStaff = createAsyncThunk(
         limit: params?.limit ?? 10,
         search: params?.search ?? '',
         role: params?.role ?? '',
-        department: params?.department ?? '',
-        // Principal staff list endpoint expects `isActive` (often as string)
-        isActive: params?.isActive != null ? String(params.isActive) : (params?.active != null ? String(params.active) : ''),
+        designation: params?.designation ?? '',
+        // Principal staff list endpoint expects `active` (as string)
+        active: params?.isActive != null ? String(params.isActive) : (params?.active != null ? String(params.active) : ''),
       };
       const requestKey = JSON.stringify(normalizedParams);
       const lastKey = state.principal.lastFetched.staffKey;

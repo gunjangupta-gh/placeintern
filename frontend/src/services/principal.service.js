@@ -119,13 +119,12 @@ export const principalService = {
 
   // Staff
   async getStaff(params = {}) {
-    // Backend principal staff list uses `isActive` as the query param
-    // (it may come through as a string). Keep compatibility with callers
-    // that pass `active`.
+    // Backend principal staff list uses `active` and `designation` as query params
+    // Map isActive to active for compatibility
     const normalizedParams = { ...params };
-    if (normalizedParams.isActive == null && normalizedParams.active != null) {
-      normalizedParams.isActive = normalizedParams.active;
-      delete normalizedParams.active;
+    if (normalizedParams.isActive != null && normalizedParams.active == null) {
+      normalizedParams.active = normalizedParams.isActive;
+      delete normalizedParams.isActive;
     }
 
     const cleanParams = Object.fromEntries(

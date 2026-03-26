@@ -2030,6 +2030,7 @@ export class PrincipalService {
     limit?: number | string;
     search?: string;
     role?: string;
+    designation?: string;
     active?: string | boolean;
   }) {
     const principal = await this.prisma.user.findUnique({
@@ -2043,7 +2044,7 @@ export class PrincipalService {
     // Parse page and limit as numbers (query params come as strings)
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
-    const { search, role, active } = query;
+    const { search, role, designation, active } = query;
     const skip = (page - 1) * limit;
 
     // Allowed staff roles (excludes PRINCIPAL, STUDENT, STATE_DIRECTORATE, SYSTEM_ADMIN)
@@ -2057,6 +2058,11 @@ export class PrincipalService {
     // Allow filtering by specific role if provided (must be one of allowed roles)
     if (role && Object.values(Role).includes(role as Role) && allowedStaffRoles.includes(role as Role)) {
       where.role = role as Role;
+    }
+
+    // Filter by designation if provided
+    if (designation) {
+      where.designationEnum = designation as any;
     }
 
     if (search) {
@@ -2083,6 +2089,7 @@ export class PrincipalService {
           phoneNo: true,
           role: true,
           designation: true,
+          designationEnum: true,
           branchName: true,
           active: true,
           createdAt: true,
@@ -2096,6 +2103,8 @@ export class PrincipalService {
     const transformedStaff = staff.map((s: any) => ({
       ...s,
       department: s.branchName, // Alias for frontend
+      // Use designationEnum for display if available, fallback to designation
+      designation: s.designationEnum?.replace(/_/g, ' ') || s.designation,
     }));
 
     return {
