@@ -98,7 +98,7 @@ const TrainingCalendarPage = () => {
       }
     });
 
-    dispatch(fetchCalendar({ ...filters, myOnly: trainingFilter === "my" }));
+    dispatch(fetchCalendar({ ...filters, myOnly: trainingFilter === "my", forceRefresh: true }));
   }, [dispatch, filters, viewMode, pagination.current, pagination.pageSize, searchText, trainingFilter]);
 
   // Keyboard navigation for calendar

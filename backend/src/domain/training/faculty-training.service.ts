@@ -11,20 +11,25 @@ export class FacultyTrainingService {
   ) {}
 
   async getTrainings(filters: TrainingFilterDto, userId: string) {
-    // Don't pass branchIds - let TrainingService resolve branch from userId to avoid conflicts
-    // TrainingService will automatically filter by user's branch using getUserBranchId()
+    // myOnly=true → Show eligible trainings (filtered by user's branch/designation)
+    // myOnly=false → Show ALL trainings (no filter)
     return this.trainingService.findAll(
       filters,
       false,
       userId,
+      undefined,
+      filters.myOnly || false,
     );
   }
 
   async getCalendar(filters: CalendarFilterDto, userId: string) {
-    // Don't pass branchIds - let TrainingService resolve branch from userId to avoid conflicts
+    // myOnly=true → Show eligible trainings (filtered by user's branch/designation)
+    // myOnly=false → Show ALL trainings (no filter)
     return this.trainingService.getCalendar(
       filters,
       userId,
+      undefined,
+      filters.myOnly || false,
     );
   }
 

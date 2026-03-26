@@ -1,7 +1,14 @@
 import { IsOptional, IsString, IsInt, IsEnum, IsArray, IsBoolean, IsDateString, IsUUID, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { TrainingDeliveryMode, TrainingDifficulty } from '../../../generated/prisma/client';
+
+// Helper to transform string 'true'/'false' to actual boolean
+const transformToBoolean = ({ value }) => {
+  if (value === 'true' || value === true) return true;
+  if (value === 'false' || value === false) return false;
+  return value;
+};
 
 export class TrainingFilterDto {
   @ApiPropertyOptional({ description: 'Page number' })
@@ -72,6 +79,12 @@ export class TrainingFilterDto {
   @IsOptional()
   @IsDateString()
   startDateTo?: string;
+
+  @ApiPropertyOptional({ description: 'Show only eligible trainings for user (filtered by branch/designation)' })
+  @IsOptional()
+  @Transform(transformToBoolean)
+  @IsBoolean()
+  myOnly?: boolean;
 }
 
 export class CalendarFilterDto {
@@ -97,4 +110,10 @@ export class CalendarFilterDto {
   @IsOptional()
   @IsEnum(TrainingDeliveryMode)
   deliveryMode?: TrainingDeliveryMode;
+
+  @ApiPropertyOptional({ description: 'Show only eligible trainings for user (filtered by branch/designation)' })
+  @IsOptional()
+  @Transform(transformToBoolean)
+  @IsBoolean()
+  myOnly?: boolean;
 }

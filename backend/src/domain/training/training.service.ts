@@ -291,36 +291,52 @@ export class TrainingService {
 
   /**
    * Get all trainings with filters (State - all, others - published only)
+   * @param myOnly - If true, show only eligible trainings filtered by user's branch/designation. If false, show ALL trainings.
    */
-  async findAll(filters: TrainingFilterDto, includeUnpublished = false, userId?: string, institutionId?: string) {
+  async findAll(filters: TrainingFilterDto, includeUnpublished = false, userId?: string, institutionId?: string, myOnly = false) {
     try {
       const { page = 1, limit = 20, search, year, month, deliveryMode, difficulty, branchIds, isPublished, isActive, startDateFrom, startDateTo } = filters;
-      const userBranchId = userId ? await this.getUserBranchId(userId) : undefined;
-      const userDesignation = userId ? await this.getUserDesignation(userId) : undefined;
-      const effectiveBranchIds = this.getEffectiveBranchIds(branchIds, userBranchId);
 
-      // Build branch filtering condition
-      const branchScopeCondition: Prisma.TrainingWhereInput | undefined = effectiveBranchIds
-        ? effectiveBranchIds.length > 0
-          ? {
-              OR: [
-                { targetBranches: { some: { id: { in: effectiveBranchIds } } } },
-                { targetBranches: { none: {} } },
-              ],
-            }
-          : { targetBranches: { none: {} } }
-        : undefined;
+      // myOnly=true → Show eligible trainings (filtered by user's branch AND designation)
+      // myOnly=false → Show ALL trainings (no branch/designation filter)
+      let combinedScopeCondition: Prisma.TrainingWhereInput | undefined = undefined;
 
-      // Build designation filtering condition
-      const designationScopeCondition = userId
-        ? this.buildDesignationScopeCondition(userDesignation ?? null)
-        : undefined;
+      if (myOnly && userId) {
+        // Apply branch and designation filtering to show only eligible trainings
+        const userBranchId = await this.getUserBranchId(userId);
+        const userDesignation = await this.getUserDesignation(userId);
+        const effectiveBranchIds = this.getEffectiveBranchIds(branchIds, userBranchId);
 
-      // Combine branch and designation conditions with AND logic (both must match)
-      const combinedScopeCondition = this.buildCombinedScopeCondition(
-        branchScopeCondition,
-        designationScopeCondition,
-      );
+        // Build branch filtering condition
+        const branchScopeCondition: Prisma.TrainingWhereInput | undefined = effectiveBranchIds
+          ? effectiveBranchIds.length > 0
+            ? {
+                OR: [
+                  { targetBranches: { some: { id: { in: effectiveBranchIds } } } },
+                  { targetBranches: { none: {} } },
+                ],
+              }
+            : { targetBranches: { none: {} } }
+          : undefined;
+
+        // Build designation filtering condition
+        const designationScopeCondition = this.buildDesignationScopeCondition(userDesignation ?? null);
+
+        // Combine branch and designation conditions with AND logic (both must match)
+        combinedScopeCondition = this.buildCombinedScopeCondition(
+          branchScopeCondition,
+          designationScopeCondition,
+        );
+      } else if (branchIds?.length) {
+        // Apply explicit branch filter if provided in request (for non-myOnly requests)
+        combinedScopeCondition = {
+          OR: [
+            { targetBranches: { some: { id: { in: branchIds } } } },
+            { targetBranches: { none: {} } },
+          ],
+        };
+      }
+      // When myOnly=false and no branchIds filter, show ALL trainings (no restriction)
 
       const where: Prisma.TrainingWhereInput = {
         ...(includeUnpublished ? {} : { isPublished: true }),
@@ -469,36 +485,53 @@ export class TrainingService {
 
   /**
    * Get training calendar
+   * @param myOnly - If true, show only eligible trainings filtered by user's branch/designation. If false, show ALL trainings.
    */
-  async getCalendar(filters: CalendarFilterDto, userId?: string, institutionId?: string) {
+  async getCalendar(filters: CalendarFilterDto, userId?: string, institutionId?: string, myOnly = false) {
     try {
       const { year = new Date().getFullYear(), month, branchIds, deliveryMode } = filters;
-      const userBranchId = userId ? await this.getUserBranchId(userId) : undefined;
-      const userDesignation = userId ? await this.getUserDesignation(userId) : undefined;
-      const effectiveBranchIds = this.getEffectiveBranchIds(branchIds, userBranchId);
-      const branchScopeCondition: Prisma.TrainingWhereInput | undefined = effectiveBranchIds
-        ? effectiveBranchIds.length > 0
-          ? {
-              OR: [
-                { targetBranches: { some: { id: { in: effectiveBranchIds } } } },
-                { targetBranches: { none: {} } },
-              ],
-            }
-          : { targetBranches: { none: {} } }
-        : undefined;
 
-      // Build designation filtering condition
-      const designationScopeCondition = userId
-        ? this.buildDesignationScopeCondition(userDesignation ?? null)
-        : undefined;
+      // myOnly=true → Show eligible trainings (filtered by user's branch AND designation)
+      // myOnly=false → Show ALL trainings (no branch/designation filter)
+      let combinedScopeCondition: Prisma.TrainingWhereInput | undefined = undefined;
 
-      // Combine branch and designation conditions with AND logic (both must match)
-      const combinedScopeCondition = this.buildCombinedScopeCondition(
-        branchScopeCondition,
-        designationScopeCondition,
-      );
+      if (myOnly && userId) {
+        // Apply branch and designation filtering to show only eligible trainings
+        const userBranchId = await this.getUserBranchId(userId);
+        const userDesignation = await this.getUserDesignation(userId);
+        const effectiveBranchIds = this.getEffectiveBranchIds(branchIds, userBranchId);
 
-      const cacheKey = `training:calendar:${year}:${month || 'all'}:${effectiveBranchIds?.join(',') || 'all'}:${userDesignation || 'all'}:${deliveryMode || 'all'}`;
+        const branchScopeCondition: Prisma.TrainingWhereInput | undefined = effectiveBranchIds
+          ? effectiveBranchIds.length > 0
+            ? {
+                OR: [
+                  { targetBranches: { some: { id: { in: effectiveBranchIds } } } },
+                  { targetBranches: { none: {} } },
+                ],
+              }
+            : { targetBranches: { none: {} } }
+          : undefined;
+
+        // Build designation filtering condition
+        const designationScopeCondition = this.buildDesignationScopeCondition(userDesignation ?? null);
+
+        // Combine branch and designation conditions with AND logic (both must match)
+        combinedScopeCondition = this.buildCombinedScopeCondition(
+          branchScopeCondition,
+          designationScopeCondition,
+        );
+      } else if (branchIds?.length) {
+        // Apply explicit branch filter if provided in request (for non-myOnly requests)
+        combinedScopeCondition = {
+          OR: [
+            { targetBranches: { some: { id: { in: branchIds } } } },
+            { targetBranches: { none: {} } },
+          ],
+        };
+      }
+      // When myOnly=false and no branchIds filter, show ALL trainings (no restriction)
+
+      const cacheKey = `training:calendar:${year}:${month || 'all'}:${branchIds?.join(',') || 'all'}:${deliveryMode || 'all'}:${myOnly ? userId : 'all'}`;
 
       return await this.cache.getOrSet(
         cacheKey,

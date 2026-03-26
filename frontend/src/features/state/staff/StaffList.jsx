@@ -234,7 +234,6 @@ const StaffList = () => {
       PRINCIPAL: 'Principal',
       TEACHER: 'Teacher',
       FACULTY_COORDINATOR: 'Faculty Coordinator',
-      PRINCIPAL: 'Principal',
       ADMIN_STAFF: 'Admin Staff',
     };
     return labels[role] || role;

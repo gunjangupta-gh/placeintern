@@ -203,6 +203,7 @@ export const fetchCalendar = createAsyncThunk(
         month: params?.month ?? '',
         deliveryMode: params?.deliveryMode ?? '',
         branchIds: Array.isArray(params?.branchIds) ? params.branchIds.join(',') : params?.branchIds ?? '',
+        myOnly: params?.myOnly ?? false,
       };
       const requestKey = JSON.stringify(normalizedParams);
       const lastKey = state.facultyTraining.lastFetched.calendarKey;

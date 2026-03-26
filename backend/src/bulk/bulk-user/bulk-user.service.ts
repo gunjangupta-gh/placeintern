@@ -766,7 +766,6 @@ export class BulkUserService {
         'Phone': '9876543211',
         'Role': 'TEACHER',
         'Designation': 'Assistant Professor',
-        'Role': 'FACULTY_SUPERVISOR',
       },
     ];
 
