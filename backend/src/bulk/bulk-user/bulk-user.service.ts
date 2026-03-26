@@ -20,7 +20,7 @@ export class BulkUserService {
   private readonly logger = new Logger(BulkUserService.name);
 
   // Valid roles that can be used in bulk upload
-  private readonly validRoles = ['TEACHER', 'FACULTY_SUPERVISOR'];
+  private readonly validRoles = ['TEACHER'];
 
   constructor(
     private readonly prisma: PrismaService,
@@ -363,7 +363,7 @@ export class BulkUserService {
         'Name': 'Jane Smith',
         'Email': 'jane.smith@example.com',
         'Phone': '9876543211',
-        'Role': 'FACULTY_SUPERVISOR',
+        'Role': 'TEACHER',
         'Designation': 'Assistant Professor',
         'Department': 'Electronics',
         'Employee ID': 'EMP002',

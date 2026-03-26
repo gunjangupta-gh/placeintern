@@ -176,9 +176,8 @@ export class StateMentorService {
     // Note: Cross-institution mentoring is allowed - state admin can assign faculty from one institution
     // to mentor students from another institution (this happens physically in the field)
 
-    // Robust role check: some deployments use different Role enum variants.
-    // Accept TEACHER/FACULTY_SUPERVISOR as mentor roles.
-    const validMentorRoles = new Set(['TEACHER', 'FACULTY_SUPERVISOR']);
+    // Robust role check: Accept TEACHER as mentor role.
+    const validMentorRoles = new Set(['TEACHER']);
     if (!validMentorRoles.has(String(mentor.role))) {
       throw new BadRequestException('Selected user is not a valid mentor');
     }

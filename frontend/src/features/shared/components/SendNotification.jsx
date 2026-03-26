@@ -30,7 +30,6 @@ const { Option } = Select;
 const ROLE_LABELS = {
   STUDENT: 'Students',
   TEACHER: 'Teachers',
-  FACULTY_SUPERVISOR: 'Faculty Supervisors',
   PRINCIPAL: 'Principals',
   STATE_DIRECTORATE: 'State Directorate',
   SYSTEM_ADMIN: 'System Admins',
@@ -56,7 +55,7 @@ const SendNotification = () => {
   const getSendOptions = () => {
     const options = [];
 
-    if (['TEACHER', 'FACULTY_SUPERVISOR'].includes(userRole)) {
+    if (['TEACHER'].includes(userRole)) {
       options.push({
         key: 'student-reminder',
         label: 'Send to My Students',
@@ -166,7 +165,6 @@ const SendNotification = () => {
       return [
         'STUDENT',
         'TEACHER',
-        'FACULTY_SUPERVISOR',
         'ACCOUNTANT',
         'ADMISSION_OFFICER',
         'EXAMINATION_OFFICER',

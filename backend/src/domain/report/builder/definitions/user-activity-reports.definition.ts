@@ -40,7 +40,6 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
         options: [
           { value: 'STUDENT', label: 'Student' },
           { value: 'TEACHER', label: 'Teacher' },
-          { value: 'FACULTY_SUPERVISOR', label: 'Faculty Supervisor' },
           { value: 'PRINCIPAL', label: 'Principal' },
           { value: 'ACCOUNTANT', label: 'Accountant' },
           { value: 'PLACEMENT_OFFICER', label: 'Placement Officer' },
@@ -122,7 +121,6 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'role', label: 'Role', type: 'select', required: false, options: [
         { value: 'STUDENT', label: 'Student' },
         { value: 'TEACHER', label: 'Teacher' },
-        { value: 'FACULTY_SUPERVISOR', label: 'Faculty Supervisor' },
         { value: 'PRINCIPAL', label: 'Principal' },
         { value: 'INDUSTRY', label: 'Industry' },
       ]},
@@ -164,7 +162,6 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'role', label: 'Role', type: 'multiSelect', required: false, options: [
         { value: 'STUDENT', label: 'Student' },
         { value: 'TEACHER', label: 'Teacher' },
-        { value: 'FACULTY_SUPERVISOR', label: 'Faculty Supervisor' },
         { value: 'PRINCIPAL', label: 'Principal' },
         { value: 'INDUSTRY', label: 'Industry' },
       ]},
@@ -206,7 +203,6 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'role', label: 'Role', type: 'multiSelect', required: false, options: [
         { value: 'STUDENT', label: 'Student' },
         { value: 'TEACHER', label: 'Teacher' },
-        { value: 'FACULTY_SUPERVISOR', label: 'Faculty Supervisor' },
         { value: 'PRINCIPAL', label: 'Principal' },
         { value: 'INDUSTRY', label: 'Industry' },
       ]},
@@ -250,7 +246,6 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'role', label: 'Role', type: 'multiSelect', required: false, options: [
         { value: 'STUDENT', label: 'Student' },
         { value: 'TEACHER', label: 'Teacher' },
-        { value: 'FACULTY_SUPERVISOR', label: 'Faculty Supervisor' },
         { value: 'PRINCIPAL', label: 'Principal' },
         { value: 'INDUSTRY', label: 'Industry' },
       ]},

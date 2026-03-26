@@ -294,7 +294,6 @@ export class PlacementReportFilterDto extends BaseReportFilterDto {
 const VALID_ROLES = [
   'STUDENT',
   'TEACHER',
-  'FACULTY_SUPERVISOR',
   'PRINCIPAL',
   'STATE_DIRECTORATE',
   'INDUSTRY',

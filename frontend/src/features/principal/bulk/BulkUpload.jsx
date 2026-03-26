@@ -117,7 +117,7 @@ const BulkUpload = () => {
     const valid = [];
     const invalid = [];
     // Match backend valid roles (maps to User model with TEACHER role)
-    const validRoles = ['TEACHER', 'FACULTY_SUPERVISOR'];
+    const validRoles = ['TEACHER'];
 
     data.forEach((row, index) => {
       const errors = [];

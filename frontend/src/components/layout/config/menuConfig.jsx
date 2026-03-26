@@ -582,6 +582,40 @@ export const menuConfig = {
   },
 
   // ==========================================
+  // ADMIN STAFF MENUS
+  // ==========================================
+  ADMIN_STAFF_DASHBOARD: {
+    key: "admin-staff-dashboard",
+    title: "Dashboard",
+    icon: <DashboardOutlined />,
+    path: "/app/training",
+  },
+  ADMIN_STAFF_CALENDAR: {
+    key: "admin-staff-calendar",
+    title: "Calendar",
+    icon: <CalendarOutlined />,
+    path: "/app/training/calendar",
+  },
+  ADMIN_STAFF_APPLICATIONS: {
+    key: "admin-staff-applications",
+    title: "My Applications",
+    icon: <FileTextOutlined />,
+    path: "/app/training/applications",
+  },
+  ADMIN_STAFF_LESSON_PLANS: {
+    key: "admin-staff-lesson-plans",
+    title: "Lesson Plans",
+    icon: <FileDoneOutlined />,
+    path: "/app/training/lesson-plans",
+  },
+  ADMIN_STAFF_RECOMMEND: {
+    key: "admin-staff-recommend",
+    title: "Recommend Training",
+    icon: <BulbOutlined />,
+    path: "/app/training/recommend",
+  },
+
+  // ==========================================
   // STUDENT MENUS
   // ==========================================
   STUDENT_HOME: {
@@ -850,7 +884,6 @@ export const getMenuSectionsForRole = (role) => {
 
     case "FACULTY":
     case "TEACHER":
-    case "FACULTY_SUPERVISOR":
       sections.push(menuConfig.FACULTY_HOME);
       sections.push(menuConfig.FACULTY_SUPERVISION);
       sections.push(menuConfig.FACULTY_TRAINING);
@@ -886,6 +919,14 @@ export const getMenuSectionsForRole = (role) => {
 
     case "ADMISSION_OFFICER":
       sections.push(menuConfig.PRINCIPAL_PEOPLE);
+      break;
+
+    case "ADMIN_STAFF":
+      sections.push(menuConfig.ADMIN_STAFF_DASHBOARD);
+      sections.push(menuConfig.ADMIN_STAFF_CALENDAR);
+      sections.push(menuConfig.ADMIN_STAFF_APPLICATIONS);
+      sections.push(menuConfig.ADMIN_STAFF_LESSON_PLANS);
+      sections.push(menuConfig.ADMIN_STAFF_RECOMMEND);
       break;
 
     default:

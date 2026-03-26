@@ -360,6 +360,11 @@ const MyApplicationsPage = () => {
       title: "Training",
       dataIndex: ["training", "title"],
       key: "training",
+      sorter: (a, b) => {
+        const titleA = (a.training?.title || a.trainingTitle || "").toLowerCase();
+        const titleB = (b.training?.title || b.trainingTitle || "").toLowerCase();
+        return titleA.localeCompare(titleB);
+      },
       render: (_, record) => {
         const trainingId = record.trainingId || record.training?.id;
         const progress = trainingId ? attendance?.byTraining?.[trainingId] : null;

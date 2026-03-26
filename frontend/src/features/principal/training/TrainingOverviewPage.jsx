@@ -186,6 +186,21 @@ const TrainingOverviewPage = () => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // Calculate last month's date range
+  const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59);
+
+  // Last month's completed trainings
+  const lastMonthCompletedTrainings = useMemo(() => {
+    return (trainings.list || []).filter((t) => {
+      const enrolledFaculty = Array.isArray(t.enrolledFaculty) ? t.enrolledFaculty : [];
+      const hasEnrolled = enrolledFaculty.length > 0;
+      const endDate = t.endDate ? new Date(t.endDate) : null;
+      // Training ended within last month
+      return hasEnrolled && endDate && endDate >= lastMonthStart && endDate <= lastMonthEnd;
+    });
+  }, [trainings.list, lastMonthStart, lastMonthEnd]);
+
   const filteredTrainings = (trainings.list || [])
     .filter((t) => {
       const enrolledFaculty = Array.isArray(t.enrolledFaculty)
@@ -576,6 +591,50 @@ const TrainingOverviewPage = () => {
           <StatCard key={card.title} {...card} />
         ))}
       </div>
+
+      {/* Last Month's Completed Trainings */}
+      {lastMonthCompletedTrainings.length > 0 && (
+        <Card
+          className="rounded-xl border-border shadow-none mb-4"
+          styles={{ header: { padding: '12px 16px', minHeight: 'auto' }, body: { padding: '12px 16px' } }}
+          title={
+            <div className="flex items-center gap-2 text-sm">
+              <CheckCircleOutlined className="text-green-600" />
+              <span>Last Month&apos;s Completed Trainings</span>
+              <span className="ml-2 px-1.5 py-0.5 text-[10px] font-medium bg-green-100 text-green-700 rounded-full">
+                {lastMonthCompletedTrainings.length}
+              </span>
+            </div>
+          }
+        >
+          <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+            {lastMonthCompletedTrainings.map((training) => (
+              <div
+                key={training.id}
+                className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer transition-colors"
+                onClick={() => navigate(`/app/training/${training.id}`)}
+              >
+                <div className="flex-1 min-w-0">
+                  <Text className="font-medium text-xs text-slate-800 block truncate">
+                    {training.title}
+                  </Text>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <TrainingDateRange
+                      startDate={training.startDate}
+                      endDate={training.endDate}
+                      compact
+                    />
+                    <span className="text-[10px] text-slate-500">
+                      • {training.enrolledFaculty?.length || 0} faculty
+                    </span>
+                  </div>
+                </div>
+                <DeliveryModeBadge mode={training.deliveryMode} showIcon={false} />
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <Card
         className="rounded-xl border-border shadow-none"

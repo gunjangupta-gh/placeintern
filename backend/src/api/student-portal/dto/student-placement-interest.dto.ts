@@ -8,8 +8,8 @@ export enum PlanAfterDiploma {
 }
 
 export enum JobLocationPreference {
-  WITHIN_DISTRICT = 'WITHIN_DISTRICT',
-  ANYWHERE_IN_PUNJAB = 'ANYWHERE_IN_PUNJAB',
+  WITHIN_PUNJAB = 'WITHIN_PUNJAB',
+  OUTSIDE_PUNJAB = 'OUTSIDE_PUNJAB',
 }
 
 export enum ExpectedSalaryRange {
@@ -30,7 +30,7 @@ export class CreateStudentPlacementInterestDto {
   @ApiPropertyOptional({
     enum: JobLocationPreference,
     description: 'Job location preference (only if planAfterDiploma is PRIVATE_JOB)',
-    example: JobLocationPreference.WITHIN_DISTRICT,
+    example: JobLocationPreference.WITHIN_PUNJAB,
   })
   @ValidateIf((o) => o.planAfterDiploma === PlanAfterDiploma.PRIVATE_JOB)
   @IsEnum(JobLocationPreference)
@@ -95,4 +95,44 @@ export class StudentPlacementInterestResponseDto {
 
   @ApiProperty({ description: 'Last update timestamp' })
   updatedAt: Date;
+}
+
+// =============================================
+// PRE-PLACEMENT OFFER (PPO) DTOs
+// =============================================
+
+import { IsBoolean, IsString, MaxLength } from 'class-validator';
+
+export class SubmitPPODto {
+  @ApiProperty({
+    description: 'Whether student received a pre-placement offer',
+    example: true,
+  })
+  @IsBoolean()
+  received: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Company name if PPO received',
+    example: 'Infosys',
+    maxLength: 200,
+  })
+  @ValidateIf((o) => o.received === true)
+  @IsString()
+  @MaxLength(200)
+  @IsOptional()
+  companyName?: string;
+}
+
+export class PPOStatusResponseDto {
+  @ApiProperty({ description: 'Whether PPO status has been marked' })
+  hasMarked: boolean;
+
+  @ApiPropertyOptional({ description: 'Whether student received PPO (null if not marked)' })
+  received?: boolean | null;
+
+  @ApiPropertyOptional({ description: 'Company name if PPO received' })
+  companyName?: string | null;
+
+  @ApiPropertyOptional({ description: 'When PPO status was marked' })
+  markedAt?: Date | null;
 }

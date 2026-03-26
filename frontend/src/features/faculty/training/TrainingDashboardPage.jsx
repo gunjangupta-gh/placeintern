@@ -24,6 +24,8 @@ import {
   fetchPendingTests,
   fetchPendingLessonPlans,
   fetchTrainingAttendance,
+  fetchLastMonthPendingAttendance,
+  markBackdatedAttendance,
 } from '../store/facultyTrainingSlice';
 
 const { Title, Text } = Typography;
@@ -33,9 +35,10 @@ const TrainingDashboardPage = () => {
   const navigate = useNavigate();
   const [markingTrainingId, setMarkingTrainingId] = useState(null);
   const { user } = useSelector((state) => state.auth);
-  const { feedback, attendance, applications, pendingTests, pendingLessonPlans } = useSelector(
+  const { feedback, attendance, applications, pendingTests, pendingLessonPlans, backdatedAttendance } = useSelector(
     (state) => state.facultyTraining
   );
+  const [markingBackdated, setMarkingBackdated] = useState({});
 
   useEffect(() => {
     dispatch(fetchPendingFeedback());
@@ -43,6 +46,7 @@ const TrainingDashboardPage = () => {
     dispatch(fetchMyApplications({ status: 'APPROVED' }));
     dispatch(fetchPendingTests());
     dispatch(fetchPendingLessonPlans());
+    dispatch(fetchLastMonthPendingAttendance());
   }, [dispatch]);
 
   // Calculate stats with trends (mock trends for now - can be replaced with actual data)
@@ -58,8 +62,14 @@ const TrainingDashboardPage = () => {
     return Array.isArray(pendingLessonPlans?.list) ? pendingLessonPlans.list : [];
   }, [pendingLessonPlans?.list]);
 
+  const backdatedTrainings = useMemo(() => {
+    return Array.isArray(backdatedAttendance?.trainings) ? backdatedAttendance.trainings : [];
+  }, [backdatedAttendance?.trainings]);
+
+  const backdatedPendingDays = backdatedAttendance?.totalPendingDays || 0;
+
   const pendingActionsCount =
-    (feedback.pending?.length || 0) + pendingTestCount + pendingLessonPlansList.length;
+    (feedback.pending?.length || 0) + pendingTestCount + pendingLessonPlansList.length + (backdatedPendingDays > 0 ? backdatedTrainings.length : 0);
 
   const attendanceSummary = useMemo(() => {
     const summary = attendance.summary;
@@ -235,6 +245,21 @@ const TrainingDashboardPage = () => {
     navigate(`/app/training/lesson-plans/new/${trainingId}`);
   };
 
+  const handleMarkBackdatedAttendance = async (trainingId, attendanceDate) => {
+    const key = `${trainingId}-${attendanceDate}`;
+    try {
+      setMarkingBackdated((prev) => ({ ...prev, [key]: true }));
+      await dispatch(markBackdatedAttendance({ trainingId, attendanceDate })).unwrap();
+      message.success('Backdated attendance marked successfully!');
+      dispatch(fetchLastMonthPendingAttendance());
+      dispatch(fetchAttendanceSummary());
+    } catch (error) {
+      message.error(error || 'Failed to mark backdated attendance');
+    } finally {
+      setMarkingBackdated((prev) => ({ ...prev, [key]: false }));
+    }
+  };
+
   if (isLoading) {
     return <DashboardSkeleton />;
   }
@@ -348,6 +373,64 @@ const TrainingDashboardPage = () => {
                 );
               }}
             />
+          </div>
+        </Card>
+      )}
+
+      {/* Last Month's Backdated Attendance */}
+      {backdatedTrainings.length > 0 && (
+        <Card
+          className="rounded-xl border-border shadow-none mb-4!"
+          styles={{ header: { padding: '8px 16px', minHeight: 'auto' }, body: { padding: '12px' } }}
+          title={
+            <div className="flex items-center gap-2 text-sm">
+              <ClockCircleOutlined className="text-orange-600" />
+              <span>Last Month&apos;s Pending Attendance</span>
+              <span className="ml-2 px-1.5 py-0.5 text-[10px] font-medium bg-orange-100 text-orange-700 rounded-full">
+                {backdatedPendingDays} day{backdatedPendingDays !== 1 ? 's' : ''}
+              </span>
+            </div>
+          }
+        >
+          <div className="custom-scrollbar overflow-y-auto max-h-60">
+            {backdatedTrainings.map((item) => (
+              <div key={item.training.id} className="mb-3 last:mb-0">
+                <div className="flex items-center justify-between mb-1.5">
+                  <Text
+                    className="font-medium text-xs cursor-pointer hover:text-primary line-clamp-1"
+                    onClick={() => navigate(`/app/training/${item.training.id}`)}
+                  >
+                    {item.training.title}
+                  </Text>
+                  <Text className="text-[10px] text-gray-500">
+                    {item.attendedDays}/{item.totalDays} days marked
+                  </Text>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {item.pendingDates.slice(0, 7).map((date) => {
+                    const key = `${item.training.id}-${date}`;
+                    const isMarking = markingBackdated[key];
+                    return (
+                      <Button
+                        key={date}
+                        size="small"
+                        type="default"
+                        loading={isMarking}
+                        className="text-[10px] h-6 px-2 bg-orange-50 border-orange-200 hover:bg-orange-100 hover:border-orange-300"
+                        onClick={() => handleMarkBackdatedAttendance(item.training.id, date)}
+                      >
+                        {new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </Button>
+                    );
+                  })}
+                  {item.pendingDates.length > 7 && (
+                    <Text className="text-[10px] text-gray-400 self-center">
+                      +{item.pendingDates.length - 7} more
+                    </Text>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </Card>
       )}
@@ -490,6 +573,29 @@ const TrainingDashboardPage = () => {
                     </div>
                     <Button type="link" size="small" className="text-[10px] p-0 h-auto">
                       {plan.type === 'CREATE_LESSON_PLAN' ? 'Create' : 'Submit'}
+                    </Button>
+                  </div>
+                ))}
+
+                {backdatedTrainings.map((item) => (
+                  <div
+                    key={`backdated-${item.training.id}`}
+                    className="flex items-center gap-2.5 p-2 rounded-lg bg-orange-50 hover:bg-orange-100 cursor-pointer"
+                    onClick={() => navigate(`/app/training/${item.training.id}`)}
+                  >
+                    <div className="flex items-center justify-center w-7 h-7 rounded-full bg-orange-200">
+                      <CalendarOutlined className="text-orange-700 text-xs" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Text className="font-medium text-xs block truncate">
+                        {item.training.title}
+                      </Text>
+                      <Text className="text-[10px] text-orange-700">
+                        {item.pendingDays} day{item.pendingDays !== 1 ? 's' : ''} attendance pending
+                      </Text>
+                    </div>
+                    <Button type="link" size="small" className="text-[10px] p-0 h-auto">
+                      Mark
                     </Button>
                   </div>
                 ))}

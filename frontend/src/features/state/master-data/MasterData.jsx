@@ -27,6 +27,7 @@ import {
   ApartmentOutlined,
   TeamOutlined,
   CalendarOutlined,
+  IdcardOutlined,
 } from '@ant-design/icons';
 import lookupService from '../../../services/lookup.service';
 
@@ -40,6 +41,7 @@ const MasterData = () => {
   const [batches, setBatches] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [designations, setDesignations] = useState([]);
 
   // Modal states
   const [modalVisible, setModalVisible] = useState(false);
@@ -57,14 +59,49 @@ const MasterData = () => {
   const loadAllData = useCallback(async () => {
     setLoading(true);
     try {
-      const [batchRes, deptRes, branchRes] = await Promise.all([
+      const [batchRes, deptRes, branchRes, designationRes] = await Promise.all([
         lookupService.getBatches(),
         lookupService.getDepartments(),
         lookupService.getBranches(),
+        lookupService.getDesignations(),
       ]);
       setBatches(batchRes.batches || []);
       setDepartments(deptRes.departments || []);
       setBranches(branchRes.branches || []);
+
+      const designationData = designationRes.designations || [];
+      const normalizedDesignations = designationData
+        .map((item) => {
+          if (typeof item === 'string') {
+            return {
+              key: item,
+              value: item,
+              label: item
+                .toLowerCase()
+                .split('_')
+                .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+                .join(' '),
+            };
+          }
+
+          if (item && typeof item === 'object') {
+            const value = item.value || item.name || '';
+            const label = item.label || value;
+            if (!value) {
+              return null;
+            }
+            return {
+              key: value,
+              value,
+              label,
+            };
+          }
+
+          return null;
+        })
+        .filter(Boolean);
+
+      setDesignations(normalizedDesignations);
     } catch (error) {
       toast.error('Failed to load data');
     } finally {
@@ -327,6 +364,21 @@ const MasterData = () => {
     },
   ];
 
+  const designationColumns = [
+    {
+      title: 'Enum Value',
+      dataIndex: 'value',
+      key: 'value',
+      render: (value) => <Tag color="blue">{value}</Tag>,
+    },
+    {
+      title: 'Display Label',
+      dataIndex: 'label',
+      key: 'label',
+      render: (label) => <Text strong>{label}</Text>,
+    },
+  ];
+
   // Render form based on type
   const renderForm = () => {
     switch (modalType) {
@@ -528,6 +580,29 @@ const MasterData = () => {
         </Card>
       ),
     },
+    {
+      key: 'designations',
+      label: (
+        <span className="flex items-center gap-2">
+          <IdcardOutlined />
+          Designations ({designations.length})
+        </span>
+      ),
+      children: (
+        <Card
+          className="rounded-xl border-border"
+          styles={{ body: { padding: 0 } }}
+        >
+          <Table
+            columns={designationColumns}
+            dataSource={designations}
+            rowKey="key"
+            loading={loading}
+            pagination={{ pageSize: 10 }}
+          />
+        </Card>
+      ),
+    },
   ];
 
   return (
@@ -540,7 +615,7 @@ const MasterData = () => {
             Master Data Management
           </Title>
           <Text className="text-text-secondary">
-            Manage global batches, departments, and branches shared across all institutions
+            Manage global batches, departments, branches, and designation enums shared across all institutions
           </Text>
         </div>
         <Button icon={<ReloadOutlined />} onClick={loadAllData} loading={loading}>

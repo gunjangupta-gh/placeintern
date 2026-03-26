@@ -176,14 +176,24 @@ const StaffList = () => {
     switch (role) {
       case 'TEACHER': return 'blue';
       case 'FACULTY_COORDINATOR': return 'purple';
+      case 'PRINCIPAL': return 'gold';
+      case 'ADMIN_STAFF': return 'cyan';
+      case 'STATE_DIRECTORATE': return 'red';
+      case 'SYSTEM_ADMIN': return 'magenta';
+      case 'STUDENT': return 'green';
       default: return 'default';
     }
   };
 
   const getRoleLabel = (role) => {
     const labels = {
+      STUDENT: 'Student',
+      PRINCIPAL: 'Principal',
       TEACHER: 'Teacher',
       FACULTY_COORDINATOR: 'Faculty Coordinator',
+      STATE_DIRECTORATE: 'State Directorate',
+      SYSTEM_ADMIN: 'System Admin',
+      ADMIN_STAFF: 'Admin Staff',
     };
     return labels[role] || role;
   };
@@ -386,8 +396,10 @@ const StaffList = () => {
                   value={filters.role || undefined}
                   onChange={(value) => handleFilterChange('role', value || '')}
                 >
+                  <Select.Option value="PRINCIPAL">Principal</Select.Option>
                   <Select.Option value="TEACHER">Teacher</Select.Option>
                   <Select.Option value="FACULTY_COORDINATOR">Faculty Coordinator</Select.Option>
+                  <Select.Option value="ADMIN_STAFF">Admin Staff</Select.Option>
                 </Select>
               </Col>
               <Col xs={24} sm={12} md={6}>

@@ -60,7 +60,7 @@ const IndustryRequestFormModal = ({
   // Referred By Types
   const referredByTypes = [
     { value: "STATE_DIRECTORATE", label: "State Directorate" },
-    { value: "FACULTY_SUPERVISOR", label: "Faculty Supervisor" },
+    { value: "TEACHER", label: "Teacher" },
     { value: "PRINCIPAL", label: "Principal" },
     { value: "PLACEMENT_OFFICER", label: "Placement Officer" },
     { value: "SYSTEM_ADMIN", label: "System Admin" },

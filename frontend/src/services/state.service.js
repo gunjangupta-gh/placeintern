@@ -447,7 +447,7 @@ export const stateService = {
     // Determine the correct endpoint based on role
     const isPrincipal = role === 'PRINCIPAL';
     const isStaff = [
-      'TEACHER', 'FACULTY_SUPERVISOR', 'PLACEMENT_OFFICER',
+      'TEACHER', 'FACULTY_COORDINATOR', 'ADMIN_STAFF', 'PLACEMENT_OFFICER',
       'ACCOUNTANT', 'ADMISSION_OFFICER', 'EXAMINATION_OFFICER',
       'PMS_OFFICER', 'EXTRACURRICULAR_HEAD'
     ].includes(role);

@@ -54,7 +54,8 @@ const StaffList = () => {
   const [filters, setFilters] = useState({
     search: '',
     role: '',
-     isActive: '',
+    designation: '',
+    isActive: '',
     page: 1,
     limit: 10,
   });
@@ -381,17 +382,43 @@ const StaffList = () => {
             onChange={(e) => handleSearch(e.target.value)}
             className="w-full md:w-72 rounded-lg"
           />
-          <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
             <Select
               placeholder="All Roles"
               allowClear
-              className="w-full md:w-48"
+              className="w-full md:w-40"
               onChange={(value) => handleFilterChange('role', value)}
             >
-              <Option value="FACULTY_SUPERVISOR">Faculty Supervisor</Option>
               <Option value="TEACHER">Teacher</Option>
+              <Option value="FACULTY_COORDINATOR">Faculty Coordinator</Option>
+              <Option value="ADMIN_STAFF">Admin Staff</Option>
+            </Select>
+            <Select
+              placeholder="Designation"
+              allowClear
+              showSearch
+              optionFilterProp="children"
+              className="w-full md:w-48"
+              onChange={(value) => handleFilterChange('designation', value)}
+            >
+              <Option value="PRINCIPAL">Principal</Option>
               <Option value="HOD">HOD</Option>
-              <Option value="COORDINATOR">Coordinator</Option>
+              <Option value="SENIOR_LECTURER">Senior Lecturer</Option>
+              <Option value="LECTURER">Lecturer</Option>
+              <Option value="ASSISTANT_PROFESSOR">Assistant Professor</Option>
+              <Option value="FOREMAN_INSTRUCTOR">Foreman Instructor</Option>
+              <Option value="WORKSHOP_INSTRUCTOR">Workshop Instructor</Option>
+              <Option value="WORKSHOP_SUPERINTENDENT">Workshop Superintendent</Option>
+              <Option value="WORKSHOP_FOREMAN">Workshop Foreman</Option>
+              <Option value="LAB_TECHNICIAN">Lab Technician</Option>
+              <Option value="TECHNICIAN">Technician</Option>
+              <Option value="INSTRUCTOR">Instructor</Option>
+              <Option value="LIBRARIAN">Librarian</Option>
+              <Option value="TPO">TPO</Option>
+              <Option value="CLERK">Clerk</Option>
+              <Option value="JUNIOR_ASSTT">Junior Assistant</Option>
+              <Option value="SR_ASSTT">Senior Assistant</Option>
+              <Option value="OTHER">Other</Option>
             </Select>
             <Select
               placeholder="Status"

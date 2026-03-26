@@ -30,7 +30,7 @@ export class GrievanceController {
 
   /**
    * Get all grievances (with optional filtering)
-   * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR
+   * Access: STATE_DIRECTORATE, PRINCIPAL, TEACHER
    * STATE_DIRECTORATE users see ALL grievances (no institution filter)
    * Other roles see grievances for their institution
    */
@@ -54,7 +54,7 @@ export class GrievanceController {
 
   /**
    * Get grievance statistics
-   * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR
+   * Access: STATE_DIRECTORATE, PRINCIPAL, TEACHER
    * STATE_DIRECTORATE users see stats for ALL grievances (no institution filter)
    */
   @Get('statistics')
@@ -89,7 +89,7 @@ export class GrievanceController {
 
   /**
    * Get grievances by institution ID
-   * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR
+   * Access: STATE_DIRECTORATE, PRINCIPAL, TEACHER
    */
   @Get('institution/:institutionId')
   @Roles('STATE_DIRECTORATE', 'PRINCIPAL')
@@ -99,7 +99,7 @@ export class GrievanceController {
 
   /**
    * Get grievances assigned to faculty member
-   * Access: TEACHER, FACULTY_SUPERVISOR, PRINCIPAL
+   * Access: TEACHER, TEACHER, PRINCIPAL
    */
   @Get('faculty/:userId')
   @Roles('TEACHER', 'FACULTY_COORDINATOR', 'PRINCIPAL')
@@ -156,7 +156,7 @@ export class GrievanceController {
     // Check access - student can see their own, faculty/admin can see all
     const isOwner = grievance.student?.userId === req.user.userId;
     const isAssigned = grievance.assignedToId === req.user.userId || grievance.facultySupervisorId === req.user.userId;
-    const isAdmin = ['STATE_DIRECTORATE', 'PRINCIPAL', 'FACULTY_SUPERVISOR', 'TEACHER', 'FACULTY_COORDINATOR'].includes(req.user.role);
+    const isAdmin = ['STATE_DIRECTORATE', 'PRINCIPAL', 'TEACHER', 'TEACHER', 'FACULTY_COORDINATOR'].includes(req.user.role);
 
     if (!isOwner && !isAssigned && !isAdmin) {
       throw new HttpException('Grievance not found', HttpStatus.NOT_FOUND);
@@ -177,7 +177,7 @@ export class GrievanceController {
 
   /**
    * Respond to a grievance
-   * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR, TEACHER
+   * Access: STATE_DIRECTORATE, PRINCIPAL, TEACHER, TEACHER
    */
   @Post(':id/respond')
   @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'TEACHER', 'FACULTY_COORDINATOR')
@@ -191,7 +191,7 @@ export class GrievanceController {
 
   /**
    * Escalate a grievance
-   * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR, TEACHER
+   * Access: STATE_DIRECTORATE, PRINCIPAL, TEACHER, TEACHER
    */
   @Post(':id/escalate')
   @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'TEACHER', 'FACULTY_COORDINATOR')
@@ -205,7 +205,7 @@ export class GrievanceController {
 
   /**
    * Assign grievance to a user
-   * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR
+   * Access: STATE_DIRECTORATE, PRINCIPAL, TEACHER
    */
   @Patch(':id/assign')
   @Roles('STATE_DIRECTORATE', 'PRINCIPAL')
@@ -219,7 +219,7 @@ export class GrievanceController {
 
   /**
    * Update grievance status
-   * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR, TEACHER
+   * Access: STATE_DIRECTORATE, PRINCIPAL, TEACHER, TEACHER
    */
   @Patch(':id/status')
   @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'TEACHER', 'FACULTY_COORDINATOR')
@@ -233,7 +233,7 @@ export class GrievanceController {
 
   /**
    * Close a grievance
-   * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR
+   * Access: STATE_DIRECTORATE, PRINCIPAL, TEACHER
    */
   @Patch(':id/close')
   @Roles('STATE_DIRECTORATE', 'PRINCIPAL')
@@ -247,7 +247,7 @@ export class GrievanceController {
 
   /**
    * Reject a grievance
-   * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR
+   * Access: STATE_DIRECTORATE, PRINCIPAL, TEACHER
    */
   @Patch(':id/reject')
   @Roles('STATE_DIRECTORATE', 'PRINCIPAL')

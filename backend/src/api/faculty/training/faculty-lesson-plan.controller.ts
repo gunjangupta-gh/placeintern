@@ -28,7 +28,7 @@ import {
 @ApiBearerAuth()
 @Controller('faculty/training/lesson-plans')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
+@Roles(Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF)
 export class FacultyLessonPlanController {
   constructor(private readonly lessonPlanService: LessonPlanService) {}
 

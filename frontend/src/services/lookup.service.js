@@ -43,6 +43,14 @@ export const lookupService = {
   },
 
   /**
+   * Get all designation enum values for filters/dropdowns (global data)
+   */
+  async getDesignations() {
+    const response = await API.get('/shared/lookup/designations');
+    return response.data;
+  },
+
+  /**
    * Get all approved industries for filters/dropdowns
    */
   async getIndustries() {
