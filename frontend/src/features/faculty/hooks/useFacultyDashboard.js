@@ -77,7 +77,9 @@ export const useFacultyDashboard = () => {
       dispatch(fetchFacultyDashboard({ forceRefresh }));
       dispatch(fetchMonthlyStats({ forceRefresh }));
       dispatch(fetchAssignedStudents({ forceRefresh }));
-      dispatch(fetchVisitLogs({ forceRefresh }));
+      // Align with dashboard monthly reports strategy: fetch a large page so
+      // overview matrices are computed from complete visit-log data.
+      dispatch(fetchVisitLogs({ forceRefresh, page: 1, limit: 1000 }));
       dispatch(fetchProfile());
       dispatch(fetchApplications({ forceRefresh }));
       dispatch(fetchMonthlyReportsForDashboard({ forceRefresh }));
