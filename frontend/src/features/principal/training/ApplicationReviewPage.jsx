@@ -76,6 +76,8 @@ const ApplicationReviewPage = () => {
       title: 'Training',
       dataIndex: ['training', 'title'],
       key: 'training',
+      sorter: (a, b) =>
+        String(a.training?.title || '').localeCompare(String(b.training?.title || '')),
       render: (_, record) => (
         <div>
           <Tooltip title={record.training?.title || 'Training'}>

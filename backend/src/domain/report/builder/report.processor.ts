@@ -370,6 +370,7 @@ export class ReportProcessor extends WorkerHost {
         { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 22 },
         { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
         { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 28 },
+        { field: 'branchName', header: 'Branch Name (Course)', type: 'string' as const, width: 22 },
         { field: 'planAfterDiploma', header: 'Plan After Diploma', type: 'string' as const, width: 18 },
         { field: 'interestedForPrivateJob', header: 'Job Location Preference', type: 'string' as const, width: 20 },
         { field: 'expectedSalary', header: 'Expected Salary Range', type: 'string' as const, width: 18 },

@@ -266,6 +266,7 @@ const PrincipalDashboard = () => {
     const metrics = trainingDashboard.trainingMetrics || {};
     const faculty = trainingDashboard.facultyMetrics || {};
     const completion = trainingDashboard.completionMetrics || {};
+    const hoursDistribution = trainingDashboard.hoursDistribution || {};
     return {
       trainingsConducted: metrics.totalTrainingsConducted || 0,
       facultyRegistered: metrics.totalFacultyRegistered || 0,
@@ -274,6 +275,10 @@ const PrincipalDashboard = () => {
       facultyOngoing: faculty.facultyWithOngoingTrainings || 0,
       facultyYetToStart: faculty.facultyYetToStart || 0,
       completed40Hours: completion.facultyCompleted40Hours || 0,
+      completedUnder40Hours: completion.facultyCompletedUnder40Hours || 0,
+      averageHoursPerFaculty: hoursDistribution.averageHoursPerFaculty || 0,
+      highestHoursSingleFaculty: hoursDistribution.highestHoursSingleFaculty || 0,
+      lowestHoursSingleFaculty: hoursDistribution.lowestHoursSingleFaculty || 0,
     };
   }, [trainingDashboard]);
 
@@ -403,9 +408,13 @@ const PrincipalDashboard = () => {
               facultyRegistered={trainingStats.facultyRegistered}
               hoursDelivered={trainingStats.hoursDelivered}
               completed40Hours={trainingStats.completed40Hours}
+              completedUnder40Hours={trainingStats.completedUnder40Hours}
               facultyCompleted={trainingStats.facultyCompleted}
               facultyOngoing={trainingStats.facultyOngoing}
               facultyYetToStart={trainingStats.facultyYetToStart}
+              averageHoursPerFaculty={trainingStats.averageHoursPerFaculty}
+              highestHoursSingleFaculty={trainingStats.highestHoursSingleFaculty}
+              lowestHoursSingleFaculty={trainingStats.lowestHoursSingleFaculty}
               loading={trainingDashboardLoading}
               onViewTraining={() => navigate('/app/principal/training')}
             />

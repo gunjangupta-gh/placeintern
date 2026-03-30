@@ -27,44 +27,73 @@ const DashboardStatCard = ({
   hasViewMore = false,
   onViewMore,
   isWarning = false,
+  compact = false,
 }) => {
+  const compactTitleBar = (
+    <div className="w-full flex items-start justify-between mb-2">
+      <div className="flex items-center gap-2 min-w-0">
+        <div className={`w-6 h-6 rounded-md flex items-center justify-center ${iconBgClass}`}>
+          {React.cloneElement(icon, {
+            className: `text-xs ${iconColorClass}`,
+          })}
+        </div>
+        <Text className="text-[11px] font-medium text-text-secondary leading-tight truncate">{title}</Text>
+      </div>
+      {hasViewMore && (
+        <Tooltip title="View Details">
+          <button
+            onClick={onViewMore}
+            className={`w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-hover transition-colors cursor-pointer border-0 bg-transparent ${isWarning ? "text-error" : "text-text-tertiary"}`}
+          >
+            <EyeOutlined style={{ fontSize: '13px' }} />
+          </button>
+        </Tooltip>
+      )}
+    </div>
+  );
+
   return (
     <Card
       className="h-full border border-border shadow-sm hover:shadow-md transition-all duration-200 rounded-xl"
-      styles={{ body: { padding: '20px 16px' } }}
+      styles={{ body: { padding: compact ? '14px 12px' : '20px 16px' } }}
     >
-      <div className="flex flex-col items-center text-center">
-        {/* Top row: Icon centered, Eye on right */}
-        <div className="w-full flex justify-center relative mb-3">
-          <div
-            className={`w-14 h-14 rounded-full flex items-center justify-center ${iconBgClass}`}
-            
-          >
-            {React.cloneElement(icon, {
-              className: `text-2xl ${iconColorClass}`,
-            })}
-          </div>
-          {hasViewMore && (
-            <Tooltip title="View Details">
-              <button
-                onClick={onViewMore}
-                className={`absolute right-0 top-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-hover transition-colors cursor-pointer border-0 bg-transparent ${isWarning ? "text-error" : "text-text-tertiary"}`}
+      <div className={`flex flex-col ${compact ? 'items-start text-left' : 'items-center text-center'}`}>
+        {compact ? (
+          compactTitleBar
+        ) : (
+          <>
+            {/* Top row: Icon centered, Eye on right */}
+            <div className={`w-full flex justify-center relative ${compact ? 'mb-2' : 'mb-3'}`}>
+              <div
+                className={`${compact ? 'w-10 h-10' : 'w-14 h-14'} rounded-full flex items-center justify-center ${iconBgClass}`}
               >
-                <EyeOutlined style={{ fontSize: '14px' }} />
-              </button>
-            </Tooltip>
-          )}
-        </div>
+                {React.cloneElement(icon, {
+                  className: `${compact ? 'text-lg' : 'text-2xl'} ${iconColorClass}`,
+                })}
+              </div>
+              {hasViewMore && (
+                <Tooltip title="View Details">
+                  <button
+                    onClick={onViewMore}
+                    className={`absolute right-0 top-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-hover transition-colors cursor-pointer border-0 bg-transparent ${isWarning ? "text-error" : "text-text-tertiary"}`}
+                  >
+                    <EyeOutlined style={{ fontSize: '14px' }} />
+                  </button>
+                </Tooltip>
+              )}
+            </div>
 
-        {/* Title */}
-        <Text className="text-sm font-medium text-text-secondary mb-2">{title}</Text>
+            {/* Title */}
+            <Text className={`${compact ? 'text-xs mb-1' : 'text-sm mb-2'} font-medium text-text-secondary`}>{title}</Text>
+          </>
+        )}
 
         {/* Value */}
-        <div className="flex items-baseline justify-center gap-1 mb-1">
+        <div className={`flex items-baseline gap-1 mb-1 ${compact ? '' : 'justify-center'}`}>
           <span
             className={`${valueColorClass}`}
             style={{
-              fontSize: '32px',
+              fontSize: compact ? '24px' : '32px',
               fontWeight: 700,
               lineHeight: 1,
             }}
@@ -73,8 +102,8 @@ const DashboardStatCard = ({
           </span>
           {secondaryValue !== undefined && (
             <>
-              <span className="text-text-tertiary opacity-40 font-medium" style={{ fontSize: '20px' }}>/</span>
-              <span className="text-text-tertiary font-semibold" style={{ fontSize: '20px' }}>
+              <span className="text-text-tertiary opacity-40 font-medium" style={{ fontSize: compact ? '16px' : '20px' }}>/</span>
+              <span className="text-text-tertiary font-semibold" style={{ fontSize: compact ? '16px' : '20px' }}>
                 {secondaryValue}
               </span>
             </>
@@ -83,10 +112,41 @@ const DashboardStatCard = ({
 
         {/* Subtitle */}
         {subtitle && (
-          <Text className="text-xs text-text-tertiary">{subtitle}</Text>
+          <Text className={`${compact ? 'text-[11px]' : 'text-xs'} text-text-tertiary`}>{subtitle}</Text>
         )}
       </div>
     </Card>
+  );
+};
+
+const TRAINING_VARIANTS = {
+  blue: { iconWrap: 'bg-blue-100', iconColor: 'text-blue-700' },
+  amber: { iconWrap: 'bg-amber-100', iconColor: 'text-amber-700' },
+  purple: { iconWrap: 'bg-purple-100', iconColor: 'text-purple-700' },
+  emerald: { iconWrap: 'bg-emerald-100', iconColor: 'text-emerald-700' },
+};
+
+const TrainingStatCard = ({ icon: Icon, title, lines = [], variant = 'blue' }) => {
+  const s = TRAINING_VARIANTS[variant] || TRAINING_VARIANTS.blue;
+
+  return (
+    <div
+      className="rounded-xl p-3 h-full border border-slate-200"
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md ${s.iconWrap}`}>
+          <Icon className={`text-xs ${s.iconColor}`} />
+        </span>
+        <Text className="text-[11px] text-slate-600 font-medium leading-tight">{title}</Text>
+      </div>
+      <div className="space-y-1 mt-1">
+        {lines.map((line) => (
+          <Text key={line.label} className="block text-[12px] leading-snug text-slate-600">
+            {line.label}: <span className="font-semibold text-slate-800">{line.value}</span>
+          </Text>
+        ))}
+      </div>
+    </div>
   );
 };
 
@@ -116,11 +176,11 @@ export const BasicStatisticsGrid = ({
       onViewMore: onViewStudents,
     },
     {
-      title: 'Total Mentors',
-      value: totalMentors,
+      title: 'Total Staff',
+      value: staffBreakdown.totalStaff,
       subtitle: (
         <span>
-          Staff: {staffBreakdown.totalStaff} | Admin: {staffBreakdown.adminStaff}
+          Mentor: {staffBreakdown.mentors || totalMentors} | Admin: {staffBreakdown.adminStaff}
         </span>
       ),
       icon: <UserOutlined />,
@@ -168,7 +228,7 @@ export const BasicStatisticsGrid = ({
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
       {cards.map((card, idx) => (
-        <DashboardStatCard key={idx} {...card} />
+        <DashboardStatCard key={idx} compact {...card} />
       ))}
     </div>
   );
@@ -287,7 +347,7 @@ export const SubmissionStatusGrid = ({
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
       {cards.map((card, idx) => (
-        <DashboardStatCard key={idx} {...card} />
+        <DashboardStatCard key={idx} compact {...card} />
       ))}
     </div>
   );
@@ -362,56 +422,55 @@ export const TrainingStatisticsGrid = ({
   facultyRegistered = 0,
   hoursDelivered = 0,
   completed40Hours = 0,
+  completedUnder40Hours = 0,
   facultyCompleted = 0,
   facultyOngoing = 0,
   facultyYetToStart = 0,
+  averageHoursPerFaculty = 0,
+  highestHoursSingleFaculty = 0,
+  lowestHoursSingleFaculty = 0,
   loading = false,
   onViewTraining,
 }) => {
   const cards = [
     {
-      title: 'Trainings Conducted',
-      value: trainingsConducted,
-      subtitle: 'Total programs completed',
-      icon: <BarChartOutlined />,
-      iconBgClass: 'bg-info-light',
-      iconColorClass: '',
-      valueColorClass: 'text-info',
-      hasViewMore: true,
-      onViewMore: onViewTraining,
+      title: 'Trainings',
+      icon: BarChartOutlined,
+      variant: 'blue',
+      lines: [
+        { label: 'Trainings Conducted', value: trainingsConducted },
+        { label: 'Total Faculty Registered', value: facultyRegistered },
+        { label: 'Hours Delivered', value: hoursDelivered },
+      ],
     },
     {
-      title: 'Faculty Registered',
-      value: facultyRegistered,
-      subtitle: `${facultyCompleted} completed, ${facultyOngoing} ongoing`,
-      icon: <TeamOutlined />,
-      iconBgClass: 'bg-success-light',
-      iconColorClass: '',
-      valueColorClass: 'text-success',
-      hasViewMore: true,
-      onViewMore: onViewTraining,
+      title: 'Faculty',
+      icon: TeamOutlined,
+      variant: 'amber',
+      lines: [
+        { label: 'Completed', value: facultyCompleted },
+        { label: 'Ongoing', value: facultyOngoing },
+        { label: 'Yet to Start', value: facultyYetToStart },
+      ],
     },
     {
-      title: 'Hours Delivered',
-      value: hoursDelivered,
-      subtitle: 'Total training hours',
-      icon: <FileTextOutlined />,
-      iconBgClass: 'bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
-      iconColorClass: '',
-      valueColorClass: 'text-purple-600 dark:text-purple-400',
-      hasViewMore: true,
-      onViewMore: onViewTraining,
+      title: 'Completion Metrics',
+      icon: CheckCircleOutlined,
+      variant: 'purple',
+      lines: [
+        { label: 'Completed ≥ 40 Hours', value: completed40Hours },
+        { label: 'Completed < 40 Hours', value: completedUnder40Hours },
+      ],
     },
     {
-      title: 'Completed 40+ Hours',
-      value: completed40Hours,
-      subtitle: `${facultyYetToStart} yet to start`,
-      icon: <CheckCircleOutlined />,
-      iconBgClass: 'bg-warning-light',
-      iconColorClass: '',
-      valueColorClass: 'text-warning',
-      hasViewMore: true,
-      onViewMore: onViewTraining,
+      title: 'Hours Distribution',
+      icon: FileTextOutlined,
+      variant: 'emerald',
+      lines: [
+        { label: 'Avg. Hours per Faculty', value: averageHoursPerFaculty },
+        { label: 'Highest Hours (Single Faculty)', value: highestHoursSingleFaculty },
+        { label: 'Lowest Hours', value: lowestHoursSingleFaculty },
+      ],
     },
   ];
 
@@ -428,7 +487,7 @@ export const TrainingStatisticsGrid = ({
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
       {cards.map((card, idx) => (
-        <DashboardStatCard key={idx} {...card} />
+        <TrainingStatCard key={idx} {...card} />
       ))}
     </div>
   );

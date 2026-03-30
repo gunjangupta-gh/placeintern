@@ -44,6 +44,25 @@ import { fetchCalendar, fetchTrainings } from "../store/facultyTrainingSlice";
 
 const { Text, Title } = Typography;
 
+const getBranchLabel = (training) => {
+  if (typeof training?.branchLabel === "string" && training.branchLabel.trim()) {
+    return training.branchLabel;
+  }
+
+  if (Array.isArray(training?.branchNames) && training.branchNames.length > 0) {
+    return training.branchNames.join(", ");
+  }
+
+  if (Array.isArray(training?.targetBranches) && training.targetBranches.length > 0) {
+    return training.targetBranches
+      .map((branch) => branch?.shortName || branch?.name)
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  return "All Branches";
+};
+
 const TrainingCalendarPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -178,7 +197,8 @@ const TrainingCalendarPage = () => {
         (t) =>
           t.title?.toLowerCase().includes(search) ||
           t.description?.toLowerCase().includes(search) ||
-          t.providedBy?.toLowerCase().includes(search),
+          t.providedBy?.toLowerCase().includes(search) ||
+          getBranchLabel(t).toLowerCase().includes(search),
       );
     }
     return result;
@@ -291,6 +311,14 @@ const TrainingCalendarPage = () => {
       render: (mode) => <DeliveryModeBadge mode={mode} showIcon={false} />,
     },
     {
+      title: "Branch",
+      key: "branch",
+      width: 200,
+      render: (_, record) => (
+        <Text className="text-xs text-slate-700">{getBranchLabel(record)}</Text>
+      ),
+    },
+    {
       title: "Deadline",
       key: "deadline",
       width: 100,
@@ -319,8 +347,8 @@ const TrainingCalendarPage = () => {
             value={trainingFilter}
             onChange={setTrainingFilter}
             options={[
-              { value: "all", label: "All Trainings" },
-              { value: "my", label: "My Trainings" },
+              { value: "all", label: "All Branches Trainings" },
+              { value: "my", label: "My Branch Trainings" },
             ]}
           />
           <Button size="middle" icon={<AimOutlined />} onClick={jumpToToday}>
@@ -635,6 +663,10 @@ const TrainingCalendarPage = () => {
                         </div>
                         <Text type="secondary" className="text-[10px] block mb-1">
                           {training.venue || training.providedBy}
+                        </Text>
+                        <Text type="secondary" className="text-[10px] block mb-1">
+                          <EnvironmentOutlined className="mr-1" />
+                          {getBranchLabel(training)}
                         </Text>
                         <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between gap-2">
                           <TrainingDateRange

@@ -77,6 +77,9 @@ export class StateDashboardService {
           activeStudents,
           totalFaculty,
           activeFaculty,
+          totalStaff,
+          totalAdminStaff,
+          mentorsWithAssignmentsData,
           totalSelfIdentifiedInternships,
           activeSelfIdentifiedInternships,
           totalApplications,
@@ -117,6 +120,46 @@ export class StateDashboardService {
               role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
               active: true,
             },
+          }),
+          this.prisma.user.count({
+            where: {
+              role: {
+                in: [
+                  Role.TEACHER,
+                  Role.FACULTY_COORDINATOR,
+                  Role.ADMIN_STAFF,
+                ],
+              },
+              active: true,
+              institutionId: { not: null },
+              Institution: { isActive: true },
+            },
+          }),
+          this.prisma.user.count({
+            where: {
+              role: Role.ADMIN_STAFF,
+              active: true,
+              institutionId: { not: null },
+              Institution: { isActive: true },
+            },
+          }),
+          // Mentors are staff with active mentor assignments (assignment-based definition)
+          this.prisma.mentorAssignment.findMany({
+            where: {
+              isActive: true,
+              mentor: {
+                role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
+                active: true,
+                institutionId: { not: null },
+                Institution: { isActive: true },
+              },
+              student: {
+                user: { active: true },
+                Institution: { isActive: true },
+              },
+            },
+            select: { mentorId: true },
+            distinct: ["mentorId"],
           }),
           // Count self-identified internships only (from ACTIVE institutions, active students with active users, active applications)
           this.prisma.internshipApplication.count({
@@ -318,6 +361,7 @@ export class StateDashboardService {
         // Get count from the distinct studentIds arrays
         const activeStudentsWithMentors = studentsWithActiveMentorsData.length;
         const internshipsWithMentors = internshipsWithMentorsData.length;
+        const totalMentors = mentorsWithAssignmentsData.length;
 
         // Calculate active students without mentor assignments
         // Based on ACTIVE students only (not total students)
@@ -432,6 +476,11 @@ export class StateDashboardService {
           faculty: {
             total: totalFaculty,
             active: activeFaculty,
+          },
+          staff: {
+            total: totalStaff,
+            mentors: totalMentors,
+            adminStaff: totalAdminStaff,
           },
           totalFaculty,
           activeFaculty,
@@ -1413,17 +1462,38 @@ export class StateDashboardService {
           }
 
           case "mentors": {
-            // Get mentor/faculty counts per institution (from active institutions)
-            const mentorCounts = await this.prisma.user.groupBy({
-              by: ["institutionId"],
+            // Mentor count per institution uses assignment-based definition
+            // (active TEACHER/FACULTY_COORDINATOR with active mentor assignments)
+            const mentorAssignments = await this.prisma.mentorAssignment.findMany({
               where: {
-                role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
-                active: true,
-                institutionId: { not: null },
-                Institution: { isActive: true },
+                isActive: true,
+                mentor: {
+                  role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
+                  active: true,
+                  institutionId: { not: null },
+                  Institution: { isActive: true },
+                },
+                student: {
+                  user: { active: true },
+                  Institution: { isActive: true },
+                },
               },
-              _count: { id: true },
+              select: {
+                mentorId: true,
+                mentor: { select: { institutionId: true } },
+              },
+              distinct: ["mentorId"],
             });
+
+            const mentorsByInstitution = new Map<string, number>();
+            for (const assignment of mentorAssignments) {
+              const instId = assignment.mentor?.institutionId;
+              if (!instId) continue;
+              mentorsByInstitution.set(
+                instId,
+                (mentorsByInstitution.get(instId) || 0) + 1,
+              );
+            }
 
             // Get students with active mentor assignments per institution (active students with active users from active institutions)
             const assignmentCounts =
@@ -1451,9 +1521,7 @@ export class StateDashboardService {
               id: inst.id,
               institutionName: inst.name,
               institutionCode: inst.code,
-              totalMentors:
-                mentorCounts.find((c) => c.institutionId === inst.id)?._count
-                  .id || 0,
+              totalMentors: mentorsByInstitution.get(inst.id) || 0,
               assignedStudents: assignedByInstitution.get(inst.id) || 0,
             }));
           }

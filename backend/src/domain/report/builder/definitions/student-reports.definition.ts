@@ -154,6 +154,7 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'studentName', label: 'Student Name', type: 'string', default: true, sortable: true },
       { id: 'rollNumber', label: 'Roll Number', type: 'string', default: true, sortable: true },
       { id: 'institutionName', label: 'Institution', type: 'string', default: true, sortable: true },
+      { id: 'branchName', label: 'Branch Name (Course)', type: 'string', default: true, sortable: true },
       { id: 'planAfterDiploma', label: 'Plan After Diploma', type: 'string', default: true, sortable: true },
       { id: 'interestedForPrivateJob', label: 'Job Location Preference', type: 'string', default: true },
       { id: 'expectedSalary', label: 'Expected Salary Range', type: 'string', default: true },

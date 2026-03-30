@@ -454,8 +454,15 @@ export class TrainingService {
                 where: { trainingId: training.id, status: 'APPROVED' },
               });
 
+          const branchNames = Array.isArray(training.targetBranches)
+            ? training.targetBranches.map((branch) => branch.shortName || branch.name)
+            : [];
+
           return {
             ...training,
+            branchNames,
+            branchLabel: branchNames.length > 0 ? branchNames.join(', ') : 'All Branches',
+            isAllBranches: branchNames.length === 0,
             availableSeats: training.capacity - approvedCount,
             isFull: approvedCount >= training.capacity,
             enrolledFaculty: approvedApps.map((a) => a.user.name),
@@ -592,8 +599,15 @@ export class TrainingService {
                 },
               });
 
+              const branchNames = Array.isArray(training.targetBranches)
+                ? training.targetBranches.map((branch) => branch.shortName || branch.name)
+                : [];
+
               return {
                 ...training,
+                branchNames,
+                branchLabel: branchNames.length > 0 ? branchNames.join(', ') : 'All Branches',
+                isAllBranches: branchNames.length === 0,
                 availableSeats: training.capacity - approvedCount,
                 isFull: approvedCount >= training.capacity,
               };
@@ -953,7 +967,7 @@ export class TrainingService {
             _count: { _all: true },
           }),
           this.prisma.user.findMany({
-            where: { role: { in: ['TEACHER', 'ADMIN_STAFF'] }, active: true },
+            where: { role: { in: ['TEACHER', 'FACULTY_COORDINATOR', 'PRINCIPAL', 'ADMIN_STAFF'] }, active: true },
             select: {
               id: true,
               branchId: true,
@@ -1475,7 +1489,7 @@ export class TrainingService {
         this.prisma.user.findMany({
           where: {
             ...userFilter,
-            role: { in: [Role.TEACHER, Role.ADMIN_STAFF] },
+            role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.PRINCIPAL, Role.ADMIN_STAFF] },
             active: true,
           },
           select: {

@@ -307,6 +307,8 @@ const TrainingOverviewPage = () => {
       title: "Dates",
       key: "dates",
       width: 180,
+      sorter: (a, b) =>
+        new Date(a.startDate || 0).getTime() - new Date(b.startDate || 0).getTime(),
       render: (_, record) => (
         <TrainingDateRange
           startDate={record.startDate}

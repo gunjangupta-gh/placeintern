@@ -629,6 +629,11 @@ export class ReportGeneratorService {
             prePlacementOfferReceived: true,
             prePlacementOfferMarkedAt: true,
             prePlacementOfferCompany: true,
+            branch: {
+              select: {
+                name: true,
+              },
+            },
             user: {
               select: {
                 name: true,
@@ -657,6 +662,7 @@ export class ReportGeneratorService {
       rollNumber: interest.student?.user?.rollNumber ?? 'N/A',
       institutionName: interest.student?.Institution?.name ?? 'N/A',
       institutionShortName: interest.student?.Institution?.shortName ?? 'N/A',
+      branchName: interest.student?.branch?.name ?? 'N/A',
 
       planAfterDiploma: interest.planAfterDiploma ?? 'N/A',
       interestedForPrivateJob: interest.interestedForPrivateJob ?? 'N/A',

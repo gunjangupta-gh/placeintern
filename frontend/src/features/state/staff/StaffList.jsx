@@ -6,7 +6,7 @@ import { PlusOutlined, EditOutlined, SearchOutlined, UserOutlined, ReloadOutline
 import { fetchStaff, resetStaffPassword, toggleStaffStatus } from '../store/stateSlice';
 import StaffModal from './StaffModal';
 import { getImageUrl } from '../../../utils/imageUtils';
-import { useInstitutions } from '../../shared/hooks/useLookup';
+import { useLookup } from '../../shared/hooks/useLookup';
 
 // Designation options for filter
 const DESIGNATION_OPTIONS = [
@@ -57,8 +57,8 @@ const StaffList = () => {
   const dispatch = useDispatch();
   const { list: staff, loading, pagination } = useSelector((state) => state.state.staff);
 
-  // Use global lookup data for institutions
-  const { activeInstitutions } = useInstitutions();
+  // Use global lookup data for institutions and branches
+  const { activeInstitutions, activeBranches } = useLookup({ include: ['institutions', 'branches'] });
 
   const [searchText, setSearchText] = useState('');
   const [filters, setFilters] = useState({
@@ -444,11 +444,21 @@ const StaffList = () => {
                 </Select>
               </Col>
               <Col xs={24} sm={12} md={6}>
-                <Input
+                <Select
                   placeholder="Branch"
-                  value={filters.branchName}
-                  onChange={(e) => handleFilterChange('branchName', e.target.value)}
-                />
+                  style={{ width: '100%' }}
+                  allowClear
+                  showSearch
+                  optionFilterProp="children"
+                  value={filters.branchName || undefined}
+                  onChange={(value) => handleFilterChange('branchName', value || '')}
+                >
+                  {activeBranches?.map((branch) => (
+                    <Select.Option key={branch.id} value={branch.name}>
+                      {branch.name}
+                    </Select.Option>
+                  ))}
+                </Select>
               </Col>
               <Col xs={24} sm={12} md={6}>
                 <Select

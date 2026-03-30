@@ -90,7 +90,26 @@ const StatisticsCards = ({ stats, selectedMonth }) => {
   // Values
   const totalStudents = students?.active ?? 0;
   const activeInternships = internships?.active ?? students?.active ?? 0;
-  const totalMentors = faculty?.total ?? stats?.totalFaculty ?? 0;
+  const totalStaff =
+    stats?.staff?.total ??
+    stats?.staffBreakdown?.totalStaff ??
+    faculty?.total ??
+    stats?.totalFaculty ??
+    0;
+  const totalMentors =
+    stats?.staff?.mentors ??
+    stats?.staffBreakdown?.mentors ??
+    faculty?.mentors ??
+    faculty?.teachers ??
+    faculty?.total ??
+    stats?.totalMentors ??
+    stats?.totalFaculty ??
+    0;
+  const totalAdminStaff =
+    stats?.staff?.adminStaff ??
+    stats?.staffBreakdown?.adminStaff ??
+    faculty?.adminStaff ??
+    Math.max(0, totalStaff - totalMentors);
 
   // Reports
   const reportsSubmitted = monthlyReports?.thisMonth ?? 0;
@@ -203,8 +222,9 @@ const StatisticsCards = ({ stats, selectedMonth }) => {
           <StatCard
             icon={<TeamOutlined className="text-lg text-amber-500" />}
             iconBg="bg-amber-50"
-            title="TOTAL MENTORS"
-            value={totalMentors.toLocaleString()}
+            title="TOTAL STAFF"
+            value={totalStaff.toLocaleString()}
+            subtitle={`Mentor: ${totalMentors.toLocaleString()} | Admin: ${totalAdminStaff.toLocaleString()}`}
             onView={() => fetchCollegeBreakdown('mentors')}
           />
         </Col>
