@@ -540,6 +540,147 @@ export class ReportGeneratorService {
   }
 
   /**
+   * Generate Student Placement Interest + PPO Report
+   * Includes all placement interest fields plus student/user/institution and PPO details
+   */
+  async generateStudentPlacementInterestPpoReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: any = {};
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.planAfterDiploma) {
+      where.planAfterDiploma = filters.planAfterDiploma;
+    }
+
+    if (filters?.expectedSalary) {
+      where.expectedSalary = filters.expectedSalary;
+    }
+
+    if (filters?.interestedForPrivateJob) {
+      where.interestedForPrivateJob = filters.interestedForPrivateJob;
+    }
+
+    if (filters?.startDate || filters?.endDate) {
+      const dateFilter: Record<string, unknown> = {};
+      if (filters.startDate) {
+        const startDate = new Date(filters.startDate);
+        dateFilter.gte = new Date(
+          Date.UTC(
+            startDate.getUTCFullYear(),
+            startDate.getUTCMonth(),
+            startDate.getUTCDate(),
+            0,
+            0,
+            0,
+            0,
+          ),
+        );
+      }
+      if (filters.endDate) {
+        const endDate = new Date(filters.endDate);
+        dateFilter.lte = new Date(
+          Date.UTC(
+            endDate.getUTCFullYear(),
+            endDate.getUTCMonth(),
+            endDate.getUTCDate(),
+            23,
+            59,
+            59,
+            999,
+          ),
+        );
+      }
+      where.submittedAt = dateFilter;
+    }
+
+    const studentWhere: any = {};
+    if (filters?.institutionId) {
+      studentWhere.institutionId = filters.institutionId;
+    }
+    if (filters?.branchId) {
+      studentWhere.branchId = filters.branchId;
+    }
+
+    const prePlacementOfferReceived = this.parseBooleanLike(
+      filters?.prePlacementOfferReceived,
+    );
+    if (prePlacementOfferReceived !== undefined) {
+      studentWhere.prePlacementOfferReceived = prePlacementOfferReceived;
+    }
+
+    const isActiveValue = this.parseBooleanLike(filters?.isActive);
+    if (isActiveValue !== undefined) {
+      studentWhere.user = { active: isActiveValue };
+    } else {
+      studentWhere.user = { active: true };
+    }
+
+    if (Object.keys(studentWhere).length > 0) {
+      where.student = studentWhere;
+    }
+
+    const interests = await this.prisma.studentPlacementInterest.findMany({
+      where,
+      include: {
+        student: {
+          select: {
+            prePlacementOfferReceived: true,
+            prePlacementOfferMarkedAt: true,
+            prePlacementOfferCompany: true,
+            user: {
+              select: {
+                name: true,
+                rollNumber: true,
+                active: true,
+              },
+            },
+            Institution: {
+              select: {
+                name: true,
+                shortName: true,
+              },
+            },
+          },
+        },
+      },
+      take,
+      skip,
+      orderBy: { submittedAt: 'desc' },
+    });
+
+    this.warnOnLargeResultSet(interests.length, 'StudentPlacementInterestPpoReport');
+
+    return interests.map((interest) => ({
+      studentName: interest.student?.user?.name ?? 'N/A',
+      rollNumber: interest.student?.user?.rollNumber ?? 'N/A',
+      institutionName: interest.student?.Institution?.name ?? 'N/A',
+      institutionShortName: interest.student?.Institution?.shortName ?? 'N/A',
+
+      planAfterDiploma: interest.planAfterDiploma ?? 'N/A',
+      interestedForPrivateJob: interest.interestedForPrivateJob ?? 'N/A',
+      expectedSalary: interest.expectedSalary ?? 'N/A',
+
+      prePlacementOfferReceived: interest.student?.prePlacementOfferReceived ?? false,
+      prePlacementOfferCompany: interest.student?.prePlacementOfferCompany ?? 'N/A',
+      prePlacementOfferMarkedAt: interest.student?.prePlacementOfferMarkedAt
+        ? this.formatToIST(interest.student.prePlacementOfferMarkedAt)
+        : 'N/A',
+
+      interestSubmittedAt: interest.submittedAt
+        ? this.formatToIST(interest.submittedAt)
+        : 'N/A',
+      interestUpdatedAt: interest.updatedAt
+        ? this.formatToIST(interest.updatedAt)
+        : 'N/A',
+
+      isActive: interest.student?.user?.active ?? false,
+      userActive: interest.student?.user?.active ?? false,
+    }));
+  }
+
+  /**
    * Generate Internship Report
    * Supports filtering by isSelfIdentified, mentorId, status, date range, and verificationStatus
    * @param filters - Filter criteria for the report
@@ -2113,6 +2254,8 @@ export class ReportGeneratorService {
         return this.generateStudentComplianceReport(filters, pagination);
       case 'students-without-internship':
         return this.generateStudentsWithoutInternshipReport(filters, pagination);
+      case 'student-placement-interest-ppo':
+        return this.generateStudentPlacementInterestPpoReport(filters, pagination);
 
       // ==================== Mentor Reports (3) ====================
       case 'mentor-list':

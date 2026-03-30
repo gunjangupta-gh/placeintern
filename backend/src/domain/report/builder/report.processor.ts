@@ -310,6 +310,7 @@ export class ReportProcessor extends WorkerHost {
     const reportTitles: Record<string, string> = {
       'student_progress': 'Student Progress Report',
       'student_directory': 'Student Directory Report',
+      'student_placement_interest_ppo': 'Student Placement Interest & PPO Report',
       'internship': 'Internship Report',
       'internship_applications': 'Internship Applications Report',
       'internship_status': 'Internship Status Report',
@@ -364,6 +365,19 @@ export class ReportProcessor extends WorkerHost {
         { field: 'placementsCount', header: 'Placements', type: 'number' as const, width: 12 },
         { field: 'studentActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
         { field: 'userActive', header: 'User Active', type: 'boolean' as const, width: 12 },
+      ],
+      'student_placement_interest_ppo': [
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 22 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 28 },
+        { field: 'planAfterDiploma', header: 'Plan After Diploma', type: 'string' as const, width: 18 },
+        { field: 'interestedForPrivateJob', header: 'Job Location Preference', type: 'string' as const, width: 20 },
+        { field: 'expectedSalary', header: 'Expected Salary Range', type: 'string' as const, width: 18 },
+        { field: 'prePlacementOfferReceived', header: 'PPO Received', type: 'boolean' as const, width: 12 },
+        { field: 'prePlacementOfferCompany', header: 'PPO Company', type: 'string' as const, width: 22 },
+        { field: 'prePlacementOfferMarkedAt', header: 'PPO Marked At', type: 'date' as const, width: 18 },
+        { field: 'interestSubmittedAt', header: 'Interest Submitted At', type: 'date' as const, width: 18 },
+        { field: 'interestUpdatedAt', header: 'Interest Updated At', type: 'date' as const, width: 18 },
       ],
       // Internship reports - matches generateInternshipReport output
       'internship': [

@@ -4,7 +4,7 @@ import { GiftOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-des
 import { toast } from 'react-hot-toast';
 import studentService from '../../../../services/student.service';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 const PPOAlert = () => {
   const [ppoStatus, setPpoStatus] = useState(null);
@@ -66,6 +66,15 @@ const PPOAlert = () => {
     }
     setSubmitted(false);
     setModalVisible(true);
+  };
+
+  const handlePPOChange = (nextValue) => {
+    setReceivedPPO(nextValue);
+    form.setFieldValue('received', nextValue);
+
+    if (nextValue !== true) {
+      form.setFieldValue('companyName', undefined);
+    }
   };
 
   // Don't show anything while loading
@@ -138,9 +147,14 @@ const PPOAlert = () => {
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
-        width={480}
+        width={560}
         centered
         destroyOnClose
+        styles={{
+          body: {
+            paddingTop: 12,
+          },
+        }}
       >
         {submitted ? (
           <Result
@@ -164,43 +178,73 @@ const PPOAlert = () => {
               label="Have you received a Pre-Placement Offer?"
               rules={[{ required: true, message: 'Please select an option' }]}
             >
-              <Radio.Group
-                onChange={(e) => setReceivedPPO(e.target.value)}
-                className="w-full"
-              >
-                <Space direction="vertical" className="w-full">
-                  <Radio.Button
-                    value={true}
-                    className="w-full h-auto py-3 px-4 rounded-lg text-left"
-                    style={{ display: 'block' }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <CheckCircleOutlined className="text-green-500" />
-                      <div>
-                        <Text strong>Yes, I received a PPO</Text>
-                        <Text type="secondary" className="block text-xs">
-                          I have been offered a job by my internship company
-                        </Text>
+                <Radio.Group
+                  value={receivedPPO}
+                  onChange={(e) => handlePPOChange(e.target.value)}
+                  className="w-full"
+                >
+                  <div className="space-y-3">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handlePPOChange(true)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handlePPOChange(true);
+                        }
+                      }}
+                      className={`rounded-xl border p-3 transition-colors ${
+                        receivedPPO === true
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Radio value={true} style={{ marginTop: 2 }} />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <CheckCircleOutlined className="text-green-500" />
+                            <Text strong>Yes, I received a PPO</Text>
+                          </div>
+                          <Text type="secondary" className="block text-xs mt-1">
+                            I have been offered a job by my internship company
+                          </Text>
+                        </div>
                       </div>
                     </div>
-                  </Radio.Button>
-                  <Radio.Button
-                    value={false}
-                    className="w-full h-auto py-3 px-4 rounded-lg text-left"
-                    style={{ display: 'block' }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <CloseCircleOutlined className="text-gray-400" />
-                      <div>
-                        <Text strong>No, I did not receive a PPO</Text>
-                        <Text type="secondary" className="block text-xs">
-                          No job offer from the internship company
-                        </Text>
+
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handlePPOChange(false)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handlePPOChange(false);
+                        }
+                      }}
+                      className={`rounded-xl border p-3 transition-colors ${
+                        receivedPPO === false
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Radio value={false} style={{ marginTop: 2 }} />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <CloseCircleOutlined className="text-gray-400" />
+                            <Text strong>No, I did not receive a PPO</Text>
+                          </div>
+                          <Text type="secondary" className="block text-xs mt-1">
+                            No job offer from the internship company
+                          </Text>
+                        </div>
                       </div>
                     </div>
-                  </Radio.Button>
-                </Space>
-              </Radio.Group>
+                  </div>
+                </Radio.Group>
             </Form.Item>
 
             {receivedPPO === true && (
@@ -215,6 +259,7 @@ const PPOAlert = () => {
                 <Input
                   placeholder="Enter company name that offered you PPO"
                   className="rounded-lg"
+                  allowClear
                 />
               </Form.Item>
             )}
