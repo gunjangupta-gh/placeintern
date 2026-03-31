@@ -295,7 +295,26 @@ export class TrainingService {
    */
   async findAll(filters: TrainingFilterDto, includeUnpublished = false, userId?: string, institutionId?: string, myOnly = false) {
     try {
-      const { page = 1, limit = 20, search, year, month, deliveryMode, difficulty, branchIds, isPublished, isActive, startDateFrom, startDateTo } = filters;
+      const {
+        page = 1,
+        limit = 20,
+        search,
+        year,
+        month,
+        deliveryMode,
+        difficulty,
+        branchIds,
+        isPublished,
+        status,
+        isActive,
+        startDateFrom,
+        startDateTo,
+      } = filters;
+
+      const statusDerivedIsPublished =
+        status === 'PUBLISHED' ? true : status === 'DRAFT' ? false : undefined;
+      const effectiveIsPublished =
+        typeof isPublished === 'boolean' ? isPublished : statusDerivedIsPublished;
 
       // myOnly=true → Show eligible trainings (filtered by user's branch AND designation)
       // myOnly=false → Show ALL trainings (no branch/designation filter)
@@ -340,7 +359,9 @@ export class TrainingService {
 
       const where: Prisma.TrainingWhereInput = {
         ...(includeUnpublished ? {} : { isPublished: true }),
-        ...(isPublished !== undefined ? { isPublished } : {}),
+        ...(effectiveIsPublished !== undefined
+          ? { isPublished: effectiveIsPublished }
+          : {}),
         ...(isActive !== undefined ? { isActive } : {}),
         ...(deliveryMode ? { deliveryMode } : {}),
         ...(difficulty ? { difficulty } : {}),
@@ -941,7 +962,7 @@ export class TrainingService {
     try {
       const now = new Date();
 
-      const [trainings, applications, attendanceAgg, teachers, feedbackResponses, totalLessonPlans, approvedLessonPlans, totalCertificates] =
+      const [trainings, applications, attendanceAgg, teachers, feedbackResponses, totalLessonPlans, approvedLessonPlans, totalCertificates, activeBranches] =
         await Promise.all([
           this.prisma.training.findMany({
             select: {
@@ -985,6 +1006,15 @@ export class TrainingService {
           this.prisma.lessonPlan.count(),
           this.prisma.lessonPlan.count({ where: { status: 'APPROVED' } }),
           this.prisma.trainingCertificate.count(),
+          this.prisma.branch.findMany({
+            where: { isActive: true },
+            select: {
+              id: true,
+              name: true,
+              shortName: true,
+              code: true,
+            },
+          }),
         ]);
 
       const trainingById = new Map(trainings.map((training) => [training.id, training]));
@@ -1063,6 +1093,19 @@ export class TrainingService {
 
         return profileCourse;
       };
+
+      // Seed all active branch buckets so the dashboard always shows full branch coverage
+      // even when a branch currently has zero faculty mapped in user records.
+      for (const branch of activeBranches) {
+        const courseName =
+          branch.shortName ||
+          branch.name ||
+          branch.code;
+
+        if (courseName) {
+          ensureCourseBucket(courseName);
+        }
+      }
 
       for (const teacher of teachers) {
         const courseName =

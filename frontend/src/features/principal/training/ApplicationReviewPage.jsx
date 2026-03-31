@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Avatar, Button, Card, Descriptions, Form, Input, Modal, Select, Space, Tooltip, Typography, message } from 'antd';
+import { Avatar, Button, Card, Descriptions, Form, Input, Modal, Select, Space, Tag, Tooltip, Typography, message } from 'antd';
 import {
   CheckOutlined,
   CloseOutlined,
@@ -9,6 +9,7 @@ import {
   SearchOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
 import ApplicationStatusBadge from '../../../components/training/ApplicationStatusBadge';
 import TrainingEmptyState from '../../../components/training/TrainingEmptyState';
 import { TableRowSkeleton } from '../../../components/training/skeletons/TrainingSkeletons';
@@ -22,6 +23,22 @@ const { Text, Title } = Typography;
 
 const normalizeStatus = (status) => String(status || '').trim().toUpperCase();
 const isReviewableStatus = (status) => ['PENDING', 'SUBMITTED'].includes(normalizeStatus(status));
+
+const getTrainingTimelineStatus = (training) => {
+  const today = dayjs().startOf('day');
+  const start = dayjs(training?.startDate);
+  const end = dayjs(training?.endDate);
+
+  if (end.isValid() && end.isBefore(today, 'day')) {
+    return { label: 'Completed', color: 'green' };
+  }
+
+  if (start.isValid() && start.isAfter(today, 'day')) {
+    return { label: 'Upcoming', color: 'blue' };
+  }
+
+  return { label: 'Ongoing', color: 'orange' };
+};
 
 const ApplicationReviewPage = () => {
   const dispatch = useDispatch();
@@ -101,6 +118,15 @@ const ApplicationReviewPage = () => {
           <ApplicationStatusBadge status={status} />
         </div>
       ),
+    },
+    {
+      title: 'Training Timeline',
+      key: 'trainingTimeline',
+      width: 140,
+      render: (_, record) => {
+        const timeline = getTrainingTimelineStatus(record.training);
+        return <Tag color={timeline.color}>{timeline.label}</Tag>;
+      },
     },
     {
       title: 'Applied On',

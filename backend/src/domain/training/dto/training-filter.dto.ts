@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsInt, IsEnum, IsArray, IsBoolean, IsDateString, IsUUID, Min } from 'class-validator';
+import { IsOptional, IsString, IsInt, IsEnum, IsArray, IsBoolean, IsDateString, IsUUID, Min, IsIn } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer';
 import { TrainingDeliveryMode, TrainingDifficulty } from '../../../generated/prisma/client';
@@ -63,6 +63,18 @@ export class TrainingFilterDto {
   @Type(() => Boolean)
   @IsBoolean()
   isPublished?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Legacy publication status filter',
+    enum: ['ALL', 'PUBLISHED', 'DRAFT'],
+  })
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
+  @IsString()
+  @IsIn(['ALL', 'PUBLISHED', 'DRAFT'])
+  status?: 'ALL' | 'PUBLISHED' | 'DRAFT';
 
   @ApiPropertyOptional({ description: 'Filter by active status' })
   @IsOptional()

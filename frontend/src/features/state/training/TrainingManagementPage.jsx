@@ -59,6 +59,22 @@ const { Text } = Typography;
 const ALL_BRANCHES_VALUE = "__ALL_BRANCHES__";
 const ALL_DESIGNATIONS_VALUE = "__ALL_DESIGNATIONS__";
 
+const getTrainingTimelineStatus = (training) => {
+  const today = dayjs().startOf("day");
+  const start = dayjs(training?.startDate);
+  const end = dayjs(training?.endDate);
+
+  if (end.isValid() && end.isBefore(today, "day")) {
+    return "COMPLETED";
+  }
+
+  if (start.isValid() && start.isAfter(today, "day")) {
+    return "UPCOMING";
+  }
+
+  return "ONGOING";
+};
+
 const TrainingManagementPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -68,6 +84,7 @@ const TrainingManagementPage = () => {
   );
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [timelineFilter, setTimelineFilter] = useState("ALL");
   const [viewMode, setViewMode] = useState("LIST"); // LIST or CALENDAR
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [statsModalOpen, setStatsModalOpen] = useState(false);
@@ -103,7 +120,7 @@ const TrainingManagementPage = () => {
     };
 
     // Only add pagination for LIST view, fetch all for CALENDAR view
-    if (viewMode === "LIST") {
+    if (viewMode === "LIST" && timelineFilter === "ALL") {
       params.page = pagination.current;
       params.limit = pagination.pageSize;
     }
@@ -143,7 +160,7 @@ const TrainingManagementPage = () => {
     if (!postTestForms.list?.length) {
       dispatch(fetchStatePostTestForms({ forceRefresh: true }));
     }
-  }, [dispatch, pagination.current, pagination.pageSize, searchText, statusFilter, viewMode]);
+  }, [dispatch, pagination.current, pagination.pageSize, searchText, statusFilter, viewMode, timelineFilter]);
 
   const handleOpenCreateModal = () => {
     setFormMode("create");
@@ -312,13 +329,21 @@ const TrainingManagementPage = () => {
     setPagination(prev => ({ ...prev, current: 1 }));
   };
 
+  const handleTimelineFilterChange = (value) => {
+    setTimelineFilter(value);
+    // Reset to page 1 when timeline filter changes
+    setPagination((prev) => ({ ...prev, current: 1 }));
+  };
+
   const filteredTrainings = useMemo(() => {
-    // Since we're doing server-side filtering, just return the list from Redux
-    // The API handles filtering based on params sent in useEffect
     const list = trainings.list || [];
-    console.log('Filtered trainings:', list);
-    return list;
-  }, [trainings.list]);
+
+    if (timelineFilter === "ALL") {
+      return list;
+    }
+
+    return list.filter((training) => getTrainingTimelineStatus(training) === timelineFilter);
+  }, [trainings.list, timelineFilter]);
 
   const stats = useMemo(() => {
     const list = trainings.list || [];
@@ -718,6 +743,16 @@ const TrainingManagementPage = () => {
             <Segmented
               size="small"
               options={[
+                { label: "Timeline: All", value: "ALL" },
+                { label: "Upcoming", value: "UPCOMING" },
+                { label: "Completed", value: "COMPLETED" },
+              ]}
+              value={timelineFilter}
+              onChange={handleTimelineFilterChange}
+            />
+            <Segmented
+              size="small"
+              options={[
                 { label: "All", value: "ALL" },
                 { label: "Published", value: "PUBLISHED" },
                 { label: "Drafts", value: "DRAFT" },
@@ -759,7 +794,7 @@ const TrainingManagementPage = () => {
                 pagination={{
                   current: pagination.current,
                   pageSize: pagination.pageSize,
-                  total: pagination.total,
+                  total: timelineFilter === "ALL" ? pagination.total : filteredTrainings.length,
                   showSizeChanger: true,
                   showTotal: (total) => `Total ${total} items`,
                   size: 'small',
