@@ -167,6 +167,15 @@ const TrainingDetailsPage = () => {
   }, [training]);
 
   const handleApply = async () => {
+    if (currentTraining?.eligibility?.eligible === false) {
+      message.warning(
+        currentTraining.eligibility.reason ||
+          "You are not eligible to apply for this training.",
+      );
+      setApplyOpen(false);
+      return;
+    }
+
     try {
       setSubmitting(true);
       await dispatch(applyForTraining({ trainingId: id })).unwrap();
@@ -310,11 +319,19 @@ const TrainingDetailsPage = () => {
   };
 
   const handleOpenPreTest = () => {
+    if (status?.status !== "APPROVED") {
+      message.warning("Pre-test is only available for approved participants.");
+      return;
+    }
     dispatch(fetchPreTestForm(id));
     setPreTestOpen(true);
   };
 
   const handleOpenPostTest = () => {
+    if (status?.status !== "APPROVED") {
+      message.warning("Post-test is only available for approved participants.");
+      return;
+    }
     dispatch(fetchPostTestForm(id));
     setPostTestOpen(true);
   };
@@ -337,6 +354,11 @@ const TrainingDetailsPage = () => {
   };
 
   const handleMarkAttendance = async () => {
+    if (status?.status !== "APPROVED") {
+      message.warning("Attendance can only be marked after approval.");
+      return;
+    }
+
     try {
       setSubmitting(true);
       const { latitude, longitude } = await captureLocation();
@@ -380,7 +402,13 @@ const TrainingDetailsPage = () => {
 
   const trainingEnded =
     training?.endDate && new Date(training.endDate) < new Date();
-  const canApply = !status?.status && capacityInfo.available > 0 && !trainingEnded;
+  const isEligibleToApply =
+    currentTraining?.eligibility?.eligible !== false;
+  const canApply =
+    !status?.status &&
+    capacityInfo.available > 0 &&
+    !trainingEnded &&
+    isEligibleToApply;
   const canWithdraw = ["PENDING", "SUBMITTED"].includes(status?.status);
   const isApproved = status?.status === "APPROVED";
 
@@ -701,6 +729,24 @@ const TrainingDetailsPage = () => {
                 >
                   Apply Now
                 </Button>
+              )}
+              {!status?.status && !isEligibleToApply && (
+                <Alert
+                  className="p-1.5 text-left"
+                  type="warning"
+                  showIcon
+                  message={
+                    <span className="text-xs font-semibold">
+                      Not eligible to apply
+                    </span>
+                  }
+                  description={
+                    <span className="text-[10px]">
+                      {currentTraining?.eligibility?.reason ||
+                        "This training is not available for your branch."}
+                    </span>
+                  }
+                />
               )}
               {canWithdraw && (
                 <Popconfirm

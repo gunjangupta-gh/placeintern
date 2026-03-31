@@ -46,10 +46,12 @@ export class FacultyTrainingService {
   }
 
   async getTraining(id: string, userId: string) {
-    return this.trainingService.findOne(id, userId);
+    // Faculty calendar can show all branches; detail view should remain readable.
+    // Eligibility/apply checks still enforce branch and designation rules.
+    return this.trainingService.findOne(id, userId, undefined, false);
   }
 
   async checkEligibility(trainingId: string, userId: string) {
-    return this.trainingService.checkUserEligibility(trainingId, userId);
+    return this.trainingService.checkUserEligibility(trainingId, userId, false);
   }
 }

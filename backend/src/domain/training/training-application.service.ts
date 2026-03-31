@@ -52,7 +52,7 @@ export class TrainingApplicationService {
   /**
    * Apply for a training (Faculty)
    */
-  async apply(trainingId: string, dto: CreateApplicationDto, userId: string) {
+  async apply(trainingId: string, dto: CreateApplicationDto, userId: string, enforceBranchEligibility = true) {
     try {
       this.logger.log(`User ${userId} applying for training ${trainingId}`);
 
@@ -80,8 +80,9 @@ export class TrainingApplicationService {
         throw new BadRequestException('Training is no longer active');
       }
 
-      // Enforce branch eligibility only when training is branch-targeted
-      if (training.targetBranches?.length > 0) {
+      // Enforce branch eligibility only when explicitly enabled.
+      // Faculty flow can disable this to allow cross-branch applications.
+      if (enforceBranchEligibility && training.targetBranches?.length > 0) {
         const resolvedBranchId = await this.resolveUserBranchId(userId);
 
         if (!resolvedBranchId) {
@@ -698,7 +699,7 @@ export class TrainingApplicationService {
     return this.apply(dto.trainingId, {
       relevanceToTeaching: dto.relevanceToTeaching,
       expectedApplication: dto.expectedApplication,
-    }, userId);
+    }, userId, false);
   }
 
   /**

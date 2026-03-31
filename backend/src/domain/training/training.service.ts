@@ -714,7 +714,7 @@ export class TrainingService {
   /**
    * Get training by ID
    */
-  async findOne(id: string, userId?: string, institutionId?: string) {
+  async findOne(id: string, userId?: string, institutionId?: string, enforceBranchAccess = true) {
     try {
       const training = await this.prisma.training.findUnique({
         where: { id },
@@ -756,7 +756,7 @@ export class TrainingService {
         }
       }
 
-      if (userId && training.targetBranches?.length > 0) {
+      if (userId && enforceBranchAccess && training.targetBranches?.length > 0) {
         const userBranchId = await this.getUserBranchId(userId);
         if (!userBranchId) {
           throw new ForbiddenException('Your profile is not mapped to a branch');
@@ -1297,7 +1297,7 @@ export class TrainingService {
   }
 
   // Check user eligibility for a training
-  async checkUserEligibility(trainingId: string, userId: string) {
+  async checkUserEligibility(trainingId: string, userId: string, enforceBranchEligibility = true) {
     const training = await this.prisma.training.findUnique({
       where: { id: trainingId },
       include: { targetBranches: true },
@@ -1316,7 +1316,7 @@ export class TrainingService {
       return { eligible: false, reason: 'User not found' };
     }
 
-    if (training.targetBranches?.length > 0) {
+    if (enforceBranchEligibility && training.targetBranches?.length > 0) {
       const userBranchId = await this.getUserBranchId(userId);
 
       if (!userBranchId) {

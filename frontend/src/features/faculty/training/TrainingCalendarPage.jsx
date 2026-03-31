@@ -335,14 +335,15 @@ const TrainingCalendarPage = () => {
   return (
     <div className="p-4 training-ui">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-2">
           <Title level={4} className="mb-0! text-lg">
             Training Calendar
           </Title>
         </div>
-        <Space size="small">
+        <Space size="small" wrap className="w-full lg:w-auto">
           <Segmented
+            className="w-full sm:w-auto"
             size="middle"
             value={trainingFilter}
             onChange={setTrainingFilter}
@@ -351,10 +352,11 @@ const TrainingCalendarPage = () => {
               { value: "my", label: "My Branch Trainings" },
             ]}
           />
-          <Button size="middle" icon={<AimOutlined />} onClick={jumpToToday}>
+          <Button className="w-full sm:w-auto" size="middle" icon={<AimOutlined />} onClick={jumpToToday}>
             Today
           </Button>
           <Segmented
+            className="w-full sm:w-auto"
             size="middle"
             value={viewMode}
             onChange={setViewMode}
