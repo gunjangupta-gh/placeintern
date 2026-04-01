@@ -9,14 +9,22 @@ import {
   Query,
   UseGuards,
   Req,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  Res,
+  HttpStatus,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { THROTTLE_PRESETS } from '../../../core/config/throttle.config';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiConsumes, ApiResponse } from '@nestjs/swagger';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { Role } from '../../../generated/prisma/client';
+import { Response } from 'express';
+import { memoryStorage } from 'multer';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { TrainingService } from '../../../domain/training/training.service';
 import { TrainingApplicationService } from '../../../domain/training/training-application.service';
 import { TrainingAttendanceService } from '../../../domain/training/training-attendance.service';
@@ -134,6 +142,29 @@ export class StateTrainingController {
     return this.applicationService.getByTraining(trainingId, filters);
   }
 
+  @Get('applications/bulk-template')
+  @Roles(Role.STATE_DIRECTORATE)
+  @ApiOperation({ summary: 'Download bulk nomination Excel template' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Excel template file',
+    content: {
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {
+        schema: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  async downloadBulkApplicationTemplate(@Res() res: Response) {
+    const template = await this.applicationService.getBulkApplicationTemplate();
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=training-bulk-nomination-template.xlsx');
+    res.send(template);
+  }
+
   @Get('applications/:appId')
   @ApiOperation({ summary: 'Get application details' })
   async getApplication(@Param('appId') id: string) {
@@ -161,6 +192,46 @@ export class StateTrainingController {
   @ApiOperation({ summary: 'Bulk review applications' })
   async bulkReviewApplications(@Body() dto: BulkReviewApplicationDto, @Req() req) {
     return this.applicationService.bulkReview(dto, req.user.userId);
+  }
+
+  @Post('applications/bulk-upload')
+  @Roles(Role.STATE_DIRECTORATE)
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  @ApiOperation({ summary: 'Bulk upload training nominations via Excel' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Excel file (.xlsx/.xls) containing bulk training nominations',
+        },
+      },
+      required: ['file'],
+    },
+  })
+  async bulkUploadApplications(@UploadedFile() file: Express.Multer.File, @Req() req) {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+
+    const allowedMimeTypes = [
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ];
+
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Invalid file type. Only Excel files are allowed.');
+    }
+
+    const maxFileSize = 5 * 1024 * 1024;
+    if (file.size > maxFileSize) {
+      throw new BadRequestException('File size exceeds 5MB limit');
+    }
+
+    return this.applicationService.bulkCreateFromExcel(file.buffer, req.user.userId);
   }
 
   // ==================== ATTENDANCE ====================

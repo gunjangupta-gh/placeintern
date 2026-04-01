@@ -4,11 +4,35 @@ import { CacheService } from '../../core/cache/cache.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { AuditAction, AuditCategory, AuditSeverity, TrainingApplicationStatus, Prisma } from '../../generated/prisma/client';
 import { CreateApplicationDto, ReviewApplicationDto, BulkReviewApplicationDto, ApplicationFilterDto, ApplyForTrainingDto } from './dto';
+import { ExcelUtils } from '../../core/common/utils/excel.util';
+
+interface BulkApplicationUploadRow {
+  rowNumber: number;
+  trainingName: string;
+  trainingStartDate?: string;
+  facultyName?: string;
+  facultyEmail?: string;
+  facultyPhone?: string;
+  designation?: string;
+  institutionName?: string;
+  courseName?: string;
+}
+
+interface ResolvedBulkApplicationRow {
+  rowNumber: number;
+  trainingId: string;
+  trainingTitle: string;
+  userId: string;
+  facultyName: string;
+  facultyEmail?: string | null;
+}
 
 @Injectable()
 export class TrainingApplicationService {
   private readonly logger = new Logger(TrainingApplicationService.name);
   private readonly CACHE_TTL = 300;
+  private readonly BULK_UPLOAD_BATCH_SIZE = 100;
+  private readonly TEMPLATE_ROWS_PER_TRAINING = 3;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -924,6 +948,518 @@ export class TrainingApplicationService {
       totalApplications,
       byStatus: statusCounts.reduce((acc, s) => ({ ...acc, [s.status]: s._count }), {}),
       recentApplications,
+    };
+  }
+
+  private normalizeText(value?: string | null): string {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/[.,\-_]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private normalizePhone(value?: string | null): string {
+    return String(value || '').replace(/\D/g, '');
+  }
+
+  private parseExcelDate(value?: string): Date | null {
+    if (!value) {
+      return null;
+    }
+
+    const asDate = new Date(value);
+    if (!Number.isNaN(asDate.getTime())) {
+      return asDate;
+    }
+
+    return null;
+  }
+
+  private formatDateKey(date: Date): string {
+    return date.toISOString().slice(0, 10);
+  }
+
+  private pickColumn(row: Record<string, any>, keys: string[]): string {
+    for (const key of keys) {
+      const value = row[key];
+      if (value !== undefined && value !== null && String(value).trim() !== '') {
+        return String(value).trim();
+      }
+    }
+    return '';
+  }
+
+  private async parseBulkApplicationRows(buffer: Buffer): Promise<BulkApplicationUploadRow[]> {
+    const { workbook } = await ExcelUtils.read(buffer);
+    const rawRows = ExcelUtils.sheetToJson<Record<string, any>>(workbook, 0, { defval: '' });
+
+    let lastTrainingName = '';
+    let lastTrainingStartDate = '';
+
+    return rawRows
+      .map((row, index) => {
+        const currentTrainingName = this.pickColumn(row, ['Training Name', 'Training Title', 'Training']);
+        const currentTrainingStartDate = this.pickColumn(row, ['Training Start Date', 'Start Date']);
+
+        if (currentTrainingName) {
+          lastTrainingName = currentTrainingName;
+        }
+        if (currentTrainingStartDate) {
+          lastTrainingStartDate = currentTrainingStartDate;
+        }
+
+        const mapped: BulkApplicationUploadRow = {
+          rowNumber: index + 2,
+          // Allow grouped Excel format where training is specified once and subsequent faculty rows keep it blank.
+          trainingName: currentTrainingName || lastTrainingName,
+          trainingStartDate: currentTrainingStartDate || lastTrainingStartDate,
+          facultyName: this.pickColumn(row, [
+            'Faculty Name',
+            'Name of Faculty',
+            'Name of the Faculty',
+            'Faculty Details Name',
+            'Name',
+          ]),
+          facultyEmail: this.pickColumn(row, ['Faculty Email', 'E-mail', 'Email']),
+          facultyPhone: this.pickColumn(row, ['Faculty Phone', 'Phone', 'Mobile', 'Contact Number']),
+          designation: this.pickColumn(row, ['Designation']),
+          institutionName: this.pickColumn(row, ['College', 'Institution', 'Name of the College']),
+          courseName: this.pickColumn(row, ['Course', 'Branch', 'Department']),
+        };
+
+        const hasFacultyInput = Boolean(
+          mapped.facultyName ||
+          mapped.facultyEmail ||
+          mapped.facultyPhone,
+        );
+
+        // Skip template placeholder/blank rows silently.
+        if (!hasFacultyInput) {
+          return null;
+        }
+
+        return mapped;
+      })
+      .filter((row): row is BulkApplicationUploadRow => Boolean(row));
+  }
+
+  async getBulkApplicationTemplate(): Promise<Buffer> {
+    const trainings = await this.prisma.training.findMany({
+      where: { isActive: true },
+      select: {
+        title: true,
+        startDate: true,
+        endDate: true,
+        applicationDeadline: true,
+        isPublished: true,
+      },
+      orderBy: [{ startDate: 'desc' }, { title: 'asc' }],
+      take: 250,
+    });
+
+    return ExcelUtils.buildWorkbook((workbook) => {
+      const templateSheet = workbook.addWorksheet('Bulk Nominations');
+      const catalogSheet = workbook.addWorksheet('Training Catalog');
+
+      templateSheet.columns = [
+        { header: 'Training Name', key: 'trainingName', width: 44 },
+        { header: 'Training Start Date', key: 'trainingStartDate', width: 18 },
+        { header: 'Faculty Name', key: 'facultyName', width: 28 },
+        { header: 'Faculty Email', key: 'facultyEmail', width: 34 },
+        { header: 'Faculty Phone', key: 'facultyPhone', width: 18 },
+      ];
+
+      templateSheet.getRow(1).font = { bold: true };
+      templateSheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE8F0FE' },
+      };
+
+      const baseRows = Math.max(20, trainings.length * this.TEMPLATE_ROWS_PER_TRAINING);
+
+      if (trainings.length > 0) {
+        trainings.forEach((training) => {
+          for (let slot = 0; slot < this.TEMPLATE_ROWS_PER_TRAINING; slot += 1) {
+            templateSheet.addRow({
+              trainingName: training.title,
+              trainingStartDate: this.formatDateKey(training.startDate),
+              facultyName: '',
+              facultyEmail: '',
+              facultyPhone: '',
+            });
+          }
+        });
+      }
+
+      while (templateSheet.rowCount - 1 < baseRows) {
+        templateSheet.addRow({
+          trainingName: '',
+          trainingStartDate: '',
+          facultyName: '',
+          facultyEmail: '',
+          facultyPhone: '',
+        });
+      }
+
+      catalogSheet.columns = [
+        { header: 'Training Name', key: 'title', width: 44 },
+        { header: 'Start Date', key: 'startDate', width: 16 },
+        { header: 'End Date', key: 'endDate', width: 16 },
+        { header: 'Application Deadline', key: 'deadline', width: 20 },
+        { header: 'Published', key: 'published', width: 14 },
+      ];
+
+      catalogSheet.getRow(1).font = { bold: true };
+      trainings.forEach((training) => {
+        catalogSheet.addRow({
+          title: training.title,
+          startDate: this.formatDateKey(training.startDate),
+          endDate: this.formatDateKey(training.endDate),
+          deadline: this.formatDateKey(training.applicationDeadline),
+          published: training.isPublished ? 'Yes' : 'No',
+        });
+      });
+    });
+  }
+
+  async bulkCreateFromExcel(buffer: Buffer, uploadedByUserId: string) {
+    const rows = await this.parseBulkApplicationRows(buffer);
+
+    if (!rows.length) {
+      throw new BadRequestException('No nomination rows found in the uploaded file');
+    }
+
+    if (rows.length > 2000) {
+      throw new BadRequestException('Maximum 2000 rows are allowed per upload');
+    }
+
+    const failedRows: Array<{ rowNumber: number; reason: string }> = [];
+
+    const trainings = await this.prisma.training.findMany({
+      where: { isActive: true },
+      select: { id: true, title: true, startDate: true },
+    });
+
+    const trainingMap = new Map<string, Array<{ id: string; title: string; startDate: Date }>>();
+    trainings.forEach((training) => {
+      const key = this.normalizeText(training.title);
+      if (!trainingMap.has(key)) {
+        trainingMap.set(key, []);
+      }
+      trainingMap.get(key)?.push(training);
+    });
+
+    const emailSet = new Set<string>();
+    const phoneSet = new Set<string>();
+    const nameSet = new Set<string>();
+
+    rows.forEach((row) => {
+      if (row.facultyEmail) {
+        emailSet.add(row.facultyEmail.toLowerCase());
+      }
+      if (row.facultyPhone) {
+        const normalized = this.normalizePhone(row.facultyPhone);
+        if (normalized) {
+          phoneSet.add(normalized);
+        }
+      }
+      if (row.facultyName) {
+        nameSet.add(row.facultyName);
+      }
+    });
+
+    const userCandidates = await this.prisma.user.findMany({
+      where: {
+        active: true,
+        role: {
+          in: ['TEACHER', 'FACULTY_COORDINATOR', 'PRINCIPAL'],
+        },
+        OR: [
+          ...(emailSet.size ? [{ email: { in: Array.from(emailSet) } }] : []),
+          ...(phoneSet.size ? [{ phoneNo: { in: Array.from(phoneSet) } }] : []),
+          ...(nameSet.size ? [{ name: { in: Array.from(nameSet) } }] : []),
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phoneNo: true,
+        designation: true,
+        branchName: true,
+        Institution: {
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+          },
+        },
+      },
+    });
+
+    const resolvedRows: ResolvedBulkApplicationRow[] = [];
+
+    for (const row of rows) {
+      if (!row.trainingName) {
+        failedRows.push({ rowNumber: row.rowNumber, reason: 'Training Name is required' });
+        continue;
+      }
+
+      const matchingTrainings = trainingMap.get(this.normalizeText(row.trainingName)) || [];
+      if (!matchingTrainings.length) {
+        failedRows.push({
+          rowNumber: row.rowNumber,
+          reason: `Training not found: ${row.trainingName}`,
+        });
+        continue;
+      }
+
+      let matchedTraining = matchingTrainings[0];
+      if (matchingTrainings.length > 1) {
+        const parsedStartDate = this.parseExcelDate(row.trainingStartDate);
+        if (!parsedStartDate) {
+          failedRows.push({
+            rowNumber: row.rowNumber,
+            reason: `Multiple trainings matched "${row.trainingName}". Provide Training Start Date to disambiguate.`,
+          });
+          continue;
+        }
+
+        const dateKey = this.formatDateKey(parsedStartDate);
+        const byDate = matchingTrainings.find((training) => this.formatDateKey(training.startDate) === dateKey);
+        if (!byDate) {
+          failedRows.push({
+            rowNumber: row.rowNumber,
+            reason: `Training date mismatch for "${row.trainingName}" (${dateKey})`,
+          });
+          continue;
+        }
+        matchedTraining = byDate;
+      }
+
+      if (!row.facultyName && !row.facultyEmail && !row.facultyPhone) {
+        failedRows.push({
+          rowNumber: row.rowNumber,
+          reason: 'Faculty identification is required (Name, Email, or Phone)',
+        });
+        continue;
+      }
+
+      let candidates = [...userCandidates];
+
+      if (row.facultyEmail) {
+        const email = row.facultyEmail.toLowerCase();
+        candidates = candidates.filter((candidate) => String(candidate.email || '').toLowerCase() === email);
+      }
+
+      if (row.facultyPhone) {
+        const phone = this.normalizePhone(row.facultyPhone);
+        if (phone) {
+          candidates = candidates.filter((candidate) => this.normalizePhone(candidate.phoneNo) === phone);
+        }
+      }
+
+      if (row.facultyName) {
+        const nameKey = this.normalizeText(row.facultyName);
+        candidates = candidates.filter((candidate) => this.normalizeText(candidate.name) === nameKey);
+      }
+
+      if (candidates.length === 0) {
+        failedRows.push({
+          rowNumber: row.rowNumber,
+          reason: `Faculty member not found for provided identifiers`,
+        });
+        continue;
+      }
+
+      if (candidates.length > 1) {
+        failedRows.push({
+          rowNumber: row.rowNumber,
+          reason: `Faculty match is ambiguous. Add exact email or phone with name.`,
+        });
+        continue;
+      }
+
+      const matchedUser = candidates[0];
+      resolvedRows.push({
+        rowNumber: row.rowNumber,
+        trainingId: matchedTraining.id,
+        trainingTitle: matchedTraining.title,
+        userId: matchedUser.id,
+        facultyName: matchedUser.name,
+        facultyEmail: matchedUser.email,
+      });
+    }
+
+    if (!resolvedRows.length) {
+      return {
+        success: false,
+        message: 'No valid rows found for processing',
+        summary: {
+          totalRows: rows.length,
+          created: 0,
+          reactivated: 0,
+          skipped: 0,
+          failed: failedRows.length,
+        },
+        failedRows,
+        processedRows: [],
+      };
+    }
+
+    const uniqueRowMap = new Map<string, ResolvedBulkApplicationRow>();
+    for (const row of resolvedRows) {
+      const key = `${row.userId}::${row.trainingId}`;
+      if (!uniqueRowMap.has(key)) {
+        uniqueRowMap.set(key, row);
+      } else {
+        failedRows.push({
+          rowNumber: row.rowNumber,
+          reason: 'Duplicate nomination row in file for the same faculty and training',
+        });
+      }
+    }
+
+    const uniqueRows = Array.from(uniqueRowMap.values());
+    const uniqueUserIds = Array.from(new Set(uniqueRows.map((row) => row.userId)));
+    const uniqueTrainingIds = Array.from(new Set(uniqueRows.map((row) => row.trainingId)));
+
+    const existingApplications = await this.prisma.trainingApplication.findMany({
+      where: {
+        userId: { in: uniqueUserIds },
+        trainingId: { in: uniqueTrainingIds },
+      },
+      select: {
+        id: true,
+        userId: true,
+        trainingId: true,
+        isActive: true,
+      },
+    });
+
+    const existingMap = new Map<string, { id: string; isActive: boolean }>();
+    existingApplications.forEach((application) => {
+      existingMap.set(`${application.userId}::${application.trainingId}`, {
+        id: application.id,
+        isActive: application.isActive,
+      });
+    });
+
+    const toCreate: Array<{
+      userId: string;
+      trainingId: string;
+    }> = [];
+    const toReactivate: Array<{
+      id: string;
+    }> = [];
+
+    let skipped = 0;
+    const processedRows: Array<{ rowNumber: number; action: 'CREATED' | 'REACTIVATED' | 'SKIPPED'; trainingName: string; facultyName: string }> = [];
+
+    uniqueRows.forEach((row) => {
+      const key = `${row.userId}::${row.trainingId}`;
+      const existing = existingMap.get(key);
+
+      if (!existing) {
+        toCreate.push({
+          userId: row.userId,
+          trainingId: row.trainingId,
+        });
+        processedRows.push({
+          rowNumber: row.rowNumber,
+          action: 'CREATED',
+          trainingName: row.trainingTitle,
+          facultyName: row.facultyName,
+        });
+        return;
+      }
+
+      if (!existing.isActive) {
+        toReactivate.push({
+          id: existing.id,
+        });
+        processedRows.push({
+          rowNumber: row.rowNumber,
+          action: 'REACTIVATED',
+          trainingName: row.trainingTitle,
+          facultyName: row.facultyName,
+        });
+        return;
+      }
+
+      skipped += 1;
+      processedRows.push({
+        rowNumber: row.rowNumber,
+        action: 'SKIPPED',
+        trainingName: row.trainingTitle,
+        facultyName: row.facultyName,
+      });
+    });
+
+    for (let i = 0; i < toCreate.length; i += this.BULK_UPLOAD_BATCH_SIZE) {
+      const batch = toCreate.slice(i, i + this.BULK_UPLOAD_BATCH_SIZE);
+      const approvedAt = new Date();
+      await this.prisma.$transaction([
+        this.prisma.trainingApplication.createMany({
+          data: batch.map((item) => ({
+            userId: item.userId,
+            trainingId: item.trainingId,
+            status: TrainingApplicationStatus.APPROVED,
+            reviewedAt: approvedAt,
+            reviewedById: uploadedByUserId,
+          })),
+          skipDuplicates: true,
+        }),
+      ]);
+    }
+
+    for (let i = 0; i < toReactivate.length; i += this.BULK_UPLOAD_BATCH_SIZE) {
+      const batch = toReactivate.slice(i, i + this.BULK_UPLOAD_BATCH_SIZE);
+      const approvedAt = new Date();
+      await this.prisma.$transaction(
+        batch.map((item) =>
+          this.prisma.trainingApplication.update({
+            where: { id: item.id },
+            data: {
+              isActive: true,
+              status: TrainingApplicationStatus.APPROVED,
+              appliedAt: new Date(),
+              reviewedAt: approvedAt,
+              reviewedById: uploadedByUserId,
+            },
+          }),
+        ),
+      );
+    }
+
+    await Promise.all(
+      uniqueRows.map((row) => this.invalidateCache(row.userId, row.trainingId)),
+    );
+
+    this.auditService.log({
+      action: AuditAction.TRAINING_APPLICATION_SUBMIT,
+      entityType: 'TrainingApplication',
+      entityId: 'bulk-upload',
+      userId: uploadedByUserId,
+      category: AuditCategory.APPLICATION_PROCESS,
+      severity: AuditSeverity.MEDIUM,
+      description: `Bulk nomination upload processed: created=${toCreate.length}, reactivated=${toReactivate.length}, skipped=${skipped}, failed=${failedRows.length}`,
+    }).catch(() => {});
+
+    return {
+      success: true,
+      message: 'Bulk nomination upload processed',
+      summary: {
+        totalRows: rows.length,
+        created: toCreate.length,
+        reactivated: toReactivate.length,
+        skipped,
+        failed: failedRows.length,
+      },
+      failedRows,
+      processedRows,
     };
   }
 

@@ -204,6 +204,12 @@ export const menuConfig = {
         path: "/app/training/all-applications",
       },
       {
+        key: "training-bulk-applications",
+        label: "Bulk Add Applications",
+        icon: <UploadOutlined />,
+        path: "/app/training/bulk-applications",
+      },
+      {
         key: "training-test-forms",
         label: "Test Forms",
         icon: <FileDoneOutlined />,

@@ -85,6 +85,23 @@ const trainingAdminService = {
     return response.data;
   },
 
+  async downloadBulkApplicationTemplate() {
+    const response = await API.get('/state/training/applications/bulk-template', {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  async bulkUploadApplications(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await API.post('/state/training/applications/bulk-upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
   // Attendance
   async getTrainingAttendance(trainingId, params = {}) {
     const queryParams = new URLSearchParams(params).toString();
