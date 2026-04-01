@@ -23,6 +23,8 @@ const BulkUserCreate = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
 
+  const getRawFile = (fileLike) => fileLike?.originFileObj || fileLike;
+
   const handleDownloadTemplate = async () => {
     try {
       const blob = await bulkService.downloadUserTemplate();
@@ -41,7 +43,7 @@ const BulkUserCreate = () => {
   const validateStaffData = (data) => {
     const valid = [];
     const invalid = [];
-    const validRoles = ['TEACHER', 'FACULTY_SUPERVISOR'];
+    const validRoles = ['TEACHER', 'FACULTY_SUPERVISOR', 'ADMIN_STAFF'];
 
     data.forEach((row, index) => {
       const errors = [];
@@ -104,16 +106,42 @@ const BulkUserCreate = () => {
   };
 
   const handleFileUpload = (file) => {
-    setOriginalFile(file);
+    const rawFile = getRawFile(file);
+
+    if (!(rawFile instanceof Blob)) {
+      toast.error('Invalid file object. Please choose the Excel file again.');
+      setOriginalFile(null);
+      return false;
+    }
+
+    const fileName = rawFile.name || '';
+    const hasExcelExtension = /\.(xlsx|xls)$/i.test(fileName);
+    if (!hasExcelExtension) {
+      toast.error('Please upload a valid Excel file (.xlsx or .xls)');
+      setOriginalFile(null);
+      return false;
+    }
+
+    setOriginalFile(rawFile);
 
     const reader = new FileReader();
 
     reader.onload = (e) => {
       try {
-        const data = new Uint8Array(e.target.result);
+        const arrayBuffer = e?.target?.result;
+        if (!arrayBuffer) {
+          throw new Error('Could not read file data');
+        }
+
+        const data = new Uint8Array(arrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
+
+        if (!workbook.SheetNames?.length) {
+          throw new Error('No worksheet found in Excel file');
+        }
+
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
 
         if (jsonData.length === 0) {
           toast.error('The file is empty or has no valid data');
@@ -128,17 +156,20 @@ const BulkUserCreate = () => {
         setCurrentStep(1);
 
         if (results.invalid.length > 0) {
-          toast.warning(`Found ${results.invalid.length} invalid record(s). Please review before uploading.`);
+          toast(`Found ${results.invalid.length} invalid record(s). Please review before uploading.`, {
+            icon: '⚠️',
+          });
         } else {
           toast.success(`All ${results.valid.length} record(s) are valid!`);
         }
       } catch (error) {
-        toast.error('Failed to read file. Please ensure it is a valid Excel file.');
+        const reason = error?.message ? ` (${error.message})` : '';
+        toast.error(`Failed to read file. Please ensure it is a valid Excel file${reason}`);
         setOriginalFile(null);
       }
     };
 
-    reader.readAsArrayBuffer(file);
+    reader.readAsArrayBuffer(rawFile);
     return false;
   };
 
@@ -149,7 +180,7 @@ const BulkUserCreate = () => {
     }
 
     if (!originalFile) {
-      toast.error('File not found. Please upload again.');
+      toast.error('Excel file not found. Please select the file again.');
       return;
     }
 
@@ -163,7 +194,9 @@ const BulkUserCreate = () => {
       if (result.success === 0 && result.failed > 0) {
         toast.error(`All ${result.failed} records failed`);
       } else if (result.failed > 0) {
-        toast.warning(`Uploaded ${result.success} users, ${result.failed} failed`);
+        toast(`Uploaded ${result.success} users, ${result.failed} failed`, {
+          icon: '⚠️',
+        });
       } else {
         toast.success(`Successfully uploaded all ${result.success} users`);
       }
@@ -272,7 +305,7 @@ const BulkUserCreate = () => {
                   <li><strong>"Course"</strong> column is used to auto-link to branch</li>
                   <li><strong>"Contact Number"</strong> is required (min 4 digits) - used for password</li>
                   <li><strong>Password format:</strong> first 4 letters of name + @ + first 4 digits of phone (e.g., john@9876)</li>
-                  <li>Valid roles: TEACHER, FACULTY_SUPERVISOR (defaults to TEACHER)</li>
+                  <li>Valid roles: TEACHER, FACULTY_SUPERVISOR, ADMIN_STAFF (defaults to TEACHER)</li>
                 </ul>
               }
               type="info"

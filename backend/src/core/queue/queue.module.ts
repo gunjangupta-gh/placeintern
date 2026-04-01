@@ -26,16 +26,57 @@ const queueLogger = new Logger('QueueModule');
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => {
-        // Use host/port configuration directly (most compatible with DragonflyDB)
+        // Prefer explicit write endpoint to avoid replica READONLY errors.
+        const redisWriteUrl =
+          configService.get<string>('REDIS_QUEUE_URL') ||
+          configService.get<string>('REDIS_MASTER_URL') ||
+          configService.get<string>('REDIS_URL');
+
         const redisHost = configService.get<string>('REDIS_HOST', 'localhost');
         const redisPort = configService.get<number>('REDIS_PORT', 6379);
         const redisPassword = configService.get<string>('REDIS_PASSWORD');
+        const redisUsername = configService.get<string>('REDIS_USERNAME');
+        const redisDb = configService.get<number>('REDIS_DB');
         const queuePrefix = configService.get<string>('QUEUE_PREFIX', 'bull');
 
-        const connection: any = {
-          host: redisHost,
-          port: redisPort,
-          password: redisPassword || undefined,
+        const connection: any = redisWriteUrl
+          ? {
+              ...(() => {
+                try {
+                  const parsed = new URL(redisWriteUrl);
+                  return {
+                    host: parsed.hostname,
+                    port: parsed.port ? Number(parsed.port) : 6379,
+                    username: parsed.username || redisUsername || undefined,
+                    password:
+                      parsed.password || redisPassword || undefined,
+                    db:
+                      parsed.pathname && parsed.pathname !== '/'
+                        ? Number(parsed.pathname.replace('/', '')) || redisDb || 0
+                        : redisDb || 0,
+                    tls: parsed.protocol === 'rediss:' ? {} : undefined,
+                  };
+                } catch {
+                  queueLogger.warn('Invalid REDIS_QUEUE_URL/REDIS_MASTER_URL/REDIS_URL. Falling back to REDIS_HOST/REDIS_PORT.');
+                  return {
+                    host: redisHost,
+                    port: redisPort,
+                    username: redisUsername || undefined,
+                    password: redisPassword || undefined,
+                    db: redisDb || 0,
+                  };
+                }
+              })(),
+            }
+          : {
+              host: redisHost,
+              port: redisPort,
+              username: redisUsername || undefined,
+              password: redisPassword || undefined,
+              db: redisDb || 0,
+            };
+
+        Object.assign(connection, {
           // Enable offline queue in development to prevent errors when Redis is unavailable
           enableOfflineQueue: process.env.NODE_ENV === 'production' ? false : true,
           // Required for BullMQ compatibility
@@ -60,7 +101,7 @@ const queueLogger = new Logger('QueueModule');
           },
           // Suppress errors when Redis is unavailable in development
           lazyConnect: process.env.NODE_ENV !== 'production',
-        };
+        });
 
         return {
           connection,

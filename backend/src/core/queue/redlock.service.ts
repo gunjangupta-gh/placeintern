@@ -13,10 +13,21 @@ export class RedlockService implements OnModuleInit, OnApplicationShutdown {
   private readonly redisErrorDelayMs = 5 * 60 * 1000;
 
   async onModuleInit() {
+    const redisWriteUrl =
+      process.env.REDIS_QUEUE_URL || process.env.REDIS_MASTER_URL || process.env.REDIS_URL;
+
+    const baseConfig = redisWriteUrl
+      ? this.parseRedisUrl(redisWriteUrl)
+      : {
+          host: process.env.REDIS_HOST || 'localhost',
+          port: parseInt(process.env.REDIS_PORT || '6379', 10),
+          username: process.env.REDIS_USERNAME || undefined,
+          password: process.env.REDIS_PASSWORD || undefined,
+          db: process.env.REDIS_DB ? parseInt(process.env.REDIS_DB, 10) : 0,
+        };
+
     this.redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD || undefined,
+      ...baseConfig,
       lazyConnect: true,
       enableOfflineQueue: process.env.NODE_ENV === 'production' ? false : true,
       maxRetriesPerRequest: 3, // Allow a few retries for transient failures
@@ -72,6 +83,41 @@ export class RedlockService implements OnModuleInit, OnApplicationShutdown {
     } catch (err) {
       this.logger.warn('Redis lock service unavailable at startup');
       this.handleRedisError(err);
+    }
+  }
+
+  private parseRedisUrl(redisUrl: string): {
+    host: string;
+    port: number;
+    username?: string;
+    password?: string;
+    db?: number;
+    tls?: object;
+  } {
+    try {
+      const parsed = new URL(redisUrl);
+      return {
+        host: parsed.hostname,
+        port: parsed.port ? Number(parsed.port) : 6379,
+        username: parsed.username || process.env.REDIS_USERNAME || undefined,
+        password: parsed.password || process.env.REDIS_PASSWORD || undefined,
+        db:
+          parsed.pathname && parsed.pathname !== '/'
+            ? Number(parsed.pathname.replace('/', '')) || (process.env.REDIS_DB ? parseInt(process.env.REDIS_DB, 10) : 0)
+            : process.env.REDIS_DB
+              ? parseInt(process.env.REDIS_DB, 10)
+              : 0,
+        tls: parsed.protocol === 'rediss:' ? {} : undefined,
+      };
+    } catch {
+      this.logger.warn('Invalid REDIS_QUEUE_URL/REDIS_MASTER_URL/REDIS_URL. Falling back to REDIS_HOST/REDIS_PORT.');
+      return {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379', 10),
+        username: process.env.REDIS_USERNAME || undefined,
+        password: process.env.REDIS_PASSWORD || undefined,
+        db: process.env.REDIS_DB ? parseInt(process.env.REDIS_DB, 10) : 0,
+      };
     }
   }
 

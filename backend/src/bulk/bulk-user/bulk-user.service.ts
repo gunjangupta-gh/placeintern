@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
-import { Role, AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
+import { Role, AuditAction, AuditCategory, AuditSeverity, Designation } from '../../generated/prisma/client';
 import { BulkUserRowDto, BulkUserResultDto, BulkUserValidationResultDto } from './dto/bulk-user.dto';
 import { ExcelUtils } from '../../core/common/utils/excel.util';
 import * as bcrypt from 'bcrypt';
@@ -11,6 +11,7 @@ import { BCRYPT_SALT_ROUNDS } from '../../core/auth/services/auth.service';
 const ROLE_MAPPING: Record<string, Role> = {
   TEACHER: Role.TEACHER,
   FACULTY_SUPERVISOR: Role.TEACHER,
+  ADMIN_STAFF: Role.ADMIN_STAFF,
 };
 const validRoles = Object.keys(ROLE_MAPPING);
 
@@ -52,6 +53,22 @@ function normalizeInstitutionName(name: string): string {
     .replace(/[.,\-_]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function normalizeInstitutionKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function institutionInitials(value: string): string {
+  const stopWords = new Set(['of', 'the', 'and', 'for', 'at', 'to', 'in']);
+  return value
+    .toLowerCase()
+    .replace(/[.,\-_/()]/g, ' ')
+    .split(/\s+/)
+    .filter((token) => token && !stopWords.has(token))
+    .map((token) => token[0])
+    .join('')
+    .toUpperCase();
 }
 
 /**
@@ -159,12 +176,63 @@ function getBranchCode(courseName: string): string | null {
   return null;
 }
 
+/**
+ * Normalize designation text and map it to Designation enum
+ */
+function mapDesignationToEnum(designation?: string): Designation | undefined {
+  if (!designation) {
+    return undefined;
+  }
+
+  const normalized = designation
+    .toLowerCase()
+    .replace(/[().,\-_/]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const direct = normalized.toUpperCase().replace(/\s+/g, '_');
+  if ((Designation as any)[direct]) {
+    return (Designation as any)[direct] as Designation;
+  }
+
+  const mapping: Array<{ terms: string[]; value: Designation }> = [
+    { terms: ['principal'], value: Designation.PRINCIPAL },
+    { terms: ['hod', 'head of department'], value: Designation.HOD },
+    { terms: ['senior lecturer', 'sr lecturer'], value: Designation.SENIOR_LECTURER },
+    { terms: ['lecturer'], value: Designation.LECTURER },
+    { terms: ['assistant professor'], value: Designation.ASSISTANT_PROFESSOR },
+    { terms: ['foreman instructor'], value: Designation.FOREMAN_INSTRUCTOR },
+    { terms: ['workshop instructor'], value: Designation.WORKSHOP_INSTRUCTOR },
+    { terms: ['workshop superintendent'], value: Designation.WORKSHOP_SUPERINTENDENT },
+    { terms: ['workshop foreman'], value: Designation.WORKSHOP_FOREMAN },
+    { terms: ['lab technician', 'laboratory technician'], value: Designation.LAB_TECHNICIAN },
+    { terms: ['technician'], value: Designation.TECHNICIAN },
+    { terms: ['instructor'], value: Designation.INSTRUCTOR },
+    { terms: ['system analyst'], value: Designation.SYSTEM_ANALYST },
+    { terms: ['placement officer', 'training and placement officer', 'tpo'], value: Designation.TPO },
+    { terms: ['programmer assistant', 'programmer'], value: Designation.PROGRAMMER },
+    { terms: ['library assistant', 'librarian'], value: Designation.LIBRARIAN },
+    { terms: ['senior assistant', 'sr assistant'], value: Designation.SR_ASSTT },
+    { terms: ['clerk'], value: Designation.CLERK },
+    { terms: ['assistant', 'office assistant', 'junior assistant'], value: Designation.JUNIOR_ASSTT },
+    { terms: ['other'], value: Designation.OTHER },
+  ];
+
+  for (const item of mapping) {
+    if (item.terms.some((term) => normalized.includes(term))) {
+      return item.value;
+    }
+  }
+
+  return undefined;
+}
+
 @Injectable()
 export class BulkUserService {
   private readonly logger = new Logger(BulkUserService.name);
 
   // Valid roles that can be used in bulk upload
-  private readonly validRoles = ['TEACHER'];
+  private readonly validRoles = ['TEACHER', 'ADMIN_STAFF'];
 
   constructor(
     private readonly prisma: PrismaService,
@@ -203,7 +271,10 @@ export class BulkUserService {
         employeeId: this.cleanString(row['Employee ID'] || row['employeeId'] || row['Employee Id']),
         institutionName: this.cleanString(
           row['Institution'] || row['institution'] || row['Institution Name'] ||
-          row['Name of the College'] || row['College'] || row['College Name'] || row['Institute']
+          row['Name of the College'] || row['College'] || row['College Name'] || row['Institute'] ||
+          row['Institute Name'] || row['College/Institute'] || row['Institute/College'] ||
+          row['Name of Institute'] || row['Name of Institution'] || row['Institution Code'] ||
+          row['College Code'] || row['Institute Code'] || row['Code']
         ),
         branchName: this.cleanString(
           row['Branch'] || row['branch'] || row['Course'] || row['course']
@@ -228,8 +299,18 @@ export class BulkUserService {
 
     // Fetch all institutions for matching
     const allInstitutions = await this.prisma.institution.findMany({
-      select: { id: true, name: true, code: true },
+      select: { id: true, name: true, code: true, shortName: true },
     });
+    const sanitizedDefaultInstitutionId = this.resolveValidDefaultInstitutionId(
+      defaultInstitutionId,
+      allInstitutions,
+    );
+
+    if (defaultInstitutionId && !sanitizedDefaultInstitutionId) {
+      warnings.push(
+        `Default institution id \"${defaultInstitutionId}\" is invalid. Institution will be resolved from Excel per row.`,
+      );
+    }
 
     // Extract all emails for batch query
     const allEmails = users
@@ -351,8 +432,8 @@ export class BulkUserService {
       }
 
       // Institution validation - check if it can be matched
-      if (!defaultInstitutionId) {
-        // STATE_DIRECTORATE - must have institution in Excel
+      if (!sanitizedDefaultInstitutionId) {
+        // No valid default institution - must resolve from Excel
         if (!user.institutionName || user.institutionName.trim() === '') {
           errors.push({
             row: rowNumber,
@@ -361,7 +442,6 @@ export class BulkUserService {
             message: 'Institution name is required (use "Name of the College" column)',
           });
         } else {
-          // Try to match institution
           const matchedInstitution = this.findInstitutionByName(user.institutionName, allInstitutions);
           if (!matchedInstitution) {
             errors.push({
@@ -373,6 +453,19 @@ export class BulkUserService {
           } else {
             rowData.institutionMatched = matchedInstitution.name;
           }
+        }
+      } else if (user.institutionName && user.institutionName.trim() !== '') {
+        // If institution is provided in Excel, validate it explicitly to avoid linking to wrong institution
+        const matchedInstitution = this.findInstitutionByName(user.institutionName, allInstitutions);
+        if (!matchedInstitution) {
+          errors.push({
+            row: rowNumber,
+            field: 'institution',
+            value: user.institutionName,
+            message: `Institution not found: "${user.institutionName}"`,
+          });
+        } else {
+          rowData.institutionMatched = matchedInstitution.name;
         }
       }
 
@@ -405,6 +498,22 @@ export class BulkUserService {
     const successRecords: any[] = [];
     const failedRecords: any[] = [];
 
+    // Fetch all institutions for matching and validate default institution id
+    const allInstitutions = await this.prisma.institution.findMany({
+      select: { id: true, name: true, code: true, shortName: true },
+    });
+
+    const sanitizedDefaultInstitutionId = this.resolveValidDefaultInstitutionId(
+      defaultInstitutionId,
+      allInstitutions,
+    );
+
+    if (defaultInstitutionId && !sanitizedDefaultInstitutionId) {
+      this.logger.warn(
+        `Ignoring invalid default institution id \"${defaultInstitutionId}\" during bulk user upload`,
+      );
+    }
+
     // Audit: Bulk user upload initiated
     this.auditService.log({
       action: AuditAction.USER_REGISTRATION,
@@ -412,7 +521,7 @@ export class BulkUserService {
       category: AuditCategory.ADMINISTRATIVE,
       severity: AuditSeverity.MEDIUM,
       userId: createdBy,
-      institutionId: defaultInstitutionId,
+      institutionId: sanitizedDefaultInstitutionId,
       description: `Bulk user upload started: ${users.length} users`,
       newValues: {
         operation: 'bulk_user_upload_started',
@@ -428,11 +537,6 @@ export class BulkUserService {
       select: { email: true },
     });
     const existingEmailSet = new Set(existingUsers.map(u => u.email?.toLowerCase()));
-
-    // Fetch all institutions for matching
-    const allInstitutions = await this.prisma.institution.findMany({
-      select: { id: true, name: true, code: true },
-    });
 
     // Fetch all branches for matching (include shortName and code for better matching)
     const allBranches = await this.prisma.branch.findMany({
@@ -505,16 +609,16 @@ export class BulkUserService {
       // Try to create the user
       try {
         // Determine institution ID
-        let targetInstitutionId = defaultInstitutionId;
+        let targetInstitutionId = sanitizedDefaultInstitutionId;
         let targetInstitutionName: string | null = null;
 
-        if (user.institutionName) {
+        if (user.institutionName && user.institutionName.trim() !== '') {
           const matchedInstitution = this.findInstitutionByName(user.institutionName, allInstitutions);
           if (matchedInstitution) {
             targetInstitutionId = matchedInstitution.id;
             targetInstitutionName = matchedInstitution.name;
-          } else if (!defaultInstitutionId) {
-            // No match and no default - error
+          } else {
+            // Do not silently fallback when a row explicitly provides institution name
             failedRecords.push({
               row: rowNumber,
               name: user.name,
@@ -526,7 +630,7 @@ export class BulkUserService {
             });
             continue;
           }
-        } else if (!defaultInstitutionId) {
+        } else if (!sanitizedDefaultInstitutionId) {
           // No institution provided and no default
           failedRecords.push({
             row: rowNumber,
@@ -595,6 +699,20 @@ export class BulkUserService {
       `Bulk upload completed: ${successRecords.length} success, ${failedRecords.length} failed in ${processingTime}ms`,
     );
 
+    if (failedRecords.length > 0) {
+      const grouped = new Map<string, number>();
+      for (const row of failedRecords) {
+        const key = String(row.error || 'Unknown error').split(';')[0].trim();
+        grouped.set(key, (grouped.get(key) || 0) + 1);
+      }
+      const topReasons = Array.from(grouped.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([reason, count]) => `${count}x ${reason}`)
+        .join(' | ');
+      this.logger.warn(`Bulk user upload top failure reasons: ${topReasons}`);
+    }
+
     // Audit completion
     this.auditService.log({
       action: AuditAction.USER_REGISTRATION,
@@ -602,7 +720,7 @@ export class BulkUserService {
       category: AuditCategory.ADMINISTRATIVE,
       severity: failedRecords.length > 0 ? AuditSeverity.HIGH : AuditSeverity.MEDIUM,
       userId: createdBy,
-      institutionId: defaultInstitutionId,
+      institutionId: sanitizedDefaultInstitutionId,
       description: `Bulk user upload completed: ${successRecords.length} success, ${failedRecords.length} failed`,
       newValues: {
         operation: 'bulk_user_upload_completed',
@@ -628,16 +746,38 @@ export class BulkUserService {
    */
   private findInstitutionByName(
     institutionName: string,
-    allInstitutions: Array<{ id: string; name: string | null; code: string | null }>
+    allInstitutions: Array<{
+      id: string;
+      name: string | null;
+      code: string | null;
+      shortName: string | null;
+    }>
   ): { id: string; name: string | null } | null {
     if (!institutionName) return null;
 
     const normalizedSearch = normalizeInstitutionName(institutionName);
+    const normalizedKey = normalizeInstitutionKey(institutionName);
+    const searchInitials = institutionInitials(institutionName);
+
+    // Try exact code/shortName match first (useful when Excel has institution codes)
+    let match = allInstitutions.find((i) => {
+      const codeKey = normalizeInstitutionKey(i.code || '');
+      const shortKey = normalizeInstitutionKey(i.shortName || '');
+      return normalizedKey !== '' && (normalizedKey === codeKey || normalizedKey === shortKey);
+    });
+    if (match) return match;
 
     // Try exact normalized match
-    let match = allInstitutions.find(i =>
+    match = allInstitutions.find(i =>
       normalizeInstitutionName(i.name || '') === normalizedSearch
     );
+    if (match) return match;
+
+    // Try initials match (e.g. "GPC Batala" forms)
+    match = allInstitutions.find((i) => {
+      const candidateInitials = institutionInitials(i.name || '');
+      return searchInitials !== '' && candidateInitials !== '' && searchInitials === candidateInitials;
+    });
     if (match) return match;
 
     // Try partial match (one contains the other)
@@ -648,6 +788,27 @@ export class BulkUserService {
     if (match) return match;
 
     return null;
+  }
+
+  /**
+   * Accept default institution only when it exists in Institution table.
+   */
+  private resolveValidDefaultInstitutionId(
+    defaultInstitutionId: string | null,
+    allInstitutions: Array<{
+      id: string;
+      name: string | null;
+      code: string | null;
+      shortName: string | null;
+    }>,
+  ): string | null {
+    if (!defaultInstitutionId) {
+      return null;
+    }
+
+    return allInstitutions.some((institution) => institution.id === defaultInstitutionId)
+      ? defaultInstitutionId
+      : null;
   }
 
   /**
@@ -718,6 +879,7 @@ export class BulkUserService {
     branchName?: string | null,
   ) {
     const role = ROLE_MAPPING[userDto.role] || Role.TEACHER;
+    const designationEnum = mapDesignationToEnum(userDto.designation);
 
     // Generate custom password
     const plainPassword = generateCustomPassword(userDto.name, userDto.phone);
@@ -735,6 +897,7 @@ export class BulkUserService {
         role,
         phoneNo: userDto.phone,
         designation: userDto.designation,
+        designationEnum,
         active: true,
         institutionId,
         branchId: branchId || null,
@@ -776,7 +939,7 @@ export class BulkUserService {
       { Field: 'Name of the College', Required: 'Yes*', Description: '*Required for State Directorate. Auto-matches to institution.', Example: 'Government Polytechnic College Amritsar' },
       { Field: 'Course', Required: 'No', Description: 'Branch/Course name (auto-matches to branch)', Example: 'Computer Science' },
       { Field: 'Designation', Required: 'No', Description: 'Job designation', Example: 'Professor' },
-      { Field: 'Role', Required: 'No', Description: 'TEACHER or FACULTY_SUPERVISOR (defaults to TEACHER)', Example: 'TEACHER' },
+      { Field: 'Role', Required: 'No', Description: 'TEACHER, FACULTY_SUPERVISOR, or ADMIN_STAFF (defaults to TEACHER)', Example: 'TEACHER' },
     ];
 
     const passwordInfo = [

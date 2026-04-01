@@ -1,10 +1,12 @@
 import API from './api';
 
+const resolveRawFile = (file) => file?.originFileObj || file;
+
 export const bulkService = {
   // Institution bulk upload
   async uploadInstitutions(file, onProgress, useAsync = false) {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', resolveRawFile(file));
     const response = await API.post(`/bulk/institutions/upload?async=${useAsync}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: onProgress,
@@ -13,7 +15,7 @@ export const bulkService = {
   },
   async validateInstitutions(file) {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', resolveRawFile(file));
     const response = await API.post('/bulk/institutions/validate', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
@@ -27,7 +29,7 @@ export const bulkService = {
   // User bulk upload
   async uploadUsers(file, onProgress, useAsync = false, institutionId = null) {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', resolveRawFile(file));
     let url = `/bulk/users/upload?async=${useAsync}`;
     if (institutionId) {
       url += `&institutionId=${institutionId}`;
@@ -40,7 +42,7 @@ export const bulkService = {
   },
   async validateUsers(file, institutionId = null) {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', resolveRawFile(file));
     let url = '/bulk/users/validate';
     if (institutionId) {
       url += `?institutionId=${institutionId}`;
@@ -70,7 +72,7 @@ export const bulkService = {
   // Student bulk upload
   async uploadStudents(file, onProgress, useAsync = false, institutionId = null) {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', resolveRawFile(file));
     let url = `/bulk/students/upload?async=${useAsync}`;
     if (institutionId) {
       url += `&institutionId=${institutionId}`;
@@ -83,7 +85,7 @@ export const bulkService = {
   },
   async validateStudents(file, institutionId = null) {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', resolveRawFile(file));
     let url = '/bulk/students/validate';
     if (institutionId) {
       url += `?institutionId=${institutionId}`;
