@@ -235,6 +235,18 @@ export const bulkReviewStateApplications = createAsyncThunk(
   }
 );
 
+export const permanentlyDeleteStateApplication = createAsyncThunk(
+  'stateTraining/permanentlyDeleteApplication',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await trainingAdminService.deleteApplicationPermanently(id);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to permanently delete application');
+    }
+  }
+);
+
 // Attendance
 export const fetchStateTrainingAttendance = createAsyncThunk(
   'stateTraining/fetchTrainingAttendance',
@@ -740,6 +752,14 @@ const stateTrainingSlice = createSlice({
         state.lastFetched.trainings = null;
         state.lastFetched.calendar = null;
         state.lastFetched.upcoming = null;
+        state.lastFetched.applications = null;
+      })
+      .addCase(permanentlyDeleteStateApplication.fulfilled, (state, action) => {
+        const deletedId = action.payload?.id;
+        if (deletedId) {
+          state.applications.list = state.applications.list.filter((app) => app.id !== deletedId);
+          state.applications.pagination.total = Math.max((state.applications.pagination.total || 1) - 1, 0);
+        }
         state.lastFetched.applications = null;
       })
 

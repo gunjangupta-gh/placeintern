@@ -198,6 +198,12 @@ export const menuConfig = {
         path: "/app/training/manage",
       },
       {
+        key: "training-all-applications",
+        label: "All Applications",
+        icon: <FileTextOutlined />,
+        path: "/app/training/all-applications",
+      },
+      {
         key: "training-test-forms",
         label: "Test Forms",
         icon: <FileDoneOutlined />,

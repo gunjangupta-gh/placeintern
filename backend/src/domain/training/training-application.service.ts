@@ -650,6 +650,51 @@ export class TrainingApplicationService {
   }
 
   /**
+   * Permanently delete an application (State only)
+   */
+  async permanentlyDelete(applicationId: string, deletedByUserId: string) {
+    try {
+      const application = await this.prisma.trainingApplication.findUnique({
+        where: { id: applicationId },
+        include: {
+          user: { select: { id: true, institutionId: true, name: true } },
+          training: { select: { id: true, title: true } },
+        },
+      });
+
+      if (!application) {
+        throw new NotFoundException('Application not found');
+      }
+
+      await this.prisma.trainingApplication.delete({
+        where: { id: applicationId },
+      });
+
+      await this.invalidateCache(application.userId, application.trainingId);
+
+      this.auditService.log({
+        action: AuditAction.TRAINING_DELETE,
+        entityType: 'TrainingApplication',
+        entityId: applicationId,
+        userId: deletedByUserId,
+        category: AuditCategory.TRAINING,
+        severity: AuditSeverity.HIGH,
+        description: `Permanently deleted application for "${application.training.title}" by ${application.user.name || 'faculty'}`,
+        institutionId: application.user.institutionId || undefined,
+      }).catch(() => {});
+
+      return {
+        success: true,
+        id: applicationId,
+        message: 'Application permanently deleted',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to permanently delete application: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
    * Check capacity
    */
   async checkCapacity(trainingId: string) {

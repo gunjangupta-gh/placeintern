@@ -80,6 +80,11 @@ const trainingAdminService = {
     return response.data;
   },
 
+  async deleteApplicationPermanently(id) {
+    const response = await API.delete(`/state/training/applications/${id}/permanent`);
+    return response.data;
+  },
+
   // Attendance
   async getTrainingAttendance(trainingId, params = {}) {
     const queryParams = new URLSearchParams(params).toString();

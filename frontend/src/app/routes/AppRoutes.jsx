@@ -62,6 +62,7 @@ import StateTrainingManagementPage from '../../features/state/training/TrainingM
 import StateTrainingManageFormPage from '../../features/state/training/TrainingManageFormPage';
 import StateTrainingDetailsPage from '../../features/state/training/TrainingDetailsPage';
 import StateApplicationManagementPage from '../../features/state/training/ApplicationManagementPage';
+import TrainingAllApplicationsPage from '../../features/state/training/TrainingAllApplicationsPage';
 import StateAttendanceManagementPage from '../../features/state/training/AttendanceManagementPage';
 import StateCertificateManagementPage from '../../features/state/training/CertificateManagementPage';
 import StateFeedbackFormManagementPage from '../../features/state/training/FeedbackFormManagementPage';
@@ -418,6 +419,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE]}>
               <StateApplicationManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="training/all-applications"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <TrainingAllApplicationsPage />
             </ProtectedRoute>
           }
         />

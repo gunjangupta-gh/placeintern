@@ -150,6 +150,13 @@ export class StateTrainingController {
     return this.applicationService.review(id, dto, req.user.userId);
   }
 
+  @Delete('applications/:appId/permanent')
+  @Roles(Role.STATE_DIRECTORATE)
+  @ApiOperation({ summary: 'Permanently delete an application (State only)' })
+  async permanentlyDeleteApplication(@Param('appId') id: string, @Req() req) {
+    return this.applicationService.permanentlyDelete(id, req.user.userId);
+  }
+
   @Post('applications/bulk-review')
   @ApiOperation({ summary: 'Bulk review applications' })
   async bulkReviewApplications(@Body() dto: BulkReviewApplicationDto, @Req() req) {
