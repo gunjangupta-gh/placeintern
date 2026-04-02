@@ -212,7 +212,7 @@ export class StateTrainingController {
       required: ['file'],
     },
   })
-  async bulkUploadApplications(@UploadedFile() file: Express.Multer.File, @Req() req) {
+  async bulkUploadApplications(@UploadedFile() file: Express.Multer.File, @Req() req): Promise<any> {
     if (!file) {
       throw new BadRequestException('File is required');
     }

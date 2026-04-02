@@ -27,6 +27,16 @@ interface ResolvedBulkApplicationRow {
   facultyEmail?: string | null;
 }
 
+interface BulkApplicationFailedRow {
+  rowNumber: number;
+  reason: string;
+  trainingName?: string;
+  trainingStartDate?: string;
+  facultyName?: string;
+  facultyEmail?: string;
+  facultyPhone?: string;
+}
+
 @Injectable()
 export class TrainingApplicationService {
   private readonly logger = new Logger(TrainingApplicationService.name);
@@ -1135,7 +1145,7 @@ export class TrainingApplicationService {
       throw new BadRequestException('Maximum 2000 rows are allowed per upload');
     }
 
-    const failedRows: Array<{ rowNumber: number; reason: string }> = [];
+    const failedRows: BulkApplicationFailedRow[] = [];
 
     const trainings = await this.prisma.training.findMany({
       where: { isActive: true },
@@ -1201,18 +1211,25 @@ export class TrainingApplicationService {
 
     const resolvedRows: ResolvedBulkApplicationRow[] = [];
 
+    const buildFailedRow = (row: BulkApplicationUploadRow, reason: string): BulkApplicationFailedRow => ({
+      rowNumber: row.rowNumber,
+      reason,
+      trainingName: row.trainingName,
+      trainingStartDate: row.trainingStartDate,
+      facultyName: row.facultyName,
+      facultyEmail: row.facultyEmail,
+      facultyPhone: row.facultyPhone,
+    });
+
     for (const row of rows) {
       if (!row.trainingName) {
-        failedRows.push({ rowNumber: row.rowNumber, reason: 'Training Name is required' });
+        failedRows.push(buildFailedRow(row, 'Training Name is required'));
         continue;
       }
 
       const matchingTrainings = trainingMap.get(this.normalizeText(row.trainingName)) || [];
       if (!matchingTrainings.length) {
-        failedRows.push({
-          rowNumber: row.rowNumber,
-          reason: `Training not found: ${row.trainingName}`,
-        });
+        failedRows.push(buildFailedRow(row, `Training not found: ${row.trainingName}`));
         continue;
       }
 
@@ -1220,69 +1237,91 @@ export class TrainingApplicationService {
       if (matchingTrainings.length > 1) {
         const parsedStartDate = this.parseExcelDate(row.trainingStartDate);
         if (!parsedStartDate) {
-          failedRows.push({
-            rowNumber: row.rowNumber,
-            reason: `Multiple trainings matched "${row.trainingName}". Provide Training Start Date to disambiguate.`,
-          });
+          failedRows.push(
+            buildFailedRow(
+              row,
+              `Multiple trainings matched "${row.trainingName}". Provide Training Start Date to disambiguate.`,
+            ),
+          );
           continue;
         }
 
         const dateKey = this.formatDateKey(parsedStartDate);
         const byDate = matchingTrainings.find((training) => this.formatDateKey(training.startDate) === dateKey);
         if (!byDate) {
-          failedRows.push({
-            rowNumber: row.rowNumber,
-            reason: `Training date mismatch for "${row.trainingName}" (${dateKey})`,
-          });
+          failedRows.push(buildFailedRow(row, `Training date mismatch for "${row.trainingName}" (${dateKey})`));
           continue;
         }
         matchedTraining = byDate;
       }
 
       if (!row.facultyName && !row.facultyEmail && !row.facultyPhone) {
-        failedRows.push({
-          rowNumber: row.rowNumber,
-          reason: 'Faculty identification is required (Name, Email, or Phone)',
-        });
+        failedRows.push(buildFailedRow(row, 'Faculty identification is required (Name, Email, or Phone)'));
         continue;
       }
 
-      let candidates = [...userCandidates];
+      const emailKey = row.facultyEmail ? row.facultyEmail.toLowerCase() : '';
+      const phoneKey = row.facultyPhone ? this.normalizePhone(row.facultyPhone) : '';
+      const nameKey = row.facultyName ? this.normalizeText(row.facultyName) : '';
 
-      if (row.facultyEmail) {
-        const email = row.facultyEmail.toLowerCase();
-        candidates = candidates.filter((candidate) => String(candidate.email || '').toLowerCase() === email);
-      }
+      const scoredCandidates = userCandidates
+        .map((candidate) => {
+          const emailMatch = Boolean(
+            emailKey && String(candidate.email || '').toLowerCase() === emailKey,
+          );
+          const phoneMatch = Boolean(
+            phoneKey && this.normalizePhone(candidate.phoneNo) === phoneKey,
+          );
+          const nameMatch = Boolean(
+            nameKey && this.normalizeText(candidate.name) === nameKey,
+          );
 
-      if (row.facultyPhone) {
-        const phone = this.normalizePhone(row.facultyPhone);
-        if (phone) {
-          candidates = candidates.filter((candidate) => this.normalizePhone(candidate.phoneNo) === phone);
-        }
-      }
+          const score = Number(emailMatch) + Number(phoneMatch) + Number(nameMatch);
+          return {
+            candidate,
+            score,
+            emailMatch,
+            phoneMatch,
+            nameMatch,
+          };
+        })
+        .filter((item) => item.score > 0);
 
-      if (row.facultyName) {
-        const nameKey = this.normalizeText(row.facultyName);
-        candidates = candidates.filter((candidate) => this.normalizeText(candidate.name) === nameKey);
-      }
+      if (scoredCandidates.length === 0) {
+        const hints: string[] = [];
+        if (emailKey) hints.push(`email=${row.facultyEmail}`);
+        if (phoneKey) hints.push(`phone=${row.facultyPhone}`);
+        if (nameKey) hints.push(`name=${row.facultyName}`);
 
-      if (candidates.length === 0) {
-        failedRows.push({
-          rowNumber: row.rowNumber,
-          reason: `Faculty member not found for provided identifiers`,
-        });
+        failedRows.push(
+          buildFailedRow(
+            row,
+            `Faculty member not found. Checked by ${hints.join(', ') || 'available identifiers'}`,
+          ),
+        );
         continue;
       }
 
-      if (candidates.length > 1) {
-        failedRows.push({
-          rowNumber: row.rowNumber,
-          reason: `Faculty match is ambiguous. Add exact email or phone with name.`,
-        });
+      const bestScore = Math.max(...scoredCandidates.map((item) => item.score));
+      const bestMatches = scoredCandidates.filter((item) => item.score === bestScore);
+
+      if (bestMatches.length > 1) {
+        const matchedBy = [
+          bestMatches.some((m) => m.emailMatch) ? 'email' : null,
+          bestMatches.some((m) => m.phoneMatch) ? 'phone' : null,
+          bestMatches.some((m) => m.nameMatch) ? 'name' : null,
+        ].filter(Boolean).join(', ');
+
+        failedRows.push(
+          buildFailedRow(
+            row,
+            `Faculty match is ambiguous (${bestMatches.length} users matched by ${matchedBy || 'provided identifiers'}). Add exact email or phone.`,
+          ),
+        );
         continue;
       }
 
-      const matchedUser = candidates[0];
+      const matchedUser = bestMatches[0].candidate;
       resolvedRows.push({
         rowNumber: row.rowNumber,
         trainingId: matchedTraining.id,
@@ -1318,6 +1357,9 @@ export class TrainingApplicationService {
         failedRows.push({
           rowNumber: row.rowNumber,
           reason: 'Duplicate nomination row in file for the same faculty and training',
+          trainingName: row.trainingTitle,
+          facultyName: row.facultyName,
+          facultyEmail: row.facultyEmail || undefined,
         });
       }
     }

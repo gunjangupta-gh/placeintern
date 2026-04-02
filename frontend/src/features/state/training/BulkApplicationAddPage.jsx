@@ -78,6 +78,24 @@ const BulkApplicationAddPage = () => {
     return result.failedRows.map((row, index) => ({ key: `${row.rowNumber}-${index}`, ...row }));
   }, [result]);
 
+  const failedReasonSummary = useMemo(() => {
+    if (!failedRows.length) {
+      return '';
+    }
+
+    const counts = failedRows.reduce((acc, row) => {
+      const key = row.reason || 'Unknown error';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([reason, count]) => `${count}x ${reason}`)
+      .join(' | ');
+  }, [failedRows]);
+
   const processedRows = useMemo(() => {
     if (!Array.isArray(result?.processedRows)) {
       return [];
@@ -214,7 +232,10 @@ const BulkApplicationAddPage = () => {
             showIcon
             icon={<ExclamationCircleOutlined />}
             message="Fix these rows and re-upload"
-            description="Rows failed due to unmatched/ambiguous faculty or training details."
+            description={
+              failedReasonSummary ||
+              'Rows failed due to unmatched/ambiguous faculty or training details.'
+            }
             className="mb-3"
           />
           <Table
@@ -227,6 +248,30 @@ const BulkApplicationAddPage = () => {
                 title: 'Row',
                 dataIndex: 'rowNumber',
                 width: 80,
+              },
+              {
+                title: 'Training',
+                dataIndex: 'trainingName',
+                width: 240,
+                render: (value, record) => (
+                  <Space direction="vertical" size={0}>
+                    <Text className="text-xs">{value || '-'}</Text>
+                    {record.trainingStartDate ? (
+                      <Text type="secondary" className="text-[11px]">Start: {record.trainingStartDate}</Text>
+                    ) : null}
+                  </Space>
+                ),
+              },
+              {
+                title: 'Faculty Input',
+                width: 280,
+                render: (_, record) => (
+                  <Space direction="vertical" size={0}>
+                    <Text className="text-xs">Name: {record.facultyName || '-'}</Text>
+                    <Text className="text-xs">Email: {record.facultyEmail || '-'}</Text>
+                    <Text className="text-xs">Phone: {record.facultyPhone || '-'}</Text>
+                  </Space>
+                ),
               },
               {
                 title: 'Reason',
