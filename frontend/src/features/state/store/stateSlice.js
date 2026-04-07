@@ -284,6 +284,7 @@ export const fetchInstitutions = createAsyncThunk(
         page: params?.page ?? 1,
         limit: params?.limit ?? 10,
         search: params?.search ?? '',
+        status: params?.status ?? '',
         type: params?.type ?? '',
         isActive:
           typeof params?.isActive === 'boolean' ? String(params.isActive) : params?.isActive ?? '',

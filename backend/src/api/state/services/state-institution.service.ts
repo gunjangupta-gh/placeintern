@@ -30,9 +30,10 @@ export class StateInstitutionService {
     search?: string;
     type?: string;
     isActive?: boolean;
+    status?: 'active' | 'inactive' | 'all';
     cursor?: string;
   }) {
-    const { page, limit, search, type, isActive, cursor } = params;
+    const { page, limit, search, type, isActive, status, cursor } = params;
 
     const pageNum = Math.max(1, Math.floor(Number(page) || 1));
     const limitNum = Math.max(1, Math.min(100, Math.floor(Number(limit) || 10)));
@@ -52,9 +53,16 @@ export class StateInstitutionService {
       where.type = type as any;
     }
 
-    // Default to active institutions only (consistent with lookupService.getInstitutions)
-    // Pass isActive=false explicitly to include inactive institutions
-    where.isActive = isActive ?? true;
+    // Prefer explicit status filter when provided; preserve legacy isActive behavior otherwise.
+    if (status === 'active') {
+      where.isActive = true;
+    } else if (status === 'inactive') {
+      where.isActive = false;
+    } else if (status !== 'all') {
+      // Default to active institutions only (consistent with lookupService.getInstitutions)
+      // Pass isActive=false explicitly to include inactive institutions in legacy callers.
+      where.isActive = isActive ?? true;
+    }
 
     const query: Prisma.InstitutionFindManyArgs = {
       where,

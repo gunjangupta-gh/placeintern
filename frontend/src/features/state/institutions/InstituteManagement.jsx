@@ -6,6 +6,7 @@ import {
   Table,
   Button,
   Input,
+  Select,
   Typography,
   Tag,
   Space,
@@ -65,6 +66,7 @@ const InstituteManagement = () => {
   const [instituteToDelete, setInstituteToDelete] = useState(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -74,13 +76,14 @@ const InstituteManagement = () => {
   useEffect(() => {
     fetchData();
     dispatch(fetchDashboardStats());
-  }, [dispatch, currentPage, pageSize, debouncedSearch]);
+  }, [dispatch, currentPage, pageSize, debouncedSearch, statusFilter]);
 
   const fetchData = (force = false) => {
     dispatch(fetchInstitutions({
       page: currentPage,
       limit: pageSize,
       search: debouncedSearch,
+      status: statusFilter,
       forceRefresh: force
     }));
   };
@@ -381,15 +384,34 @@ const InstituteManagement = () => {
           styles={{ body: { padding: '24px' } }}
         >
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-            <Input
-              placeholder="Search by name, code, or city..."
-              prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              className="max-w-md h-10 rounded-xl"
-              style={{ backgroundColor: token.colorBgLayout, borderColor: token.colorBorder }}
-              allowClear
-            />
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <Input
+                placeholder="Search by name, code, or city..."
+                prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
+                value={searchText}
+                onChange={(e) => {
+                  setSearchText(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="max-w-md h-10 rounded-xl"
+                style={{ backgroundColor: token.colorBgLayout, borderColor: token.colorBorder }}
+                allowClear
+              />
+              <Select
+                value={statusFilter}
+                onChange={(value) => {
+                  setStatusFilter(value);
+                  setCurrentPage(1);
+                }}
+                className="h-10"
+                style={{ minWidth: 150 }}
+                options={[
+                  { value: 'all', label: 'All Status' },
+                  { value: 'active', label: 'Active' },
+                  { value: 'inactive', label: 'Inactive' },
+                ]}
+              />
+            </div>
             <div className="flex items-center gap-3 w-full md:w-auto">
               <Button
                 icon={<ReloadOutlined />}

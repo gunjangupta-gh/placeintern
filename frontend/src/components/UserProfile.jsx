@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   Avatar,
@@ -82,6 +82,52 @@ const DESIGNATION_OPTIONS = [
   { value: 'Other', label: 'Other' },
 ];
 
+const DESIGNATION_LABEL_MAP = new Map([
+  ['PRINCIPAL', 'Principal'],
+  ['HOD', 'HOD'],
+  ['SENIOR_LECTURER', 'Senior Lecturer'],
+  ['LECTURER', 'Lecturer'],
+  ['ASSISTANT_PROFESSOR', 'Assistant Professor'],
+  ['FOREMAN_INSTRUCTOR', 'Foreman Instructor'],
+  ['WORKSHOP_INSTRUCTOR', 'Workshop Instructor'],
+  ['WORKSHOP_SUPERINTENDENT', 'Workshop Superintendent'],
+  ['WORKSHOP_FOREMAN', 'Workshop Foreman'],
+  ['LAB_TECHNICIAN', 'Lab Technician'],
+  ['TECHNICIAN', 'Technician'],
+  ['INSTRUCTOR', 'Instructor'],
+  ['SYSTEM_ANALYST', 'System Analyst'],
+  ['SYSTEM_ADMINISTRATOR', 'System Administrator'],
+  ['SYSTEM_MANAGER', 'System Manager'],
+  ['PROGRAMMER', 'Programmer'],
+  ['NETWORK_ENGINEER', 'Network Engineer'],
+  ['COMPUTER_OPERATOR', 'Computer Operator'],
+  ['LIBRARIAN', 'Librarian'],
+  ['TPO', 'TPO'],
+  ['FASHION_DESIGNER', 'Fashion Designer'],
+  ['PEON', 'Peon'],
+  ['ASSTT_DIRECTOR', 'Asstt. Director'],
+  ['ADDITIONAL_DIRECTOR', 'Additional Director'],
+  ['DEPUTY_DIRECTOR_STAFF', 'Deputy Director (Staff)'],
+  ['DEPUTY_DIRECTOR_CONDUCT', 'Deputy Director (Conduct)'],
+  ['DEPUTY_DIRECTOR_PLANNING', 'Deputy Director (Planning)'],
+  ['DIRECTOR_ACADEMICS', 'Director (Academics)'],
+  ['REGISTRAR', 'Registrar'],
+  ['HOD_CONTROLLER_EXAMINATIONS', 'HOD - Controller (Examinations)'],
+  ['DEMONSTRATOR', 'Demonstrator'],
+  ['STENOTYPIST', 'Stenotypist'],
+  ['CLERK', 'Clerk'],
+  ['JR_SCALE_STENOGRAPHER', 'Jr. Scale Stenographer'],
+  ['JUNIOR_ASSTT', 'Junior Asstt.'],
+  ['SR_ASSTT', 'Sr. Asstt.'],
+  ['SUPDT_GRADE_2', 'Supdt. Grade 2'],
+  ['OTHER', 'Other'],
+]);
+
+const normalizeDesignation = (designation) => {
+  if (!designation) return '';
+  return DESIGNATION_LABEL_MAP.get(designation) || designation;
+};
+
 const UserProfile = ({ visible, onClose }) => {
   const [form] = Form.useForm();
   const [userData, setUserData] = useState(null);
@@ -89,7 +135,34 @@ const UserProfile = ({ visible, onClose }) => {
   const [editing, setEditing] = useState(false);
   const [fetchingProfile, setFetchingProfile] = useState(false);
   const { darkMode } = useTheme();
-  const { activeBranches, loading: branchesLoading } = useBranches();
+  const { branches, loading: branchesLoading } = useBranches();
+
+  const branchOptions = useMemo(() => {
+    const base = (branches || []).map((branch) => ({
+      value: branch.id,
+      label: branch.name,
+    }));
+
+    if (userData?.branchName && !base.some((option) => option.label === userData.branchName)) {
+      base.push({ value: userData.branchName, label: userData.branchName });
+    }
+
+    return base;
+  }, [branches, userData]);
+
+  const designationOptions = useMemo(() => {
+    const options = [...DESIGNATION_OPTIONS];
+    const normalizedDesignation = normalizeDesignation(userData?.designation);
+
+    if (
+      normalizedDesignation &&
+      !options.some((option) => option.value === normalizedDesignation)
+    ) {
+      options.push({ value: normalizedDesignation, label: normalizedDesignation });
+    }
+
+    return options;
+  }, [userData]);
 
   // MFA state
   const [activeTab, setActiveTab] = useState('profile');
@@ -124,18 +197,18 @@ const UserProfile = ({ visible, onClose }) => {
       setMfaEnabled(data.mfaEnabled || false);
 
       let branchId = data.branchId || null;
-      if (!branchId && data.branchName && activeBranches?.length) {
-        const matchedBranch = activeBranches.find(
+      if (!branchId && data.branchName && branches?.length) {
+        const matchedBranch = branches.find(
           (branch) => branch.name === data.branchName || branch.shortName === data.branchName
         );
-        branchId = matchedBranch?.id || null;
+        branchId = matchedBranch?.id || data.branchName;
       }
 
       form.setFieldsValue({
         name: data.name,
         email: data.email,
         phoneNo: data.phoneNo || '',
-        designation: data.designation || '',
+        designation: normalizeDesignation(data.designation),
         branchId,
       });
     } catch (error) {
@@ -147,20 +220,20 @@ const UserProfile = ({ visible, onClose }) => {
   };
 
   useEffect(() => {
-    if (!visible || !userData || !activeBranches?.length) {
+    if (!visible || !userData || !branches?.length) {
       return;
     }
 
     let branchId = userData.branchId || null;
     if (!branchId && userData.branchName) {
-      const matchedBranch = activeBranches.find(
+      const matchedBranch = branches.find(
         (branch) => branch.name === userData.branchName || branch.shortName === userData.branchName
       );
-      branchId = matchedBranch?.id || null;
+      branchId = matchedBranch?.id || userData.branchName;
     }
 
     form.setFieldValue('branchId', branchId);
-  }, [visible, userData, activeBranches, form]);
+  }, [visible, userData, branches, form]);
 
   const handleMfaSetupSuccess = () => {
     setMfaEnabled(true);
@@ -204,8 +277,8 @@ const UserProfile = ({ visible, onClose }) => {
     try {
       let branchName = null;
       if (values.branchId) {
-        const selectedBranch = activeBranches.find((branch) => branch.id === values.branchId);
-        branchName = selectedBranch?.name || null;
+        const selectedBranch = branches.find((branch) => branch.id === values.branchId);
+        branchName = selectedBranch?.name || values.branchId;
       }
 
       const payload = {
@@ -249,12 +322,13 @@ const UserProfile = ({ visible, onClose }) => {
         name: userData.name,
         email: userData.email,
         phoneNo: userData.phoneNo || '',
-        designation: userData.designation || '',
+        designation: normalizeDesignation(userData.designation),
         branchId:
           userData.branchId ||
-          activeBranches.find(
+          branches.find(
             (branch) => branch.name === userData.branchName || branch.shortName === userData.branchName
           )?.id ||
+          userData.branchName ||
           null,
       });
       setEditing(false);
@@ -465,7 +539,7 @@ const UserProfile = ({ visible, onClose }) => {
                               optionFilterProp="label"
                               placeholder="Select designation"
                               className="rounded-lg"
-                              options={DESIGNATION_OPTIONS}
+                              options={designationOptions}
                             />
                           </Form.Item>
 
@@ -478,10 +552,7 @@ const UserProfile = ({ visible, onClose }) => {
                               optionFilterProp="label"
                               placeholder="Select branch"
                               className="rounded-lg"
-                              options={activeBranches.map((branch) => ({
-                                value: branch.id,
-                                label: branch.name,
-                              }))}
+                              options={branchOptions}
                             />
                           </Form.Item>
                         </div>

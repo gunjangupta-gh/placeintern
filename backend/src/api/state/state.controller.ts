@@ -238,11 +238,13 @@ export class StateController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
+    @Query('status') status?: 'active' | 'inactive' | 'all',
   ) {
     return this.stateService.getInstitutions({
       page: page ? Number(page) : undefined,
       limit: limit ? Number(limit) : undefined,
       search,
+      status,
     });
   }
 

@@ -95,6 +95,7 @@ export class StateService {
     search?: string;
     city?: string;
     isActive?: boolean;
+    status?: 'active' | 'inactive' | 'all';
   }) {
     return this.institutionService.getInstitutions(params);
   }

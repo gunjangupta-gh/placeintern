@@ -43,6 +43,13 @@ const ACTION_TYPE_TO_TAB = {
   feedback: 'feedback',
 };
 
+const ENABLED_REMINDER_TABS = ['preTest', 'postTest', 'lessonPlan', 'feedback'];
+
+const toShortLabel = (text, maxLength = 42) => {
+  if (!text) return '-';
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1)}...` : text;
+};
+
 const RemindersPage = () => {
   const [searchParams] = useSearchParams();
   const initialActionType = searchParams.get('actionType');
@@ -51,12 +58,16 @@ const RemindersPage = () => {
   const [pendingActions, setPendingActions] = useState(null);
   const [searchText, setSearchText] = useState('');
   const [selectedFaculty, setSelectedFaculty] = useState([]);
-  const [activeTab, setActiveTab] = useState(ACTION_TYPE_TO_TAB[initialActionType] || 'enrollment');
+  const normalizedInitialTab = ACTION_TYPE_TO_TAB[initialActionType] || 'preTest';
+  const [activeTab, setActiveTab] = useState(
+    ENABLED_REMINDER_TABS.includes(normalizedInitialTab) ? normalizedInitialTab : 'preTest',
+  );
 
   // Send reminder modal state
   const [reminderOpen, setReminderOpen] = useState(false);
   const [reminderType, setReminderType] = useState(null);
   const [selectedTraining, setSelectedTraining] = useState(null);
+  const [trainingLocked, setTrainingLocked] = useState(false);
   const [sendingReminder, setSendingReminder] = useState(false);
   const [form] = Form.useForm();
 
@@ -81,10 +92,21 @@ const RemindersPage = () => {
   }, [fetchPendingActions]);
 
   const openReminderModal = (type, training = null) => {
+    const trainingsForType = getTrainingsWithPending(type);
+
+    if (!training && trainingsForType.length === 0) {
+      message.info(`No pending trainings found for ${getReminderTypeLabel(type)} reminders.`);
+      return;
+    }
+
+    const resolvedTraining = training || (trainingsForType.length === 1 ? trainingsForType[0] : null);
+
     setReminderType(type);
-    setSelectedTraining(training);
+    setSelectedTraining(resolvedTraining);
+    setTrainingLocked(Boolean(training));
     setReminderOpen(true);
     form.setFieldsValue({
+      trainingId: resolvedTraining?.trainingId,
       sendInApp: true,
       customMessage: '',
     });
@@ -95,8 +117,15 @@ const RemindersPage = () => {
       setSendingReminder(true);
       const values = await form.validateFields();
 
+      const trainingId = selectedTraining?.trainingId || selectedTraining?.id || values.trainingId;
+      if (!trainingId) {
+        message.warning('Please select a training from the pending trainings table before sending a reminder.');
+        setSendingReminder(false);
+        return;
+      }
+
       const payload = {
-        ...(selectedTraining?.trainingId && { trainingId: selectedTraining.trainingId }),
+        trainingId,
         ...(selectedFaculty.length > 0 && { userIds: selectedFaculty }),
         sendInApp: true,
         sendEmail: false,
@@ -417,6 +446,21 @@ const RemindersPage = () => {
     },
   ];
 
+  const reminderTrainingOptions = getTrainingsWithPending(reminderType).map((item) => {
+    const shortTitle = toShortLabel(item.trainingTitle);
+    const fullTitleWithCount = `${item.trainingTitle} (${item.pendingCount} pending)`;
+
+    return {
+      value: item.trainingId,
+      label: (
+        <Tooltip title={fullTitleWithCount}>
+          <span className="block truncate max-w-80">{`${shortTitle} (${item.pendingCount})`}</span>
+        </Tooltip>
+      ),
+      searchText: item.trainingTitle || '',
+    };
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-100">
@@ -487,7 +531,8 @@ const RemindersPage = () => {
             value={activeTab}
             onChange={setActiveTab}
             options={[
-              { label: <span><UserOutlined /> Enrollments</span>, value: 'enrollment' },
+              // Temporarily disabled enrollment reminders
+              // { label: <span><UserOutlined /> Enrollments</span>, value: 'enrollment' },
               { label: <span><BellOutlined /> Pre-Tests</span>, value: 'preTest' },
               { label: <span><CheckCircleOutlined /> Post-Tests</span>, value: 'postTest' },
               { label: <span><BookOutlined /> Lesson Plans</span>, value: 'lessonPlan' },
@@ -542,7 +587,8 @@ const RemindersPage = () => {
                 size="small"
                 onChange={(type) => openReminderModal(type)}
               >
-                <Select.Option value="enrollment">Enrollment</Select.Option>
+                {/* Temporarily disabled enrollment reminders */}
+                {/* <Select.Option value="enrollment">Enrollment</Select.Option> */}
                 <Select.Option value="preTest">Pre-Test</Select.Option>
                 <Select.Option value="postTest">Post-Test</Select.Option>
                 <Select.Option value="lessonPlan">Lesson Plan</Select.Option>
@@ -604,6 +650,27 @@ const RemindersPage = () => {
         destroyOnClose
       >
         <Form form={form} layout="vertical" className="mt-4">
+          {!trainingLocked && (
+            <Form.Item
+              name="trainingId"
+              label="Training"
+              rules={[{ required: true, message: 'Please select a training' }]}
+            >
+              <Select
+                placeholder="Select training"
+                options={reminderTrainingOptions}
+                onChange={(trainingId) => {
+                  const selected = getTrainingsWithPending(reminderType).find(
+                    (item) => item.trainingId === trainingId,
+                  );
+                  setSelectedTraining(selected || null);
+                }}
+                showSearch
+                optionFilterProp="searchText"
+              />
+            </Form.Item>
+          )}
+
           {selectedTraining && (
             <div className="mb-4 p-3 bg-slate-50 rounded-lg text-sm">
               <div className="mb-1">

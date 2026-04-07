@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { NotificationSenderService } from '../../../infrastructure/notification/notification-sender.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
@@ -35,10 +35,17 @@ export class CoordinatorReminderService {
     return {};
   }
 
+  private requireTrainingId(dto: SendReminderDto, reminderType: string) {
+    if (!dto.trainingId) {
+      throw new BadRequestException(`trainingId is required to send ${reminderType} reminders`);
+    }
+  }
+
   /**
    * Send enrollment reminder to faculty who haven't enrolled for a training
    */
   async sendEnrollmentReminder(dto: SendReminderDto, coordinator: CoordinatorUser) {
+    this.requireTrainingId(dto, 'enrollment');
     this.logger.log(`Coordinator ${coordinator.userId} sending enrollment reminder for training ${dto.trainingId}`);
 
     // Get training details
@@ -121,6 +128,7 @@ export class CoordinatorReminderService {
    * Send pre-test reminder to faculty who haven't completed pre-test
    */
   async sendPreTestReminder(dto: SendReminderDto, coordinator: CoordinatorUser) {
+    this.requireTrainingId(dto, 'pre-test');
     this.logger.log(`Coordinator ${coordinator.userId} sending pre-test reminder for training ${dto.trainingId}`);
 
     const training = await this.prisma.training.findUnique({
@@ -212,6 +220,7 @@ export class CoordinatorReminderService {
    * Send post-test reminder to faculty who haven't completed post-test
    */
   async sendPostTestReminder(dto: SendReminderDto, coordinator: CoordinatorUser) {
+    this.requireTrainingId(dto, 'post-test');
     this.logger.log(`Coordinator ${coordinator.userId} sending post-test reminder for training ${dto.trainingId}`);
 
     const training = await this.prisma.training.findUnique({
@@ -303,6 +312,7 @@ export class CoordinatorReminderService {
    * Send lesson plan reminder to faculty who haven't submitted lesson plan
    */
   async sendLessonPlanReminder(dto: SendReminderDto, coordinator: CoordinatorUser) {
+    this.requireTrainingId(dto, 'lesson plan');
     this.logger.log(`Coordinator ${coordinator.userId} sending lesson plan reminder for training ${dto.trainingId}`);
 
     const training = await this.prisma.training.findUnique({
@@ -386,6 +396,7 @@ export class CoordinatorReminderService {
    * Send feedback reminder to faculty who haven't submitted feedback
    */
   async sendFeedbackReminder(dto: SendReminderDto, coordinator: CoordinatorUser) {
+    this.requireTrainingId(dto, 'feedback');
     this.logger.log(`Coordinator ${coordinator.userId} sending feedback reminder for training ${dto.trainingId}`);
 
     const training = await this.prisma.training.findUnique({
