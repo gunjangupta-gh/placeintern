@@ -22,6 +22,7 @@ import { toast } from 'react-hot-toast';
 import {
   SearchOutlined,
   LockOutlined,
+  UnlockOutlined,
   ReloadOutlined,
   DownloadOutlined,
   ExclamationCircleOutlined,
@@ -34,6 +35,7 @@ import {
 } from '@ant-design/icons';
 import { credentialsService } from '../../../services/credentials.service';
 import { apiClient } from '../../../services/api';
+import { stateService } from '../../../services/state.service';
 import { debounce } from 'lodash';
 
 const { Title, Text, Paragraph } = Typography;
@@ -49,6 +51,7 @@ const CredentialsReset = () => {
   const [selectedRole, setSelectedRole] = useState(undefined);
   const [selectedInstitution, setSelectedInstitution] = useState(undefined);
   const [activeFilter, setActiveFilter] = useState(undefined);
+  const [lockFilter, setLockFilter] = useState(undefined);
 
   // Pagination
   const [pagination, setPagination] = useState({
@@ -67,6 +70,7 @@ const CredentialsReset = () => {
   const [resetResults, setResetResults] = useState(null);
   const [resultsModalVisible, setResultsModalVisible] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [unlockingUserId, setUnlockingUserId] = useState(null);
 
   useEffect(() => {
     fetchInstitutions();
@@ -74,7 +78,7 @@ const CredentialsReset = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [pagination.current, pagination.pageSize, selectedRole, selectedInstitution, activeFilter]);
+  }, [pagination.current, pagination.pageSize, selectedRole, selectedInstitution, activeFilter, lockFilter]);
 
   // Debounced search
   const debouncedSearch = useCallback(
@@ -82,7 +86,7 @@ const CredentialsReset = () => {
       setPagination(prev => ({ ...prev, current: 1 }));
       fetchUsers(value);
     }, 500),
-    [selectedRole, selectedInstitution, activeFilter]
+    [selectedRole, selectedInstitution, activeFilter, lockFilter]
   );
 
   useEffect(() => {
@@ -115,6 +119,7 @@ const CredentialsReset = () => {
       if (selectedRole) params.role = selectedRole;
       if (selectedInstitution) params.institutionId = selectedInstitution;
       if (activeFilter !== undefined) params.active = activeFilter;
+      if (lockFilter !== undefined) params.locked = lockFilter;
 
       const response = await apiClient.get('/state/users', { params });
       const usersData = response.data?.data || response.data || [];
@@ -143,6 +148,7 @@ const CredentialsReset = () => {
     setSelectedRole(undefined);
     setSelectedInstitution(undefined);
     setActiveFilter(undefined);
+    setLockFilter(undefined);
     setPagination(prev => ({ ...prev, current: 1 }));
   };
 
@@ -155,6 +161,50 @@ const CredentialsReset = () => {
     const selected = users.filter(user => selectedRowKeys.includes(user.id));
     setSelectedUsers(selected);
     setBulkResetModalVisible(true);
+  };
+
+  const isUserLocked = (user) => {
+    if (!user?.lockedUntil) return false;
+    return new Date(user.lockedUntil).getTime() > Date.now();
+  };
+
+  const getLockMinutesRemaining = (user) => {
+    if (!isUserLocked(user)) return 0;
+    if (typeof user.lockoutMinutesRemaining === 'number') return user.lockoutMinutesRemaining;
+    return Math.ceil((new Date(user.lockedUntil).getTime() - Date.now()) / (1000 * 60));
+  };
+
+  const handleUnlockAccount = (user) => {
+    Modal.confirm({
+      title: (
+        <Space>
+          <ExclamationCircleOutlined className="text-yellow-500" />
+          <span>Unlock User Account</span>
+        </Space>
+      ),
+      content: (
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Text>
+            This will immediately remove the temporary lock for <strong>{user.name}</strong>.
+          </Text>
+          <Text type="secondary">The user will be able to sign in again without waiting 15 minutes.</Text>
+        </Space>
+      ),
+      okText: 'Unlock Account',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          setUnlockingUserId(user.id);
+          await stateService.unlockUserAccount(user.id);
+          toast.success(`Account unlocked for ${user.name}`);
+          await fetchUsers();
+        } catch (error) {
+          toast.error('Failed to unlock account: ' + (error.response?.data?.message || error.message));
+        } finally {
+          setUnlockingUserId(null);
+        }
+      },
+    });
   };
 
   const confirmSingleReset = async () => {
@@ -354,21 +404,51 @@ const CredentialsReset = () => {
       ),
     },
     {
+      title: 'Security',
+      key: 'security',
+      width: 160,
+      render: (_, record) => {
+        if (isUserLocked(record)) {
+          return (
+            <Tag color="volcano">
+              Locked ({getLockMinutesRemaining(record)}m)
+            </Tag>
+          );
+        }
+        return <Tag color="green">Unlocked</Tag>;
+      },
+    },
+    {
       title: 'Actions',
       key: 'actions',
-      width: 100,
+      width: 190,
       render: (_, record) => (
-        <Tooltip title="Reset Password">
-          <Button
-            type="primary"
-            icon={<LockOutlined />}
-            size="small"
-            onClick={() => handleSingleReset(record)}
-            disabled={!record.active || resetting}
-          >
-            Reset
-          </Button>
-        </Tooltip>
+        <Space>
+          <Tooltip title="Reset Password">
+            <Button
+              type="primary"
+              icon={<LockOutlined />}
+              size="small"
+              onClick={() => handleSingleReset(record)}
+              disabled={!record.active || resetting}
+            >
+              Reset
+            </Button>
+          </Tooltip>
+          {isUserLocked(record) && (
+            <Tooltip title="Unlock Account">
+              <Button
+                icon={<UnlockOutlined />}
+                size="small"
+                onClick={() => handleUnlockAccount(record)}
+                loading={unlockingUserId === record.id}
+                disabled={resetting}
+              >
+                Unlock
+              </Button>
+            </Tooltip>
+          )}
+        </Space>
       ),
     },
   ];
@@ -383,7 +463,7 @@ const CredentialsReset = () => {
     }),
   };
 
-  const hasActiveFilters = searchText || selectedRole || selectedInstitution || activeFilter !== undefined;
+  const hasActiveFilters = searchText || selectedRole || selectedInstitution || activeFilter !== undefined || lockFilter !== undefined;
 
   return (
     <div className="p-6">
@@ -512,7 +592,23 @@ const CredentialsReset = () => {
                   ]}
                 />
               </Col>
-              <Col xs={24} sm={12} md={3}>
+              <Col xs={24} sm={12} md={4}>
+                <Select
+                  placeholder="Lock Status"
+                  value={lockFilter}
+                  onChange={(value) => {
+                    setLockFilter(value);
+                    setPagination(prev => ({ ...prev, current: 1 }));
+                  }}
+                  allowClear
+                  style={{ width: '100%' }}
+                  options={[
+                    { label: 'Locked', value: true },
+                    { label: 'Unlocked', value: false },
+                  ]}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={2}>
                 {hasActiveFilters && (
                   <Button
                     icon={<ClearOutlined />}

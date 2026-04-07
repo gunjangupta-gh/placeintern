@@ -506,6 +506,7 @@ export class StateController {
     @Query('institutionId') institutionId?: string,
     @Query('search') search?: string,
     @Query('active') active?: string,
+    @Query('locked') locked?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
@@ -514,9 +515,20 @@ export class StateController {
       institutionId,
       search,
       active: active === 'true' ? true : active === 'false' ? false : undefined,
+      locked: locked === 'true' ? true : locked === 'false' ? false : undefined,
       page: page ? Number(page) : undefined,
       limit: limit ? Number(limit) : undefined,
     });
+  }
+
+  @Post('users/:id/unlock-account')
+  @ApiOperation({ summary: 'Unlock a user account locked due to failed login attempts' })
+  async unlockUserAccount(
+    @Param('id') id: string,
+    @Req() req,
+  ) {
+    const unlockedBy = req.user?.userId || 'state-admin';
+    return this.stateService.unlockUserAccount(id, unlockedBy);
   }
 
   @Get('reports/institutions')

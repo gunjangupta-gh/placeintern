@@ -269,8 +269,13 @@ export class StateService {
     role?: string;
     institutionId?: string;
     active?: boolean;
+    locked?: boolean;
   }) {
     return this.staffService.getUsers(params);
+  }
+
+  async unlockUserAccount(id: string, unlockedBy?: string) {
+    return this.staffService.unlockUserAccount(id, unlockedBy);
   }
 
   // ==========================================

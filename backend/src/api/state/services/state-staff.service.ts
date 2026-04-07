@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
+import { AccountLockoutService } from '../../../core/auth/services/account-lockout.service';
 import { Prisma, Role, Designation, AuditAction, AuditCategory, AuditSeverity } from '../../../generated/prisma/client';
 import * as bcrypt from 'bcrypt';
 import { BCRYPT_SALT_ROUNDS } from '../../../core/auth/services/auth.service';
@@ -19,6 +20,7 @@ export class StateStaffService {
     private readonly prisma: PrismaService,
     private readonly cache: LruCacheService,
     private readonly auditService: AuditService,
+    private readonly accountLockoutService: AccountLockoutService,
   ) {}
 
   /**
@@ -491,10 +493,11 @@ export class StateStaffService {
     institutionId?: string;
     search?: string;
     active?: boolean;
+    locked?: boolean;
     page?: number;
     limit?: number;
   }) {
-    const { role, institutionId, search, active, page = 1, limit = 10 } = params;
+    const { role, institutionId, search, active, locked, page = 1, limit = 10 } = params;
     const skip = (page - 1) * limit;
 
     const where: Prisma.UserWhereInput = {};
@@ -511,11 +514,32 @@ export class StateStaffService {
       where.active = active;
     }
 
+    if (locked !== undefined) {
+      if (locked) {
+        where.lockedUntil = { gt: new Date() };
+      } else {
+        where.OR = [
+          { lockedUntil: null },
+          { lockedUntil: { lte: new Date() } },
+        ];
+      }
+    }
+
     if (search) {
-      where.OR = [
+      const searchConditions: Prisma.UserWhereInput[] = [
         { name: { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } },
       ];
+
+      if (where.OR) {
+        where.AND = [
+          { OR: where.OR },
+          { OR: searchConditions },
+        ];
+        delete where.OR;
+      } else {
+        where.OR = searchConditions;
+      }
     }
 
     const [users, total] = await this.prisma.$transaction([
@@ -529,6 +553,8 @@ export class StateStaffService {
           active: true,
           institutionId: true,
           lastLoginAt: true,
+          failedLoginAttempts: true,
+          lockedUntil: true,
           createdAt: true,
           Institution: {
             select: { id: true, name: true },
@@ -541,12 +567,82 @@ export class StateStaffService {
       this.prisma.user.count({ where }),
     ]);
 
+    const now = Date.now();
+    const enrichedUsers = users.map((user) => {
+      const isLocked = !!user.lockedUntil && user.lockedUntil.getTime() > now;
+      const lockoutMinutesRemaining = isLocked
+        ? Math.ceil((user.lockedUntil!.getTime() - now) / (1000 * 60))
+        : 0;
+
+      return {
+        ...user,
+        isLocked,
+        lockoutMinutesRemaining,
+      };
+    });
+
     return {
-      data: users,
+      data: enrichedUsers,
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async unlockUserAccount(id: string, unlockedBy?: string) {
+    const existingUser = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        institutionId: true,
+        failedLoginAttempts: true,
+        lockedUntil: true,
+      },
+    });
+
+    if (!existingUser) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    const wasLocked = !!existingUser.lockedUntil && existingUser.lockedUntil > new Date();
+    await this.accountLockoutService.unlockAccount(id, unlockedBy);
+
+    await this.cache.invalidateByTags(['state', 'staff']);
+
+    await this.auditService.log({
+      action: AuditAction.USER_PROFILE_UPDATE,
+      entityType: 'User',
+      entityId: id,
+      userId: unlockedBy,
+      userName: existingUser.name,
+      userRole: Role.STATE_DIRECTORATE,
+      description: `Account lock cleared for user ${existingUser.email}`,
+      category: AuditCategory.SECURITY,
+      severity: AuditSeverity.HIGH,
+      institutionId: existingUser.institutionId,
+      oldValues: {
+        failedLoginAttempts: existingUser.failedLoginAttempts,
+        lockedUntil: existingUser.lockedUntil,
+      },
+      newValues: {
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+      },
+    }).catch(() => {});
+
+    return {
+      success: true,
+      message: wasLocked
+        ? 'Account unlocked successfully'
+        : 'Account lock was already cleared',
+      data: {
+        userId: id,
+        wasLocked,
+      },
     };
   }
 

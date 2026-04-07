@@ -465,6 +465,11 @@ export const stateService = {
     return response.data;
   },
 
+  async unlockUserAccount(userId) {
+    const response = await API.post(`/state/users/${userId}/unlock-account`);
+    return response.data;
+  },
+
   // ==================== STATE-WIDE COMPANIES OVERVIEW ====================
 
   // Get all companies across all institutions
