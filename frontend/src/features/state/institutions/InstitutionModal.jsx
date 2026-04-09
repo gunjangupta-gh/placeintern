@@ -37,6 +37,36 @@ const { Title } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
+const INTEGER_FIELDS = new Set([
+  'establishedYear',
+  'totalStudentSeats',
+  'totalStaffSeats',
+]);
+
+const sanitizeInstitutionPayload = (values) => {
+  const basePayload = {
+    ...values,
+    isActive: values.isActive === 'true',
+  };
+
+  return Object.entries(basePayload).reduce((acc, [key, value]) => {
+    if (value === '' || value === null || value === undefined) {
+      return acc;
+    }
+
+    if (INTEGER_FIELDS.has(key)) {
+      const parsed = Number(value);
+      if (!Number.isNaN(parsed)) {
+        acc[key] = parsed;
+      }
+      return acc;
+    }
+
+    acc[key] = value;
+    return acc;
+  }, {});
+};
+
 const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
   const dispatch = useDispatch();
   const [form] = Form.useForm();
@@ -96,12 +126,8 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
   const onFinish = async (values) => {
     setSubmitting(true);
     try {
-      // Transform values if needed (e.g., string "true" to boolean true)
-      const payload = {
-        ...values,
-        isActive: values.isActive === 'true',
-        // If creating principal is checked, those fields are included
-      };
+      // Normalize optional empty fields and ensure numeric fields are numbers.
+      const payload = sanitizeInstitutionPayload(values);
 
       if (isEditMode) {
         await dispatch(updateInstitution({ id: institutionId, data: payload })).unwrap();

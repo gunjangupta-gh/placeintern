@@ -11,9 +11,17 @@ import {
   Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform, Type } from 'class-transformer';
 import { InstitutionType } from '../../../generated/prisma/client';
 
 export { InstitutionType };
+
+const transformOptionalInt = ({ value }: { value: unknown }) => {
+  if (value === '' || value === null || value === undefined) {
+    return undefined;
+  }
+  return value;
+};
 
 export class CreateInstitutionDto {
   @ApiPropertyOptional({ description: 'Unique institution code' })
@@ -90,6 +98,8 @@ export class CreateInstitutionDto {
 
   @ApiPropertyOptional({ description: 'Year institution was established' })
   @IsOptional()
+  @Transform(transformOptionalInt)
+  @Type(() => Number)
   @IsInt()
   @Min(1800)
   @Max(new Date().getFullYear())
@@ -117,12 +127,16 @@ export class CreateInstitutionDto {
 
   @ApiPropertyOptional({ description: 'Total allocated student seats' })
   @IsOptional()
+  @Transform(transformOptionalInt)
+  @Type(() => Number)
   @IsInt()
   @Min(0)
   totalStudentSeats?: number;
 
   @ApiPropertyOptional({ description: 'Total allocated staff seats' })
   @IsOptional()
+  @Transform(transformOptionalInt)
+  @Type(() => Number)
   @IsInt()
   @Min(0)
   totalStaffSeats?: number;
