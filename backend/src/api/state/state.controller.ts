@@ -442,7 +442,9 @@ export class StateController {
   async getStaff(
     @Query('institutionId') institutionId?: string,
     @Query('role') role?: string,
+    @Query('staffType') staffType?: string,
     @Query('branchName') branchName?: string,
+    @Query('designationEnum') designationEnum?: string,
     @Query('search') search?: string,
     @Query('active') active?: string,
     @Query('page') page?: string,
@@ -451,7 +453,9 @@ export class StateController {
     return this.stateService.getStaff({
       institutionId,
       role,
+      staffType,
       branchName,
+      designationEnum,
       search,
       active: active === 'true' ? true : active === 'false' ? false : undefined,
       page: page ? Number(page) : undefined,

@@ -74,24 +74,41 @@ export class AuditService {
       // Determine category based on action if not provided
       const category = data.category || this.determineCategory(action);
 
-      return await this.prisma.auditLog.create({
-        data: {
-          action,
-          entityType: data.entityType,
-          entityId: data.entityId || null,
-          userId: data.userId || null,
-          userRole,
-          userName: data.userName || null,
-          description: data.description || null,
-          oldValues: data.oldValues || null,
-          newValues: data.newValues || null,
-          changedFields: data.changedFields || [],
-          category,
-          severity: data.severity || AuditSeverity.LOW,
-          institutionId: data.institutionId || null,
-          timestamp: new Date(),
-        },
-      });
+      const auditData = {
+        action,
+        entityType: data.entityType,
+        entityId: data.entityId || null,
+        userId: data.userId || null,
+        userRole,
+        userName: data.userName || null,
+        description: data.description || null,
+        oldValues: data.oldValues || null,
+        newValues: data.newValues || null,
+        changedFields: data.changedFields || [],
+        category,
+        severity: data.severity || AuditSeverity.LOW,
+        institutionId: data.institutionId || null,
+        timestamp: new Date(),
+      };
+
+      try {
+        return await this.prisma.auditLog.create({ data: auditData });
+      } catch (createError: any) {
+        // Some callers pass system identifiers (e.g. "SYSTEM") for userId.
+        // Retry without userId so audit logging never breaks app flow.
+        if (
+          createError?.code === 'P2003' &&
+          String(createError?.meta?.driverAdapterError?.cause?.constraint?.index || '').includes('AuditLog_userId_fkey')
+        ) {
+          return await this.prisma.auditLog.create({
+            data: {
+              ...auditData,
+              userId: null,
+            },
+          });
+        }
+        throw createError;
+      }
     } catch (error) {
       this.logger.error('Failed to create audit log', error);
       // Don't throw - audit logging should not break application flow

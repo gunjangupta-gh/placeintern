@@ -24,7 +24,6 @@ import {
   DeleteOutlined,
   ReloadOutlined,
   DatabaseOutlined,
-  ApartmentOutlined,
   TeamOutlined,
   CalendarOutlined,
   IdcardOutlined,
@@ -39,13 +38,12 @@ const MasterData = () => {
 
   // Data states
   const [batches, setBatches] = useState([]);
-  const [departments, setDepartments] = useState([]);
   const [branches, setBranches] = useState([]);
   const [designations, setDesignations] = useState([]);
 
   // Modal states
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalType, setModalType] = useState('batch'); // batch, department, branch
+  const [modalType, setModalType] = useState('batch'); // batch, branch
   const [editingItem, setEditingItem] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -59,14 +57,12 @@ const MasterData = () => {
   const loadAllData = useCallback(async () => {
     setLoading(true);
     try {
-      const [batchRes, deptRes, branchRes, designationRes] = await Promise.all([
+      const [batchRes, branchRes, designationRes] = await Promise.all([
         lookupService.getBatches(),
-        lookupService.getDepartments(),
         lookupService.getBranches(),
         lookupService.getDesignations(),
       ]);
       setBatches(batchRes.batches || []);
-      setDepartments(deptRes.departments || []);
       setBranches(branchRes.branches || []);
 
       const designationData = designationRes.designations || [];
@@ -138,9 +134,6 @@ const MasterData = () => {
           case 'batch':
             await lookupService.updateBatch(editingItem.id, values);
             break;
-          case 'department':
-            await lookupService.updateDepartment(editingItem.id, values);
-            break;
           case 'branch':
             await lookupService.updateBranch(editingItem.id, values);
             break;
@@ -151,9 +144,6 @@ const MasterData = () => {
         switch (modalType) {
           case 'batch':
             await lookupService.createBatch(values);
-            break;
-          case 'department':
-            await lookupService.createDepartment(values);
             break;
           case 'branch':
             await lookupService.createBranch(values);
@@ -176,9 +166,6 @@ const MasterData = () => {
       switch (type) {
         case 'batch':
           await lookupService.deleteBatch(id);
-          break;
-        case 'department':
-          await lookupService.deleteDepartment(id);
           break;
         case 'branch':
           await lookupService.deleteBranch(id);
@@ -232,63 +219,6 @@ const MasterData = () => {
             title="Delete this batch?"
             description="This will deactivate the batch."
             onConfirm={() => handleDelete('batch', record.id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Tooltip title="Delete">
-              <Button type="text" danger icon={<DeleteOutlined />} />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
-
-  const departmentColumns = [
-    {
-      title: 'Department Name',
-      dataIndex: 'name',
-      key: 'name',
-      render: (name) => <Text strong>{name}</Text>,
-    },
-    {
-      title: 'Short Name',
-      dataIndex: 'shortName',
-      key: 'shortName',
-    },
-    {
-      title: 'Code',
-      dataIndex: 'code',
-      key: 'code',
-      render: (code) => <Tag color="blue">{code}</Tag>,
-    },
-    {
-      title: 'Status',
-      dataIndex: 'isActive',
-      key: 'isActive',
-      render: (isActive) => (
-        <Tag color={isActive ? 'success' : 'default'}>
-          {isActive ? 'Active' : 'Inactive'}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 120,
-      render: (_, record) => (
-        <Space>
-          <Tooltip title="Edit">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => openModal('department', record)}
-            />
-          </Tooltip>
-          <Popconfirm
-            title="Delete this department?"
-            description="This will deactivate the department."
-            onConfirm={() => handleDelete('department', record.id)}
             okText="Yes"
             cancelText="No"
           >
@@ -399,39 +329,6 @@ const MasterData = () => {
             )}
           </>
         );
-      case 'department':
-        return (
-          <>
-            <Form.Item
-              name="name"
-              label="Department Name"
-              rules={[{ required: true, message: 'Please enter department name' }]}
-            >
-              <Input placeholder="e.g., Computer Science" />
-            </Form.Item>
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item name="shortName" label="Short Name">
-                  <Input placeholder="e.g., CS" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="code"
-                  label="Code"
-                  rules={[{ required: true, message: 'Please enter code' }]}
-                >
-                  <Input placeholder="e.g., DEPT-CS" />
-                </Form.Item>
-              </Col>
-            </Row>
-            {editingItem && (
-              <Form.Item name="isActive" label="Status" valuePropName="checked">
-                <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
-              </Form.Item>
-            )}
-          </>
-        );
       case 'branch':
         return (
           <>
@@ -509,38 +406,6 @@ const MasterData = () => {
           <Table
             columns={batchColumns}
             dataSource={batches}
-            rowKey="id"
-            loading={loading}
-            pagination={{ pageSize: 10 }}
-          />
-        </Card>
-      ),
-    },
-    {
-      key: 'departments',
-      label: (
-        <span className="flex items-center gap-2">
-          <ApartmentOutlined />
-          Departments ({departments.length})
-        </span>
-      ),
-      children: (
-        <Card
-          className="rounded-xl border-border"
-          styles={{ body: { padding: 0 } }}
-          extra={
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => openModal('department')}
-            >
-              Add Department
-            </Button>
-          }
-        >
-          <Table
-            columns={departmentColumns}
-            dataSource={departments}
             rowKey="id"
             loading={loading}
             pagination={{ pageSize: 10 }}

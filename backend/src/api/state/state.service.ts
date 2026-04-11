@@ -211,8 +211,10 @@ export class StateService {
     limit?: number;
     institutionId?: string;
     role?: string;
+    staffType?: string;
     search?: string;
     branchName?: string;
+    designationEnum?: string;
     active?: boolean;
   }) {
     return this.staffService.getStaff(params);

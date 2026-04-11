@@ -69,6 +69,9 @@ export class StateInstitutionService {
       take: limitNum,
       orderBy: { createdAt: 'desc' },
       include: {
+        coveredAreaDetails: {
+          orderBy: { entityType: 'asc' },
+        },
         _count: {
           select: {
             users: {
@@ -543,6 +546,9 @@ export class StateInstitutionService {
     const institution = await this.prisma.institution.findUnique({
       where: { id },
       include: {
+        coveredAreaDetails: {
+          orderBy: { entityType: 'asc' },
+        },
         users: {
           where: { role: 'PRINCIPAL' },
           take: 10,
@@ -1818,6 +1824,9 @@ export class StateInstitutionService {
     const institution = await this.prisma.institution.create({
       data,
       include: {
+        coveredAreaDetails: {
+          orderBy: { entityType: 'asc' },
+        },
         _count: {
           select: {
             users: true,
@@ -1863,6 +1872,11 @@ export class StateInstitutionService {
     const updated = await this.prisma.institution.update({
       where: { id },
       data,
+      include: {
+        coveredAreaDetails: {
+          orderBy: { entityType: 'asc' },
+        },
+      },
     });
 
     // Audit institution update

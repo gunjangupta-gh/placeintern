@@ -21,6 +21,8 @@ model User {
   phoneNo    String?
   rollNumber String?
   dob        String?
+  qualification String?
+  dateOfJoining DateTime?
 
   // Branch - for STUDENT and TEACHER roles
   branchId   String?
@@ -132,6 +134,7 @@ model User {
   @@index([role, branchId])
   @@index([designationEnum])
   @@index([role, designationEnum])
+  @@index([dateOfJoining])
 }
 
 enum Role {
@@ -374,6 +377,14 @@ model Institution {
   alternatePhone String?
   website        String?
 
+  // Location & Land Information
+  latitude         Float?
+  longitude        Float?
+  gpsMapLink       String?
+  totalLandAcres   Float?
+  landOwnership    LandOwnershipType?
+  hasLandDispute   Boolean?
+
   // Administrative Details
   establishedYear  Int?
   affiliatedTo     String? // University/Board affiliation
@@ -408,6 +419,11 @@ model Institution {
 
   // Principal Feedback
   principalFeedbacks PrincipalFeedback[]
+
+  // Infrastructure / covered area details
+  coveredAreaDetails InstitutionCoveredArea[]
+
+  @@index([landOwnership])
 }
 
 enum InstitutionType {
@@ -417,6 +433,47 @@ enum InstitutionType {
   DEGREE_COLLEGE
   ITI
   SKILL_CENTER
+}
+
+enum LandOwnershipType {
+  OWNED
+  LEASED
+  GOVERNMENT_ALLOTTED
+  PPP
+  OTHER
+}
+
+enum CoveredAreaEntityType {
+  LECTURE_ROOMS
+  LABS
+  WORKSHOPS
+  COMMON_AREA
+  OTHERS
+}
+
+model InstitutionCoveredArea {
+  id String @id @default(uuid())
+
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  entityType CoveredAreaEntityType
+
+  numberOfRooms             Int?
+  requiredAreaSqFt          Float?
+  availableAreaSqFt         Float?
+  additionalRequirementSqFt Float?
+  declaredUnsafeAreaSqFt    Float?
+  lastMajorRepairDate       DateTime?
+  futureExpansionScope      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([institutionId, entityType])
+  @@index([institutionId])
+  @@index([entityType])
+  @@map("institution_covered_areas")
 }
 
 // =============================================

@@ -161,15 +161,6 @@ const TrainingDashboardPage = () => {
     [courseWiseFaculty],
   );
 
-  const applicationsCoveragePercentage =
-    typeof applications.facultyApplicationCoveragePercentage === "number"
-      ? applications.facultyApplicationCoveragePercentage
-      : (summary.totalFaculty || 0) > 0
-        ? ((summary.nominations || applications.nominations || applications.total || 0) /
-            (summary.totalFaculty || 1)) *
-          100
-        : 0;
-
   const stats = useMemo(
     () => [
       {
@@ -189,7 +180,7 @@ const TrainingDashboardPage = () => {
         lines: [
           {
             label: "Applications",
-            value: `${summary.nominations || applications.nominations || applications.total || 0} (${applicationsCoveragePercentage.toFixed(1)}%)`,
+            value: summary.nominations || applications.nominations || applications.total || 0,
           },
           { label: "Completed", value: facultyMetrics.facultyWithCompletedTrainings || 0 },
           { label: "Ongoing", value: facultyMetrics.facultyWithOngoingTrainings || 0 },
@@ -229,7 +220,6 @@ const TrainingDashboardPage = () => {
       trainingMetrics,
       facultyMetrics,
       hoursDistribution,
-      applicationsCoveragePercentage,
       navigate,
     ],
   );

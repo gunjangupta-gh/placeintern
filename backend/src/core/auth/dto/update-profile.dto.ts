@@ -4,6 +4,7 @@ import {
   IsOptional,
   MinLength,
   Matches,
+  IsDateString,
 } from 'class-validator';
 
 export class UpdateProfileDto {
@@ -28,4 +29,12 @@ export class UpdateProfileDto {
   @IsString()
   @IsOptional()
   branchName?: string;
+
+  @IsString()
+  @IsOptional()
+  qualification?: string;
+
+  @IsDateString()
+  @IsOptional()
+  dateOfJoining?: string;
 }

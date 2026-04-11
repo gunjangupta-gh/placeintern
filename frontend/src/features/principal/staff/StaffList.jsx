@@ -248,6 +248,16 @@ const StaffList = () => {
               {record.designation || 'Staff'}
             </Text>
           </div>
+          {record.qualification && (
+            <div className="text-xs text-text-tertiary mb-1">
+              Qualification: {record.qualification}
+            </div>
+          )}
+          {record.dateOfJoining && (
+            <div className="text-xs text-text-tertiary mb-1">
+              Joined: {new Date(record.dateOfJoining).toLocaleDateString('en-IN')}
+            </div>
+          )}
           <Tag color="blue" className="rounded-full border-none bg-blue-50 text-blue-600 px-3">
             {record.role?.replace(/_/g, ' ') || 'N/A'}
           </Tag>

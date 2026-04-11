@@ -729,6 +729,8 @@ export class AuthService {
         phoneNo: true,
         rollNumber: true,
         dob: true,
+        qualification: true,
+        dateOfJoining: true,
         branchName: true,
         designation: true,
         role: true,
@@ -800,6 +802,8 @@ export class AuthService {
       phoneNo?: string;
       designation?: string;
       branchName?: string;
+      qualification?: string;
+      dateOfJoining?: string;
     },
     ipAddress?: string,
     userAgent?: string,
@@ -832,6 +836,10 @@ export class AuthService {
         ...(data.phoneNo !== undefined && { phoneNo: data.phoneNo }),
         ...(data.designation !== undefined && { designation: data.designation }),
         ...(data.branchName !== undefined && { branchName: data.branchName }),
+        ...(data.qualification !== undefined && { qualification: data.qualification }),
+        ...(data.dateOfJoining !== undefined && {
+          dateOfJoining: data.dateOfJoining ? new Date(data.dateOfJoining) : null,
+        }),
       },
       select: {
         id: true,
@@ -840,6 +848,8 @@ export class AuthService {
         phoneNo: true,
         rollNumber: true,
         dob: true,
+        qualification: true,
+        dateOfJoining: true,
         branchName: true,
         designation: true,
         role: true,
@@ -878,6 +888,8 @@ export class AuthService {
         phoneNo: user.phoneNo,
         designation: user.designation,
         branchName: user.branchName,
+        qualification: user.qualification,
+        dateOfJoining: user.dateOfJoining,
       },
       newValues: data,
     }).catch(() => {}); // Non-blocking

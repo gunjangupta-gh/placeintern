@@ -1,14 +1,42 @@
 import React, { useState } from 'react';
-import { Card, Row, Col, Modal, Table, Spin, Typography } from 'antd';
+import { Row, Col, Modal, Table, Spin, Typography } from 'antd';
 import {
   UserOutlined,
   FileTextOutlined,
   TeamOutlined,
   EyeOutlined,
+  UserSwitchOutlined,
+  CalendarOutlined,
+  PlusOutlined,
+  SettingOutlined,
+  BookOutlined,
 } from '@ant-design/icons';
 import stateService from '../../../../services/state.service';
 
 const { Text } = Typography;
+
+const STAT_VARIANTS = {
+  primary: {
+    iconWrap: 'bg-blue-100',
+    iconColor: 'text-blue-700',
+  },
+  warning: {
+    iconWrap: 'bg-amber-100',
+    iconColor: 'text-amber-700',
+  },
+  purple: {
+    iconWrap: 'bg-purple-100',
+    iconColor: 'text-purple-700',
+  },
+  success: {
+    iconWrap: 'bg-emerald-100',
+    iconColor: 'text-emerald-700',
+  },
+  rose: {
+    iconWrap: 'bg-rose-100',
+    iconColor: 'text-rose-700',
+  },
+};
 
 // College-wise breakdown modal
 const CollegeBreakdownModal = ({ visible, onClose, title, loading, data, columns }) => (
@@ -35,44 +63,42 @@ const CollegeBreakdownModal = ({ visible, onClose, title, loading, data, columns
   </Modal>
 );
 
-// Minimal stat card component
-const StatCard = ({ icon, iconBg, title, value, subtitle, onView }) => (
-  <Card
-    className="rounded-xl border border-gray-100 shadow-sm bg-white h-full"
-    styles={{ body: { padding: '16px 20px' } }}
-  >
-    <div className="flex items-start justify-between">
-      <div className="flex items-start gap-3">
-        <div className={`w-10 h-10 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
-          {icon}
-        </div>
-        <div>
-          <Text className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide block">
-            {title}
-          </Text>
-          <Text className="text-2xl font-bold text-gray-900 block leading-tight">
-            {value}
-          </Text>
-          {subtitle && (
-            <Text className="text-xs text-gray-500 block mt-0.5">
-              {subtitle}
-            </Text>
-          )}
-        </div>
-      </div>
-      {onView && (
-        <button
-          onClick={onView}
-          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
-        >
-          <EyeOutlined className="text-gray-400 text-sm" />
-        </button>
-      )}
-    </div>
-  </Card>
-);
+const StatCard = ({ icon: Icon, title, lines = [], onClick, variant = 'primary' }) => {
+  const styles = STAT_VARIANTS[variant] || STAT_VARIANTS.primary;
 
-const StatisticsCards = ({ stats, selectedMonth }) => {
+  return (
+    <div
+      className={`rounded-xl p-3 h-full border border-slate-200 bg-slate-50 ${onClick ? 'cursor-pointer hover:shadow-sm transition-all' : ''}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (onClick && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md ${styles.iconWrap}`}>
+          <Icon className={`text-xs ${styles.iconColor}`} />
+        </span>
+        <Text className="text-[11px] text-slate-600 font-medium leading-tight line-clamp-1">
+          {title}
+        </Text>
+      </div>
+      <div className="space-y-1 mt-1">
+        {lines.map((line) => (
+          <Text key={line.label} className="block text-[12px] leading-snug text-slate-600">
+            {line.label}: <span className="font-semibold text-slate-800">{line.value}</span>
+          </Text>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, trainingLoading = false }) => {
   const [modalType, setModalType] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [collegeData, setCollegeData] = useState([]);
@@ -97,20 +123,45 @@ const StatisticsCards = ({ stats, selectedMonth }) => {
     stats?.totalFaculty ??
     0;
   const totalMentors =
+    stats?.staff?.mentorsAndCoordinators ??
     stats?.staff?.mentors ??
+    stats?.staffBreakdown?.mentorsAndCoordinators ??
     stats?.staffBreakdown?.mentors ??
     faculty?.mentors ??
-    faculty?.teachers ??
-    faculty?.total ??
     stats?.totalMentors ??
-    stats?.totalFaculty ??
+    0;
+  const totalCoordinators =
+    stats?.staff?.coordinators ??
+    stats?.staff?.facultyCoordinators ??
+    stats?.staffBreakdown?.coordinators ??
     0;
   const totalAdminStaff =
     stats?.staff?.adminStaff ??
     stats?.staffBreakdown?.adminStaff ??
     faculty?.adminStaff ??
-    Math.max(0, totalStaff - totalMentors);
-
+    0;
+  const teacherNoAssignmentFromApi =
+    stats?.staff?.teachers ??
+    stats?.staff?.teachersWithoutAssignments ??
+    stats?.staffBreakdown?.teachers;
+  const teacherNoAssignmentUpperBound = Math.max(
+    0,
+    totalStaff - totalAdminStaff - totalMentors,
+  );
+  const totalTeachers =
+    teacherNoAssignmentFromApi != null
+      ? Math.min(Math.max(0, teacherNoAssignmentFromApi), teacherNoAssignmentUpperBound)
+      : teacherNoAssignmentUpperBound;
+  const totalStaffReconciled = Math.max(
+    totalStaff,
+    totalMentors + totalTeachers + totalAdminStaff,
+  );
+  const totalTeacherSafe = Math.max(
+    0,
+    Math.min(totalTeachers, totalStaffReconciled - totalAdminStaff - totalMentors),
+  );
+  const totalTeachingStaffDisplay = totalMentors + totalTeacherSafe;
+  const totalAdminSafe = Math.max(0, Math.min(totalAdminStaff, totalStaffReconciled));
   // Reports
   const reportsSubmitted = monthlyReports?.thisMonth ?? 0;
   const reportsExpected = monthlyReports?.expectedThisMonth ?? totalStudents;
@@ -130,8 +181,57 @@ const StatisticsCards = ({ stats, selectedMonth }) => {
     setModalType(type);
     setModalLoading(true);
     try {
-      const response = await stateService.getCollegeWiseBreakdown(type, { month: filterMonth, year: filterYear });
-      setCollegeData(response?.data || response || []);
+      const typeMap = {
+        students: 'students',
+        reports: 'reports',
+        teachingStaff: 'mentors',
+        adminStaff: 'mentors',
+        visits: 'visits',
+      };
+
+      const response = await stateService.getCollegeWiseBreakdown(typeMap[type] || type, { month: filterMonth, year: filterYear });
+      const rawData = response?.data || response || [];
+
+      const normalizedData = rawData.map((row) => {
+        const rowTeachingStaff =
+          row.mentorsAndCoordinators ??
+          row.totalMentors ??
+          row.mentors ??
+          0;
+        const rowAdminStaff = row.adminStaff ?? 0;
+        const rowTotalStaff = row.totalStaff ?? rowTeachingStaff + rowAdminStaff;
+        const rowTeachersFromApi =
+          row.teachers ??
+          row.teachersWithoutAssignments ??
+          row.totalTeachersWithoutAssignment;
+        const rowTeacherUpperBound = Math.max(
+          0,
+          rowTotalStaff - rowAdminStaff - rowTeachingStaff,
+        );
+        const rowTeachers =
+          rowTeachersFromApi != null
+            ? Math.min(Math.max(0, rowTeachersFromApi), rowTeacherUpperBound)
+            : rowTeacherUpperBound;
+        const rowCoordinators =
+          row.coordinators ??
+          row.facultyCoordinators ??
+          0;
+        const rowNonAdminStaff =
+          row.nonAdminStaff ??
+          Math.max(0, rowTotalStaff - rowAdminStaff);
+
+        return {
+          ...row,
+          mentorsAndCoordinators: rowTeachingStaff,
+          teachers: rowTeachers,
+          coordinators: rowCoordinators,
+          totalStaff: rowTotalStaff,
+          nonAdminStaff: rowNonAdminStaff,
+          adminStaff: rowAdminStaff,
+        };
+      });
+
+      setCollegeData(normalizedData);
     } catch (error) {
       console.error('Error fetching college breakdown:', error);
       setCollegeData([]);
@@ -163,6 +263,19 @@ const StatisticsCards = ({ stats, selectedMonth }) => {
           { title: 'Mentors', dataIndex: 'totalMentors', align: 'center', render: (val) => <Text className="font-semibold">{val?.toLocaleString() || 0}</Text> },
           { title: 'Students Assigned', dataIndex: 'assignedStudents', align: 'center', render: (val) => <Text className="font-semibold text-blue-600">{val?.toLocaleString() || 0}</Text> },
         ];
+      case 'teachingStaff':
+        return [...baseColumns,
+          { title: 'Mentors/Coordinators', dataIndex: 'mentorsAndCoordinators', align: 'center', render: (val) => <Text className="font-semibold text-blue-600">{val?.toLocaleString() || 0}</Text> },
+          { title: 'Teachers', dataIndex: 'teachers', align: 'center', render: (val) => <Text className="font-semibold">{val?.toLocaleString() || 0}</Text> },
+          { title: 'Coordinators', dataIndex: 'coordinators', align: 'center', render: (val) => <Text className="font-semibold">{val?.toLocaleString() || 0}</Text> },
+        ];
+      case 'adminStaff':
+        return [...baseColumns,
+          { title: 'Mentors/Coordinators', dataIndex: 'mentorsAndCoordinators', align: 'center', render: (val) => <Text className="font-semibold text-blue-600">{val?.toLocaleString() || 0}</Text> },
+          { title: 'Teachers (No Assignment)', dataIndex: 'teachers', align: 'center', render: (val) => <Text className="font-semibold">{val?.toLocaleString() || 0}</Text> },
+          { title: 'Coordinators', dataIndex: 'coordinators', align: 'center', render: (val) => <Text className="font-semibold">{val?.toLocaleString() || 0}</Text> },
+          { title: 'Admin Staff', dataIndex: 'adminStaff', align: 'center', render: (val) => <Text className="font-semibold">{val?.toLocaleString() || 0}</Text> },
+        ];
       case 'reports':
         return [...baseColumns,
           { title: 'Submitted', dataIndex: 'submitted', align: 'center', render: (val) => <Text className="font-semibold text-green-600">{val?.toLocaleString() || 0}</Text> },
@@ -182,69 +295,162 @@ const StatisticsCards = ({ stats, selectedMonth }) => {
     switch (type) {
       case 'students': return 'College-wise Students';
       case 'mentors': return 'College-wise Mentors';
+      case 'teachingStaff': return 'College-wise Teaching Staff (Mentors/Coordinators, Teachers)';
+      case 'adminStaff': return 'College-wise Admin Staff';
       case 'reports': return 'College-wise Monthly Reports';
       case 'visits': return 'College-wise Faculty Visits';
       default: return 'College Breakdown';
     }
   };
 
+  const dashboard = trainingDashboard?.dashboard || trainingDashboard || {};
+  const trainings = dashboard.trainings || {};
+  const applications = dashboard.applications || {};
+  const summary = dashboard.summary || {};
+  const lessonPlans = dashboard.lessonPlans || {};
+  const trainingMetrics = dashboard.trainingMetrics || {};
+  const facultyMetrics = dashboard.facultyMetrics || {};
+  const completionMetrics = dashboard.completionMetrics || {};
+  const hoursDistribution = dashboard.hoursDistribution || {};
+
+  const trainingCards = [
+    {
+      title: 'Trainings',
+      icon: CalendarOutlined,
+      variant: 'primary',
+      lines: [
+        { label: 'Published', value: summary.totalTrainingsPublished || trainings.published || 0 },
+        { label: 'Conducted', value: trainingMetrics.totalTrainingsConducted || 0 },
+        { label: 'Hours Delivered', value: trainingMetrics.totalTrainingHoursDelivered || 0 },
+      ],
+    },
+    {
+      title: 'Faculty Trainings',
+      icon: PlusOutlined,
+      variant: 'warning',
+      lines: [
+        {
+          label: 'Applications',
+          value: summary.nominations || applications.nominations || applications.total || 0,
+        },
+        { label: 'Completed', value: facultyMetrics.facultyWithCompletedTrainings || 0 },
+        { label: 'Ongoing', value: facultyMetrics.facultyWithOngoingTrainings || 0 },
+      ],
+    },
+    {
+      title: 'Lesson Plan',
+      icon: BookOutlined,
+      variant: 'purple',
+      lines: [
+        {
+          label: 'Lesson Plans Created',
+          value: summary.lessonPlanCreated || lessonPlans.created || lessonPlans.total || 0,
+        },
+      ],
+    },
+    {
+      title: 'Completion & Hours',
+      icon: SettingOutlined,
+      variant: 'primary',
+      lines: [
+        { label: 'Completed ≥ 40 Hours', value: completionMetrics.facultyCompleted40Hours || 0 },
+        { label: 'Completed < 40 Hours', value: completionMetrics.facultyCompletedUnder40Hours || 0 },
+        { label: 'Avg. Hours per Faculty', value: hoursDistribution.averageHoursPerFaculty || 0 },
+      ],
+    },
+  ];
+
   return (
     <>
       <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8} xl={5}>
           <StatCard
-            icon={<UserOutlined className="text-lg text-blue-500" />}
-            iconBg="bg-blue-50"
-            title="TOTAL STUDENTS"
-            value={totalStudents.toLocaleString()}
-            subtitle={`Active Internships: ${activeInternships.toLocaleString()}`}
-            onView={() => fetchCollegeBreakdown('students')}
+            icon={UserOutlined}
+            title="Students"
+            lines={[
+              { label: 'Total Active', value: totalStudents.toLocaleString() },
+              { label: 'Active Internships', value: activeInternships.toLocaleString() },
+            ]}
+            variant="primary"
+            onClick={() => fetchCollegeBreakdown('students')}
           />
         </Col>
 
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8} xl={5}>
           <StatCard
-            icon={<FileTextOutlined className="text-lg text-green-500" />}
-            iconBg="bg-green-50"
-            title="MONTHLY REPORTS"
-            value={
-              <span>
-                <span className={reportsPercent > 0 ? 'text-green-600' : 'text-gray-900'}>{reportsPercent}%</span>
-                <span className="text-sm font-normal text-gray-400 ml-1">({reportsSubmitted}/{reportsExpected})</span>
-              </span>
-            }
-            subtitle={displayMonth}
-            onView={() => fetchCollegeBreakdown('reports')}
+            icon={FileTextOutlined}
+            title="Monthly Reports"
+            lines={[
+              { label: 'Coverage', value: `${reportsPercent}%` },
+              { label: 'Submitted', value: `${reportsSubmitted}/${reportsExpected}` },
+              { label: 'Month', value: displayMonth },
+            ]}
+            variant="success"
+            onClick={() => fetchCollegeBreakdown('reports')}
           />
         </Col>
 
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8} xl={5}>
           <StatCard
-            icon={<TeamOutlined className="text-lg text-amber-500" />}
-            iconBg="bg-amber-50"
-            title="TOTAL STAFF"
-            value={totalStaff.toLocaleString()}
-            subtitle={`Mentor: ${totalMentors.toLocaleString()} | Admin: ${totalAdminStaff.toLocaleString()}`}
-            onView={() => fetchCollegeBreakdown('mentors')}
+            icon={TeamOutlined}
+            title="Teaching Staff"
+            lines={[
+              { label: 'Total', value: totalTeachingStaffDisplay.toLocaleString() },
+              { label: 'Mentors/Coordinators', value: totalMentors.toLocaleString() },
+              { label: 'Teachers (No Assign)', value: totalTeacherSafe.toLocaleString() },
+            ]}
+            variant="warning"
+            onClick={() => fetchCollegeBreakdown('teachingStaff')}
           />
         </Col>
 
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8} xl={5}>
           <StatCard
-            icon={<EyeOutlined className="text-lg text-pink-500" />}
-            iconBg="bg-pink-50"
-            title="FACULTY VISITS"
-            value={
-              <span>
-                <span className={visitsPercent > 0 ? 'text-green-600' : 'text-gray-900'}>{visitsPercent}%</span>
-                <span className="text-sm font-normal text-gray-400 ml-1">({visitsCompleted}/{visitsExpected})</span>
-              </span>
-            }
-            subtitle={displayMonth}
-            onView={() => fetchCollegeBreakdown('visits')}
+            icon={UserSwitchOutlined}
+            title="Admin Staff"
+            lines={[
+              { label: 'Total', value: totalAdminSafe.toLocaleString() },
+            ]}
+            variant="purple"
+            onClick={() => fetchCollegeBreakdown('adminStaff')}
+          />
+        </Col>
+
+        <Col xs={24} sm={12} lg={8} xl={4}>
+          <StatCard
+            icon={EyeOutlined}
+            title="Faculty Visits"
+            lines={[
+              { label: 'Coverage', value: `${visitsPercent}%` },
+              { label: 'Completed', value: `${visitsCompleted}/${visitsExpected}` },
+              { label: 'Month', value: displayMonth },
+            ]}
+            variant="rose"
+            onClick={() => fetchCollegeBreakdown('visits')}
           />
         </Col>
       </Row>
+
+      <div className="mt-4">
+        <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">
+          Training Statistics
+        </Text>
+        <Row gutter={[16, 16]}>
+          {trainingLoading
+            ? Array.from({ length: 4 }).map((_, idx) => (
+                <Col key={`training-loading-${idx}`} xs={24} sm={12} lg={6}>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 h-full">
+                    <Spin size="small" />
+                  </div>
+                </Col>
+              ))
+            : trainingCards.map((card) => (
+                <Col key={card.title} xs={24} sm={12} lg={6}>
+                  <StatCard {...card} />
+                </Col>
+              ))}
+        </Row>
+      </div>
 
       <CollegeBreakdownModal
         visible={modalType !== null}

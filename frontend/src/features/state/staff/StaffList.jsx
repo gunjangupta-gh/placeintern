@@ -2,11 +2,13 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, Table, Button, Tag, Space, Input, Avatar, Dropdown, App, Select, Row, Col } from 'antd';
 import { toast } from 'react-hot-toast';
-import { PlusOutlined, EditOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined, FilterOutlined, ClearOutlined, StopOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined, FilterOutlined, ClearOutlined, StopOutlined, CheckCircleOutlined, DownloadOutlined } from '@ant-design/icons';
+import * as XLSX from 'xlsx';
 import { fetchStaff, resetStaffPassword, toggleStaffStatus } from '../store/stateSlice';
 import StaffModal from './StaffModal';
 import { getImageUrl } from '../../../utils/imageUtils';
 import { useLookup } from '../../shared/hooks/useLookup';
+import stateService from '../../../services/state.service';
 
 // Designation options for filter
 const DESIGNATION_OPTIONS = [
@@ -63,6 +65,7 @@ const StaffList = () => {
   const [searchText, setSearchText] = useState('');
   const [filters, setFilters] = useState({
     institutionId: '',
+    staffType: '',
     role: '',
     branchName: '',
     designationEnum: '',
@@ -77,6 +80,7 @@ const StaffList = () => {
   const [editingStaffId, setEditingStaffId] = useState(null);
   const [resettingId, setResettingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
+  const [exportLoading, setExportLoading] = useState(false);
 
   const loadStaff = useCallback((params = {}) => {
     dispatch(fetchStaff({
@@ -198,6 +202,7 @@ const StaffList = () => {
   const clearFilters = () => {
     setFilters({
       institutionId: '',
+      staffType: '',
       role: '',
       branchName: '',
       designationEnum: '',
@@ -239,6 +244,84 @@ const StaffList = () => {
     return labels[role] || role;
   };
 
+  const getStaffType = (role) => {
+    if (role === 'TEACHER' || role === 'FACULTY_COORDINATOR') {
+      return 'Teaching';
+    }
+    if (role === 'ADMIN_STAFF') {
+      return 'Admin';
+    }
+    return 'Other';
+  };
+
+  const getStaffTypeColor = (role) => {
+    if (role === 'TEACHER' || role === 'FACULTY_COORDINATOR') {
+      return 'geekblue';
+    }
+    if (role === 'ADMIN_STAFF') {
+      return 'cyan';
+    }
+    return 'default';
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      setExportLoading(true);
+
+      const baseParams = {
+        search: searchText,
+        ...filters,
+        page: 1,
+        limit: 500,
+      };
+
+      const firstPage = await stateService.getStaff(baseParams);
+      const totalPages = firstPage?.totalPages || 1;
+      const allStaff = [...(firstPage?.data || [])];
+
+      for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
+        const nextPage = await stateService.getStaff({
+          ...baseParams,
+          page: currentPage,
+        });
+        allStaff.push(...(nextPage?.data || []));
+      }
+
+      if (!allStaff.length) {
+        toast('No staff records available for export', { icon: '⚠️' });
+        return;
+      }
+
+      const exportData = allStaff.map((record, index) => ({
+        'Sr. No.': index + 1,
+        Name: record.name || '-',
+        Email: record.email || '-',
+        Role: getRoleLabel(record.role),
+        'Staff Type': getStaffType(record.role),
+        Institution: record.Institution?.name || 'Not Assigned',
+        Branch: record.branchName || '-',
+        Designation: record.designation || '-',
+        Qualification: record.qualification || '-',
+        'Date of Joining': record.dateOfJoining ? new Date(record.dateOfJoining).toLocaleDateString('en-IN') : '-',
+        Phone: record.phoneNo || '-',
+        Status: record.active !== false ? 'Active' : 'Inactive',
+        'Last Login': record.lastLoginAt ? new Date(record.lastLoginAt).toLocaleString('en-IN') : '-',
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'State Staff');
+      const fileName = `state_staff_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+      toast.success(`Exported ${exportData.length} staff records`);
+    } catch (error) {
+      console.error('Staff export failed:', error);
+      toast.error(error?.message || 'Failed to export staff list');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   const columns = [
     {
       title: 'Staff Member',
@@ -258,9 +341,14 @@ const StaffList = () => {
       dataIndex: 'role',
       key: 'role',
       render: (role) => (
-        <Tag color={getRoleColor(role)}>
-          {getRoleLabel(role)}
-        </Tag>
+        <Space size={6}>
+          <Tag color={getRoleColor(role)}>
+            {getRoleLabel(role)}
+          </Tag>
+          <Tag color={getStaffTypeColor(role)}>
+            {getStaffType(role)}
+          </Tag>
+        </Space>
       ),
     },
     {
@@ -279,6 +367,18 @@ const StaffList = () => {
       dataIndex: 'designation',
       key: 'designation',
       render: (text) => text || '-',
+    },
+    {
+      title: 'Qualification',
+      dataIndex: 'qualification',
+      key: 'qualification',
+      render: (text) => text || '-',
+    },
+    {
+      title: 'Date of Joining',
+      dataIndex: 'dateOfJoining',
+      key: 'dateOfJoining',
+      render: (value) => (value ? new Date(value).toLocaleDateString('en-IN') : '-'),
     },
     {
       title: 'Phone',
@@ -385,6 +485,13 @@ const StaffList = () => {
               Refresh
             </Button>
             <Button
+              icon={<DownloadOutlined />}
+              loading={exportLoading}
+              onClick={handleExportExcel}
+            >
+              Export Excel
+            </Button>
+            <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => handleOpenModal()}
@@ -427,6 +534,18 @@ const StaffList = () => {
                       {inst.name}
                     </Select.Option>
                   ))}
+                </Select>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Select
+                  placeholder="Staff Type"
+                  style={{ width: '100%' }}
+                  allowClear
+                  value={filters.staffType || undefined}
+                  onChange={(value) => handleFilterChange('staffType', value || '')}
+                >
+                  <Select.Option value="teaching">Teaching</Select.Option>
+                  <Select.Option value="admin">Admin</Select.Option>
                 </Select>
               </Col>
               <Col xs={24} sm={12} md={6}>

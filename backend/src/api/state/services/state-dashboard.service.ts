@@ -79,7 +79,10 @@ export class StateDashboardService {
           activeFaculty,
           totalStaff,
           totalAdminStaff,
+          totalTeachers,
+          totalCoordinators,
           mentorsWithAssignmentsData,
+          teachersWithAssignmentsData,
           totalSelfIdentifiedInternships,
           activeSelfIdentifiedInternships,
           totalApplications,
@@ -143,12 +146,45 @@ export class StateDashboardService {
               Institution: { isActive: true },
             },
           }),
+          this.prisma.user.count({
+            where: {
+              role: Role.TEACHER,
+              active: true,
+              institutionId: { not: null },
+              Institution: { isActive: true },
+            },
+          }),
+          this.prisma.user.count({
+            where: {
+              role: Role.FACULTY_COORDINATOR,
+              active: true,
+              institutionId: { not: null },
+              Institution: { isActive: true },
+            },
+          }),
           // Mentors are staff with active mentor assignments (assignment-based definition)
           this.prisma.mentorAssignment.findMany({
             where: {
               isActive: true,
               mentor: {
                 role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
+                active: true,
+                institutionId: { not: null },
+                Institution: { isActive: true },
+              },
+              student: {
+                user: { active: true },
+                Institution: { isActive: true },
+              },
+            },
+            select: { mentorId: true },
+            distinct: ["mentorId"],
+          }),
+          this.prisma.mentorAssignment.findMany({
+            where: {
+              isActive: true,
+              mentor: {
+                role: Role.TEACHER,
                 active: true,
                 institutionId: { not: null },
                 Institution: { isActive: true },
@@ -362,6 +398,12 @@ export class StateDashboardService {
         const activeStudentsWithMentors = studentsWithActiveMentorsData.length;
         const internshipsWithMentors = internshipsWithMentorsData.length;
         const totalMentors = mentorsWithAssignmentsData.length;
+        const teachersWithoutAssignments = Math.max(
+          0,
+          totalTeachers - teachersWithAssignmentsData.length,
+        );
+        const totalTeachingStaff = totalMentors;
+        const totalNonAdminStaff = Math.max(0, totalStaff - totalAdminStaff);
 
         // Calculate active students without mentor assignments
         // Based on ACTIVE students only (not total students)
@@ -480,6 +522,10 @@ export class StateDashboardService {
           staff: {
             total: totalStaff,
             mentors: totalMentors,
+            mentorsAndCoordinators: totalTeachingStaff,
+            teachers: teachersWithoutAssignments,
+            coordinators: totalCoordinators,
+            nonAdminStaff: totalNonAdminStaff,
             adminStaff: totalAdminStaff,
           },
           totalFaculty,
@@ -1480,12 +1526,23 @@ export class StateDashboardService {
               },
               select: {
                 mentorId: true,
-                mentor: { select: { institutionId: true } },
+                mentor: { select: { institutionId: true, role: true } },
               },
               distinct: ["mentorId"],
             });
 
+            const staffRoleCounts = await this.prisma.user.groupBy({
+              by: ["institutionId", "role"],
+              where: {
+                active: true,
+                institutionId: { not: null },
+                Institution: { isActive: true },
+              },
+              _count: { id: true },
+            });
+
             const mentorsByInstitution = new Map<string, number>();
+            const teacherMentorsByInstitution = new Map<string, number>();
             for (const assignment of mentorAssignments) {
               const instId = assignment.mentor?.institutionId;
               if (!instId) continue;
@@ -1493,6 +1550,12 @@ export class StateDashboardService {
                 instId,
                 (mentorsByInstitution.get(instId) || 0) + 1,
               );
+              if (assignment.mentor?.role === Role.TEACHER) {
+                teacherMentorsByInstitution.set(
+                  instId,
+                  (teacherMentorsByInstitution.get(instId) || 0) + 1,
+                );
+              }
             }
 
             // Get students with active mentor assignments per institution (active students with active users from active institutions)
@@ -1517,11 +1580,70 @@ export class StateDashboardService {
               assignedByInstitution.set(instId, count + 1);
             }
 
+            const staffByInstitution = new Map<
+              string,
+              {
+                totalStaff: number;
+                teachers: number;
+                coordinators: number;
+                adminStaff: number;
+              }
+            >();
+
+            for (const row of staffRoleCounts) {
+              const instId = row.institutionId;
+              if (!instId) continue;
+              if (
+                row.role !== Role.TEACHER &&
+                row.role !== Role.FACULTY_COORDINATOR &&
+                row.role !== Role.ADMIN_STAFF
+              ) {
+                continue;
+              }
+
+              const current = staffByInstitution.get(instId) || {
+                totalStaff: 0,
+                teachers: 0,
+                coordinators: 0,
+                adminStaff: 0,
+              };
+
+              const count = row._count.id;
+              current.totalStaff += count;
+
+              if (row.role === Role.TEACHER) {
+                current.teachers += count;
+              } else if (row.role === Role.FACULTY_COORDINATOR) {
+                current.coordinators += count;
+              } else if (row.role === Role.ADMIN_STAFF) {
+                current.adminStaff += count;
+              }
+
+              staffByInstitution.set(instId, current);
+            }
+
             return institutions.map((inst) => ({
+              ...(staffByInstitution.get(inst.id) || {
+                totalStaff: 0,
+                teachers: 0,
+                coordinators: 0,
+                adminStaff: 0,
+              }),
               id: inst.id,
               institutionName: inst.name,
               institutionCode: inst.code,
               totalMentors: mentorsByInstitution.get(inst.id) || 0,
+              mentorsAndCoordinators: mentorsByInstitution.get(inst.id) || 0,
+              teachers: Math.max(
+                0,
+                (staffByInstitution.get(inst.id)?.teachers || 0) -
+                  (teacherMentorsByInstitution.get(inst.id) || 0),
+              ),
+              nonAdminStaff: Math.max(
+                0,
+                (staffByInstitution.get(inst.id)?.totalStaff || 0) -
+                  (staffByInstitution.get(inst.id)?.adminStaff || 0),
+              ),
               assignedStudents: assignedByInstitution.get(inst.id) || 0,
             }));
           }

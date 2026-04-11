@@ -202,6 +202,29 @@ const InstituteManagement = () => {
       ),
     },
     {
+      title: 'Land & GPS',
+      key: 'landInfo',
+      width: 240,
+      render: (_, record) => (
+        <div className="space-y-1 text-sm">
+          <div className="flex items-center gap-2" style={{ color: token.colorTextSecondary }}>
+            <span className="font-medium">Land:</span>
+            <span>{record.totalLandAcres != null ? `${record.totalLandAcres} acres` : 'N/A'}</span>
+          </div>
+          <div className="flex items-center gap-2" style={{ color: token.colorTextSecondary }}>
+            <span className="font-medium">Ownership:</span>
+            <span>{record.landOwnership ? record.landOwnership.replace(/_/g, ' ') : 'N/A'}</span>
+          </div>
+          <div className="flex items-center gap-2" style={{ color: token.colorTextSecondary }}>
+            <span className="font-medium">Dispute:</span>
+            <Tag color={record.hasLandDispute ? 'error' : 'success'} className="m-0">
+              {record.hasLandDispute ? 'Yes' : 'No'}
+            </Tag>
+          </div>
+        </div>
+      ),
+    },
+    {
       title: 'Stats',
       key: 'stats',
       width: 150,

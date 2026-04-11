@@ -29,20 +29,42 @@ export class StateStaffService {
   async getStaff(params: {
     institutionId?: string;
     role?: string;
+    staffType?: string;
     branchName?: string;
+    designationEnum?: string;
     search?: string;
     active?: boolean;
     page?: number;
     limit?: number;
   }) {
-    const { institutionId, role, branchName, search, active, page = 1, limit = 10 } = params;
+    const {
+      institutionId,
+      role,
+      staffType,
+      branchName,
+      designationEnum,
+      search,
+      active,
+      page = 1,
+      limit = 10,
+    } = params;
     const skip = (page - 1) * limit;
 
     // Staff roles - TEACHER (excluding PRINCIPAL, STUDENT, STATE_DIRECTORATE, SYSTEM_ADMIN)
     const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF];
 
+    let roleFilter: Prisma.UserWhereInput['role'] = { in: staffRoles };
+
+    if (role) {
+      roleFilter = role as Role;
+    } else if (staffType === 'teaching') {
+      roleFilter = { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] };
+    } else if (staffType === 'admin') {
+      roleFilter = Role.ADMIN_STAFF;
+    }
+
     const where: Prisma.UserWhereInput = {
-      role: role ? (role as Role) : { in: staffRoles },
+      role: roleFilter,
     };
 
     if (institutionId) {
@@ -51,6 +73,10 @@ export class StateStaffService {
 
     if (branchName) {
       where.branchName = { contains: branchName, mode: 'insensitive' };
+    }
+
+    if (designationEnum) {
+      where.designationEnum = designationEnum as Designation;
     }
 
     if (active !== undefined) {

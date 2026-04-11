@@ -5,6 +5,7 @@ import {
   Form,
   Input,
   Select,
+  DatePicker,
   Button,
   Tag,
   Spin,
@@ -36,6 +37,7 @@ import { authService } from '../features/auth/services/auth.service';
 import { useBranches } from '../features/shared/hooks/useLookup';
 import MfaSetup from '../features/auth/components/MfaSetup';
 import MaskedField from './common/MaskedField';
+import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
@@ -209,6 +211,8 @@ const UserProfile = ({ visible, onClose }) => {
         email: data.email,
         phoneNo: data.phoneNo || '',
         designation: normalizeDesignation(data.designation),
+        qualification: data.qualification || '',
+        dateOfJoining: data.dateOfJoining ? dayjs(data.dateOfJoining) : null,
         branchId,
       });
     } catch (error) {
@@ -286,6 +290,8 @@ const UserProfile = ({ visible, onClose }) => {
         email: values.email,
         phoneNo: values.phoneNo,
         designation: values.designation,
+        qualification: values.qualification,
+        dateOfJoining: values.dateOfJoining ? values.dateOfJoining.toISOString() : null,
         branchName,
       };
 
@@ -323,6 +329,8 @@ const UserProfile = ({ visible, onClose }) => {
         email: userData.email,
         phoneNo: userData.phoneNo || '',
         designation: normalizeDesignation(userData.designation),
+        qualification: userData.qualification || '',
+        dateOfJoining: userData.dateOfJoining ? dayjs(userData.dateOfJoining) : null,
         branchId:
           userData.branchId ||
           branches.find(
@@ -543,6 +551,28 @@ const UserProfile = ({ visible, onClose }) => {
                             />
                           </Form.Item>
 
+                          <Form.Item
+                            name="qualification"
+                            label="Qualification"
+                          >
+                            <Input
+                              size="small"
+                              placeholder="e.g., M.Tech, PhD"
+                              className="rounded-lg"
+                            />
+                          </Form.Item>
+
+                          <Form.Item
+                            name="dateOfJoining"
+                            label="Date of Joining"
+                          >
+                            <DatePicker
+                              size="small"
+                              format="DD-MM-YYYY"
+                              className="w-full rounded-lg"
+                            />
+                          </Form.Item>
+
                           <Form.Item name="branchId" label="Branch" className="md:col-span-2">
                             <Select
                               size="small"
@@ -606,7 +636,7 @@ const UserProfile = ({ visible, onClose }) => {
                         </div>
 
                         {/* Professional Information */}
-                        {(userData.designation || userData.branchName || userData.Institution?.name) && (
+                        {(userData.designation || userData.qualification || userData.dateOfJoining || userData.branchName || userData.Institution?.name) && (
                           <>
                             <Divider className="!my-3" />
                             <div>
@@ -619,6 +649,20 @@ const UserProfile = ({ visible, onClose }) => {
                                     icon={<SafetyOutlined />}
                                     label="Designation"
                                     value={userData.designation}
+                                  />
+                                )}
+                                {userData.qualification && (
+                                  <InfoField
+                                    icon={<SafetyOutlined />}
+                                    label="Qualification"
+                                    value={userData.qualification}
+                                  />
+                                )}
+                                {userData.dateOfJoining && (
+                                  <InfoField
+                                    icon={<CalendarOutlined />}
+                                    label="Date of Joining"
+                                    value={formatDate(userData.dateOfJoining)}
                                   />
                                 )}
                                 {userData.branchName && (

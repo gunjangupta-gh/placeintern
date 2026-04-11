@@ -16,6 +16,7 @@ import {
   selectTopPerformersLoading,
   selectTopIndustriesLoading,
 } from '../store/stateSlice';
+import { fetchStateTrainingDashboard } from '../store/stateTrainingSlice';
 import {
   DashboardHeader,
   StatisticsCards,
@@ -40,6 +41,8 @@ const StateDashboard = () => {
   const topIndustries = useSelector(selectTopIndustries);
   const performersLoading = useSelector(selectTopPerformersLoading);
   const industriesLoading = useSelector(selectTopIndustriesLoading);
+  const trainingDashboard = useSelector((state) => state.stateTraining?.reports?.dashboard);
+  const trainingDashboardLoading = useSelector((state) => state.stateTraining?.reports?.loading);
 
   const [selectedMonth, setSelectedMonth] = useState(null);
 
@@ -50,6 +53,7 @@ const StateDashboard = () => {
     dispatch(fetchMonthlyAnalytics());
     dispatch(fetchTopIndustries({ limit: 10 }));
     dispatch(fetchVisitsByType());
+    dispatch(fetchStateTrainingDashboard());
   }, [dispatch]);
 
   // Refresh handler
@@ -59,6 +63,7 @@ const StateDashboard = () => {
     dispatch(fetchMonthlyAnalytics({ forceRefresh: true }));
     dispatch(fetchTopIndustries({ limit: 10, forceRefresh: true }));
     dispatch(fetchVisitsByType({ forceRefresh: true }));
+    dispatch(fetchStateTrainingDashboard());
     toast.success('Dashboard refreshed');
   }, [dispatch]);
 
@@ -112,7 +117,12 @@ const StateDashboard = () => {
 
       {/* Statistics Cards */}
       <div className="mb-6">
-        <StatisticsCards stats={stats} selectedMonth={selectedMonth} />
+        <StatisticsCards
+          stats={stats}
+          selectedMonth={selectedMonth}
+          trainingDashboard={trainingDashboard}
+          trainingLoading={trainingDashboardLoading}
+        />
       </div>
 
       {/* Performance Tables */}

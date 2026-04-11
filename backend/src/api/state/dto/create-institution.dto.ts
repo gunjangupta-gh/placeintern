@@ -9,10 +9,12 @@ import {
   Max,
   IsUrl,
   Matches,
+  IsNumber,
+  IsObject,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { InstitutionType } from '../../../generated/prisma/client';
+import { InstitutionType, LandOwnershipType } from '../../../generated/prisma/client';
 
 export { InstitutionType };
 
@@ -96,6 +98,39 @@ export class CreateInstitutionDto {
   @IsUrl()
   website?: string;
 
+  @ApiPropertyOptional({ description: 'GPS latitude coordinate' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  latitude?: number;
+
+  @ApiPropertyOptional({ description: 'GPS longitude coordinate' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  longitude?: number;
+
+  @ApiPropertyOptional({ description: 'Map link for GPS location' })
+  @IsOptional()
+  @IsString()
+  gpsMapLink?: string;
+
+  @ApiPropertyOptional({ description: 'Total land in acres' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  totalLandAcres?: number;
+
+  @ApiPropertyOptional({ enum: LandOwnershipType, description: 'Land ownership type' })
+  @IsOptional()
+  @IsEnum(LandOwnershipType)
+  landOwnership?: LandOwnershipType;
+
+  @ApiPropertyOptional({ description: 'Whether there is any land dispute' })
+  @IsOptional()
+  @IsBoolean()
+  hasLandDispute?: boolean;
+
   @ApiPropertyOptional({ description: 'Year institution was established' })
   @IsOptional()
   @Transform(transformOptionalInt)
@@ -145,4 +180,9 @@ export class CreateInstitutionDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ description: 'Covered area rows nested relation payload' })
+  @IsOptional()
+  @IsObject()
+  coveredAreaDetails?: Record<string, any>;
 }

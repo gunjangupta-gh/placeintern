@@ -988,7 +988,7 @@ export class TrainingService {
             _count: { _all: true },
           }),
           this.prisma.user.findMany({
-            where: { role: { in: ['TEACHER', 'FACULTY_COORDINATOR', 'PRINCIPAL', 'ADMIN_STAFF'] }, active: true },
+            where: { role: { in: ['TEACHER', 'FACULTY_COORDINATOR'] }, active: true },
             select: {
               id: true,
               branchId: true,
@@ -1532,7 +1532,7 @@ export class TrainingService {
         this.prisma.user.findMany({
           where: {
             ...userFilter,
-            role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.PRINCIPAL, Role.ADMIN_STAFF] },
+            role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
             active: true,
           },
           select: {

@@ -522,8 +522,10 @@ export const fetchStaff = createAsyncThunk(
         limit: params?.limit ?? 10,
         search: params?.search ?? '',
         institutionId: params?.institutionId ?? '',
+        staffType: params?.staffType ?? '',
         role: params?.role ?? '',
         branchName: params?.branchName ?? '',
+        designationEnum: params?.designationEnum ?? '',
         active: params?.active ?? '',
       };
       const requestKey = JSON.stringify(normalizedParams);
