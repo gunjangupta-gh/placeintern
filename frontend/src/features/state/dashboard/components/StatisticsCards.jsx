@@ -79,13 +79,28 @@ const StatCard = ({ icon: Icon, title, lines = [], onClick, variant = 'primary' 
         }
       }}
     >
-      <div className="flex items-center gap-2 mb-2">
-        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md ${styles.iconWrap}`}>
-          <Icon className={`text-xs ${styles.iconColor}`} />
-        </span>
-        <Text className="text-[11px] text-slate-600 font-medium leading-tight line-clamp-1">
-          {title}
-        </Text>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md ${styles.iconWrap}`}>
+            <Icon className={`text-xs ${styles.iconColor}`} />
+          </span>
+          <Text className="text-[11px] text-slate-600 font-medium leading-tight line-clamp-1">
+            {title}
+          </Text>
+        </div>
+        {onClick ? (
+          <button
+            type="button"
+            aria-label={`View ${title}`}
+            className="inline-flex items-center justify-center w-6 h-6 rounded-full text-slate-400 hover:bg-slate-200/70 transition-colors"
+            onClick={(event) => {
+              event.stopPropagation();
+              onClick();
+            }}
+          >
+            <EyeOutlined className="text-xs" />
+          </button>
+        ) : null}
       </div>
       <div className="space-y-1 mt-1">
         {lines.map((line) => (
