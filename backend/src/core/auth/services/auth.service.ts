@@ -60,7 +60,16 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({
       where: { email },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        name: true,
+        role: true,
+        active: true,
+        institutionId: true,
+        mfaEnabled: true,
+        hasChangedDefaultPassword: true,
         Institution: {
           select: {
             id: true,
@@ -302,7 +311,16 @@ export class AuthService {
     // Get full user data
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        name: true,
+        role: true,
+        active: true,
+        institutionId: true,
+        mfaEnabled: true,
+        hasChangedDefaultPassword: true,
         Institution: {
           select: {
             id: true,
@@ -510,6 +528,17 @@ export class AuthService {
 
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
+        select: {
+          id: true,
+          email: true,
+          password: true,
+          name: true,
+          role: true,
+          active: true,
+          institutionId: true,
+          mfaEnabled: true,
+          hasChangedDefaultPassword: true,
+        },
       });
 
       if (!user) {
