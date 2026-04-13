@@ -21,6 +21,7 @@ import {
   submitLessonPlan,
 } from "../store/facultyTrainingSlice";
 import { fetchMyTrainings } from "../store/facultyTrainingSlice";
+import { useLookup } from "../../shared/hooks/useLookup";
 
 const { Text } = Typography;
 
@@ -33,6 +34,9 @@ const LessonPlanEditorPage = () => {
   const { lessonPlans, myTrainings } = useSelector(
     (state) => state.facultyTraining,
   );
+  const { activeBranches, branchesLoading } = useLookup({
+    include: ["branches"],
+  });
 
   useEffect(() => {
     dispatch(fetchMyTrainings());
@@ -129,28 +133,28 @@ const LessonPlanEditorPage = () => {
     return options;
   }, [myTrainings.list, lessonPlans.current]);
 
-  const courseSemesterOptions = useMemo(() => {
-    const baseOptions = [
-      { value: "Semester 1", label: "Semester 1" },
-      { value: "Semester 2", label: "Semester 2" },
-      { value: "Semester 3", label: "Semester 3" },
-      { value: "Semester 4", label: "Semester 4" },
-      { value: "Semester 5", label: "Semester 5" },
-      { value: "Semester 6", label: "Semester 6" },
-      { value: "Semester 7", label: "Semester 7" },
-      { value: "Semester 8", label: "Semester 8" },
-    ];
+  const courseOptions = useMemo(() => {
+    const options = (activeBranches || [])
+      .map((branch) => ({
+        value: branch.name,
+        label: branch.name,
+      }))
+      .filter((option) => option.value);
+
+    const uniqueOptions = Array.from(
+      new Map(options.map((option) => [option.value, option])).values(),
+    ).sort((a, b) => a.label.localeCompare(b.label));
 
     const currentValue = lessonPlans.current?.courseOrSemester;
     if (
       currentValue &&
-      !baseOptions.some((option) => option.value === currentValue)
+      !uniqueOptions.some((option) => option.value === currentValue)
     ) {
-      return [{ value: currentValue, label: currentValue }, ...baseOptions];
+      return [{ value: currentValue, label: currentValue }, ...uniqueOptions];
     }
 
-    return baseOptions;
-  }, [lessonPlans.current?.courseOrSemester]);
+    return uniqueOptions;
+  }, [activeBranches, lessonPlans.current?.courseOrSemester]);
 
   return (
     <div className="p-4 training-ui">
@@ -205,14 +209,16 @@ const LessonPlanEditorPage = () => {
                 name="courseOrSemester"
                 label={
                   <span className="text-[10px] uppercase font-semibold text-slate-500">
-                    Course or Semester
+                    Course
                   </span>
                 }
                 className="mb-3"
               >
                 <Select
-                  options={courseSemesterOptions}
-                  placeholder="Select semester"
+                  options={courseOptions}
+                  placeholder={branchesLoading ? "Loading courses..." : "Select course"}
+                  loading={branchesLoading}
+                  disabled={branchesLoading || courseOptions.length === 0}
                   allowClear
                   showSearch
                   filterOption={(input, option) =>
