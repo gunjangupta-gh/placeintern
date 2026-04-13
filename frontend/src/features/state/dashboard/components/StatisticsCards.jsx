@@ -396,8 +396,8 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
             icon={FileTextOutlined}
             title="Monthly Reports"
             lines={[
-              { label: 'Coverage', value: `${reportsPercent}%` },
               { label: 'Submitted', value: `${reportsSubmitted}/${reportsExpected}` },
+              { label: 'Coverage', value: `${reportsPercent}%` },
               { label: 'Month', value: displayMonth },
             ]}
             variant="success"
@@ -436,8 +436,8 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
             icon={EyeOutlined}
             title="Faculty Visits"
             lines={[
-              { label: 'Coverage', value: `${visitsPercent}%` },
               { label: 'Completed', value: `${visitsCompleted}/${visitsExpected}` },
+               { label: 'Coverage', value: `${visitsPercent}%` },
               { label: 'Month', value: displayMonth },
             ]}
             variant="rose"
