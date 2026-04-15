@@ -257,6 +257,11 @@ const trainingAdminService = {
     return response.data;
   },
 
+  async updatePreTestAnswerKeys(id, data) {
+    const response = await API.patch(`/state/test-forms/pre-test/${id}/answer-keys`, data);
+    return response.data;
+  },
+
   async deletePreTestForm(id) {
     const response = await API.delete(`/state/test-forms/pre-test/${id}`);
     return response.data;
@@ -307,6 +312,11 @@ const trainingAdminService = {
 
   async updatePostTestForm(id, data) {
     const response = await API.patch(`/state/test-forms/post-test/${id}`, data);
+    return response.data;
+  },
+
+  async updatePostTestAnswerKeys(id, data) {
+    const response = await API.patch(`/state/test-forms/post-test/${id}/answer-keys`, data);
     return response.data;
   },
 

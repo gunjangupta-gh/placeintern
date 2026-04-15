@@ -98,6 +98,20 @@ export class SubmitTestResponseDto {
   responses: Record<string, any>;
 }
 
+export class UpdateAnswerKeysDto {
+  @ApiPropertyOptional({ description: 'Answer keys - map of question ID to correct answer' })
+  @IsOptional()
+  @IsObject()
+  answerKeys?: Record<string, any>;
+
+  @ApiPropertyOptional({ description: 'Passing score percentage (0-100)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  passingScore?: number;
+}
+
 export class TestFormFilterDto {
   @ApiPropertyOptional({ description: 'Filter by purpose', enum: TestFormPurpose })
   @IsOptional()

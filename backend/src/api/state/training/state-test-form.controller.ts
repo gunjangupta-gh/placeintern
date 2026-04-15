@@ -17,7 +17,7 @@ import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { Role } from '../../../generated/prisma/client';
 import { TestFormService } from '../../../domain/training/test-form.service';
 import { TestResponseService } from '../../../domain/training/test-response.service';
-import { CreateTestFormDto, UpdateTestFormDto, TestFormFilterDto } from '../../../domain/training/dto';
+import { CreateTestFormDto, UpdateTestFormDto, UpdateAnswerKeysDto, TestFormFilterDto } from '../../../domain/training/dto';
 
 @ApiTags('State - Test Forms')
 @ApiBearerAuth()
@@ -58,6 +58,16 @@ export class StateTestFormController {
     @Req() req,
   ) {
     return this.testFormService.updatePreTestForm(id, dto, req.user.userId);
+  }
+
+  @Patch('pre-test/:id/answer-keys')
+  @ApiOperation({ summary: 'Update pre-test form answer keys and passing score only (safe for forms with responses)' })
+  async updatePreTestAnswerKeys(
+    @Param('id') id: string,
+    @Body() dto: UpdateAnswerKeysDto,
+    @Req() req,
+  ) {
+    return this.testFormService.updatePreTestAnswerKeys(id, dto, req.user.userId);
   }
 
   @Delete('pre-test/:id')
@@ -132,6 +142,16 @@ export class StateTestFormController {
     @Req() req,
   ) {
     return this.testFormService.updatePostTestForm(id, dto, req.user.userId);
+  }
+
+  @Patch('post-test/:id/answer-keys')
+  @ApiOperation({ summary: 'Update post-test form answer keys and passing score only (safe for forms with responses)' })
+  async updatePostTestAnswerKeys(
+    @Param('id') id: string,
+    @Body() dto: UpdateAnswerKeysDto,
+    @Req() req,
+  ) {
+    return this.testFormService.updatePostTestAnswerKeys(id, dto, req.user.userId);
   }
 
   @Delete('post-test/:id')

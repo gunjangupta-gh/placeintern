@@ -75,18 +75,28 @@ export class TestFormService {
         where: { preTestFormId: id },
       });
 
+      const mergedQuestionsForAnswerKeyUpdate =
+        responseCount > 0 && dto.questions
+          ? this.mergeAnswerKeyOnlyUpdates(existing.questions as any[], dto.questions as any[])
+          : undefined;
+
       if (responseCount > 0 && dto.questions) {
-        throw new BadRequestException(
-          'Cannot modify questions for a form that has responses. Create a new form instead.'
-        );
+        if (!mergedQuestionsForAnswerKeyUpdate) {
+          throw new BadRequestException(
+            'Cannot modify question structure for a form that has responses. You can only update correct answers and passing score.'
+          );
+        }
       }
+
+      const shouldRecalculateScores =
+        responseCount > 0 && (dto.passingScore !== undefined || !!dto.questions);
 
       const form = await this.prisma.preTestForm.update({
         where: { id },
         data: {
           title: dto.title,
           description: dto.description,
-          questions: dto.questions as any,
+          questions: (mergedQuestionsForAnswerKeyUpdate || dto.questions) as any,
           purpose: dto.purpose,
           passingScore: dto.passingScore,
           isActive: dto.isActive,
@@ -96,6 +106,14 @@ export class TestFormService {
           _count: { select: { responses: true, trainings: true } },
         },
       });
+
+      if (shouldRecalculateScores) {
+        await this.recalculatePreTestScores(
+          id,
+          form.questions as any[],
+          form.passingScore,
+        );
+      }
 
       await this.invalidateCache('pretest');
 
@@ -114,6 +132,97 @@ export class TestFormService {
       return form;
     } catch (error) {
       this.logger.error(`Failed to update pre-test form: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Update pre-test form answer keys and passing score only (State only)
+   * This method allows updating correct answers without requiring full question structure
+   */
+  async updatePreTestAnswerKeys(
+    id: string,
+    dto: { answerKeys?: Record<string, any>; passingScore?: number },
+    userId: string,
+  ) {
+    try {
+      const existing = await this.prisma.preTestForm.findUnique({ where: { id } });
+
+      if (!existing) {
+        throw new NotFoundException('Pre-test form not found');
+      }
+
+      const existingQuestions = existing.questions as any[];
+      let updatedQuestions = existingQuestions;
+
+      // Update answer keys if provided
+      if (dto.answerKeys && Object.keys(dto.answerKeys).length > 0) {
+        const questionIds = new Set(existingQuestions.map((q) => q.id));
+
+        // Validate all provided question IDs exist
+        for (const questionId of Object.keys(dto.answerKeys)) {
+          if (!questionIds.has(questionId)) {
+            throw new BadRequestException(`Question with ID "${questionId}" not found in form`);
+          }
+        }
+
+        // Update correct answers
+        updatedQuestions = existingQuestions.map((question) => {
+          if (dto.answerKeys && dto.answerKeys.hasOwnProperty(question.id)) {
+            return {
+              ...question,
+              correctAnswer: dto.answerKeys[question.id],
+            };
+          }
+          return question;
+        });
+      }
+
+      const form = await this.prisma.preTestForm.update({
+        where: { id },
+        data: {
+          questions: updatedQuestions as any,
+          ...(dto.passingScore !== undefined && { passingScore: dto.passingScore }),
+        },
+        include: {
+          createdBy: { select: { id: true, name: true } },
+          _count: { select: { responses: true, trainings: true } },
+        },
+      });
+
+      // Recalculate scores for existing responses
+      const responseCount = await this.prisma.preTestResponse.count({
+        where: { preTestFormId: id },
+      });
+
+      if (responseCount > 0) {
+        await this.recalculatePreTestScores(
+          id,
+          form.questions as any[],
+          form.passingScore,
+        );
+      }
+
+      await this.invalidateCache('pretest');
+
+      const changedFields: string[] = [];
+      if (dto.answerKeys) changedFields.push('answerKeys');
+      if (dto.passingScore !== undefined) changedFields.push('passingScore');
+
+      this.auditService.log({
+        action: AuditAction.CONFIGURATION_CHANGE,
+        entityType: 'PreTestForm',
+        entityId: form.id,
+        userId,
+        category: AuditCategory.TRAINING,
+        severity: AuditSeverity.MEDIUM,
+        description: `Pre-test form "${form.title}" answer keys updated`,
+        changedFields,
+      }).catch(() => {});
+
+      return form;
+    } catch (error) {
+      this.logger.error(`Failed to update pre-test answer keys: ${error.message}`, error.stack);
       throw error;
     }
   }
@@ -361,18 +470,28 @@ export class TestFormService {
         where: { postTestFormId: id },
       });
 
+      const mergedQuestionsForAnswerKeyUpdate =
+        responseCount > 0 && dto.questions
+          ? this.mergeAnswerKeyOnlyUpdates(existing.questions as any[], dto.questions as any[])
+          : undefined;
+
       if (responseCount > 0 && dto.questions) {
-        throw new BadRequestException(
-          'Cannot modify questions for a form that has responses. Create a new form instead.'
-        );
+        if (!mergedQuestionsForAnswerKeyUpdate) {
+          throw new BadRequestException(
+            'Cannot modify question structure for a form that has responses. You can only update correct answers and passing score.'
+          );
+        }
       }
+
+      const shouldRecalculateScores =
+        responseCount > 0 && (dto.passingScore !== undefined || !!dto.questions);
 
       const form = await this.prisma.postTestForm.update({
         where: { id },
         data: {
           title: dto.title,
           description: dto.description,
-          questions: dto.questions as any,
+          questions: (mergedQuestionsForAnswerKeyUpdate || dto.questions) as any,
           purpose: dto.purpose,
           passingScore: dto.passingScore,
           isActive: dto.isActive,
@@ -382,6 +501,14 @@ export class TestFormService {
           _count: { select: { responses: true, trainings: true } },
         },
       });
+
+      if (shouldRecalculateScores) {
+        await this.recalculatePostTestScores(
+          id,
+          form.questions as any[],
+          form.passingScore,
+        );
+      }
 
       await this.invalidateCache('posttest');
 
@@ -400,6 +527,97 @@ export class TestFormService {
       return form;
     } catch (error) {
       this.logger.error(`Failed to update post-test form: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Update post-test form answer keys and passing score only (State only)
+   * This method allows updating correct answers without requiring full question structure
+   */
+  async updatePostTestAnswerKeys(
+    id: string,
+    dto: { answerKeys?: Record<string, any>; passingScore?: number },
+    userId: string,
+  ) {
+    try {
+      const existing = await this.prisma.postTestForm.findUnique({ where: { id } });
+
+      if (!existing) {
+        throw new NotFoundException('Post-test form not found');
+      }
+
+      const existingQuestions = existing.questions as any[];
+      let updatedQuestions = existingQuestions;
+
+      // Update answer keys if provided
+      if (dto.answerKeys && Object.keys(dto.answerKeys).length > 0) {
+        const questionIds = new Set(existingQuestions.map((q) => q.id));
+
+        // Validate all provided question IDs exist
+        for (const questionId of Object.keys(dto.answerKeys)) {
+          if (!questionIds.has(questionId)) {
+            throw new BadRequestException(`Question with ID "${questionId}" not found in form`);
+          }
+        }
+
+        // Update correct answers
+        updatedQuestions = existingQuestions.map((question) => {
+          if (dto.answerKeys && dto.answerKeys.hasOwnProperty(question.id)) {
+            return {
+              ...question,
+              correctAnswer: dto.answerKeys[question.id],
+            };
+          }
+          return question;
+        });
+      }
+
+      const form = await this.prisma.postTestForm.update({
+        where: { id },
+        data: {
+          questions: updatedQuestions as any,
+          ...(dto.passingScore !== undefined && { passingScore: dto.passingScore }),
+        },
+        include: {
+          createdBy: { select: { id: true, name: true } },
+          _count: { select: { responses: true, trainings: true } },
+        },
+      });
+
+      // Recalculate scores for existing responses
+      const responseCount = await this.prisma.postTestResponse.count({
+        where: { postTestFormId: id },
+      });
+
+      if (responseCount > 0) {
+        await this.recalculatePostTestScores(
+          id,
+          form.questions as any[],
+          form.passingScore,
+        );
+      }
+
+      await this.invalidateCache('posttest');
+
+      const changedFields: string[] = [];
+      if (dto.answerKeys) changedFields.push('answerKeys');
+      if (dto.passingScore !== undefined) changedFields.push('passingScore');
+
+      this.auditService.log({
+        action: AuditAction.CONFIGURATION_CHANGE,
+        entityType: 'PostTestForm',
+        entityId: form.id,
+        userId,
+        category: AuditCategory.TRAINING,
+        severity: AuditSeverity.MEDIUM,
+        description: `Post-test form "${form.title}" answer keys updated`,
+        changedFields,
+      }).catch(() => {});
+
+      return form;
+    } catch (error) {
+      this.logger.error(`Failed to update post-test answer keys: ${error.message}`, error.stack);
       throw error;
     }
   }
@@ -647,6 +865,212 @@ export class TestFormService {
     } catch (error) {
       this.logger.error(`Failed to assign post-test form: ${error.message}`, error.stack);
       throw error;
+    }
+  }
+
+  private mergeAnswerKeyOnlyUpdates(
+    existingQuestions: any[],
+    incomingQuestions: any[],
+  ): any[] | null {
+    if (!Array.isArray(existingQuestions) || !Array.isArray(incomingQuestions)) {
+      return null;
+    }
+
+    const existingById = new Map<string, any>();
+    for (const question of existingQuestions) {
+      if (!question?.id) {
+        return null;
+      }
+      existingById.set(String(question.id), question);
+    }
+
+    // Allow partial updates and any order. Every provided question must exist and
+    // only differ in correctAnswer.
+    const incomingAnswerById = new Map<string, any>();
+    for (const incomingQuestion of incomingQuestions) {
+      const questionId = String(incomingQuestion?.id || '');
+      if (!questionId || !existingById.has(questionId)) {
+        return null;
+      }
+
+      const existingQuestion = existingById.get(questionId);
+
+      const { correctAnswer: _existingAnswer, ...existingComparable } =
+        existingQuestion || {};
+      const { correctAnswer: _incomingAnswer, ...incomingComparable } =
+        incomingQuestion || {};
+
+      if (
+        this.toComparableJson(existingComparable) !==
+        this.toComparableJson(incomingComparable)
+      ) {
+        return null;
+      }
+
+      incomingAnswerById.set(questionId, incomingQuestion?.correctAnswer);
+    }
+
+    return existingQuestions.map((question) => {
+      const questionId = String(question.id);
+      if (!incomingAnswerById.has(questionId)) {
+        return question;
+      }
+
+      return {
+        ...question,
+        correctAnswer: incomingAnswerById.get(questionId),
+      };
+    });
+  }
+
+  private toComparableJson(value: any): string {
+    return JSON.stringify(this.normalizeForComparison(value));
+  }
+
+  private normalizeForComparison(value: any): any {
+    if (Array.isArray(value)) {
+      return value.map((item) => this.normalizeForComparison(item));
+    }
+
+    if (value && typeof value === 'object') {
+      return Object.keys(value)
+        .sort()
+        .reduce((acc, key) => {
+          acc[key] = this.normalizeForComparison(value[key]);
+          return acc;
+        }, {} as Record<string, any>);
+    }
+
+    return value;
+  }
+
+  private async recalculatePreTestScores(
+    formId: string,
+    questions: any[],
+    passingScore: number | null,
+  ) {
+    const responses = await this.prisma.preTestResponse.findMany({
+      where: { preTestFormId: formId },
+      select: { id: true, responses: true },
+    });
+
+    if (responses.length === 0) {
+      return;
+    }
+
+    await this.prisma.$transaction(
+      responses.map((response) => {
+        const { score, passed } = this.calculateScore(
+          questions,
+          response.responses as Record<string, any>,
+          passingScore,
+        );
+
+        return this.prisma.preTestResponse.update({
+          where: { id: response.id },
+          data: { score, passed },
+        });
+      }),
+    );
+  }
+
+  private async recalculatePostTestScores(
+    formId: string,
+    questions: any[],
+    passingScore: number | null,
+  ) {
+    const responses = await this.prisma.postTestResponse.findMany({
+      where: { postTestFormId: formId },
+      select: { id: true, responses: true },
+    });
+
+    if (responses.length === 0) {
+      return;
+    }
+
+    await this.prisma.$transaction(
+      responses.map((response) => {
+        const { score, passed } = this.calculateScore(
+          questions,
+          response.responses as Record<string, any>,
+          passingScore,
+        );
+
+        return this.prisma.postTestResponse.update({
+          where: { id: response.id },
+          data: { score, passed },
+        });
+      }),
+    );
+  }
+
+  private calculateScore(
+    questions: any[],
+    responses: Record<string, any>,
+    passingScore: number | null,
+  ): { score: number | null; passed: boolean | null } {
+    const scorableQuestions = questions.filter(
+      (question) => question.correctAnswer !== undefined,
+    );
+
+    if (scorableQuestions.length === 0) {
+      return { score: null, passed: null };
+    }
+
+    let totalPoints = 0;
+    let earnedPoints = 0;
+
+    for (const question of scorableQuestions) {
+      const points = question.points || 1;
+      totalPoints += points;
+
+      const userAnswer = responses[question.id];
+      const correctAnswer = question.correctAnswer;
+
+      if (this.isAnswerCorrect(userAnswer, correctAnswer, question.type)) {
+        earnedPoints += points;
+      }
+    }
+
+    const score = totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
+    const passed = passingScore !== null ? score >= passingScore : null;
+
+    return { score: Math.round(score * 100) / 100, passed };
+  }
+
+  private isAnswerCorrect(userAnswer: any, correctAnswer: any, type: string): boolean {
+    if (userAnswer === undefined || userAnswer === null) {
+      return false;
+    }
+
+    switch (type) {
+      case 'multiChoice':
+      case 'yesNo':
+        return userAnswer === correctAnswer;
+
+      case 'checkbox':
+        if (!Array.isArray(userAnswer) || !Array.isArray(correctAnswer)) {
+          return false;
+        }
+
+        if (userAnswer.length !== correctAnswer.length) {
+          return false;
+        }
+
+        return correctAnswer.every((answer) => userAnswer.includes(answer));
+
+      case 'rating':
+      case 'number':
+        return Number(userAnswer) === Number(correctAnswer);
+
+      case 'text':
+        return (
+          String(userAnswer).toLowerCase().trim() ===
+          String(correctAnswer).toLowerCase().trim()
+        );
+
+      default:
+        return userAnswer === correctAnswer;
     }
   }
 
