@@ -92,6 +92,7 @@ const AuditLogs = () => {
   const categoryColors = {
     AUTHENTICATION: 'blue',
     PROFILE_MANAGEMENT: 'cyan',
+    TRAINING: 'geekblue',
     INTERNSHIP_WORKFLOW: 'purple',
     APPLICATION_PROCESS: 'geekblue',
     FEEDBACK_SYSTEM: 'magenta',
@@ -248,6 +249,10 @@ const AuditLogs = () => {
     'MentorAssignment',
     'Grievance',
     'TechnicalQuery',
+    'PreTestForm',
+    'PostTestForm',
+    'PreTestResponse',
+    'PostTestResponse',
     'System',
   ];
 
@@ -255,6 +260,7 @@ const AuditLogs = () => {
   const categories = [
     'AUTHENTICATION',
     'PROFILE_MANAGEMENT',
+    'TRAINING',
     'INTERNSHIP_WORKFLOW',
     'APPLICATION_PROCESS',
     'FEEDBACK_SYSTEM',

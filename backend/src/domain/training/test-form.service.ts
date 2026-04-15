@@ -99,6 +99,18 @@ export class TestFormService {
 
       await this.invalidateCache('pretest');
 
+      const changedFields = Object.keys(dto).filter((key) => dto[key] !== undefined);
+      this.auditService.log({
+        action: AuditAction.CONFIGURATION_CHANGE,
+        entityType: 'PreTestForm',
+        entityId: form.id,
+        userId,
+        category: AuditCategory.TRAINING,
+        severity: AuditSeverity.MEDIUM,
+        description: `Pre-test form "${form.title}" updated`,
+        changedFields,
+      }).catch(() => {});
+
       return form;
     } catch (error) {
       this.logger.error(`Failed to update pre-test form: ${error.message}`, error.stack);
@@ -129,6 +141,22 @@ export class TestFormService {
 
       await this.prisma.preTestForm.delete({ where: { id } });
       await this.invalidateCache('pretest');
+
+      this.auditService.log({
+        action: AuditAction.CONFIGURATION_CHANGE,
+        entityType: 'PreTestForm',
+        entityId: form.id,
+        userId,
+        category: AuditCategory.TRAINING,
+        severity: AuditSeverity.HIGH,
+        description: `Pre-test form "${form.title}" deleted`,
+        oldValues: {
+          title: form.title,
+          isActive: form.isActive,
+          isPublished: form.isPublished,
+          purpose: form.purpose,
+        },
+      }).catch(() => {});
 
       return { success: true, message: 'Pre-test form deleted' };
     } catch (error) {
@@ -357,6 +385,18 @@ export class TestFormService {
 
       await this.invalidateCache('posttest');
 
+      const changedFields = Object.keys(dto).filter((key) => dto[key] !== undefined);
+      this.auditService.log({
+        action: AuditAction.CONFIGURATION_CHANGE,
+        entityType: 'PostTestForm',
+        entityId: form.id,
+        userId,
+        category: AuditCategory.TRAINING,
+        severity: AuditSeverity.MEDIUM,
+        description: `Post-test form "${form.title}" updated`,
+        changedFields,
+      }).catch(() => {});
+
       return form;
     } catch (error) {
       this.logger.error(`Failed to update post-test form: ${error.message}`, error.stack);
@@ -387,6 +427,22 @@ export class TestFormService {
 
       await this.prisma.postTestForm.delete({ where: { id } });
       await this.invalidateCache('posttest');
+
+      this.auditService.log({
+        action: AuditAction.CONFIGURATION_CHANGE,
+        entityType: 'PostTestForm',
+        entityId: form.id,
+        userId,
+        category: AuditCategory.TRAINING,
+        severity: AuditSeverity.HIGH,
+        description: `Post-test form "${form.title}" deleted`,
+        oldValues: {
+          title: form.title,
+          isActive: form.isActive,
+          isPublished: form.isPublished,
+          purpose: form.purpose,
+        },
+      }).catch(() => {});
 
       return { success: true, message: 'Post-test form deleted' };
     } catch (error) {
