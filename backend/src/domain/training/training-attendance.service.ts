@@ -9,6 +9,30 @@ import { MarkAttendanceDto, BulkMarkAttendanceDto, AttendanceFilterDto, MarkSelf
 export class TrainingAttendanceService {
   private readonly logger = new Logger(TrainingAttendanceService.name);
 
+  private toUtcDateOnly(date: Date): Date {
+    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  }
+
+  private resolveAttendanceDate(attendanceDate?: string, fallback: Date = new Date()): Date {
+    if (!attendanceDate) {
+      return this.toUtcDateOnly(fallback);
+    }
+
+    // Treat YYYY-MM-DD as a calendar date and avoid local timezone shifting.
+    const dateOnlyMatch = attendanceDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateOnlyMatch) {
+      const [, year, month, day] = dateOnlyMatch;
+      return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    }
+
+    const parsed = new Date(attendanceDate);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new BadRequestException('Invalid attendance date format');
+    }
+
+    return this.toUtcDateOnly(parsed);
+  }
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly cache: CacheService,
@@ -42,11 +66,10 @@ export class TrainingAttendanceService {
 
       // Check if training is currently running
       const now = new Date();
-      const attendanceDate = dto.attendanceDate ? new Date(dto.attendanceDate) : now;
-      const dateOnly = new Date(attendanceDate.getFullYear(), attendanceDate.getMonth(), attendanceDate.getDate());
+      const dateOnly = this.resolveAttendanceDate(dto.attendanceDate, now);
 
-      const trainingStart = new Date(training.startDate.getFullYear(), training.startDate.getMonth(), training.startDate.getDate());
-      const trainingEnd = new Date(training.endDate.getFullYear(), training.endDate.getMonth(), training.endDate.getDate());
+      const trainingStart = this.toUtcDateOnly(training.startDate);
+      const trainingEnd = this.toUtcDateOnly(training.endDate);
 
       if (dateOnly < trainingStart || dateOnly > trainingEnd) {
         throw new BadRequestException('Attendance can only be marked during the training period');
@@ -119,11 +142,10 @@ export class TrainingAttendanceService {
         throw new NotFoundException('Training not found');
       }
 
-      const dateToMark = attendanceDate ? new Date(attendanceDate) : new Date();
-      const dateOnly = new Date(dateToMark.getFullYear(), dateToMark.getMonth(), dateToMark.getDate());
+      const dateOnly = this.resolveAttendanceDate(attendanceDate);
 
-      const trainingStart = new Date(training.startDate.getFullYear(), training.startDate.getMonth(), training.startDate.getDate());
-      const trainingEnd = new Date(training.endDate.getFullYear(), training.endDate.getMonth(), training.endDate.getDate());
+      const trainingStart = this.toUtcDateOnly(training.startDate);
+      const trainingEnd = this.toUtcDateOnly(training.endDate);
 
       if (dateOnly < trainingStart || dateOnly > trainingEnd) {
         throw new BadRequestException('Attendance can only be marked during the training period');
@@ -518,7 +540,6 @@ export class TrainingAttendanceService {
     // Ignore optional client-provided attendanceDate to avoid timezone drift issues.
     // Self-attendance is always recorded for the server's current day.
     return this.markAttendance(dto.trainingId, userId, {
-      attendanceDate: new Date().toISOString().split('T')[0],
       latitude: dto.latitude,
       longitude: dto.longitude,
       locationAddress: dto.locationAddress,
