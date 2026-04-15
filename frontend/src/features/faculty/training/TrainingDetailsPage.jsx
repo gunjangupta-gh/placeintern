@@ -260,7 +260,7 @@ const TrainingDetailsPage = () => {
       });
 
       const payload = {
-        preTestFormId: preTestFormData.id,
+        testFormId: preTestFormData.id,
         trainingId: id,
         responses,
       };
@@ -295,7 +295,7 @@ const TrainingDetailsPage = () => {
       });
 
       const payload = {
-        postTestFormId: postTestFormData.id,
+        testFormId: postTestFormData.id,
         trainingId: id,
         responses,
       };
