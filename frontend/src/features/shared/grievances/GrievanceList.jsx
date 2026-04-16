@@ -521,7 +521,7 @@ const GrievanceList = () => {
             columns={columns}
             rowKey="id"
             loading={loading}
-            scroll={{ x: 800 }}
+            scroll={{ x: 'max-content' }}
             pagination={{
               pageSize: 10,
               showSizeChanger: true,

@@ -291,7 +291,7 @@ const VisitLogList = React.memo(() => {
             dataSource={filteredLogs}
             loading={loading}
             rowKey="id"
-            scroll={{ x: 1100 }}
+            scroll={{ x: 'max-content' }}
             pagination={{
               current: pagination.current,
               pageSize: pagination.pageSize,

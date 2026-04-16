@@ -279,7 +279,7 @@ const BulkUserCreate = () => {
   ];
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div className="p-6">
       <Card title="Bulk Faculty/Staff Upload" variant="borderless">
         <Steps current={currentStep} style={{ marginBottom: '24px' }}>
           <Step title="Upload File" description="Select Excel file" />

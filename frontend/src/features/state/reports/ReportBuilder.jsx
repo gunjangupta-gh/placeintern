@@ -903,18 +903,9 @@ const ReportBuilder = () => {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <Title level={2} className="mb-1">
-          <BarChartOutlined className="mr-2" />
-          Report Builder
-        </Title>
-        <Text type="secondary">
-          Generate custom reports with configurable columns, filters, and export formats
-        </Text>
-      </div>
-
-      <Steps current={currentStep} className="mb-8" size="small">
+    <div className="">
+      <Card title="Report Builder" variant="borderless">
+        <Steps current={currentStep} className="mb-6" size="small">
         <Steps.Step title="Select Type" description="Choose report" />
         <Steps.Step title="Configure" description="Set columns & filters" />
         <Steps.Step title="Generate" description="Queue report" />
@@ -1179,6 +1170,7 @@ const ReportBuilder = () => {
           </Card>
         </TabPane>
       </Tabs>
+      </Card>
 
       {/* Save Template Modal */}
       <Modal

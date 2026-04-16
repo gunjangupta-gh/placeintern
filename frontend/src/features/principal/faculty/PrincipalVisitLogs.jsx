@@ -195,7 +195,7 @@ const PrincipalVisitLogs = () => {
             dataSource={reports}
             loading={loading}
             locale={{ emptyText: <Empty description="No visit logs found" /> }}
-            scroll={{ x: 1050 }}
+            scroll={{ x: 'max-content' }}
             pagination={{
               current: pagination.current,
               pageSize: pagination.pageSize,

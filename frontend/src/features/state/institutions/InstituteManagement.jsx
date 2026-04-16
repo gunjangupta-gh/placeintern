@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -13,7 +13,6 @@ import {
   Modal,
   Tooltip,
   Alert,
-  theme
 } from 'antd';
 import { toast } from 'react-hot-toast';
 import {
@@ -28,10 +27,11 @@ import {
   CloseCircleOutlined,
   GlobalOutlined,
   TeamOutlined,
-  SafetyCertificateOutlined
+  SafetyCertificateOutlined,
+  FilterOutlined,
+  ClearOutlined,
 } from '@ant-design/icons';
 import { useDebounce } from 'use-debounce';
-import dayjs from 'dayjs';
 
 import InstitutionModal from './InstitutionModal';
 import {
@@ -44,13 +44,12 @@ import {
   selectDashboardStats
 } from '../store/stateSlice';
 
-const { Title, Paragraph, Text } = Typography;
+const { Text } = Typography;
 
 const InstituteManagement = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { token } = theme.useToken();
-  
+
   // Redux State
   const institutions = useSelector(selectInstitutions);
   const loading = useSelector(selectInstitutionsLoading);
@@ -59,41 +58,47 @@ const InstituteManagement = () => {
 
   // Local State
   const [searchText, setSearchText] = useState('');
-  const [debouncedSearch] = useDebounce(searchText, 500);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Modal States
   const [modalVisible, setModalVisible] = useState(false);
   const [editingInstituteId, setEditingInstituteId] = useState(null);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [instituteToDelete, setInstituteToDelete] = useState(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('all');
 
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [debouncedSearch] = useDebounce(searchText, 500);
 
-  // Initial Fetch
+  // Fetch institutions when filters change
   useEffect(() => {
-    fetchData();
-    dispatch(fetchDashboardStats());
-  }, [dispatch, currentPage, pageSize, debouncedSearch, statusFilter]);
-
-  const fetchData = (force = false) => {
     dispatch(fetchInstitutions({
       page: currentPage,
       limit: pageSize,
       search: debouncedSearch,
-      status: statusFilter,
-      forceRefresh: force
+      status: statusFilter === 'all' ? undefined : statusFilter,
     }));
-  };
+  }, [dispatch, currentPage, pageSize, debouncedSearch, statusFilter]);
+
+  // Fetch dashboard stats on mount
+  useEffect(() => {
+    dispatch(fetchDashboardStats());
+  }, [dispatch]);
 
   const handleRefresh = () => {
-    fetchData(true);
-    dispatch(fetchDashboardStats({ forceRefresh: true }));
+    dispatch(fetchInstitutions({
+      page: currentPage,
+      limit: pageSize,
+      search: debouncedSearch,
+      status: statusFilter === 'all' ? undefined : statusFilter,
+      forceRefresh: true,
+    }));
+    dispatch(fetchDashboardStats());
   };
 
-  // Modal Handlers
   const openCreateModal = () => {
     setEditingInstituteId(null);
     setModalVisible(true);
@@ -104,63 +109,62 @@ const InstituteManagement = () => {
     setModalVisible(true);
   };
 
+  const handleViewInstitution = (record) => {
+    navigate(`/app/institutions-overview?id=${record.id}`);
+  };
+
   const handleDeleteClick = (record) => {
     setInstituteToDelete(record);
     setDeleteConfirmText('');
     setDeleteModalVisible(true);
   };
 
-  const handleViewInstitution = (record) => {
-    navigate(`/app/institutions-overview?id=${record.id}`);
-  };
-
   const handleDeleteConfirm = async () => {
-    if (!instituteToDelete) return;
-    
+    if (!instituteToDelete || deleteConfirmText !== instituteToDelete.name) return;
+
     setDeleting(true);
     try {
       await dispatch(deleteInstitution(instituteToDelete.id)).unwrap();
       toast.success('Institution deleted successfully');
       setDeleteModalVisible(false);
       setInstituteToDelete(null);
-      // Refresh list if needed (handled by redux optimistic update usually, but safe to fetch)
-      if (institutions.length === 1 && currentPage > 1) {
-        setCurrentPage(currentPage - 1);
-      }
+      handleRefresh();
     } catch (error) {
-      toast.error(error.message || 'Failed to delete institution');
+      toast.error(error?.message || 'Failed to delete institution');
     } finally {
       setDeleting(false);
     }
   };
 
+  const clearFilters = () => {
+    setSearchText('');
+    setStatusFilter('all');
+    setCurrentPage(1);
+  };
+
+  const handleSearch = (value) => {
+    setSearchText(value);
+    setCurrentPage(1);
+  };
+
   // Table Columns
   const columns = [
     {
-      title: 'Institution Details',
+      title: 'Institution',
       dataIndex: 'name',
       key: 'name',
       render: (text, record) => (
-        <div className="flex items-start gap-3">
-          <div 
-            className="mt-1 p-2 rounded-lg"
-            style={{ 
-              backgroundColor: token.colorBgContainer, 
-              border: `1px solid ${token.colorBorder}`,
-              color: token.colorPrimary 
-            }}
-          >
+        <Space>
+          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
             <BankOutlined />
           </div>
-          <div>
-            <Text strong style={{ color: token.colorText }} className="block">{text}</Text>
-            <Space size={4} className="text-xs" style={{ color: token.colorTextTertiary }}>
-              <Tag variant="borderless" className="m-0 text-[10px]" style={{ backgroundColor: token.colorBgContainer, color: token.colorTextSecondary }}>{record.code}</Tag>
-              <span>•</span>
-              <span>{record.address}</span>
-            </Space>
+          <div className="min-w-0">
+            <Tooltip title={text}>
+              <div className="font-medium truncate max-w-[180px]">{text}</div>
+            </Tooltip>
+            <div className="text-gray-500 text-xs truncate max-w-[180px]">{record.code} • {record.address}</div>
           </div>
-        </div>
+        </Space>
       ),
     },
     {
@@ -169,7 +173,7 @@ const InstituteManagement = () => {
       key: 'type',
       width: 120,
       render: (type) => (
-        <Tag color="blue" className="rounded-md font-medium">
+        <Tag color="blue">
           {type?.replace('_', ' ') || 'N/A'}
         </Tag>
       ),
@@ -177,70 +181,40 @@ const InstituteManagement = () => {
     {
       title: 'Contact',
       key: 'contact',
-      width: 250,
+      width: 220,
       render: (_, record) => (
-        <div className="space-y-1 text-sm">
-          {record.contactEmail && (
-            <div className="flex items-center gap-2" style={{ color: token.colorTextSecondary }}>
-              <div 
-                className="w-4 h-4 flex items-center justify-center rounded-full"
-                style={{ backgroundColor: token.colorBgContainer, color: token.colorPrimary }}
-              >@</div>
-              <span className="truncate max-w-[180px]">{record.contactEmail}</span>
-            </div>
-          )}
-          {record.contactPhone && (
-            <div className="flex items-center gap-2" style={{ color: token.colorTextSecondary }}>
-              <div 
-                className="w-4 h-4 flex items-center justify-center rounded-full"
-                style={{ backgroundColor: token.colorBgContainer, color: token.colorSuccess }}
-              >#</div>
-              <span>{record.contactPhone}</span>
-            </div>
-          )}
+        <div className="text-sm">
+          {record.contactEmail && <div className="text-gray-600 truncate max-w-[180px]">{record.contactEmail}</div>}
+          {record.contactPhone && <div className="text-gray-500 text-xs">{record.contactPhone}</div>}
         </div>
       ),
     },
     {
-      title: 'Land & GPS',
+      title: 'Land Info',
       key: 'landInfo',
-      width: 240,
+      width: 180,
       render: (_, record) => (
-        <div className="space-y-1 text-sm">
-          <div className="flex items-center gap-2" style={{ color: token.colorTextSecondary }}>
-            <span className="font-medium">Land:</span>
-            <span>{record.totalLandAcres != null ? `${record.totalLandAcres} acres` : 'N/A'}</span>
-          </div>
-          <div className="flex items-center gap-2" style={{ color: token.colorTextSecondary }}>
-            <span className="font-medium">Ownership:</span>
-            <span>{record.landOwnership ? record.landOwnership.replace(/_/g, ' ') : 'N/A'}</span>
-          </div>
-          <div className="flex items-center gap-2" style={{ color: token.colorTextSecondary }}>
-            <span className="font-medium">Dispute:</span>
-            <Tag color={record.hasLandDispute ? 'error' : 'success'} className="m-0">
-              {record.hasLandDispute ? 'Yes' : 'No'}
-            </Tag>
-          </div>
+        <div className="text-xs text-gray-500">
+          <div>Land: {record.totalLandAcres != null ? `${record.totalLandAcres} acres` : 'N/A'}</div>
+          <div>Owner: {record.landOwnership ? record.landOwnership.replace(/_/g, ' ') : 'N/A'}</div>
         </div>
       ),
     },
     {
       title: 'Stats',
       key: 'stats',
-      width: 150,
+      width: 120,
       render: (_, record) => (
-        <Space size={16}>
+        <Space size={12}>
           <Tooltip title="Students">
-            <div className="flex items-center gap-1.5" style={{ color: token.colorTextSecondary }}>
-              <TeamOutlined />
-              <span>{record._count?.Student ?? record.studentCount ?? 0}</span>
-            </div>
+            <span className="text-gray-500">
+              <TeamOutlined /> {record._count?.Student ?? record.studentCount ?? 0}
+            </span>
           </Tooltip>
           <Tooltip title="Staff">
-            <div className="flex items-center gap-1.5" style={{ color: token.colorTextSecondary }}>
-              <SafetyCertificateOutlined />
-              <span>{record._count?.users ?? record.facultyCount ?? 0}</span>
-            </div>
+            <span className="text-gray-500">
+              <SafetyCertificateOutlined /> {record._count?.users ?? record.facultyCount ?? 0}
+            </span>
           </Tooltip>
         </Space>
       ),
@@ -251,11 +225,7 @@ const InstituteManagement = () => {
       key: 'isActive',
       width: 100,
       render: (isActive) => (
-        <Tag 
-          color={isActive ? 'success' : 'error'} 
-          icon={isActive ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
-          className="rounded-full px-2"
-        >
+        <Tag color={isActive ? 'green' : 'red'}>
           {isActive ? 'Active' : 'Inactive'}
         </Tag>
       ),
@@ -263,298 +233,167 @@ const InstituteManagement = () => {
     {
       title: 'Actions',
       key: 'actions',
-      width: 140,
-      fixed: 'right',
+      width: 120,
       render: (_, record) => (
         <Space>
-          <Button
-            type="text"
-            icon={<EyeOutlined />}
-            onClick={() => handleViewInstitution(record)}
-          />
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => openEditModal(record.id)}
-            style={{ color: token.colorPrimary }}
-          />
-          <Button
-            type="text"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDeleteClick(record)}
-          />
+          <Button type="text" icon={<EyeOutlined />} onClick={() => handleViewInstitution(record)} />
+          <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record.id)} />
+          <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDeleteClick(record)} />
         </Space>
       ),
     },
   ];
 
-  // Calculated stats (fallback if dashboardStats is missing or needs augmentation)
-  const stats = useMemo(() => {
-    // If we have dashboard stats, use those (mapping fields as best guess based on typical API)
-    if (dashboardStats) {
-      return {
-        total: dashboardStats.totalInstitutions || dashboardStats.institutions?.total || 0,
-        active: dashboardStats.activeInstitutions || dashboardStats.institutions?.active || 0,
-        inactive: (dashboardStats.institutions?.total || 0) - (dashboardStats.institutions?.active || 0),
-        autonomous: dashboardStats.autonomousInstitutions || 0
-      };
-    }
-    // Fallback to current list stats (incomplete but better than nothing)
-    return {
-      total: pagination?.total || institutions.length,
-      active: institutions.filter(i => i.isActive).length,
-      inactive: institutions.filter(i => !i.isActive).length,
-      autonomous: institutions.filter(i => i.autonomousStatus).length
-    };
-  }, [dashboardStats, institutions, pagination]);
+  const hasActiveFilters = searchText || statusFilter !== 'all';
 
   return (
-    <div className="p-4 md:p-6 min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
-      <div className="max-w-[1600px] mx-auto space-y-4">
-        {/* Header - Compact */}
-        <div 
-          style={{
-            padding: '12px 16px',
-            backgroundColor: token.colorBgContainer,
-            borderRadius: token.borderRadiusLG,
-            border: `1px solid ${token.colorBorderSecondary}`,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <BankOutlined style={{ fontSize: 20, color: token.colorPrimary }} />
-            <div>
-              <Title level={4} style={{ margin: 0, lineHeight: 1.2, color: token.colorText }}>
-                Institution Management
-              </Title>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                Manage educational institutions and track performance
-              </Text>
-            </div>
-          </div>
+    <div className="">
+      <Card
+        title="Institution Management"
+        extra={
+          <Space>
+            <Button icon={<FilterOutlined />} onClick={() => setShowFilters(!showFilters)}>
+              Filters
+            </Button>
+            <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={loading}>
+              Refresh
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+              Add Institute
+            </Button>
+          </Space>
+        }
+        variant="borderless"
+      >
+        <div className="mb-4">
+          <Input.Search
+            placeholder="Search by name, code, or city..."
+            prefix={<SearchOutlined />}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            onSearch={handleSearch}
+            style={{ width: 350 }}
+            allowClear
+            enterButton
+          />
         </div>
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Card size="small" className="rounded-lg hover:shadow-md transition-all duration-300" style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }} bodyStyle={{ padding: '10px' }}>
-            <div className="flex items-center gap-3">
-              <div 
-                className="w-10 h-10 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary }}
-              >
-                <BankOutlined className="text-lg" />
-              </div>
-              <div>
-                <div className="text-xl font-bold" style={{ color: token.colorText }}>{stats.total}</div>
-                <div className="text-[10px] uppercase tracking-wider font-bold" style={{ color: token.colorTextTertiary }}>Total Institutes</div>
-              </div>
-            </div>
-          </Card>
-
-          <Card size="small" className="rounded-lg hover:shadow-md transition-all duration-300" style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }} bodyStyle={{ padding: '10px' }}>
-            <div className="flex items-center gap-3">
-              <div 
-                className="w-10 h-10 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: token.colorSuccessBg, color: token.colorSuccess }}
-              >
-                <CheckCircleOutlined className="text-lg" />
-              </div>
-              <div>
-                <div className="text-xl font-bold" style={{ color: token.colorText }}>{stats.active}</div>
-                <div className="text-[10px] uppercase tracking-wider font-bold" style={{ color: token.colorTextTertiary }}>Active</div>
-              </div>
-            </div>
-          </Card>
-
-          <Card size="small" className="rounded-lg hover:shadow-md transition-all duration-300" style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }} bodyStyle={{ padding: '10px' }}>
-            <div className="flex items-center gap-3">
-              <div 
-                className="w-10 h-10 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: token.colorErrorBg, color: token.colorError }}
-              >
-                <CloseCircleOutlined className="text-lg" />
-              </div>
-              <div>
-                <div className="text-xl font-bold" style={{ color: token.colorText }}>{stats.inactive}</div>
-                <div className="text-[10px] uppercase tracking-wider font-bold" style={{ color: token.colorTextTertiary }}>Inactive</div>
-              </div>
-            </div>
-          </Card>
-
-          <Card size="small" className="rounded-lg hover:shadow-md transition-all duration-300" style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }} bodyStyle={{ padding: '10px' }}>
-            <div className="flex items-center gap-3">
-              <div 
-                className="w-10 h-10 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: token.colorFillQuaternary, color: token.colorTextSecondary }}
-              >
-                <GlobalOutlined className="text-lg" />
-              </div>
-              <div>
-                <div className="text-xl font-bold" style={{ color: token.colorText }}>{stats.autonomous}</div>
-                <div className="text-[10px] uppercase tracking-wider font-bold" style={{ color: token.colorTextTertiary }}>Autonomous</div>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Main Content Card */}
-        <Card 
-          className="rounded-3xl overflow-hidden" 
-          style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }}
-          styles={{ body: { padding: '24px' } }}
-        >
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <Input
-                placeholder="Search by name, code, or city..."
-                prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
-                value={searchText}
-                onChange={(e) => {
-                  setSearchText(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="max-w-md h-10 rounded-xl"
-                style={{ backgroundColor: token.colorBgLayout, borderColor: token.colorBorder }}
-                allowClear
-              />
-              <Select
-                value={statusFilter}
-                onChange={(value) => {
-                  setStatusFilter(value);
-                  setCurrentPage(1);
-                }}
-                className="h-10"
-                style={{ minWidth: 150 }}
-                options={[
-                  { value: 'all', label: 'All Status' },
-                  { value: 'active', label: 'Active' },
-                  { value: 'inactive', label: 'Inactive' },
-                ]}
-              />
-            </div>
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={handleRefresh}
-                loading={loading}
-                className="h-10 rounded-xl"
-                style={{ borderColor: token.colorBorder }}
-              >
-                Refresh
-              </Button>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={openCreateModal}
-                className="h-10 rounded-xl font-bold shadow-lg"
-                style={{ backgroundColor: token.colorPrimary }}
-              >
-                Add Institute
-              </Button>
-            </div>
-          </div>
-
-          <div className="rounded-xl border overflow-hidden" style={{ borderColor: token.colorBorder, backgroundColor: token.colorBgContainer }}>
-            <Table
-              columns={columns}
-              dataSource={institutions}
-              rowKey="id"
-              loading={loading}
-              scroll={{ x: 'max-content' }}
-              pagination={{
-                current: currentPage,
-                pageSize: pageSize,
-                total: pagination?.total || 0,
-                onChange: (page, size) => {
-                  setCurrentPage(page);
-                  setPageSize(size);
-                },
-                showSizeChanger: true,
-                showTotal: (total, range) => (
-                  <span style={{ color: token.colorTextTertiary }}>
-                    Showing {range[0]}-{range[1]} of {total} institutes
-                  </span>
-                ),
-                className: "px-4 py-4"
-              }}
-            />
-          </div>
-        </Card>
-
-        {/* Create/Edit Modal */}
-        <InstitutionModal
-          open={modalVisible}
-          onClose={() => setModalVisible(false)}
-          institutionId={editingInstituteId}
-          onSuccess={() => handleRefresh()}
-        />
-
-        {/* Delete Confirmation Modal */}
-        <Modal
-          title={
-            <div className="flex items-center gap-2" style={{ color: token.colorError }}>
-              <DeleteOutlined />
-              <span className="font-bold">Delete Institute</span>
-            </div>
-          }
-          open={deleteModalVisible}
-          onCancel={() => {
-            setDeleteModalVisible(false);
-            setInstituteToDelete(null);
-          }}
-          footer={[
-            <Button
-              key="cancel"
-              onClick={() => setDeleteModalVisible(false)}
-              className="rounded-lg font-medium"
-            >
-              Cancel
-            </Button>,
-            <Button
-              key="delete"
-              type="primary"
-              danger
-              loading={deleting}
-              disabled={deleteConfirmText !== instituteToDelete?.name}
-              onClick={handleDeleteConfirm}
-              className="rounded-lg font-bold"
-            >
-              Delete
-            </Button>,
-          ]}
-          centered
-          className="rounded-2xl overflow-hidden"
-        >
-          {instituteToDelete && (
-            <div className="space-y-4">
-              <Alert
-                message="Warning: Irreversible Action"
-                description="This will permanently delete the institution and all associated data including students, faculty, and academic records."
-                type="error"
-                showIcon
-                className="rounded-lg"
-                style={{ borderColor: `${token.colorError}33`, backgroundColor: token.colorErrorBg }}
-              />
-
-              <div>
-                <Text className="block mb-2 font-medium" style={{ color: token.colorText }}>
-                  Type <Text code>{instituteToDelete.name}</Text> to confirm:
-                </Text>
-                <Input
-                  placeholder="Type institute name..."
-                  value={deleteConfirmText}
-                  onChange={(e) => setDeleteConfirmText(e.target.value)}
-                  status={deleteConfirmText && deleteConfirmText !== instituteToDelete?.name ? "error" : ""}
-                  className="rounded-lg h-10"
+        {/* Filters */}
+        {showFilters && (
+          <div className="mb-4 p-4 bg-gray-50 rounded">
+            <Row gutter={[16, 16]} align="middle">
+              <Col xs={24} sm={12} md={6}>
+                <Select
+                  value={statusFilter}
+                  onChange={(value) => {
+                    setStatusFilter(value);
+                    setCurrentPage(1);
+                  }}
+                  style={{ width: '100%' }}
+                  options={[
+                    { value: 'all', label: 'All Status' },
+                    { value: 'active', label: 'Active' },
+                    { value: 'inactive', label: 'Inactive' },
+                  ]}
                 />
-              </div>
+              </Col>
+              <Col>
+                {hasActiveFilters && (
+                  <Button icon={<ClearOutlined />} onClick={clearFilters}>
+                    Clear
+                  </Button>
+                )}
+              </Col>
+            </Row>
+          </div>
+        )}
+
+        <div className="custom-table">
+          <Table
+            columns={columns}
+            dataSource={institutions}
+            rowKey="id"
+            loading={loading}
+            scroll={{ x: 'max-content' }}
+            size="small"
+            pagination={{
+              current: currentPage,
+              pageSize: pageSize,
+              total: pagination?.total || 0,
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size);
+              },
+              showSizeChanger: true,
+              showQuickJumper: true,
+              pageSizeOptions: ['10', '20', '50', '100'],
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} institutes`,
+            }}
+          />
+        </div>
+      </Card>
+
+      {/* Create/Edit Modal */}
+      <InstitutionModal
+        open={modalVisible}
+        onClose={() => setModalVisible(false)}
+        institutionId={editingInstituteId}
+        onSuccess={() => handleRefresh()}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        title={
+          <Space className="text-red-600">
+            <DeleteOutlined />
+            <span>Delete Institute</span>
+          </Space>
+        }
+        open={deleteModalVisible}
+        onCancel={() => {
+          setDeleteModalVisible(false);
+          setInstituteToDelete(null);
+        }}
+        footer={[
+          <Button key="cancel" onClick={() => setDeleteModalVisible(false)}>
+            Cancel
+          </Button>,
+          <Button
+            key="delete"
+            type="primary"
+            danger
+            loading={deleting}
+            disabled={deleteConfirmText !== instituteToDelete?.name}
+            onClick={handleDeleteConfirm}
+          >
+            Delete
+          </Button>,
+        ]}
+        centered
+        destroyOnClose
+      >
+        {instituteToDelete && (
+          <div className="space-y-4">
+            <Alert
+              message="Warning: Irreversible Action"
+              description="This will permanently delete the institution and all associated data."
+              type="error"
+              showIcon
+            />
+            <div>
+              <Text className="block mb-2">
+                Type <Text code>{instituteToDelete.name}</Text> to confirm:
+              </Text>
+              <Input
+                placeholder="Type institute name..."
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                status={deleteConfirmText && deleteConfirmText !== instituteToDelete?.name ? "error" : ""}
+              />
             </div>
-          )}
-        </Modal>
-      </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

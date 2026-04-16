@@ -231,7 +231,7 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
             onChange: (current, pageSize) => setPagination({ current, pageSize }),
           }}
           size="small"
-          scroll={{ x: 700 }}
+          scroll={{ x: 'max-content' }}
         />
       </Modal>
 

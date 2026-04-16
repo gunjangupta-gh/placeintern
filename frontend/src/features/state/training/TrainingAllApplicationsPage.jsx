@@ -169,7 +169,11 @@ const TrainingAllApplicationsPage = () => {
       sortOrder: sortState.field === "training" ? sortState.order : null,
       showSorterTooltip: false,
       render: (value) => (
-        <Text className="text-xs font-semibold text-slate-800">{value || "Untitled Training"}</Text>
+        <Tooltip title={value || "Untitled Training"}>
+          <Text className="text-xs font-semibold text-slate-800 block truncate max-w-[220px]">
+            {value || "Untitled Training"}
+          </Text>
+        </Tooltip>
       ),
     },
     {
@@ -197,11 +201,16 @@ const TrainingAllApplicationsPage = () => {
         ),
       sortOrder: sortState.field === "institution" ? sortState.order : null,
       showSorterTooltip: false,
-      render: (_, record) => (
-        <Text className="text-xs text-slate-700">
-          {record.user?.Institution?.shortName || record.user?.Institution?.name || "N/A"}
-        </Text>
-      ),
+      render: (_, record) => {
+        const institutionName = record.user?.Institution?.shortName || record.user?.Institution?.name || "N/A";
+        return (
+          <Tooltip title={record.user?.Institution?.name || institutionName}>
+            <Text className="text-xs text-slate-700 block truncate max-w-[180px]">
+              {institutionName}
+            </Text>
+          </Tooltip>
+        );
+      },
     },
     {
       title: "Status",

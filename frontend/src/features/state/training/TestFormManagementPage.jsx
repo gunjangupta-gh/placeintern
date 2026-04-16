@@ -1159,7 +1159,7 @@ const TestFormManagementPage = () => {
                       });
                     }}
                     size="small"
-                    scroll={{ x: 800 }}
+                    scroll={{ x:  'max-content' }}
                   />
                 </div>
               ) : (

@@ -315,7 +315,7 @@ const InstitutionsTable = ({ institutions, loading, onViewAll, onViewDetails, mo
         pagination={false}
         size="middle"
         rowKey="id"
-        scroll={{ x: 1100 }}
+        scroll={{ x: 'max-content' }}
         className="custom-table"
       />
     </Card>

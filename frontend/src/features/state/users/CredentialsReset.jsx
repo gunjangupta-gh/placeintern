@@ -32,13 +32,14 @@ import {
   BankOutlined,
   FilterOutlined,
   ClearOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import { credentialsService } from '../../../services/credentials.service';
 import { apiClient } from '../../../services/api';
 import { stateService } from '../../../services/state.service';
 import { debounce } from 'lodash';
 
-const { Title, Text, Paragraph } = Typography;
+const { Text, Paragraph } = Typography;
 
 const CredentialsReset = () => {
   const [users, setUsers] = useState([]);
@@ -344,7 +345,7 @@ const CredentialsReset = () => {
         <Space>
           <UserOutlined />
           <div>
-            <div className="font-medium">{text}</div>
+            <div className="font-medium text-sm">{text}</div>
             <div className="text-gray-500 text-xs">{record.email}</div>
           </div>
         </Space>
@@ -354,7 +355,7 @@ const CredentialsReset = () => {
       title: 'Role',
       dataIndex: 'role',
       key: 'role',
-      width: 150,
+      width: 130,
       render: (role) => {
         const roleColors = {
           SYSTEM_ADMIN: 'red',
@@ -365,22 +366,19 @@ const CredentialsReset = () => {
           STUDENT: 'default',
           INDUSTRY: 'orange',
         };
-        return <Tag color={roleColors[role] || 'default'}>{role?.replace(/_/g, ' ')}</Tag>;
+        return <Tag color={roleColors[role] || 'default'} className="text-xs">{role?.replace(/_/g, ' ')}</Tag>;
       },
     },
     {
       title: 'Institution',
       dataIndex: 'Institution',
       key: 'institution',
-      width: 200,
+      width: 180,
       render: (institution) => (
         institution ? (
-          <Space>
-            <BankOutlined className="text-blue-500" />
-            <span>{institution.name}</span>
-          </Space>
+          <span className="text-xs">{institution.name}</span>
         ) : (
-          <Text type="secondary">Not Assigned</Text>
+          <Text type="secondary" className="text-xs">Not Assigned</Text>
         )
       ),
     },
@@ -388,34 +386,33 @@ const CredentialsReset = () => {
       title: 'Last Login',
       dataIndex: 'lastLoginAt',
       key: 'lastLoginAt',
-      width: 160,
-      render: (date) => date ? new Date(date).toLocaleString('en-IN') : <Text type="secondary">Never</Text>,
+      width: 140,
+      render: (date) => <span className="text-xs">{date ? new Date(date).toLocaleString('en-IN') : 'Never'}</span>,
     },
     {
       title: 'Status',
       dataIndex: 'active',
       key: 'active',
-      width: 100,
+      width: 80,
       render: (active) => (
-        <Badge
-          status={active ? 'success' : 'error'}
-          text={active ? 'Active' : 'Inactive'}
-        />
+        <Tag color={active ? 'green' : 'red'} className="text-xs">
+          {active ? 'Active' : 'Inactive'}
+        </Tag>
       ),
     },
     {
       title: 'Security',
       key: 'security',
-      width: 160,
+      width: 120,
       render: (_, record) => {
         if (isUserLocked(record)) {
           return (
-            <Tag color="volcano">
+            <Tag color="volcano" className="text-xs">
               Locked ({getLockMinutesRemaining(record)}m)
             </Tag>
           );
         }
-        return <Tag color="green">Unlocked</Tag>;
+        return <Tag color="green" className="text-xs">Unlocked</Tag>;
       },
     },
     {
@@ -466,14 +463,9 @@ const CredentialsReset = () => {
   const hasActiveFilters = searchText || selectedRole || selectedInstitution || activeFilter !== undefined || lockFilter !== undefined;
 
   return (
-    <div className="p-6">
+    <div className="">
       <Card
-        title={
-          <Space>
-            <LockOutlined style={{ fontSize: '24px' }} />
-            <Title level={3} style={{ margin: 0 }}>Reset User Credentials</Title>
-          </Space>
-        }
+        title="Reset User Credentials"
         extra={
           <Space>
             <Tooltip title="Refresh user list">
@@ -504,7 +496,7 @@ const CredentialsReset = () => {
       >
         <Space orientation="vertical" size="large" style={{ width: '100%' }}>
           <Alert
-            title="Password Reset Guidelines"
+            message="Password Reset Guidelines"
             description={
               <ul style={{ marginBottom: 0, paddingLeft: 20 }}>
                 <li>Passwords will be automatically generated (8 characters with uppercase, lowercase, and numbers)</li>
@@ -622,21 +614,24 @@ const CredentialsReset = () => {
             </Row>
           </Card>
 
-          <Table
-            columns={columns}
-            dataSource={users}
-            loading={loading}
-            rowKey="id"
-            rowSelection={rowSelection}
-            pagination={{
-              ...pagination,
-              showSizeChanger: true,
-              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} users`,
-              pageSizeOptions: ['10', '20', '50', '100'],
-            }}
-            onChange={handleTableChange}
-            scroll={{ x: 1000 }}
-          />
+          <div className="custom-table">
+            <Table
+              columns={columns}
+              dataSource={users}
+              loading={loading}
+              rowKey="id"
+              rowSelection={rowSelection}
+              size="small"
+              pagination={{
+                ...pagination,
+                showSizeChanger: true,
+                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} users`,
+                pageSizeOptions: ['10', '20', '50', '100'],
+              }}
+              onChange={handleTableChange}
+              scroll={{ x:  'max-content' }}
+            />
+          </div>
         </Space>
       </Card>
 

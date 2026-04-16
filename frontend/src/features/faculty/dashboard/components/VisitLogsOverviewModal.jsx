@@ -304,7 +304,7 @@ const VisitLogsOverviewModal = ({ visible, onClose, students = [], visitLogs = [
         columns={columns}
         dataSource={tableData}
         pagination={false}
-        scroll={{ x: 1200 }}
+        scroll={{ x: 'max-content' }}
         size="middle"
         bordered
         className="visit-logs-table"

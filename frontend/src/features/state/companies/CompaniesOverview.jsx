@@ -324,115 +324,67 @@ const CompaniesOverview = () => {
   ], []);
 
   return (
-    <div
-      className="px-4 md:px-6 py-6 min-h-screen space-y-6"
-      style={{
-        background: 'radial-gradient(1200px 500px at 0% -10%, rgba(14, 116, 144, 0.08), transparent 55%), radial-gradient(1000px 520px at 100% 0%, rgba(217, 119, 6, 0.08), transparent 60%), #f8fafc',
-        fontFamily: "'Space Grotesk', 'Sora', sans-serif",
-      }}
-    >
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 bg-surface/90 rounded-2xl border border-border backdrop-blur">
-        <div className="flex items-start gap-4">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-primary/10 text-primary border border-primary/20">
-            <BankOutlined className="text-lg" />
-          </div>
-          <div>
-            <Title level={4} className="text-text-primary !mb-0.5 font-semibold tracking-tight">
-              Companies Overview
-            </Title>
-            <Text className="text-text-tertiary text-xs">
-              Clean snapshot of partner companies and active placements
-            </Text>
-          </div>
-        </div>
-        <Button
-          icon={<ReloadOutlined />}
-          onClick={() => fetchCompanies({ forceRefresh: true })}
-          loading={loading}
-          size="small"
-          className="rounded-lg border-border hover:border-primary hover:text-primary"
-        >
-          Refresh
-        </Button>
-      </div>
+    <div className="">
+      <Card
+        title="Companies Overview"
+        extra={
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => fetchCompanies({ forceRefresh: true })}
+            loading={loading}
+          >
+            Refresh
+          </Button>
+        }
+        variant="borderless"
+      >
+        {/* Summary Cards */}
+        <Row gutter={[16, 16]} className="mb-4">
+          <Col xs={12} sm={6}>
+            <div className="bg-blue-50 rounded-lg p-3 text-center">
+              <div className="text-xl font-bold text-blue-600">{summary?.totalCompanies || 0}</div>
+              <div className="text-xs text-gray-500">Total Companies</div>
+            </div>
+          </Col>
+          <Col xs={12} sm={6}>
+            <div className="bg-green-50 rounded-lg p-3 text-center">
+              <div className="text-xl font-bold text-green-600">{summary?.totalStudentsPlaced || 0}</div>
+              <div className="text-xs text-gray-500">Students Placed</div>
+            </div>
+          </Col>
+          <Col xs={12} sm={6}>
+            <div className="bg-amber-50 rounded-lg p-3 text-center">
+              <div className="text-xl font-bold text-amber-600">{summary?.totalSelfIdentified || 0}</div>
+              <div className="text-xs text-gray-500">Self-Identified</div>
+            </div>
+          </Col>
+          <Col xs={12} sm={6}>
+            <div className="bg-teal-50 rounded-lg p-3 text-center">
+              <div className="text-xl font-bold text-teal-600">{summary?.selfIdentifiedRate || 0}%</div>
+              <div className="text-xs text-gray-500">Self-ID Rate</div>
+            </div>
+          </Col>
+        </Row>
 
-      {/* Summary Cards */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card size="small" className="rounded-2xl border-border bg-surface/90 shadow-none h-full" bodyStyle={{ padding: '12px' }}>
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-                <BankOutlined className="text-lg" />
-              </div>
-              <div>
-                <div className="text-xl font-bold text-text-primary leading-tight">{summary?.totalCompanies || 0}</div>
-                <div className="text-[10px] uppercase font-medium text-text-tertiary tracking-wide">Total Companies</div>
-              </div>
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card size="small" className="rounded-2xl border-border bg-surface/90 shadow-none h-full" bodyStyle={{ padding: '12px' }}>
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-success/10 flex items-center justify-center text-success border border-success/20">
-                <TeamOutlined className="text-lg" />
-              </div>
-              <div>
-                <div className="text-xl font-bold text-text-primary leading-tight">{summary?.totalStudentsPlaced || 0}</div>
-                <div className="text-[10px] uppercase font-medium text-text-tertiary tracking-wide">Students Placed</div>
-              </div>
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card size="small" className="rounded-2xl border-border bg-surface/90 shadow-none h-full" bodyStyle={{ padding: '12px' }}>
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 border border-amber-500/20">
-                <SafetyCertificateOutlined className="text-lg" />
-              </div>
-              <div>
-                <div className="text-xl font-bold text-text-primary leading-tight">{summary?.totalSelfIdentified || 0}</div>
-                <div className="text-[10px] uppercase font-medium text-text-tertiary tracking-wide">Self-Identified</div>
-              </div>
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card size="small" className="rounded-2xl border-border bg-surface/90 shadow-none h-full" bodyStyle={{ padding: '12px' }}>
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-teal-500/10 flex items-center justify-center text-teal-600 border border-teal-500/20">
-                <RiseOutlined className="text-lg" />
-              </div>
-              <div>
-                <div className="text-xl font-bold text-text-primary leading-tight">{summary?.selfIdentifiedRate || 0}%</div>
-                <div className="text-[10px] uppercase font-medium text-text-tertiary tracking-wide">Self-ID Rate</div>
-              </div>
-            </div>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Filters */}
-      <Card size="small" className="rounded-2xl border-border bg-surface/90 shadow-none" bodyStyle={{ padding: '12px' }}>
-        <div className="flex flex-wrap items-center gap-3">
-          <Input
+        {/* Search and Filters */}
+        <div className="mb-4">
+          <Input.Search
             placeholder="Search companies..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="w-full md:w-64 rounded-lg"
-            size="small"
+            style={{ width: 350 }}
             allowClear
-            prefix={<SearchOutlined className="text-text-tertiary" />}
+            enterButton
           />
+        </div>
+
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <Select
             placeholder="Industry Type"
             value={industryType || undefined}
             onChange={setIndustryType}
             allowClear
-            size="small"
-            className="w-full md:w-40"
-            popupStyle={{ borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+            style={{ width: 160 }}
           >
             {summary?.industryTypes?.map((type) => (
               <Select.Option key={type} value={type}>{type}</Select.Option>
@@ -441,9 +393,7 @@ const CompaniesOverview = () => {
           <Select
             value={sortBy}
             onChange={setSortBy}
-            size="small"
-            className="w-full md:w-44"
-            popupStyle={{ borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+            style={{ width: 180 }}
           >
             <Select.Option value="studentCount">Sort by Students</Select.Option>
             <Select.Option value="institutionCount">Sort by Institutions</Select.Option>
@@ -452,50 +402,35 @@ const CompaniesOverview = () => {
           <Button
             icon={sortOrder === 'desc' ? <SortDescendingOutlined /> : <SortAscendingOutlined />}
             onClick={toggleSortOrder}
-            size="small"
-            className="rounded-lg px-4 border-border text-text-secondary hover:text-primary hover:border-primary"
           >
             {sortOrder === 'desc' ? 'Desc' : 'Asc'}
           </Button>
         </div>
-      </Card>
 
-      {/* Error Alert */}
-      {error && <Alert type="error" message="Error" description={error} showIcon closable className="rounded-lg border-error/20 bg-error/5" />}
+        {/* Error Alert */}
+        {error && <Alert type="error" message="Error" description={error} showIcon closable className="mb-4" />}
 
-      {/* Active Students Info Alert - Compact */}
-      <Alert
-        type="info"
-        message={<span className="text-xs font-semibold text-text-primary">Active Students Only</span>}
-        description={<span className="text-xs text-text-secondary">All counts include only active students. Inactive or withdrawn students are excluded.</span>}
-        showIcon
-        className="rounded-xl bg-info/5 border-info/20 text-info"
-        closable
-      />
-
-      {/* Companies Table */}
-      <Card size="small" className="rounded-2xl border-border bg-surface/95 overflow-hidden" bodyStyle={{ padding: 0 }}>
-        <Table
-          columns={columns}
-          dataSource={filteredAndSortedCompanies}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            current: currentPage,
-            pageSize: pageSize,
-            total: pagination?.total || 0,
-            showSizeChanger: true,
-            showTotal: (total, range) => <span className="text-text-tertiary text-xs">Showing {range[0]}-{range[1]} of {total} companies</span>,
-            pageSizeOptions: ['10', '20', '50', '100'],
-            size: 'small',
-            className: "p-4"
-          }}
-          onChange={handleTableChange}
-          scroll={{ x: 1200 }}
-          size="small"
-          className="custom-table"
-          rowClassName={(record) => record.isSelfIdentifiedCompany ? 'bg-purple-50/10 hover:bg-purple-50/20' : 'hover:bg-background-tertiary/40'}
-        />
+        {/* Companies Table */}
+        <div className="custom-table">
+          <Table
+            columns={columns}
+            dataSource={filteredAndSortedCompanies}
+            rowKey="id"
+            loading={loading}
+            pagination={{
+              current: currentPage,
+              pageSize: pageSize,
+              total: pagination?.total || 0,
+              showSizeChanger: true,
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} companies`,
+              pageSizeOptions: ['10', '20', '50', '100'],
+            }}
+            onChange={handleTableChange}
+            scroll={{ x: 'max-content' }}
+            size="small"
+            rowClassName={(record) => record.isSelfIdentifiedCompany ? 'bg-purple-50/10 hover:bg-purple-50/20' : ''}
+          />
+        </div>
       </Card>
 
       {/* Company Details Modal */}

@@ -619,208 +619,96 @@ const AuditLogs = () => {
   };
 
   return (
-    <div className='p-4 md:p-6 bg-background-secondary min-h-screen space-y-4'>
-      {/* Header */}
-      <div className="flex justify-between items-center p-3 bg-surface rounded-lg border border-border">
-        <div className="flex items-center gap-3">
-          <AuditOutlined className="text-xl text-primary" />
-          <div>
-            <Title level={4} className="text-text-primary !mb-0 font-extrabold tracking-tight">
-              Audit Logs
-            </Title>
-            <Text className="text-text-tertiary text-sm mt-0.5">
-              Track and monitor all system activities, user actions, data changes, and security events
-            </Text>
-          </div>
-        </div>
-        <Button
-          icon={<ReloadOutlined />}
-          onClick={handleRefresh}
-          loading={loading}
-          size="small"
-          className="rounded-lg border-border hover:border-primary hover:text-primary"
-        />
-      </div>
-
+    <div className="">
+      <Card
+        title="Audit Logs"
+        extra={
+          <Space>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={handleRefresh}
+              loading={loading}
+            >
+              Refresh
+            </Button>
+            <Button
+              type="primary"
+              icon={<DownloadOutlined />}
+              onClick={handleExportCSV}
+              disabled={logs.length === 0}
+            >
+              Export CSV
+            </Button>
+          </Space>
+        }
+        variant="borderless"
+      >
         {/* Statistics Cards */}
         <Spin spinning={statsLoading}>
-          <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12} lg={6}>
-              <Card size="small" className="rounded-xl border-border bg-surface shadow-soft h-full" bodyStyle={{ padding: '16px' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-                    <AuditOutlined className="text-lg" />
-                  </div>
-                  <div>
-                    <div className="text-xl font-bold text-text-primary leading-tight">{statistics?.totalLogs || 0}</div>
-                    <div className="text-xs uppercase font-medium text-text-tertiary tracking-wide">Total Logs</div>
-                  </div>
-                </div>
-              </Card>
+          <Row gutter={[16, 16]} className="mb-4">
+            <Col xs={12} sm={6}>
+              <div className="bg-blue-50 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-blue-600">{statistics?.totalLogs || 0}</div>
+                <div className="text-xs text-gray-500">Total Logs</div>
+              </div>
             </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <Card size="small" className="rounded-xl border-border bg-surface shadow-soft h-full" bodyStyle={{ padding: '16px' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success border border-success/20">
-                    <CheckCircleOutlined className="text-lg" />
-                  </div>
-                  <div>
-                    <div className="text-xl font-bold text-text-primary leading-tight">{statistics?.actionBreakdown?.length || 0}</div>
-                    <div className="text-xs uppercase font-medium text-text-tertiary tracking-wide">Unique Actions</div>
-                  </div>
-                </div>
-              </Card>
+            <Col xs={12} sm={6}>
+              <div className="bg-green-50 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-green-600">{statistics?.actionBreakdown?.length || 0}</div>
+                <div className="text-xs text-gray-500">Unique Actions</div>
+              </div>
             </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <Card size="small" className="rounded-xl border-border bg-surface shadow-soft h-full" bodyStyle={{ padding: '16px' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-600 border border-purple-500/20">
-                    <FileTextOutlined className="text-lg" />
-                  </div>
-                  <div>
-                    <div className="text-xl font-bold text-text-primary leading-tight">{statistics?.entityTypeBreakdown?.length || 0}</div>
-                    <div className="text-xs uppercase font-medium text-text-tertiary tracking-wide">Entity Types</div>
-                  </div>
-                </div>
-              </Card>
+            <Col xs={12} sm={6}>
+              <div className="bg-purple-50 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-purple-600">{statistics?.entityTypeBreakdown?.length || 0}</div>
+                <div className="text-xs text-gray-500">Entity Types</div>
+              </div>
             </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <Card size="small" className="rounded-xl border-border bg-surface shadow-soft h-full" bodyStyle={{ padding: '16px' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center text-warning border border-warning/20">
-                    <UserOutlined className="text-lg" />
-                  </div>
-                  <div>
-                    <div className="text-xl font-bold text-text-primary leading-tight">{statistics?.userActivityBreakdown?.length || 0}</div>
-                    <div className="text-xs uppercase font-medium text-text-tertiary tracking-wide">Active Users</div>
-                  </div>
-                </div>
-              </Card>
+            <Col xs={12} sm={6}>
+              <div className="bg-amber-50 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-amber-600">{statistics?.userActivityBreakdown?.length || 0}</div>
+                <div className="text-xs text-gray-500">Active Users</div>
+              </div>
             </Col>
           </Row>
         </Spin>
 
-        {/* Filters Card */}
-        <Card size="small" className="rounded-xl border-border bg-surface shadow-sm" bodyStyle={{ padding: '16px' }}>
+        {/* Filters */}
+        <div className="mb-4 p-4 bg-gray-50 rounded">
           <Row gutter={[16, 16]} align="bottom">
-            <Col xs={24} sm={12} md={8}>
-              <Text className="text-sm font-semibold text-text-secondary mb-1 block">Date Range:</Text>
+            <Col xs={24} sm={12} md={6}>
               <RangePicker
                 style={{ width: '100%' }}
                 value={filters.dateRange}
                 onChange={(dates) => handleFilterChange('dateRange', dates)}
                 format="YYYY-MM-DD"
-                size="middle"
-                className="rounded-lg"
+                placeholder={['Start Date', 'End Date']}
               />
             </Col>
             <Col xs={24} sm={12} md={4}>
-              <Text className="text-sm font-semibold text-text-secondary mb-1 block">Action:</Text>
               <Select
                 style={{ width: '100%' }}
-                placeholder="Select action"
+                placeholder="Action"
                 allowClear
                 showSearch
                 optionFilterProp="label"
                 value={filters.action}
                 onChange={(value) => handleFilterChange('action', value)}
-                options={[
-                  {
-                    label: 'User Management',
-                    options: actionTypes.slice(0, 9).map(action => ({
-                      label: action.replace(/_/g, ' '),
-                      value: action
-                    }))
-                  },
-                  {
-                    label: 'Student Operations',
-                    options: actionTypes.slice(9, 14).map(action => ({
-                      label: action.replace(/_/g, ' '),
-                      value: action
-                    }))
-                  },
-                  {
-                    label: 'Internship Operations',
-                    options: actionTypes.slice(14, 21).map(action => ({
-                      label: action.replace(/_/g, ' '),
-                      value: action
-                    }))
-                  },
-                  {
-                    label: 'Application Operations',
-                    options: actionTypes.slice(21, 28).map(action => ({
-                      label: action.replace(/_/g, ' '),
-                      value: action
-                    }))
-                  },
-                  {
-                    label: 'Industry Operations',
-                    options: actionTypes.slice(28, 33).map(action => ({
-                      label: action.replace(/_/g, ' '),
-                      value: action
-                    }))
-                  },
-                  {
-                    label: 'Mentor & Feedback',
-                    options: actionTypes.slice(33, 40).map(action => ({
-                      label: action.replace(/_/g, ' '),
-                      value: action
-                    }))
-                  },
-                  {
-                    label: 'Faculty Operations',
-                    options: actionTypes.slice(40, 46).map(action => ({
-                      label: action.replace(/_/g, ' '),
-                      value: action
-                    }))
-                  },
-                  {
-                    label: 'Reports & Documents',
-                    options: actionTypes.slice(46, 58).map(action => ({
-                      label: action.replace(/_/g, ' '),
-                      value: action
-                    }))
-                  },
-                  {
-                    label: 'Administrative',
-                    options: actionTypes.slice(58, 67).map(action => ({
-                      label: action.replace(/_/g, ' '),
-                      value: action
-                    }))
-                  },
-                  {
-                    label: 'System & Security',
-                    options: actionTypes.slice(67, 75).map(action => ({
-                      label: action.replace(/_/g, ' '),
-                      value: action
-                    }))
-                  },
-                  {
-                    label: 'Support & Compliance',
-                    options: actionTypes.slice(75).map(action => ({
-                      label: action.replace(/_/g, ' '),
-                      value: action
-                    }))
-                  },
-                ]}
-                size="middle"
-                className="rounded-lg"
-                popupStyle={{ borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                options={actionTypes.map(action => ({
+                  label: action.replace(/_/g, ' '),
+                  value: action
+                }))}
               />
             </Col>
             <Col xs={24} sm={12} md={4}>
-              <Text className="text-sm font-semibold text-text-secondary mb-1 block">Entity Type:</Text>
               <Select
                 style={{ width: '100%' }}
-                placeholder="Select entity"
+                placeholder="Entity Type"
                 allowClear
                 showSearch
                 optionFilterProp="children"
                 value={filters.entityType}
                 onChange={(value) => handleFilterChange('entityType', value)}
-                size="middle"
-                className="rounded-lg"
-                popupStyle={{ borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
               >
                 {[...entityTypes].sort().map((type) => (
                   <Option key={type} value={type}>
@@ -830,18 +718,14 @@ const AuditLogs = () => {
               </Select>
             </Col>
             <Col xs={24} sm={12} md={4}>
-              <Text className="text-sm font-semibold text-text-secondary mb-1 block">Category:</Text>
               <Select
                 style={{ width: '100%' }}
-                placeholder="Select category"
+                placeholder="Category"
                 allowClear
                 showSearch
                 optionFilterProp="children"
                 value={filters.category}
                 onChange={(value) => handleFilterChange('category', value)}
-                size="middle"
-                className="rounded-lg"
-                popupStyle={{ borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
               >
                 {[...categories].sort().map((cat) => (
                   <Option key={cat} value={cat}>
@@ -851,99 +735,61 @@ const AuditLogs = () => {
               </Select>
             </Col>
             <Col xs={24} sm={12} md={4}>
-              <Space className="w-full justify-end">
-                  <Button
-                    type="primary"
-                    icon={<FilterOutlined />}
-                    onClick={handleApplyFilters}
-                    size="middle"
-                    className="rounded-lg w-full"
-                  >
-                    Apply Filters
-                  </Button>
-                </Space>
+              <Button
+                type="primary"
+                icon={<FilterOutlined />}
+                onClick={handleApplyFilters}
+                block
+              >
+                Apply Filters
+              </Button>
             </Col>
           </Row>
-        </Card>
+        </div>
 
-        {/* Main Content Card */}
-        <Card className="rounded-xl border-border bg-surface shadow-sm">
-          {/* Toolbar */}
-          <Row gutter={[16, 16]} style={{ marginBottom: '20px' }} align="middle" justify="space-between">
-            <Col>
-              <Title level={5} className="text-text-primary !mb-0 font-bold">
-                Audit Log Entries
-              </Title>
-            </Col>
-            <Col>
+        {/* Alert for active filters */}
+        {(filters.dateRange || filters.action || filters.entityType || filters.category) && (
+          <Alert
+            message="Active Filters"
+            description={
               <Space wrap>
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={handleRefresh}
-                  loading={loading}
-                  size="middle"
-                  className="rounded-lg border-border hover:border-primary hover:text-primary"
-                >
-                  Refresh
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<DownloadOutlined />}
-                  onClick={handleExportCSV}
-                  disabled={logs.length === 0}
-                  size="middle"
-                  className="rounded-lg"
-                >
-                  Export CSV
-                </Button>
+                {filters.dateRange && (
+                  <Tag closable onClose={() => handleFilterChange('dateRange', null)}>
+                    Date: {filters.dateRange[0].format('YYYY-MM-DD')} to {filters.dateRange[1].format('YYYY-MM-DD')}
+                  </Tag>
+                )}
+                {filters.action && (
+                  <Tag closable onClose={() => handleFilterChange('action', undefined)}>
+                    Action: {filters.action.replace(/_/g, ' ')}
+                  </Tag>
+                )}
+                {filters.entityType && (
+                  <Tag closable onClose={() => handleFilterChange('entityType', undefined)}>
+                    Entity: {filters.entityType}
+                  </Tag>
+                )}
+                {filters.category && (
+                  <Tag closable onClose={() => handleFilterChange('category', undefined)}>
+                    Category: {filters.category.replace(/_/g, ' ')}
+                  </Tag>
+                )}
               </Space>
-            </Col>
-          </Row>
+            }
+            type="info"
+            showIcon
+            className="mb-4"
+          />
+        )}
 
-          <Divider style={{ margin: '20px 0' }} />
-
-          {/* Alert for active filters */}
-          {(filters.dateRange || filters.action || filters.entityType || filters.category) && (
-            <Alert
-              message={<span className="text-sm font-semibold text-text-primary">Active Filters</span>}
-              description={
-                <Space wrap>
-                  {filters.dateRange && (
-                    <Tag closable onClose={() => handleFilterChange('dateRange', null)} className="rounded-full px-2 py-0.5">
-                      Date: {filters.dateRange[0].format('YYYY-MM-DD')} to {filters.dateRange[1].format('YYYY-MM-DD')}
-                    </Tag>
-                  )}
-                  {filters.action && (
-                    <Tag closable onClose={() => handleFilterChange('action', undefined)} className="rounded-full px-2 py-0.5">
-                      Action: {filters.action.replace(/_/g, ' ')}
-                    </Tag>
-                  )}
-                  {filters.entityType && (
-                    <Tag closable onClose={() => handleFilterChange('entityType', undefined)} className="rounded-full px-2 py-0.5">
-                      Entity: {filters.entityType}
-                    </Tag>
-                  )}
-                  {filters.category && (
-                    <Tag closable onClose={() => handleFilterChange('category', undefined)} className="rounded-full px-2 py-0.5">
-                      Category: {filters.category.replace(/_/g, ' ')}
-                    </Tag>
-                  )}
-                </Space>
-              }
-              type="info"
-              className="rounded-xl border-info/20 bg-info/5 mb-4"
-              showIcon
-              icon={<FilterOutlined className="text-lg" />}
-            />
-          )}
-
-          {/* Table */}
+        {/* Table */}
+        <div className="custom-table">
           <Table
             columns={columns}
             dataSource={logs}
             rowKey="id"
             loading={loading}
             scroll={{ x: 'max-content' }}
+            size="small"
             pagination={{
               current: pagination.current,
               pageSize: pagination.pageSize,
@@ -951,9 +797,7 @@ const AuditLogs = () => {
               showSizeChanger: true,
               showQuickJumper: true,
               pageSizeOptions: ['10', '25', '50', '100'],
-              showTotal: (total, range) => <span className="text-text-tertiary text-xs">Showing {range[0]}-{range[1]} of {total} logs</span>,
-              className: "p-4",
-              size: "small"
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} logs`,
             }}
             onChange={handleTableChange}
             expandable={{
@@ -964,7 +808,6 @@ const AuditLogs = () => {
                       bordered
                       size="small"
                       column={{ xs: 1, sm: 2, md: 3 }}
-                      className="rounded-xl border-border bg-surface shadow-sm"
                     >
                       <Descriptions.Item label="Entity ID" span={1}>
                         <Text copyable className="font-mono text-sm">{record.entityId || 'N/A'}</Text>
@@ -982,7 +825,7 @@ const AuditLogs = () => {
                         <Descriptions.Item label="Changed Fields" span={3}>
                           <div className="flex flex-wrap gap-2">
                             {record.changedFields.map((field, idx) => (
-                              <Tag key={idx} color="blue" className="rounded-full px-2 py-0.5 font-medium text-xs">
+                              <Tag key={idx} color="blue">
                                 {field}
                               </Tag>
                             ))}
@@ -992,7 +835,7 @@ const AuditLogs = () => {
 
                       {record.oldValues && (
                         <Descriptions.Item label="Old Values" span={3}>
-                          <pre className="rounded-lg bg-background-tertiary/50 border border-border/50 p-3 text-sm overflow-auto max-h-40">
+                          <pre className="bg-gray-50 p-3 text-sm overflow-auto max-h-40 rounded">
                             {JSON.stringify(record.oldValues, null, 2)}
                           </pre>
                         </Descriptions.Item>
@@ -1000,7 +843,7 @@ const AuditLogs = () => {
 
                       {record.newValues && (
                         <Descriptions.Item label="New Values" span={3}>
-                          <pre className="rounded-lg bg-background-tertiary/50 border border-border/50 p-3 text-sm overflow-auto max-h-40">
+                          <pre className="bg-gray-50 p-3 text-sm overflow-auto max-h-40 rounded">
                             {JSON.stringify(record.newValues, null, 2)}
                           </pre>
                         </Descriptions.Item>
@@ -1018,14 +861,13 @@ const AuditLogs = () => {
                     size="small"
                     icon={<InfoCircleOutlined />}
                     onClick={(e) => onExpand(record, e)}
-                    className="text-text-secondary hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8 flex items-center justify-center p-0"
                   />
                 </Tooltip>
               ),
             }}
-            className="custom-table"
           />
-        </Card>
+        </div>
+      </Card>
     </div>
   );
 };

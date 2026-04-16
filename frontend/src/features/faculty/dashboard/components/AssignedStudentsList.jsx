@@ -459,7 +459,7 @@ const AssignedStudentsList = ({
             showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} students`,
             pageSizeOptions: ['10', '20', '50', '100'],
           }}
-          scroll={{ x: 800 }}
+          scroll={{ x: 'max-content' }}
           size="middle"
           onRow={(record) => ({
             style: { cursor: 'pointer' },

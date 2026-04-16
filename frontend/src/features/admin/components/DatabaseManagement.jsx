@@ -457,7 +457,7 @@ const DatabaseManagement = ({ backupProgress, restoreProgress, connected }) => {
             showTotal: (total) => `Total ${total} backups`,
           }}
           onChange={handleTableChange}
-          scroll={{ x: 900 }}
+          scroll={{ x: 'max-content' }}
         />
       </Card>
 

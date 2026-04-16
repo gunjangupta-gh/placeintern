@@ -230,28 +230,20 @@ const HelpCenter = () => {
   }
 
   return (
-    <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
-      <div className="max-w-7xl mx-auto !space-y-4">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-lg font-semibold text-text-primary">FAQ</h1>
-            <Text className="text-text-tertiary text-sm">Find answers to frequently asked questions</Text>
-          </div>
-        </div>
-
-        {/* Search Card */}
-        <Card className="rounded-xl border-border shadow-sm" styles={{ body: { padding: '16px' } }}>
-          <Input
-            size="large"
+    <div className="">
+      <Card title="FAQ" variant="borderless">
+        {/* Search */}
+        <div className="mb-4">
+          <Input.Search
             placeholder="Search for help articles..."
-            prefix={<SearchOutlined className="text-text-tertiary" />}
+            prefix={<SearchOutlined />}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             allowClear
-            className="rounded-lg h-11 border-border"
+            style={{ width: 350 }}
+            enterButton
           />
-        </Card>
+        </div>
 
         <Row gutter={[16, 16]}>
           {/* Categories Sidebar */}
@@ -438,7 +430,7 @@ const HelpCenter = () => {
             )}
           </Col>
         </Row>
-      </div>
+      </Card>
     </div>
   );
 };

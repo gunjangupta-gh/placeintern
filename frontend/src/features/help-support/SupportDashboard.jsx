@@ -356,39 +356,20 @@ const SupportDashboard = () => {
   ];
 
   return (
-    <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
-      <div className="max-w-[1600px] mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-          <div className="flex items-center">
-            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-primary shadow-sm mr-3">
-              <SolutionOutlined className="text-lg" />
-            </div>
-            <div>
-              <Title level={2} className="mb-0 text-text-primary text-2xl">
-                Support Dashboard
-              </Title>
-              <Paragraph className="text-text-secondary text-sm mb-0">
-                Manage and resolve support tickets efficiently
-              </Paragraph>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={fetchData}
-              loading={loading}
-              className="rounded-xl h-10 border-border text-text-secondary hover:text-text-primary hover:border-primary"
-            >
-              Refresh Data
-            </Button>
-          </div>
-        </div>
+    <div className="">
+      <Card
+        title="Support Dashboard"
+        extra={
+          <Button icon={<ReloadOutlined />} onClick={fetchData} loading={loading}>
+            Refresh
+          </Button>
+        }
+        variant="borderless"
+      >
 
         {/* Statistics */}
         {statistics && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-3">
             <Card size="small" className="rounded-xl border-border shadow-sm hover:shadow-md transition-all">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary/10 text-primary">
@@ -464,7 +445,7 @@ const SupportDashboard = () => {
         )}
 
         {/* Filters */}
-        <Card className="rounded-2xl border-border shadow-sm" styles={{ body: { padding: '16px' } }}>
+        <Card className="rounded-2xl border-border shadow-sm !mb-3" >
           <div className="flex flex-wrap items-center gap-4">
             <Input
               placeholder="Search tickets..."
@@ -534,7 +515,7 @@ const SupportDashboard = () => {
         </Card>
 
         {/* Tickets Table */}
-        <Card className="rounded-2xl border-border shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
+        <Card className=" shadow-sm overflow-hidden ">
           <Table
             columns={columns}
             dataSource={filteredTickets}
@@ -805,7 +786,7 @@ const SupportDashboard = () => {
             </div>
           </Form>
         </Modal>
-      </div>
+      </Card>
     </div>
   );
 };

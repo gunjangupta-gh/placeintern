@@ -340,7 +340,7 @@ const JoiningLettersPage = () => {
             dataSource={filteredLetters}
             loading={loading}
             rowKey="id"
-            scroll={{ x: 900 }}
+            scroll={{ x: 'max-content' }}
             pagination={{
               current: pagination.current,
               pageSize: pagination.pageSize,

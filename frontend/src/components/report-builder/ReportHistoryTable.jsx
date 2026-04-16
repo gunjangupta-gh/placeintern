@@ -271,7 +271,7 @@ const ReportHistoryTable = ({
         dataSource={safeReports}
         rowKey="id"
         loading={loading}
-        scroll={{ x: 1000 }}
+        scroll={{ x: 'max-content' }}
         pagination={
           pagination
             ? {

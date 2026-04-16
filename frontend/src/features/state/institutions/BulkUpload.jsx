@@ -230,31 +230,16 @@ const BulkUpload = () => {
   ];
 
   return (
-    <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
-      <Card className="max-w-[1200px] mx-auto rounded-3xl border-border shadow-soft" bordered={false}>
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="bg-primary/10 p-2 rounded-lg text-primary">
-              <FileExcelOutlined className="text-xl" />
-            </div>
-            <Title level={2} className="!mb-0 !text-2xl font-bold text-text-primary">
-              Bulk Institution Upload
-            </Title>
-          </div>
-          <Paragraph className="text-text-secondary">
-            Upload multiple institutions at once using Excel or CSV files. Follow the steps below to validate and import your data.
-          </Paragraph>
-        </div>
-
-        <div className="flex justify-end mb-8">
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={handleDownloadTemplate}
-            className="rounded-lg h-9 border-border hover:border-primary hover:text-primary"
-          >
+    <div className="p-6">
+      <Card
+        title="Bulk Institution Upload"
+        extra={
+          <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
             Download Template
           </Button>
-        </div>
+        }
+        variant="borderless"
+      >
 
         <Steps 
           current={currentStep} 
@@ -363,8 +348,8 @@ const BulkUpload = () => {
             <div className="mb-4">
               <Title level={4} className="!text-lg text-text-primary">Data Preview</Title>
             </div>
-            
-            <div className="border border-border rounded-xl overflow-hidden mb-8">
+
+            <div className="custom-table mb-8">
               <Table
                 columns={getPreviewColumns()}
                 dataSource={getPreviewData()}

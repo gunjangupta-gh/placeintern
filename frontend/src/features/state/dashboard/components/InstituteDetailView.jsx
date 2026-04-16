@@ -578,7 +578,7 @@ const MentorOverviewTab = memo(({ institutionId }) => {
             rowKey="id"
             size="small"
             pagination={{ pageSize: 10, size: "small", showSizeChanger: false }}
-            scroll={{ x: 600 }}
+            scroll={{ x: 'max-content' }}
             className="custom-table"
           />
         ) : (
@@ -2544,7 +2544,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
                           rowKey="id"
                           loading={students.loading && students.list.length > 0}
                           pagination={false}
-                          scroll={{ x: 850 }}
+                          scroll={{ x: 'max-content' }}
                           size="small"
                           className="custom-table"
                         />
@@ -2634,7 +2634,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
                             showSizeChanger: false,
                           }}
                           size="small"
-                          scroll={{ x: 900 }}
+                          scroll={{ x: 'max-content' }}
                           className="custom-table"
                         />
                       ) : (
@@ -2849,7 +2849,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
                   showSizeChanger: false,
                 }}
                 size="small"
-                scroll={{ x: 600 }}
+                scroll={{ x: 'max-content' }}
               />
             </div>
           </div>

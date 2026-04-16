@@ -360,7 +360,7 @@ const InternshipList = () => {
             dataSource={internships.list}
             rowKey="id"
             loading={loading}
-            scroll={{ x: 800 }}
+            scroll={{ x:  'max-content' }}
             pagination={{
               ...pagination,
               total: internships.total,

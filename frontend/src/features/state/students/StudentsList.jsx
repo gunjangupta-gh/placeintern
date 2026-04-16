@@ -243,9 +243,9 @@ const StudentsList = () => {
       key: "student",
       render: (_, record) => (
         <Space>
-          <Avatar icon={<UserOutlined />} />
+          <Avatar size={32} icon={<UserOutlined />} />
           <div>
-            <div className="font-medium">{record.name}</div>
+            <div className="font-medium text-sm">{record.name}</div>
             <div className="text-gray-500 text-xs">{record.rollNumber}</div>
           </div>
         </Space>
@@ -256,10 +256,10 @@ const StudentsList = () => {
       key: "college",
       render: (_, record) => (
         <div>
-          <div className="font-medium">{record.institution?.name || "N/A"}</div>
-          <div className="text-gray-500 text-xs">
-            {record.institution?.code}
-          </div>
+          <Tooltip title={record.institution?.name}>
+            <div className="font-medium text-xs truncate max-w-[150px]">{record.institution?.name || "N/A"}</div>
+          </Tooltip>
+          <div className="text-gray-500 text-xs">{record.institution?.code}</div>
         </div>
       ),
     },
@@ -267,20 +267,23 @@ const StudentsList = () => {
       title: "Branch",
       dataIndex: "branchName",
       key: "branchName",
-      render: (text) => text || "-",
+      width: 100,
+      render: (text) => <span className="text-xs">{text || "-"}</span>,
     },
     {
       title: "Phone",
       dataIndex: "phoneNo",
       key: "phoneNo",
-      render: (text) => text || "N/A",
+      width: 120,
+      render: (text) => <span className="text-xs">{text || "N/A"}</span>,
     },
     {
       title: "Status",
       dataIndex: "active",
       key: "status",
+      width: 80,
       render: (active) => (
-        <Tag color={getStatusColor(active)}>
+        <Tag color={getStatusColor(active)} className="text-xs">
           {active ? "Active" : "Inactive"}
         </Tag>
       ),
@@ -288,13 +291,14 @@ const StudentsList = () => {
     {
       title: "Internship",
       key: "internshipStatus",
+      width: 130,
       render: (_, record) => (
         <div>
-          <Tag color={getInternshipStatusColor(record.internshipStatus)}>
+          <Tag color={getInternshipStatusColor(record.internshipStatus)} className="text-xs">
             {getInternshipStatusLabel(record.internshipStatus)}
           </Tag>
           {record.internship?.companyName && (
-            <div className="text-xs text-gray-500 mt-1 truncate max-w-[130px]">
+            <div className="text-xs text-gray-500 mt-1 truncate max-w-[120px]">
               {record.internship.companyName}
             </div>
           )}
@@ -304,11 +308,12 @@ const StudentsList = () => {
     {
       title: "Mentor",
       key: "mentor",
+      width: 120,
       render: (_, record) => (
         <div>
           {record.mentor ? (
             <>
-              <div className="font-medium text-sm">{record.mentor.name}</div>
+              <div className="font-medium text-xs">{record.mentor.name}</div>
               {record.mentor.isCrossInstitution && (
                 <Tag color="purple" className="text-xs mt-1">
                   External
@@ -316,7 +321,7 @@ const StudentsList = () => {
               )}
             </>
           ) : (
-            <Tag color="red">Unassigned</Tag>
+            <Tag color="red" className="text-xs">Unassigned</Tag>
           )}
         </div>
       ),
@@ -324,8 +329,9 @@ const StudentsList = () => {
     {
       title: "Joining Report",
       key: "joiningLetter",
+      width: 100,
       render: (_, record) => (
-        <Tag color={record.hasJoiningLetter ? "green" : "orange"}>
+        <Tag color={record.hasJoiningLetter ? "green" : "orange"} className="text-xs">
           {record.hasJoiningLetter ? "Submitted" : "Pending"}
         </Tag>
       ),
@@ -335,7 +341,7 @@ const StudentsList = () => {
   const studentsList = Array.isArray(students) ? students : [];
 
   return (
-    <>
+    <div className="">
       <Card
         title="Students Directory"
         extra={
@@ -479,24 +485,27 @@ const StudentsList = () => {
           </div>
         )}
 
-        <Table
-          columns={columns}
-          dataSource={studentsList}
-          loading={loading}
-          rowKey="id"
-          onChange={handleTableChange}
-          scroll={{ x: 1400 }}
-          pagination={{
-            current: pagination?.page || tableParams.page,
-            pageSize: pagination?.limit || tableParams.limit,
-            total: pagination?.total || 0,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            pageSizeOptions: ["10", "20", "50", "100"],
-            showTotal: (total, range) =>
-              `${range[0]}-${range[1]} of ${total} students`,
-          }}
-        />
+        <div className="custom-table">
+          <Table
+            columns={columns}
+            dataSource={studentsList}
+            loading={loading}
+            rowKey="id"
+            onChange={handleTableChange}
+            scroll={{ x: 'max-content' }}
+            size="small"
+            pagination={{
+              current: pagination?.page || tableParams.page,
+              pageSize: pagination?.limit || tableParams.limit,
+              total: pagination?.total || 0,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              pageSizeOptions: ["10", "20", "50", "100"],
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} of ${total} students`,
+            }}
+          />
+        </div>
       </Card>
 
       {/* Student Details Drawer */}
@@ -667,7 +676,7 @@ const StudentsList = () => {
           </div>
         )}
       </Drawer>
-    </>
+    </div>
   );
 };
 

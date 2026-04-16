@@ -457,131 +457,91 @@ const RestoreCenter = () => {
   ];
 
   return (
-    <div className="p-4 md:p-6 bg-background-secondary min-h-screen space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-surface border border-border shadow-soft flex items-center justify-center text-primary">
-            <HistoryOutlined className="text-2xl" />
-          </div>
-          <div>
-            <Title level={2} className="!mb-0 !text-2xl font-bold text-text-primary">
-              Restore Center
-            </Title>
-            <Text className="text-text-secondary text-sm">
-              Restore soft-deleted items across all institutions
-            </Text>
-          </div>
-        </div>
-        <Button
-          icon={<ReloadOutlined />}
-          onClick={handleRefresh}
-          loading={loading || summaryLoading}
-          className="rounded-xl h-10 border-border hover:border-primary hover:text-primary shadow-sm bg-surface font-medium"
-        >
-          Refresh Data
-        </Button>
-      </div>
+    <div className="">
+      <Card
+        title="Restore Center"
+        extra={
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={handleRefresh}
+            loading={loading || summaryLoading}
+          >
+            Refresh
+          </Button>
+        }
+        variant="borderless"
+      >
+        {/* Summary Cards */}
+        <Row gutter={[16, 16]} className="mb-4">
+          <Col xs={12} sm={6}>
+            <div className="bg-red-50 rounded-lg p-3 text-center">
+              <Spin spinning={summaryLoading} size="small">
+                <div className="text-xl font-bold text-red-600">{summary.total}</div>
+              </Spin>
+              <div className="text-xs text-gray-500">Total Deleted</div>
+            </div>
+          </Col>
+          <Col xs={12} sm={6}>
+            <div
+              className={`bg-blue-50 rounded-lg p-3 text-center cursor-pointer ${selectedType === 'monthly-reports' ? 'ring-2 ring-blue-500' : ''}`}
+              onClick={() => handleTypeChange('monthly-reports')}
+            >
+              <Spin spinning={summaryLoading} size="small">
+                <div className="text-xl font-bold text-blue-600">{summary.monthlyReports}</div>
+              </Spin>
+              <div className="text-xs text-gray-500">Monthly Reports</div>
+            </div>
+          </Col>
+          <Col xs={12} sm={6}>
+            <div
+              className={`bg-green-50 rounded-lg p-3 text-center cursor-pointer ${selectedType === 'faculty-visits' ? 'ring-2 ring-green-500' : ''}`}
+              onClick={() => handleTypeChange('faculty-visits')}
+            >
+              <Spin spinning={summaryLoading} size="small">
+                <div className="text-xl font-bold text-green-600">{summary.facultyVisits}</div>
+              </Spin>
+              <div className="text-xs text-gray-500">Faculty Visits</div>
+            </div>
+          </Col>
+          <Col xs={12} sm={6}>
+            <div
+              className={`bg-amber-50 rounded-lg p-3 text-center cursor-pointer ${selectedType === 'documents' ? 'ring-2 ring-amber-500' : ''}`}
+              onClick={() => handleTypeChange('documents')}
+            >
+              <Spin spinning={summaryLoading} size="small">
+                <div className="text-xl font-bold text-amber-600">{summary.documents}</div>
+              </Spin>
+              <div className="text-xs text-gray-500">Documents</div>
+            </div>
+          </Col>
+        </Row>
 
-      {/* Summary Cards */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card className="rounded-2xl border-border shadow-soft bg-surface h-full hover:translate-y-[-2px] transition-transform duration-300">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-error/10 flex items-center justify-center text-error shadow-sm border border-error/20">
-                <DeleteOutlined className="text-xl" />
-              </div>
-              <div>
-                <Spin spinning={summaryLoading} size="small">
-                  <div className="text-3xl font-black text-text-primary leading-tight">{summary.total}</div>
-                </Spin>
-                <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Total Deleted</div>
-              </div>
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card
-            className={`rounded-2xl border-border shadow-soft bg-surface h-full hover:translate-y-[-2px] transition-transform duration-300 cursor-pointer ${selectedType === 'monthly-reports' ? 'ring-2 ring-primary' : ''}`}
-            onClick={() => handleTypeChange('monthly-reports')}
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/20">
-                <FileTextOutlined className="text-xl" />
-              </div>
-              <div>
-                <Spin spinning={summaryLoading} size="small">
-                  <div className="text-3xl font-black text-text-primary leading-tight">{summary.monthlyReports}</div>
-                </Spin>
-                <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Monthly Reports</div>
-              </div>
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card
-            className={`rounded-2xl border-border shadow-soft bg-surface h-full hover:translate-y-[-2px] transition-transform duration-300 cursor-pointer ${selectedType === 'faculty-visits' ? 'ring-2 ring-success' : ''}`}
-            onClick={() => handleTypeChange('faculty-visits')}
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center text-success shadow-sm border border-success/20">
-                <EyeOutlined className="text-xl" />
-              </div>
-              <div>
-                <Spin spinning={summaryLoading} size="small">
-                  <div className="text-3xl font-black text-text-primary leading-tight">{summary.facultyVisits}</div>
-                </Spin>
-                <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Faculty Visits</div>
-              </div>
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card
-            className={`rounded-2xl border-border shadow-soft bg-surface h-full hover:translate-y-[-2px] transition-transform duration-300 cursor-pointer ${selectedType === 'documents' ? 'ring-2 ring-warning' : ''}`}
-            onClick={() => handleTypeChange('documents')}
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center text-warning shadow-sm border border-warning/20">
-                <FileTextOutlined className="text-xl" />
-              </div>
-              <div>
-                <Spin spinning={summaryLoading} size="small">
-                  <div className="text-3xl font-black text-text-primary leading-tight">{summary.documents}</div>
-                </Spin>
-                <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Documents</div>
-              </div>
-            </div>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Tabs */}
-      <Card className="rounded-2xl border-border shadow-soft bg-surface" styles={{ body: { padding: '0' } }}>
+        {/* Tabs */}
+        <Card className="rounded-xl border-border" styles={{ body: { padding: '0' } }}>
         <Tabs
           activeKey={selectedType}
           onChange={handleTypeChange}
           items={tabItems}
-          className="px-4 pt-2"
+          className="!px-4 pt-2"
         />
 
         {/* Filters */}
-        <div className="p-4 border-b border-border bg-background-tertiary/30">
-          <div className="flex flex-wrap items-center gap-4">
+        <div className="p-4 border-b border-border">
+          <div className="flex flex-wrap items-center gap-3">
             <Input.Search
               placeholder={`Search ${getTypeLabel(selectedType).toLowerCase()}...`}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full md:w-64 rounded-xl h-10 bg-background border-border"
+              style={{ width: 280 }}
               allowClear
-              prefix={<SearchOutlined className="text-text-tertiary" />}
+              enterButton
             />
             <Select
               placeholder="All Institutions"
               value={institutionId || undefined}
               onChange={setInstitutionId}
               allowClear
-              className="w-full md:w-56 h-10 rounded-lg"
+              style={{ width: 200 }}
               showSearch
               optionFilterProp="children"
               loading={institutionsLoading}
@@ -594,7 +554,6 @@ const RestoreCenter = () => {
             <RangePicker
               value={dateRange}
               onChange={setDateRange}
-              className="w-full md:w-auto h-10 rounded-xl"
               placeholder={['From Date', 'To Date']}
             />
             {selectedRowKeys.length > 0 && (
@@ -608,7 +567,6 @@ const RestoreCenter = () => {
                 <Button
                   type="primary"
                   icon={<UndoOutlined />}
-                  className="h-10 rounded-xl font-medium"
                 >
                   Restore Selected ({selectedRowKeys.length})
                 </Button>
@@ -627,60 +585,51 @@ const RestoreCenter = () => {
               showIcon
               closable
               onClose={() => dispatch(clearRestoreCenterError())}
-              className="rounded-xl border-error/20 bg-error/5"
             />
           </div>
         )}
 
         {/* Info Alert */}
-        <div className="p-4 pt-0">
+        <div className="p-4">
           <Alert
             type="info"
             message="Restore Information"
             description="Restoring items will also restore associated counters (e.g., visit counts, report counts) and create an audit log entry."
             showIcon
-            className="rounded-xl border-blue-200/50 bg-blue-50/50 mt-4"
             closable
           />
         </div>
 
         {/* Table */}
-        <Table
-          columns={columns}
-          dataSource={items}
-          rowKey="id"
-          loading={loading}
-          rowSelection={rowSelection}
-          pagination={{
-            current: currentPage,
-            pageSize: pageSize,
-            total: pagination?.total || 0,
-            showSizeChanger: true,
-            showTotal: (total, range) => (
-              <span className="text-text-tertiary">
-                Showing {range[0]}-{range[1]} of {total} deleted items
-              </span>
-            ),
-            pageSizeOptions: ['10', '20', '50', '100'],
-            className: 'px-6 py-4',
-          }}
-          onChange={handleTableChange}
-          scroll={{ x: 1000 }}
-          size="middle"
-          className="custom-table"
-          locale={{
-            emptyText: (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={
-                  <span className="text-text-tertiary">
-                    No deleted {getTypeLabel(selectedType).toLowerCase()} found
-                  </span>
-                }
-              />
-            ),
-          }}
-        />
+        <div className="custom-table">
+          <Table
+            columns={columns}
+            dataSource={items}
+            rowKey="id"
+            loading={loading}
+            rowSelection={rowSelection}
+            pagination={{
+              current: currentPage,
+              pageSize: pageSize,
+              total: pagination?.total || 0,
+              showSizeChanger: true,
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} deleted items`,
+              pageSizeOptions: ['10', '20', '50', '100'],
+            }}
+            onChange={handleTableChange}
+            scroll={{ x:  'max-content' }}
+            size="small"
+            locale={{
+              emptyText: (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={`No deleted ${getTypeLabel(selectedType).toLowerCase()} found`}
+                />
+              ),
+            }}
+          />
+        </div>
+        </Card>
       </Card>
     </div>
   );

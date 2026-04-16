@@ -428,7 +428,7 @@ const UserManagement = ({ bulkOperationProgress, connected }) => {
             showTotal: (total) => `Total ${total} users`,
           }}
           onChange={handleTableChange}
-          scroll={{ x: 900 }}
+          scroll={{ x: 'max-content' }}
         />
       </Card>
 

@@ -625,15 +625,6 @@ const Grievances = () => {
         <StatCard title="Rejected" value={stats.rejected} icon={<CloseCircleOutlined />} color="#6b7280" subtitle="Closed" />
       </div>
 
-      {/* Info alert for active students only */}
-      <Alert
-        type="info"
-        message="Active Students Only"
-        description="Grievance statistics shown include only grievances from currently active students. Grievances from inactive or withdrawn students are excluded."
-        showIcon
-        className="mb-4"
-      />
-
       {/* Alert for escalated grievances */}
       {stats.escalated > 0 && (
         <Alert
@@ -710,7 +701,7 @@ const Grievances = () => {
           dataSource={filteredGrievances}
           rowKey="id"
           loading={loading}
-          scroll={{ x: 900 }}
+          scroll={{ x: 'max-content' }}
           pagination={{
             current: pagination.current,
             pageSize: pagination.pageSize,

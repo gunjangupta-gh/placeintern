@@ -116,14 +116,12 @@ const PrincipalList = () => {
 
   const principalsList = Array.isArray(principals) ? principals : [];
 
-  // Handle search with debounce
   const handleSearch = (value) => {
     setSearchText(value);
     setTableParams(prev => ({ ...prev, page: 1 }));
     loadPrincipals({ search: value, page: 1 });
   };
 
-  // Handle table change (pagination)
   const handleTableChange = (paginationConfig) => {
     const newParams = {
       page: paginationConfig.current,
@@ -139,9 +137,9 @@ const PrincipalList = () => {
       key: 'principal',
       render: (_, record) => (
         <Space>
-          <Avatar icon={<UserOutlined />} src={getImageUrl(record.profileImage)} />
+          <Avatar size={32} icon={<UserOutlined />} src={getImageUrl(record.profileImage)} />
           <div>
-            <div className="font-medium">{record.name}</div>
+            <div className="font-medium text-sm">{record.name}</div>
             <div className="text-gray-500 text-xs">{record.email}</div>
           </div>
         </Space>
@@ -151,32 +149,36 @@ const PrincipalList = () => {
       title: 'Phone',
       dataIndex: 'phoneNo',
       key: 'phoneNo',
-      render: (text) => text || 'N/A',
+      width: 120,
+      render: (text) => <span className="text-xs">{text || 'N/A'}</span>,
     },
     {
       title: 'Institution',
       key: 'institution',
-      render: (_, record) => record.Institution?.name || 'Not Assigned',
+      render: (_, record) => <span className="text-xs">{record.Institution?.name || 'Not Assigned'}</span>,
     },
     {
       title: 'Designation',
       dataIndex: 'designation',
       key: 'designation',
-      render: (text) => text || 'Principal',
+      width: 100,
+      render: (text) => <span className="text-xs">{text || 'Principal'}</span>,
     },
     {
       title: 'Created',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (date) => date ? new Date(date).toLocaleDateString('en-IN') : 'N/A',
+      width: 100,
+      render: (date) => <span className="text-xs">{date ? new Date(date).toLocaleDateString('en-IN') : 'N/A'}</span>,
       sorter: (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
     },
     {
       title: 'Status',
       dataIndex: 'active',
       key: 'status',
+      width: 80,
       render: (active) => (
-        <Tag color={active !== false ? 'green' : 'red'}>
+        <Tag color={active !== false ? 'green' : 'red'} className="text-xs">
           {active !== false ? 'Active' : 'Inactive'}
         </Tag>
       ),
@@ -189,7 +191,7 @@ const PrincipalList = () => {
     {
       title: 'Actions',
       key: 'actions',
-      width: 80,
+      width: 60,
       align: 'center',
       render: (_, record) => {
         const isActive = record.active !== false;
@@ -212,43 +214,15 @@ const PrincipalList = () => {
         const isLoading = resettingId === record.id || togglingId === record.id;
 
         const menuItems = [
-          {
-            key: 'edit',
-            icon: <EditOutlined />,
-            label: 'Edit',
-            disabled: isLoading,
-          },
-          {
-            key: 'reset-password',
-            icon: <KeyOutlined />,
-            label: 'Reset Password',
-            disabled: isLoading,
-          },
-          {
-            type: 'divider',
-          },
-          {
-            key: 'toggle-status',
-            icon: isActive ? <StopOutlined /> : <CheckCircleOutlined />,
-            label: isActive ? 'Deactivate' : 'Activate',
-            danger: isActive,
-            disabled: isLoading,
-          },
+          { key: 'edit', icon: <EditOutlined />, label: 'Edit', disabled: isLoading },
+          { key: 'reset-password', icon: <KeyOutlined />, label: 'Reset Password', disabled: isLoading },
+          { type: 'divider' },
+          { key: 'toggle-status', icon: isActive ? <StopOutlined /> : <CheckCircleOutlined />, label: isActive ? 'Deactivate' : 'Activate', danger: isActive, disabled: isLoading },
         ];
 
         return (
-          <Dropdown
-            menu={{ items: menuItems, onClick: handleMenuClick }}
-            trigger={['click']}
-            placement="bottomRight"
-            disabled={isLoading}
-          >
-            <Button
-              type="text"
-              icon={<MoreOutlined />}
-              size="small"
-              disabled={isLoading}
-            />
+          <Dropdown menu={{ items: menuItems, onClick: handleMenuClick }} trigger={['click']} placement="bottomRight" disabled={isLoading}>
+            <Button type="text" icon={<MoreOutlined />} size="small" disabled={isLoading} />
           </Dropdown>
         );
       },
@@ -256,55 +230,53 @@ const PrincipalList = () => {
   ];
 
   return (
-    <div className="p-6">
+    <div className="">
       <Card
         title="Principals"
         extra={
           <Space>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => loadPrincipals({ forceRefresh: true })}
-            >
+            <Button icon={<ReloadOutlined />} onClick={() => loadPrincipals({ forceRefresh: true })}>
               Refresh
             </Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => handleOpenModal()}
-            >
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
               Add Principal
             </Button>
           </Space>
         }
         variant="borderless"
       >
-        <Input.Search
-          placeholder="Search by name or email..."
-          prefix={<SearchOutlined />}
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          onSearch={handleSearch}
-          style={{ width: 300, marginBottom: 16 }}
-          allowClear
-          enterButton
-        />
+        <div className="mb-4">
+          <Input.Search
+            placeholder="Search by name or email..."
+            prefix={<SearchOutlined />}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            onSearch={handleSearch}
+            style={{ width: 300 }}
+            allowClear
+            enterButton
+          />
+        </div>
 
-        <Table
-          columns={columns}
-          dataSource={principalsList}
-          loading={loading}
-          rowKey="id"
-          onChange={handleTableChange}
-          pagination={{
-            current: pagination?.page || tableParams.page,
-            pageSize: pagination?.limit || tableParams.limit,
-            total: pagination?.total || 0,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            pageSizeOptions: ['10', '20', '50', '100'],
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} principals`,
-          }}
-        />
+        <div className="custom-table">
+          <Table
+            columns={columns}
+            dataSource={principalsList}
+            loading={loading}
+            rowKey="id"
+            onChange={handleTableChange}
+            size="small"
+            pagination={{
+              current: pagination?.page || tableParams.page,
+              pageSize: pagination?.limit || tableParams.limit,
+              total: pagination?.total || 0,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              pageSizeOptions: ['10', '20', '50', '100'],
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} principals`,
+            }}
+          />
+        </div>
       </Card>
 
       <PrincipalModal

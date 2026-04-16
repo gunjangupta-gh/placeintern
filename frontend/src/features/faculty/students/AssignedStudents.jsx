@@ -349,7 +349,7 @@ const AssignedStudents = React.memo(() => {
                 showSizeChanger: true,
                 showTotal: (total) => `Total ${total} students`
             }}
-            scroll={{ x: 1000 }}
+            scroll={{ x: 'max-content' }}
             className="flex-1"
         />
       </Card>

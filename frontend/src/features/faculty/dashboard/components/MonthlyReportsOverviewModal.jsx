@@ -402,7 +402,7 @@ const MonthlyReportsOverviewModal = ({ visible, onClose, students = [], monthlyR
         columns={columns}
         dataSource={tableData}
         pagination={false}
-        scroll={{ x: 1200 }}
+        scroll={{ x: 'max-content' }}
         size="middle"
         bordered
         className="monthly-reports-table"

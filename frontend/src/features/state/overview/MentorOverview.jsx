@@ -276,7 +276,7 @@ const MentorOverview = () => {
   }
 
   return (
-    <div className="p-6 space-y-4">
+    <div className=" space-y-4">
       {/* Header - Compact */}
       <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200">
         <div className="flex items-center gap-3">
@@ -381,7 +381,7 @@ const MentorOverview = () => {
             showSizeChanger: true,
             showTotal: (total) => `Total ${total} institutions`,
           }}
-          scroll={{ x: 1000 }}
+          scroll={{ x:  'max-content' }}
           size="small"
           bordered
         />

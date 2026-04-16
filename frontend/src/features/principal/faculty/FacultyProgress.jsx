@@ -968,7 +968,7 @@ const FacultyProgress = () => {
                 showTotal: (total, range) =>
                   `${range[0]}-${range[1]} of ${total}`,
               }}
-              scroll={{ x: 1000 }}
+              scroll={{ x: 'max-content' }}
               locale={{
                 emptyText: (
                   <Empty

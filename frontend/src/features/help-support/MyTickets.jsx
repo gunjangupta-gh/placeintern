@@ -419,47 +419,23 @@ const MyTickets = () => {
   );
 
   return (
-    <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
-      <div className="max-w-7xl mx-auto !space-y-4">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-3">
-            {isSystemAdmin && (
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-md shadow-primary/25">
-                <CustomerServiceOutlined className="text-white text-lg" />
-              </div>
-            )}
-            <div>
-              <h1 className="text-lg font-semibold text-text-primary">
-                {isSystemAdmin ? 'Support Ticket Management' : 'My Support Tickets'}
-              </h1>
-              <Text className="text-text-tertiary text-sm">
-                {isSystemAdmin
-                  ? 'Manage and respond to all user support requests'
-                  : 'Track and manage your support requests'}
-              </Text>
-            </div>
-          </div>
+    <div className="">
+      <Card
+        title={isSystemAdmin ? 'Support Ticket Management' : 'My Support Tickets'}
+        extra={
           <Space size="small">
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={fetchTickets}
-              className="rounded-lg"
-            >
+            <Button icon={<ReloadOutlined />} onClick={fetchTickets}>
               Refresh
             </Button>
             {!isSystemAdmin && (
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setNewTicketVisible(true)}
-                className="rounded-lg shadow-md shadow-primary/20"
-              >
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setNewTicketVisible(true)}>
                 New Ticket
               </Button>
             )}
           </Space>
-        </div>
+        }
+        variant="borderless"
+      >
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -798,7 +774,7 @@ const MyTickets = () => {
             </div>
           </Form>
         </Modal>
-      </div>
+      </Card>
     </div>
   );
 };

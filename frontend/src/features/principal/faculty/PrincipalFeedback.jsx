@@ -579,7 +579,7 @@ const PrincipalFeedback = () => {
             locale={{
               emptyText: <Empty description="No principal feedback found" />,
             }}
-            scroll={{ x: 1100 }}
+            scroll={{ x: 'max-content' }}
             pagination={{
               current: pagination.current,
               pageSize: pagination.pageSize,

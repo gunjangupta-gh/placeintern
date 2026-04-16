@@ -382,7 +382,7 @@ const ActiveSessions = ({ realtimeStats, connected, onRefreshSessions }) => {
             showTotal: (total) => `Total ${total} active sessions`,
           }}
           onChange={handleTableChange}
-          scroll={{ x: 1100 }}
+          scroll={{ x: 'max-content' }}
         />
       </Card>
 

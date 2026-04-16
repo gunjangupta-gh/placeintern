@@ -845,7 +845,7 @@ const FeedbackFormManagementPage = () => {
                       });
                     }}
                     size="small"
-                    scroll={{ x: 900 }}
+                    scroll={{ x:  'max-content' }}
                   />
                 </div>
               ) : (

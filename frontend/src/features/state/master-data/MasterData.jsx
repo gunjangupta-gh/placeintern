@@ -403,13 +403,16 @@ const MasterData = () => {
             </Button>
           }
         >
-          <Table
-            columns={batchColumns}
-            dataSource={batches}
-            rowKey="id"
-            loading={loading}
-            pagination={{ pageSize: 10 }}
-          />
+          <div className="custom-table">
+            <Table
+              columns={batchColumns}
+              dataSource={batches}
+              rowKey="id"
+              loading={loading}
+              size="small"
+              pagination={{ pageSize: 10 }}
+            />
+          </div>
         </Card>
       ),
     },
@@ -435,13 +438,16 @@ const MasterData = () => {
             </Button>
           }
         >
-          <Table
-            columns={branchColumns}
-            dataSource={branches}
-            rowKey="id"
-            loading={loading}
-            pagination={{ pageSize: 10 }}
-          />
+          <div className="custom-table">
+            <Table
+              columns={branchColumns}
+              dataSource={branches}
+              rowKey="id"
+              loading={loading}
+              size="small"
+              pagination={{ pageSize: 10 }}
+            />
+          </div>
         </Card>
       ),
     },
@@ -458,44 +464,39 @@ const MasterData = () => {
           className="rounded-xl border-border"
           styles={{ body: { padding: 0 } }}
         >
-          <Table
-            columns={designationColumns}
-            dataSource={designations}
-            rowKey="key"
-            loading={loading}
-            pagination={{ pageSize: 10 }}
-          />
+          <div className="custom-table">
+            <Table
+              columns={designationColumns}
+              dataSource={designations}
+              rowKey="key"
+              loading={loading}
+              size="small"
+              pagination={{ pageSize: 10 }}
+            />
+          </div>
         </Card>
       ),
     },
   ];
 
   return (
-    <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <div>
-          <Title level={2} className="!mb-1 !text-text-primary flex items-center gap-3">
-            <DatabaseOutlined className="text-primary" />
-            Master Data Management
-          </Title>
-          <Text className="text-text-secondary">
-            Manage global batches, departments, branches, and designation enums shared across all institutions
-          </Text>
-        </div>
-        <Button icon={<ReloadOutlined />} onClick={loadAllData} loading={loading}>
-          Refresh
-        </Button>
-      </div>
-
-      {/* Tabs with data */}
-      <Tabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-        items={tabItems}
-        size="large"
-        className="master-data-tabs"
-      />
+    <div className="">
+      <Card
+        title="Master Data Management"
+        extra={
+          <Button icon={<ReloadOutlined />} onClick={loadAllData} loading={loading}>
+            Refresh
+          </Button>
+        }
+        variant="borderless"
+      >
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={tabItems}
+          className="master-data-tabs"
+        />
+      </Card>
 
       {/* Create/Edit Modal */}
       <Modal

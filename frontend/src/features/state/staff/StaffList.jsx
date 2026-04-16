@@ -328,9 +328,9 @@ const StaffList = () => {
       key: 'staff',
       render: (_, record) => (
         <Space>
-          <Avatar icon={<UserOutlined />} src={getImageUrl(record.profileImage)} />
+          <Avatar size={32} icon={<UserOutlined />} src={getImageUrl(record.profileImage)} />
           <div>
-            <div className="font-medium">{record.name}</div>
+            <div className="font-medium text-sm">{record.name}</div>
             <div className="text-gray-500 text-xs">{record.email}</div>
           </div>
         </Space>
@@ -340,12 +340,13 @@ const StaffList = () => {
       title: 'Role',
       dataIndex: 'role',
       key: 'role',
+      width: 180,
       render: (role) => (
-        <Space size={6}>
-          <Tag color={getRoleColor(role)}>
+        <Space size={4}>
+          <Tag color={getRoleColor(role)} className="text-xs">
             {getRoleLabel(role)}
           </Tag>
-          <Tag color={getStaffTypeColor(role)}>
+          <Tag color={getStaffTypeColor(role)} className="text-xs">
             {getStaffType(role)}
           </Tag>
         </Space>
@@ -354,44 +355,51 @@ const StaffList = () => {
     {
       title: 'Institution',
       key: 'institution',
-      render: (_, record) => record.Institution?.name || 'Not Assigned',
+      width: 150,
+      render: (_, record) => <span className="text-xs">{record.Institution?.name || 'Not Assigned'}</span>,
     },
     {
       title: 'Branch',
       dataIndex: 'branchName',
       key: 'branchName',
-      render: (text) => text || '-',
+      width: 100,
+      render: (text) => <span className="text-xs">{text || '-'}</span>,
     },
     {
       title: 'Designation',
       dataIndex: 'designation',
       key: 'designation',
-      render: (text) => text || '-',
+      width: 120,
+      render: (text) => <span className="text-xs">{text || '-'}</span>,
     },
     {
       title: 'Qualification',
       dataIndex: 'qualification',
       key: 'qualification',
-      render: (text) => text || '-',
+      width: 120,
+      render: (text) => <span className="text-xs">{text || '-'}</span>,
     },
     {
-      title: 'Date of Joining',
+      title: 'Joining',
       dataIndex: 'dateOfJoining',
       key: 'dateOfJoining',
-      render: (value) => (value ? new Date(value).toLocaleDateString('en-IN') : '-'),
+      width: 100,
+      render: (value) => <span className="text-xs">{value ? new Date(value).toLocaleDateString('en-IN') : '-'}</span>,
     },
     {
       title: 'Phone',
       dataIndex: 'phoneNo',
       key: 'phoneNo',
-      render: (text) => text || 'N/A',
+      width: 110,
+      render: (text) => <span className="text-xs">{text || 'N/A'}</span>,
     },
     {
       title: 'Status',
       dataIndex: 'active',
       key: 'status',
+      width: 80,
       render: (active) => (
-        <Tag color={active !== false ? 'green' : 'red'}>
+        <Tag color={active !== false ? 'green' : 'red'} className="text-xs">
           {active !== false ? 'Active' : 'Inactive'}
         </Tag>
       ),
@@ -467,7 +475,7 @@ const StaffList = () => {
   ];
 
   return (
-    <div className="p-6">
+    <div className="">
       <Card
         title="Staff Management"
         extra={
@@ -617,22 +625,25 @@ const StaffList = () => {
           </div>
         )}
 
-        <Table
-          columns={columns}
-          dataSource={staffList}
-          loading={loading}
-          rowKey="id"
-          onChange={handleTableChange}
-          pagination={{
-            current: pagination?.page || tableParams.page,
-            pageSize: pagination?.limit || tableParams.limit,
-            total: pagination?.total || 0,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            pageSizeOptions: ['10', '20', '50', '100'],
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} staff members`,
-          }}
-        />
+        <div className="custom-table">
+          <Table
+            columns={columns}
+            dataSource={staffList}
+            loading={loading}
+            rowKey="id"
+            onChange={handleTableChange}
+            size="small"
+            pagination={{
+              current: pagination?.page || tableParams.page,
+              pageSize: pagination?.limit || tableParams.limit,
+              total: pagination?.total || 0,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              pageSizeOptions: ['10', '20', '50', '100'],
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} staff members`,
+            }}
+          />
+        </div>
       </Card>
 
       <StaffModal
