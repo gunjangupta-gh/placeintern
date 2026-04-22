@@ -4208,14 +4208,21 @@ export class PrincipalService {
         by: ['facultyId'],
         where: {
           isDeleted: false,
+          status: 'COMPLETED',
           faculty: { institutionId: principal.institutionId },
           application: {
+            isSelfIdentified: true,
             student: { institutionId: principal.institutionId, user: { active: true } },
           },
-          visitDate: {
-            gte: selectedMonthStart,
-            lte: selectedMonthEnd,
-          },
+          OR: [
+            { visitMonth: selectedMonth, visitYear: selectedYear },
+            {
+              visitDate: {
+                gte: selectedMonthStart,
+                lte: selectedMonthEnd,
+              },
+            },
+          ],
         },
         _count: { id: true },
       }),
