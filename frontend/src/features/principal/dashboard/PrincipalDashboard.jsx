@@ -24,6 +24,7 @@ import {
   WarningOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
+  CalendarOutlined,
 } from '@ant-design/icons';
 import { useNotifications } from '../../common/notifications';
 import {
@@ -48,6 +49,7 @@ import MonthlyReportsModal from './components/MonthlyReportsModal';
 import FacultyVisitsModal from './components/FacultyVisitsModal';
 import JoiningLettersModal from './components/JoiningLettersModal';
 import DashboardInternshipTable from './components/DashboardInternshipTable';
+import DashboardTrainingTable from './components/DashboardTrainingTable';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -320,7 +322,7 @@ const PrincipalDashboard = () => {
   }
 
   return (
-    <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
+    <div className="p-4 md:p-4 bg-background-secondary min-h-screen">
       <div className="space-y-6">
         {/* Header Section - Compact */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -445,6 +447,16 @@ const PrincipalDashboard = () => {
                   </span>
                 ),
                 children: <FacultyWorkloadCard />,
+              },
+              {
+                key: 'trainings',
+                label: (
+                  <span className="flex items-center gap-2">
+                    <CalendarOutlined />
+                    Trainings
+                  </span>
+                ),
+                children: <DashboardTrainingTable />,
               },
             ]}
           />
