@@ -9,3 +9,4 @@ export { default as InstituteDetailView } from './InstituteDetailView';
 export { default as JoiningLetterTracker } from './JoiningLetterTracker';
 export { default as VisitsByTypePieChart } from './VisitsByTypePieChart';
 export { default as CriticalAlertsModal } from './CriticalAlertsModal';
+export { default as CourseWiseFacultyTable } from './CourseWiseFacultyTable';

@@ -24,6 +24,7 @@ import {
   JoiningLetterTracker,
   VisitsByTypePieChart,
   TopIndustriesList,
+  CourseWiseFacultyTable,
 } from './components';
 
 const { Text } = Typography;
@@ -153,6 +154,13 @@ const StateDashboard = () => {
           </div>
         </Col>
       </Row>
+
+      <div className="mt-4">
+        <CourseWiseFacultyTable
+          rows={trainingDashboard?.courseWiseFaculty || []}
+          loading={trainingDashboardLoading}
+        />
+      </div>
     </div>
   );
 };
