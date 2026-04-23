@@ -25,6 +25,8 @@ export class TestFormService {
     try {
       this.logger.log(`Creating pre-test form: ${dto.title}`);
 
+      this.validateLiveWindowConfig(dto);
+
       const form = await this.prisma.preTestForm.create({
         data: {
           title: dto.title,
@@ -33,6 +35,11 @@ export class TestFormService {
           purpose: dto.purpose || TestFormPurpose.PRE_TEST,
           passingScore: dto.passingScore,
           isPublished: dto.publish || false,
+          isLiveWindowEnabled: dto.isLiveWindowEnabled || false,
+          liveFrom: this.toDateOrUndefined(dto.liveFrom),
+          liveUntil: this.toDateOrUndefined(dto.liveUntil),
+          enforceTimer: dto.enforceTimer ?? true,
+          durationMinutes: dto.durationMinutes,
           createdById: userId,
         },
         include: {
@@ -70,6 +77,8 @@ export class TestFormService {
         throw new NotFoundException('Pre-test form not found');
       }
 
+      this.validateLiveWindowConfig(dto, existing);
+
       // Check if form has responses
       const responseCount = await this.prisma.preTestResponse.count({
         where: { preTestFormId: id },
@@ -100,6 +109,11 @@ export class TestFormService {
           purpose: dto.purpose,
           passingScore: dto.passingScore,
           isActive: dto.isActive,
+          isLiveWindowEnabled: dto.isLiveWindowEnabled,
+          liveFrom: this.toDateOrUndefined(dto.liveFrom),
+          liveUntil: this.toDateOrUndefined(dto.liveUntil),
+          enforceTimer: dto.enforceTimer,
+          durationMinutes: dto.durationMinutes,
         },
         include: {
           createdBy: { select: { id: true, name: true } },
@@ -142,7 +156,15 @@ export class TestFormService {
    */
   async updatePreTestAnswerKeys(
     id: string,
-    dto: { answerKeys?: Record<string, any>; passingScore?: number },
+    dto: {
+      answerKeys?: Record<string, any>;
+      passingScore?: number;
+      isLiveWindowEnabled?: boolean;
+      liveFrom?: string;
+      liveUntil?: string;
+      enforceTimer?: boolean;
+      durationMinutes?: number;
+    },
     userId: string,
   ) {
     try {
@@ -151,6 +173,8 @@ export class TestFormService {
       if (!existing) {
         throw new NotFoundException('Pre-test form not found');
       }
+
+      this.validateLiveWindowConfig(dto, existing);
 
       const existingQuestions = existing.questions as any[];
       let updatedQuestions = existingQuestions;
@@ -183,6 +207,19 @@ export class TestFormService {
         data: {
           questions: updatedQuestions as any,
           ...(dto.passingScore !== undefined && { passingScore: dto.passingScore }),
+          ...(dto.isLiveWindowEnabled !== undefined && {
+            isLiveWindowEnabled: dto.isLiveWindowEnabled,
+          }),
+          ...(dto.liveFrom !== undefined && {
+            liveFrom: this.toDateOrUndefined(dto.liveFrom),
+          }),
+          ...(dto.liveUntil !== undefined && {
+            liveUntil: this.toDateOrUndefined(dto.liveUntil),
+          }),
+          ...(dto.enforceTimer !== undefined && { enforceTimer: dto.enforceTimer }),
+          ...(dto.durationMinutes !== undefined && {
+            durationMinutes: dto.durationMinutes,
+          }),
         },
         include: {
           createdBy: { select: { id: true, name: true } },
@@ -208,6 +245,11 @@ export class TestFormService {
       const changedFields: string[] = [];
       if (dto.answerKeys) changedFields.push('answerKeys');
       if (dto.passingScore !== undefined) changedFields.push('passingScore');
+      if (dto.isLiveWindowEnabled !== undefined) changedFields.push('isLiveWindowEnabled');
+      if (dto.liveFrom !== undefined) changedFields.push('liveFrom');
+      if (dto.liveUntil !== undefined) changedFields.push('liveUntil');
+      if (dto.enforceTimer !== undefined) changedFields.push('enforceTimer');
+      if (dto.durationMinutes !== undefined) changedFields.push('durationMinutes');
 
       this.auditService.log({
         action: AuditAction.CONFIGURATION_CHANGE,
@@ -288,6 +330,8 @@ export class TestFormService {
       if (form.isPublished) {
         throw new BadRequestException('Form is already published');
       }
+
+      this.validateLiveWindowConfig(form);
 
       const updated = await this.prisma.preTestForm.update({
         where: { id },
@@ -420,6 +464,8 @@ export class TestFormService {
     try {
       this.logger.log(`Creating post-test form: ${dto.title}`);
 
+      this.validateLiveWindowConfig(dto);
+
       const form = await this.prisma.postTestForm.create({
         data: {
           title: dto.title,
@@ -428,6 +474,11 @@ export class TestFormService {
           purpose: dto.purpose || TestFormPurpose.POST_TEST,
           passingScore: dto.passingScore,
           isPublished: dto.publish || false,
+          isLiveWindowEnabled: dto.isLiveWindowEnabled || false,
+          liveFrom: this.toDateOrUndefined(dto.liveFrom),
+          liveUntil: this.toDateOrUndefined(dto.liveUntil),
+          enforceTimer: dto.enforceTimer ?? true,
+          durationMinutes: dto.durationMinutes,
           createdById: userId,
         },
         include: {
@@ -465,6 +516,8 @@ export class TestFormService {
         throw new NotFoundException('Post-test form not found');
       }
 
+      this.validateLiveWindowConfig(dto, existing);
+
       // Check if form has responses
       const responseCount = await this.prisma.postTestResponse.count({
         where: { postTestFormId: id },
@@ -495,6 +548,11 @@ export class TestFormService {
           purpose: dto.purpose,
           passingScore: dto.passingScore,
           isActive: dto.isActive,
+          isLiveWindowEnabled: dto.isLiveWindowEnabled,
+          liveFrom: this.toDateOrUndefined(dto.liveFrom),
+          liveUntil: this.toDateOrUndefined(dto.liveUntil),
+          enforceTimer: dto.enforceTimer,
+          durationMinutes: dto.durationMinutes,
         },
         include: {
           createdBy: { select: { id: true, name: true } },
@@ -537,7 +595,15 @@ export class TestFormService {
    */
   async updatePostTestAnswerKeys(
     id: string,
-    dto: { answerKeys?: Record<string, any>; passingScore?: number },
+    dto: {
+      answerKeys?: Record<string, any>;
+      passingScore?: number;
+      isLiveWindowEnabled?: boolean;
+      liveFrom?: string;
+      liveUntil?: string;
+      enforceTimer?: boolean;
+      durationMinutes?: number;
+    },
     userId: string,
   ) {
     try {
@@ -546,6 +612,8 @@ export class TestFormService {
       if (!existing) {
         throw new NotFoundException('Post-test form not found');
       }
+
+      this.validateLiveWindowConfig(dto, existing);
 
       const existingQuestions = existing.questions as any[];
       let updatedQuestions = existingQuestions;
@@ -578,6 +646,19 @@ export class TestFormService {
         data: {
           questions: updatedQuestions as any,
           ...(dto.passingScore !== undefined && { passingScore: dto.passingScore }),
+          ...(dto.isLiveWindowEnabled !== undefined && {
+            isLiveWindowEnabled: dto.isLiveWindowEnabled,
+          }),
+          ...(dto.liveFrom !== undefined && {
+            liveFrom: this.toDateOrUndefined(dto.liveFrom),
+          }),
+          ...(dto.liveUntil !== undefined && {
+            liveUntil: this.toDateOrUndefined(dto.liveUntil),
+          }),
+          ...(dto.enforceTimer !== undefined && { enforceTimer: dto.enforceTimer }),
+          ...(dto.durationMinutes !== undefined && {
+            durationMinutes: dto.durationMinutes,
+          }),
         },
         include: {
           createdBy: { select: { id: true, name: true } },
@@ -603,6 +684,11 @@ export class TestFormService {
       const changedFields: string[] = [];
       if (dto.answerKeys) changedFields.push('answerKeys');
       if (dto.passingScore !== undefined) changedFields.push('passingScore');
+      if (dto.isLiveWindowEnabled !== undefined) changedFields.push('isLiveWindowEnabled');
+      if (dto.liveFrom !== undefined) changedFields.push('liveFrom');
+      if (dto.liveUntil !== undefined) changedFields.push('liveUntil');
+      if (dto.enforceTimer !== undefined) changedFields.push('enforceTimer');
+      if (dto.durationMinutes !== undefined) changedFields.push('durationMinutes');
 
       this.auditService.log({
         action: AuditAction.CONFIGURATION_CHANGE,
@@ -683,6 +769,8 @@ export class TestFormService {
       if (form.isPublished) {
         throw new BadRequestException('Form is already published');
       }
+
+      this.validateLiveWindowConfig(form);
 
       const updated = await this.prisma.postTestForm.update({
         where: { id },
@@ -1076,5 +1164,80 @@ export class TestFormService {
 
   private async invalidateCache(type: 'pretest' | 'posttest') {
     await this.cache.invalidate(`${type}:forms:*`).catch(() => {});
+  }
+
+  private validateLiveWindowConfig(
+    values: {
+      isLiveWindowEnabled?: boolean;
+      liveFrom?: string | Date | null;
+      liveUntil?: string | Date | null;
+      enforceTimer?: boolean;
+      durationMinutes?: number | null;
+    },
+    existing?: {
+      isLiveWindowEnabled?: boolean;
+      liveFrom?: Date | null;
+      liveUntil?: Date | null;
+      enforceTimer?: boolean;
+      durationMinutes?: number | null;
+    },
+  ) {
+    const isLiveWindowEnabled =
+      values.isLiveWindowEnabled !== undefined
+        ? values.isLiveWindowEnabled
+        : existing?.isLiveWindowEnabled || false;
+
+    const enforceTimer =
+      values.enforceTimer !== undefined
+        ? values.enforceTimer
+        : existing?.enforceTimer ?? true;
+
+    const liveFromRaw =
+      values.liveFrom !== undefined ? values.liveFrom : existing?.liveFrom;
+    const liveUntilRaw =
+      values.liveUntil !== undefined ? values.liveUntil : existing?.liveUntil;
+    const durationMinutes =
+      values.durationMinutes !== undefined
+        ? values.durationMinutes
+        : existing?.durationMinutes;
+
+    const liveFrom = this.toDateOrUndefined(liveFromRaw as any);
+    const liveUntil = this.toDateOrUndefined(liveUntilRaw as any);
+
+    if (isLiveWindowEnabled) {
+      if (!liveFrom || !liveUntil) {
+        throw new BadRequestException(
+          'liveFrom and liveUntil are required when live window is enabled',
+        );
+      }
+      if (liveFrom >= liveUntil) {
+        throw new BadRequestException('liveFrom must be before liveUntil');
+      }
+    }
+
+    if (enforceTimer && isLiveWindowEnabled) {
+      if (!durationMinutes || durationMinutes <= 0) {
+        throw new BadRequestException(
+          'durationMinutes is required when timer is enforced',
+        );
+      }
+    }
+  }
+
+  private toDateOrUndefined(value?: string | Date | null): Date | undefined {
+    if (value === undefined) {
+      return undefined;
+    }
+    if (value === null || value === '') {
+      return undefined;
+    }
+    if (value instanceof Date) {
+      return value;
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new BadRequestException('Invalid date value provided');
+    }
+    return parsed;
   }
 }

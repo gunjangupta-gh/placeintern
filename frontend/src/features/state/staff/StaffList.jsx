@@ -298,6 +298,7 @@ const StaffList = () => {
         Email: record.email || '-',
         Role: getRoleLabel(record.role),
         'Staff Type': getStaffType(record.role),
+        'Employment Type': record.guestTeacher ? 'Part-time' : 'Full-time',
         Institution: record.Institution?.name || 'Not Assigned',
         Branch: record.branchName || '-',
         Designation: record.designation || '-',
@@ -341,13 +342,16 @@ const StaffList = () => {
       dataIndex: 'role',
       key: 'role',
       width: 180,
-      render: (role) => (
+      render: (role, record) => (
         <Space size={4}>
           <Tag color={getRoleColor(role)} className="text-xs">
             {getRoleLabel(role)}
           </Tag>
           <Tag color={getStaffTypeColor(role)} className="text-xs">
             {getStaffType(role)}
+          </Tag>
+          <Tag color={record?.guestTeacher ? 'orange' : 'green'} className="text-xs">
+            {record?.guestTeacher ? 'Part-time' : 'Full-time'}
           </Tag>
         </Space>
       ),

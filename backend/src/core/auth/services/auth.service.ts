@@ -762,6 +762,7 @@ export class AuthService {
         dateOfJoining: true,
         branchName: true,
         designation: true,
+        guestTeacher: true,
         role: true,
         active: true,
         lastLoginAt: true,
@@ -833,6 +834,7 @@ export class AuthService {
       branchName?: string;
       qualification?: string;
       dateOfJoining?: string;
+      guestTeacher?: boolean;
     },
     ipAddress?: string,
     userAgent?: string,
@@ -869,6 +871,7 @@ export class AuthService {
         ...(data.dateOfJoining !== undefined && {
           dateOfJoining: data.dateOfJoining ? new Date(data.dateOfJoining) : null,
         }),
+        ...(data.guestTeacher !== undefined && { guestTeacher: data.guestTeacher }),
       },
       select: {
         id: true,
@@ -881,6 +884,7 @@ export class AuthService {
         dateOfJoining: true,
         branchName: true,
         designation: true,
+        guestTeacher: true,
         role: true,
         active: true,
         lastLoginAt: true,
@@ -919,6 +923,7 @@ export class AuthService {
         branchName: user.branchName,
         qualification: user.qualification,
         dateOfJoining: user.dateOfJoining,
+        guestTeacher: user.guestTeacher,
       },
       newValues: data,
     }).catch(() => {}); // Non-blocking

@@ -31,6 +31,7 @@ model User {
 
   designation     String?      // Only for TEACHER/PRINCIPAL (legacy - kept for backward compatibility)
   designationEnum Designation? // Enum-based designation for filtering
+  guestTeacher    Boolean      @default(false) // true = part-time/guest teacher
   role            Role?
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -2253,6 +2254,13 @@ model PreTestForm {
   // Passing criteria (optional)
   passingScore Float?  // Minimum percentage to pass (e.g., 70.0)
 
+  // Live window and timer configuration (form-level)
+  isLiveWindowEnabled Boolean  @default(false)
+  liveFrom            DateTime?
+  liveUntil           DateTime?
+  enforceTimer        Boolean  @default(true)
+  durationMinutes     Int?
+
   // Status
   isActive    Boolean  @default(true)
   isPublished Boolean  @default(false)
@@ -2288,6 +2296,13 @@ model PostTestForm {
 
   // Passing criteria (optional)
   passingScore Float?  // Minimum percentage to pass (e.g., 70.0)
+
+  // Live window and timer configuration (form-level)
+  isLiveWindowEnabled Boolean  @default(false)
+  liveFrom            DateTime?
+  liveUntil           DateTime?
+  enforceTimer        Boolean  @default(true)
+  durationMinutes     Int?
 
   // Status
   isActive    Boolean  @default(true)

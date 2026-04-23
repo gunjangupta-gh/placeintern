@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsArray, IsBoolean, IsObject, IsUUID, IsNumber, Min, Max } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsArray, IsBoolean, IsObject, IsUUID, IsNumber, Min, Max, IsDateString, IsInt } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TestFormPurpose } from '../../../generated/prisma/client';
 
@@ -40,6 +40,32 @@ export class CreateTestFormDto {
   @IsOptional()
   @IsBoolean()
   publish?: boolean;
+
+  @ApiPropertyOptional({ description: 'Enable live window for test availability' })
+  @IsOptional()
+  @IsBoolean()
+  isLiveWindowEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Test live start datetime (ISO format)' })
+  @IsOptional()
+  @IsDateString()
+  liveFrom?: string;
+
+  @ApiPropertyOptional({ description: 'Test live end datetime (ISO format)' })
+  @IsOptional()
+  @IsDateString()
+  liveUntil?: string;
+
+  @ApiPropertyOptional({ description: 'Enforce countdown timer for test attempt' })
+  @IsOptional()
+  @IsBoolean()
+  enforceTimer?: boolean;
+
+  @ApiPropertyOptional({ description: 'Duration of test in minutes' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  durationMinutes?: number;
 }
 
 export class UpdateTestFormDto {
@@ -82,6 +108,32 @@ export class UpdateTestFormDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ description: 'Enable live window for test availability' })
+  @IsOptional()
+  @IsBoolean()
+  isLiveWindowEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Test live start datetime (ISO format)' })
+  @IsOptional()
+  @IsDateString()
+  liveFrom?: string;
+
+  @ApiPropertyOptional({ description: 'Test live end datetime (ISO format)' })
+  @IsOptional()
+  @IsDateString()
+  liveUntil?: string;
+
+  @ApiPropertyOptional({ description: 'Enforce countdown timer for test attempt' })
+  @IsOptional()
+  @IsBoolean()
+  enforceTimer?: boolean;
+
+  @ApiPropertyOptional({ description: 'Duration of test in minutes' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  durationMinutes?: number;
 }
 
 export class SubmitTestResponseDto {
@@ -110,6 +162,32 @@ export class UpdateAnswerKeysDto {
   @Min(0)
   @Max(100)
   passingScore?: number;
+
+  @ApiPropertyOptional({ description: 'Enable live window for test availability' })
+  @IsOptional()
+  @IsBoolean()
+  isLiveWindowEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Test live start datetime (ISO format)' })
+  @IsOptional()
+  @IsDateString()
+  liveFrom?: string;
+
+  @ApiPropertyOptional({ description: 'Test live end datetime (ISO format)' })
+  @IsOptional()
+  @IsDateString()
+  liveUntil?: string;
+
+  @ApiPropertyOptional({ description: 'Enforce countdown timer for test attempt' })
+  @IsOptional()
+  @IsBoolean()
+  enforceTimer?: boolean;
+
+  @ApiPropertyOptional({ description: 'Duration of test in minutes' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  durationMinutes?: number;
 }
 
 export class TestFormFilterDto {

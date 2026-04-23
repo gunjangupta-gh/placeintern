@@ -261,6 +261,12 @@ const StaffList = () => {
           <Tag color="blue" className="rounded-full border-none bg-blue-50 text-blue-600 px-3">
             {record.role?.replace(/_/g, ' ') || 'N/A'}
           </Tag>
+          <Tag
+            color={record.guestTeacher ? 'orange' : 'green'}
+            className="rounded-full border-none px-3"
+          >
+            {record.guestTeacher ? 'Part-time' : 'Full-time'}
+          </Tag>
         </div>
       ),
     },

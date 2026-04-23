@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { CacheService } from '../../core/cache/cache.service';
 import { Prisma } from '../../generated/prisma/client';
 import { AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
 import { SubmitTestResponseDto } from './dto';
@@ -8,10 +9,12 @@ import { SubmitTestResponseDto } from './dto';
 @Injectable()
 export class TestResponseService {
   private readonly logger = new Logger(TestResponseService.name);
+  private readonly ATTEMPT_BUFFER_SECONDS = 60;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly cache: CacheService,
   ) {}
 
   // ==================== PRE-TEST RESPONSES ====================
@@ -40,6 +43,9 @@ export class TestResponseService {
       if (training.preTestForm.id !== dto.testFormId) {
         throw new BadRequestException('Invalid pre-test form for this training');
       }
+
+      this.assertFormActiveAndPublished(training.preTestForm, 'pre-test');
+      this.assertLiveWindow(training.preTestForm, 'pre-test');
 
       // Check if user has approved application
       const application = await this.prisma.trainingApplication.findFirst({
@@ -70,6 +76,8 @@ export class TestResponseService {
         throw new BadRequestException('You have already submitted the pre-test for this training');
       }
 
+      await this.assertTimerIfEnabled('pre', userId, dto.trainingId, dto.testFormId, training.preTestForm);
+
       // Calculate score if there are correct answers
       const { score, passed } = this.calculateScore(training.preTestForm.questions as any[], dto.responses, training.preTestForm.passingScore);
 
@@ -97,6 +105,8 @@ export class TestResponseService {
         severity: AuditSeverity.LOW,
         description: `Pre-test submitted for training "${training.title}"`,
       }).catch(() => {});
+
+      await this.clearAttemptKey('pre', userId, dto.trainingId, dto.testFormId);
 
       return response;
     } catch (error) {
@@ -128,9 +138,30 @@ export class TestResponseService {
       },
     });
 
+    const windowStatus = this.getLiveWindowStatus(training.preTestForm);
+    const attempt = await this.getAttemptFromCache(
+      'pre',
+      userId,
+      trainingId,
+      training.preTestForm.id,
+    );
+    const remainingSeconds = this.getRemainingSeconds(attempt?.expiresAt);
+
     return {
       required: true,
       hasForm: true,
+      isLiveNow: windowStatus.isLiveNow,
+      lockReason: windowStatus.lockReason,
+      liveWindowEnabled: training.preTestForm.isLiveWindowEnabled,
+      opensAt: training.preTestForm.liveFrom,
+      closesAt: training.preTestForm.liveUntil,
+      timerEnabled: !!training.preTestForm.enforceTimer,
+      durationMinutes: training.preTestForm.durationMinutes,
+      timerStartedAt: attempt?.startedAt || null,
+      timerExpiresAt: attempt?.expiresAt || null,
+      remainingSeconds,
+      canStart: !response && windowStatus.isLiveNow,
+      canSubmit: !response && windowStatus.isLiveNow && (!training.preTestForm.enforceTimer || remainingSeconds > 0),
       submitted: !!response,
       response: response ? {
         id: response.id,
@@ -138,6 +169,77 @@ export class TestResponseService {
         passed: response.passed,
         submittedAt: response.submittedAt,
       } : null,
+    };
+  }
+
+  async startPreTestAttempt(trainingId: string, userId: string) {
+    const training = await this.prisma.training.findUnique({
+      where: { id: trainingId },
+      include: { preTestForm: true },
+    });
+
+    if (!training) {
+      throw new NotFoundException('Training not found');
+    }
+
+    if (!training.preTestForm) {
+      throw new BadRequestException('This training does not have a pre-test form');
+    }
+
+    this.assertFormActiveAndPublished(training.preTestForm, 'pre-test');
+    this.assertLiveWindow(training.preTestForm, 'pre-test');
+
+    const existingResponse = await this.prisma.preTestResponse.findUnique({
+      where: {
+        userId_preTestFormId_trainingId: {
+          userId,
+          preTestFormId: training.preTestForm.id,
+          trainingId,
+        },
+      },
+    });
+
+    if (existingResponse) {
+      throw new BadRequestException('You have already submitted the pre-test for this training');
+    }
+
+    const application = await this.prisma.trainingApplication.findFirst({
+      where: {
+        userId,
+        trainingId,
+        status: 'APPROVED',
+        isActive: true,
+      },
+    });
+
+    if (!application) {
+      throw new BadRequestException('You must have an approved application to start pre-test');
+    }
+
+    if (!training.preTestForm.enforceTimer || !training.preTestForm.durationMinutes) {
+      return {
+        timerEnabled: false,
+        durationMinutes: training.preTestForm.durationMinutes,
+        startedAt: null,
+        expiresAt: null,
+        remainingSeconds: null,
+      };
+    }
+
+    const attempt = await this.getOrCreateAttempt(
+      'pre',
+      userId,
+      trainingId,
+      training.preTestForm.id,
+      training.preTestForm.durationMinutes,
+    );
+
+    return {
+      timerEnabled: true,
+      durationMinutes: training.preTestForm.durationMinutes,
+      startedAt: attempt.startedAt,
+      expiresAt: attempt.expiresAt,
+      remainingSeconds: this.getRemainingSeconds(attempt.expiresAt),
     };
   }
 
@@ -193,6 +295,9 @@ export class TestResponseService {
         throw new BadRequestException('Invalid post-test form for this training');
       }
 
+      this.assertFormActiveAndPublished(training.postTestForm, 'post-test');
+      this.assertLiveWindow(training.postTestForm, 'post-test');
+
       // Check if user has approved application
       const application = await this.prisma.trainingApplication.findFirst({
         where: {
@@ -207,9 +312,9 @@ export class TestResponseService {
         throw new BadRequestException('You must have an approved application to submit post-test');
       }
 
-      // Check if training has ended (post-test should only be allowed after training)
+      // Keep existing behavior when no explicit live window is configured.
       const now = new Date();
-      if (training.endDate > now) {
+      if (!training.postTestForm.isLiveWindowEnabled && training.endDate > now) {
         throw new BadRequestException('Post-test can only be submitted after the training ends');
       }
 
@@ -227,6 +332,8 @@ export class TestResponseService {
       if (existingResponse) {
         throw new BadRequestException('You have already submitted the post-test for this training');
       }
+
+      await this.assertTimerIfEnabled('post', userId, dto.trainingId, dto.testFormId, training.postTestForm);
 
       // Calculate score if there are correct answers
       const { score, passed } = this.calculateScore(training.postTestForm.questions as any[], dto.responses, training.postTestForm.passingScore);
@@ -255,6 +362,8 @@ export class TestResponseService {
         severity: AuditSeverity.LOW,
         description: `Post-test submitted for training "${training.title}"`,
       }).catch(() => {});
+
+      await this.clearAttemptKey('post', userId, dto.trainingId, dto.testFormId);
 
       return response;
     } catch (error) {
@@ -286,13 +395,37 @@ export class TestResponseService {
       },
     });
 
-    // Check if training has ended
     const trainingEnded = training.endDate < new Date();
+    const windowStatus = this.getLiveWindowStatus(training.postTestForm);
+    const attempt = await this.getAttemptFromCache(
+      'post',
+      userId,
+      trainingId,
+      training.postTestForm.id,
+    );
+    const remainingSeconds = this.getRemainingSeconds(attempt?.expiresAt);
+    const postTestWindowSatisfied =
+      training.postTestForm.isLiveWindowEnabled ? windowStatus.isLiveNow : trainingEnded;
 
     return {
       required: true,
       hasForm: true,
       trainingEnded,
+      isLiveNow: windowStatus.isLiveNow,
+      lockReason: windowStatus.lockReason,
+      liveWindowEnabled: training.postTestForm.isLiveWindowEnabled,
+      opensAt: training.postTestForm.liveFrom,
+      closesAt: training.postTestForm.liveUntil,
+      timerEnabled: !!training.postTestForm.enforceTimer,
+      durationMinutes: training.postTestForm.durationMinutes,
+      timerStartedAt: attempt?.startedAt || null,
+      timerExpiresAt: attempt?.expiresAt || null,
+      remainingSeconds,
+      canStart: !response && postTestWindowSatisfied,
+      canSubmit:
+        !response &&
+        postTestWindowSatisfied &&
+        (!training.postTestForm.enforceTimer || remainingSeconds > 0),
       submitted: !!response,
       response: response ? {
         id: response.id,
@@ -300,6 +433,81 @@ export class TestResponseService {
         passed: response.passed,
         submittedAt: response.submittedAt,
       } : null,
+    };
+  }
+
+  async startPostTestAttempt(trainingId: string, userId: string) {
+    const training = await this.prisma.training.findUnique({
+      where: { id: trainingId },
+      include: { postTestForm: true },
+    });
+
+    if (!training) {
+      throw new NotFoundException('Training not found');
+    }
+
+    if (!training.postTestForm) {
+      throw new BadRequestException('This training does not have a post-test form');
+    }
+
+    this.assertFormActiveAndPublished(training.postTestForm, 'post-test');
+    this.assertLiveWindow(training.postTestForm, 'post-test');
+
+    const application = await this.prisma.trainingApplication.findFirst({
+      where: {
+        userId,
+        trainingId,
+        status: 'APPROVED',
+        isActive: true,
+      },
+    });
+
+    if (!application) {
+      throw new BadRequestException('You must have an approved application to start post-test');
+    }
+
+    const existingResponse = await this.prisma.postTestResponse.findUnique({
+      where: {
+        userId_postTestFormId_trainingId: {
+          userId,
+          postTestFormId: training.postTestForm.id,
+          trainingId,
+        },
+      },
+    });
+
+    if (existingResponse) {
+      throw new BadRequestException('You have already submitted the post-test for this training');
+    }
+
+    if (!training.postTestForm.isLiveWindowEnabled && training.endDate > new Date()) {
+      throw new BadRequestException('Post-test can only be started after the training ends');
+    }
+
+    if (!training.postTestForm.enforceTimer || !training.postTestForm.durationMinutes) {
+      return {
+        timerEnabled: false,
+        durationMinutes: training.postTestForm.durationMinutes,
+        startedAt: null,
+        expiresAt: null,
+        remainingSeconds: null,
+      };
+    }
+
+    const attempt = await this.getOrCreateAttempt(
+      'post',
+      userId,
+      trainingId,
+      training.postTestForm.id,
+      training.postTestForm.durationMinutes,
+    );
+
+    return {
+      timerEnabled: true,
+      durationMinutes: training.postTestForm.durationMinutes,
+      startedAt: attempt.startedAt,
+      expiresAt: attempt.expiresAt,
+      remainingSeconds: this.getRemainingSeconds(attempt.expiresAt),
     };
   }
 
@@ -565,6 +773,157 @@ export class TestResponseService {
       default:
         return userAnswer === correctAnswer;
     }
+  }
+
+  private assertFormActiveAndPublished(
+    form: { isActive: boolean; isPublished: boolean },
+    type: 'pre-test' | 'post-test',
+  ) {
+    if (!form.isActive) {
+      throw new BadRequestException(`This ${type} is currently inactive`);
+    }
+    if (!form.isPublished) {
+      throw new BadRequestException(`This ${type} is not published yet`);
+    }
+  }
+
+  private assertLiveWindow(
+    form: {
+      isLiveWindowEnabled?: boolean;
+      liveFrom?: Date | null;
+      liveUntil?: Date | null;
+    },
+    type: 'pre-test' | 'post-test',
+  ) {
+    const status = this.getLiveWindowStatus(form);
+    if (!status.isLiveNow) {
+      throw new BadRequestException(status.lockReason || `This ${type} is not live right now`);
+    }
+  }
+
+  private getLiveWindowStatus(form: {
+    isLiveWindowEnabled?: boolean;
+    liveFrom?: Date | null;
+    liveUntil?: Date | null;
+  }): { isLiveNow: boolean; lockReason: string | null } {
+    if (!form.isLiveWindowEnabled) {
+      return { isLiveNow: true, lockReason: null };
+    }
+
+    if (!form.liveFrom || !form.liveUntil) {
+      return {
+        isLiveNow: false,
+        lockReason: 'Test live window is not configured yet',
+      };
+    }
+
+    const now = new Date();
+    if (now < form.liveFrom) {
+      return { isLiveNow: false, lockReason: 'Test has not started yet' };
+    }
+    if (now > form.liveUntil) {
+      return { isLiveNow: false, lockReason: 'Test live window has ended' };
+    }
+
+    return { isLiveNow: true, lockReason: null };
+  }
+
+  private getAttemptKey(
+    type: 'pre' | 'post',
+    userId: string,
+    trainingId: string,
+    formId: string,
+  ) {
+    return `test:attempt:${type}:${userId}:${trainingId}:${formId}`;
+  }
+
+  private async getAttemptFromCache(
+    type: 'pre' | 'post',
+    userId: string,
+    trainingId: string,
+    formId: string,
+  ): Promise<{ startedAt: string; expiresAt: string } | null> {
+    const key = this.getAttemptKey(type, userId, trainingId, formId);
+    const data = await this.cache.get<{ startedAt: string; expiresAt: string }>(key);
+    if (!data) {
+      return null;
+    }
+    return data;
+  }
+
+  private async getOrCreateAttempt(
+    type: 'pre' | 'post',
+    userId: string,
+    trainingId: string,
+    formId: string,
+    durationMinutes: number,
+  ): Promise<{ startedAt: string; expiresAt: string }> {
+    const key = this.getAttemptKey(type, userId, trainingId, formId);
+    const existingAttempt = await this.cache.get<{ startedAt: string; expiresAt: string }>(key);
+    if (existingAttempt) {
+      const remaining = this.getRemainingSeconds(existingAttempt.expiresAt);
+      if (remaining > 0) {
+        return existingAttempt;
+      }
+      await this.cache.del(key);
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + durationMinutes * 60 * 1000);
+    const payload = {
+      startedAt: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    };
+
+    await this.cache.set(
+      key,
+      payload,
+      durationMinutes * 60 + this.ATTEMPT_BUFFER_SECONDS,
+    );
+
+    return payload;
+  }
+
+  private async assertTimerIfEnabled(
+    type: 'pre' | 'post',
+    userId: string,
+    trainingId: string,
+    formId: string,
+    form: { enforceTimer?: boolean; durationMinutes?: number | null },
+  ) {
+    if (!form.enforceTimer || !form.durationMinutes) {
+      return;
+    }
+
+    const attempt = await this.getAttemptFromCache(type, userId, trainingId, formId);
+    if (!attempt) {
+      throw new BadRequestException('Test timer is not active. Please start the test again.');
+    }
+
+    if (this.getRemainingSeconds(attempt.expiresAt) <= 0) {
+      await this.clearAttemptKey(type, userId, trainingId, formId);
+      throw new BadRequestException('Test time is over. Submission is not allowed.');
+    }
+  }
+
+  private getRemainingSeconds(expiresAt?: string | Date | null): number {
+    if (!expiresAt) {
+      return 0;
+    }
+
+    const expiryDate = expiresAt instanceof Date ? expiresAt : new Date(expiresAt);
+    const remaining = Math.floor((expiryDate.getTime() - Date.now()) / 1000);
+    return remaining > 0 ? remaining : 0;
+  }
+
+  private async clearAttemptKey(
+    type: 'pre' | 'post',
+    userId: string,
+    trainingId: string,
+    formId: string,
+  ) {
+    const key = this.getAttemptKey(type, userId, trainingId, formId);
+    await this.cache.del(key).catch(() => {});
   }
 
   // ==================== INSTITUTION-SCOPED METHODS (Coordinator/Principal) ====================

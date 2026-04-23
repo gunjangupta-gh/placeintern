@@ -5,6 +5,7 @@ import {
   MinLength,
   Matches,
   IsDateString,
+  IsBoolean,
 } from 'class-validator';
 
 export class UpdateProfileDto {
@@ -37,4 +38,8 @@ export class UpdateProfileDto {
   @IsDateString()
   @IsOptional()
   dateOfJoining?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  guestTeacher?: boolean;
 }

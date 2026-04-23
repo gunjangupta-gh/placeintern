@@ -54,6 +54,7 @@ import LearningOutcomesList from "../../../components/training/LearningOutcomesL
 import ApplicationStatusBadge from "../../../components/training/ApplicationStatusBadge";
 import TrainingBreadcrumb from "../../../components/training/TrainingBreadcrumb";
 import DeadlineCountdown from "../../../components/training/DeadlineCountdown";
+import trainingService from "../../../services/training.service";
 import { TrainingDetailsSkeleton } from "../../../components/training/skeletons/TrainingSkeletons";
 import {
   fetchTrainingDetails,
@@ -96,6 +97,13 @@ const InfoItem = ({ icon: Icon, label, children, tooltip }) => (
   </div>
 );
 
+const formatCountdown = (seconds) => {
+  if (seconds === null || seconds === undefined) return null;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+};
+
 const TrainingDetailsPage = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
@@ -122,6 +130,8 @@ const TrainingDetailsPage = () => {
   const [feedbackFormInstance] = Form.useForm();
   const [preTestFormInstance] = Form.useForm();
   const [postTestFormInstance] = Form.useForm();
+  const [preTestRemainingSeconds, setPreTestRemainingSeconds] = useState(null);
+  const [postTestRemainingSeconds, setPostTestRemainingSeconds] = useState(null);
 
   useEffect(() => {
     if (!id) return;
@@ -247,6 +257,16 @@ const TrainingDetailsPage = () => {
   };
 
   const handlePreTestSubmit = async () => {
+    if (
+      preTestStatus?.timerEnabled &&
+      preTestRemainingSeconds !== null &&
+      preTestRemainingSeconds <= 0
+    ) {
+      message.error("Pre-test time is over. Submission is not allowed.");
+      dispatch(fetchTestStatuses(id));
+      return;
+    }
+
     try {
       setSubmitting(true);
       const values = await preTestFormInstance.validateFields();
@@ -282,6 +302,16 @@ const TrainingDetailsPage = () => {
   };
 
   const handlePostTestSubmit = async () => {
+    if (
+      postTestStatus?.timerEnabled &&
+      postTestRemainingSeconds !== null &&
+      postTestRemainingSeconds <= 0
+    ) {
+      message.error("Post-test time is over. Submission is not allowed.");
+      dispatch(fetchTestStatuses(id));
+      return;
+    }
+
     try {
       setSubmitting(true);
       const values = await postTestFormInstance.validateFields();
@@ -319,22 +349,92 @@ const TrainingDetailsPage = () => {
   };
 
   const handleOpenPreTest = () => {
-    if (status?.status !== "APPROVED") {
-      message.warning("Pre-test is only available for approved participants.");
-      return;
-    }
-    dispatch(fetchPreTestForm(id));
-    setPreTestOpen(true);
+    const openPreTestAsync = async () => {
+      if (status?.status !== "APPROVED") {
+        message.warning("Pre-test is only available for approved participants.");
+        return;
+      }
+
+      try {
+        const latestStatus = await trainingService.getPreTestStatus(id);
+        if (latestStatus?.canStart === false) {
+          message.warning(latestStatus?.lockReason || "Pre-test is not live right now.");
+          return;
+        }
+
+        const startData = await trainingService.startPreTest(id);
+        setPreTestRemainingSeconds(startData?.remainingSeconds ?? null);
+        dispatch(fetchPreTestForm(id));
+        dispatch(fetchTestStatuses(id));
+        setPreTestOpen(true);
+      } catch (error) {
+        message.error(error?.response?.data?.message || "Unable to start pre-test");
+      }
+    };
+
+    openPreTestAsync();
   };
 
   const handleOpenPostTest = () => {
-    if (status?.status !== "APPROVED") {
-      message.warning("Post-test is only available for approved participants.");
-      return;
-    }
-    dispatch(fetchPostTestForm(id));
-    setPostTestOpen(true);
+    const openPostTestAsync = async () => {
+      if (status?.status !== "APPROVED") {
+        message.warning("Post-test is only available for approved participants.");
+        return;
+      }
+
+      try {
+        const latestStatus = await trainingService.getPostTestStatus(id);
+        if (latestStatus?.canStart === false) {
+          message.warning(latestStatus?.lockReason || "Post-test is not live right now.");
+          return;
+        }
+
+        const startData = await trainingService.startPostTest(id);
+        setPostTestRemainingSeconds(startData?.remainingSeconds ?? null);
+        dispatch(fetchPostTestForm(id));
+        dispatch(fetchTestStatuses(id));
+        setPostTestOpen(true);
+      } catch (error) {
+        message.error(error?.response?.data?.message || "Unable to start post-test");
+      }
+    };
+
+    openPostTestAsync();
   };
+
+  useEffect(() => {
+    if (!preTestOpen || preTestRemainingSeconds === null) return;
+    if (preTestRemainingSeconds <= 0) return;
+
+    const timer = setInterval(() => {
+      setPreTestRemainingSeconds((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [preTestOpen, preTestRemainingSeconds]);
+
+  useEffect(() => {
+    if (!postTestOpen || postTestRemainingSeconds === null) return;
+    if (postTestRemainingSeconds <= 0) return;
+
+    const timer = setInterval(() => {
+      setPostTestRemainingSeconds((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [postTestOpen, postTestRemainingSeconds]);
 
   const captureLocation = async () => {
     if (!navigator.geolocation) {
@@ -1178,11 +1278,20 @@ const TrainingDetailsPage = () => {
           </div>
         }
         open={preTestOpen}
-        onCancel={() => setPreTestOpen(false)}
+        onCancel={() => {
+          setPreTestOpen(false);
+          dispatch(fetchTestStatuses(id));
+        }}
         onOk={handlePreTestSubmit}
         okText="Submit Pre-Test"
         confirmLoading={submitting}
         width={600}
+        okButtonProps={{
+          disabled:
+            preTestStatus?.timerEnabled &&
+            preTestRemainingSeconds !== null &&
+            preTestRemainingSeconds <= 0,
+        }}
       >
         <div className="py-2">
           {preTestFormData?.description && (
@@ -1190,6 +1299,19 @@ const TrainingDetailsPage = () => {
               message={preTestFormData.description}
               type="info"
               className="mb-4"
+            />
+          )}
+
+          {preTestStatus?.timerEnabled && preTestRemainingSeconds !== null && (
+            <Alert
+              type={preTestRemainingSeconds > 0 ? "warning" : "error"}
+              className="mb-4"
+              message={`Time Remaining: ${formatCountdown(preTestRemainingSeconds)}`}
+              description={
+                preTestRemainingSeconds > 0
+                  ? "Submit before timer ends."
+                  : "Time is over. You cannot submit this attempt."
+              }
             />
           )}
 
@@ -1204,7 +1326,15 @@ const TrainingDetailsPage = () => {
               type="warning"
             />
           ) : (
-            <Form layout="vertical" form={preTestFormInstance}>
+            <Form
+              layout="vertical"
+              form={preTestFormInstance}
+              disabled={
+                preTestStatus?.timerEnabled &&
+                preTestRemainingSeconds !== null &&
+                preTestRemainingSeconds <= 0
+              }
+            >
               {preTestFormData.questions?.map((question, index) => (
                 <Form.Item
                   key={question.id || index}
@@ -1242,11 +1372,20 @@ const TrainingDetailsPage = () => {
           </div>
         }
         open={postTestOpen}
-        onCancel={() => setPostTestOpen(false)}
+        onCancel={() => {
+          setPostTestOpen(false);
+          dispatch(fetchTestStatuses(id));
+        }}
         onOk={handlePostTestSubmit}
         okText="Submit Post-Test"
         confirmLoading={submitting}
         width={600}
+        okButtonProps={{
+          disabled:
+            postTestStatus?.timerEnabled &&
+            postTestRemainingSeconds !== null &&
+            postTestRemainingSeconds <= 0,
+        }}
       >
         <div className="py-2">
           {postTestFormData?.description && (
@@ -1254,6 +1393,19 @@ const TrainingDetailsPage = () => {
               message={postTestFormData.description}
               type="info"
               className="mb-4"
+            />
+          )}
+
+          {postTestStatus?.timerEnabled && postTestRemainingSeconds !== null && (
+            <Alert
+              type={postTestRemainingSeconds > 0 ? "warning" : "error"}
+              className="mb-4"
+              message={`Time Remaining: ${formatCountdown(postTestRemainingSeconds)}`}
+              description={
+                postTestRemainingSeconds > 0
+                  ? "Submit before timer ends."
+                  : "Time is over. You cannot submit this attempt."
+              }
             />
           )}
 
@@ -1268,7 +1420,15 @@ const TrainingDetailsPage = () => {
               type="warning"
             />
           ) : (
-            <Form layout="vertical" form={postTestFormInstance}>
+            <Form
+              layout="vertical"
+              form={postTestFormInstance}
+              disabled={
+                postTestStatus?.timerEnabled &&
+                postTestRemainingSeconds !== null &&
+                postTestRemainingSeconds <= 0
+              }
+            >
               {postTestFormData.questions?.map((question, index) => (
                 <Form.Item
                   key={question.id || index}

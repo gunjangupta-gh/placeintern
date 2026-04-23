@@ -2090,6 +2090,7 @@ export class PrincipalService {
           role: true,
           designation: true,
           designationEnum: true,
+          guestTeacher: true,
           branchName: true,
           active: true,
           createdAt: true,

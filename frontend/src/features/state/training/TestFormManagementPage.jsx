@@ -81,6 +81,56 @@ const TestFormManagementPage = () => {
   const [questions, setQuestions] = useState([]);
   const [form] = Form.useForm();
 
+  const toDateTimeLocalValue = (value) => {
+    if (!value) return undefined;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return undefined;
+    const offset = date.getTimezoneOffset();
+    const local = new Date(date.getTime() - offset * 60000);
+    return local.toISOString().slice(0, 16);
+  };
+
+  const toIsoOrUndefined = (value) => {
+    if (!value) return undefined;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return undefined;
+    return date.toISOString();
+  };
+
+  const mapRecordToFormValues = (record) => {
+    const liveFromValue =
+      record?.liveFrom || record?.live_from || record?.live_from_at;
+    const liveUntilValue =
+      record?.liveUntil || record?.live_until || record?.live_until_at;
+
+    return {
+      title: record?.title,
+      description: record?.description,
+      purpose: record?.purpose,
+      passingScore: record?.passingScore,
+      isLiveWindowEnabled: !!record?.isLiveWindowEnabled,
+      liveFrom: toDateTimeLocalValue(liveFromValue),
+      liveUntil: toDateTimeLocalValue(liveUntilValue),
+      enforceTimer: record?.enforceTimer ?? true,
+      durationMinutes: record?.durationMinutes,
+      publish: !!record?.isPublished,
+    };
+  };
+
+  const calculateDurationMinutes = (liveFromValue, liveUntilValue) => {
+    if (!liveFromValue || !liveUntilValue) return undefined;
+    const from = new Date(liveFromValue);
+    const until = new Date(liveUntilValue);
+    if (Number.isNaN(from.getTime()) || Number.isNaN(until.getTime())) {
+      return undefined;
+    }
+    const diffMs = until.getTime() - from.getTime();
+    if (diffMs <= 0) {
+      return undefined;
+    }
+    return Math.floor(diffMs / 60000);
+  };
+
   const QUESTION_TYPES = [
     { value: "multiChoice", label: "Multiple Choice" },
     { value: "checkbox", label: "Checkbox (Multi-select)" },
@@ -111,6 +161,11 @@ const TestFormManagementPage = () => {
     setEditing(null);
     setHasResponses(false);
     form.resetFields();
+    form.setFieldsValue({
+      publish: false,
+      isLiveWindowEnabled: false,
+      enforceTimer: true,
+    });
     setQuestions([createEmptyQuestion()]);
     setModalOpen(true);
   };
@@ -119,15 +174,15 @@ const TestFormManagementPage = () => {
     setEditing(record);
     const responseCount = record._count?.responses || 0;
     setHasResponses(responseCount > 0);
-    form.setFieldsValue({
-      title: record.title,
-      description: record.description,
-      purpose: record.purpose,
-      passingScore: record.passingScore,
-    });
+    form.setFieldsValue(mapRecordToFormValues(record));
     setQuestions(record.questions || [createEmptyQuestion()]);
     setModalOpen(true);
   };
+
+  useEffect(() => {
+    if (!modalOpen || !editing) return;
+    form.setFieldsValue(mapRecordToFormValues(editing));
+  }, [modalOpen, editing, form]);
 
   const addQuestion = () => {
     setQuestions([...questions, createEmptyQuestion()]);
@@ -207,6 +262,11 @@ const TestFormManagementPage = () => {
 
       // When form has responses, only update answer keys and passing score
       if (editing && hasResponses) {
+        const autoDurationMinutes = calculateDurationMinutes(
+          values.liveFrom,
+          values.liveUntil,
+        );
+
         // Build answer keys map from questions
         const answerKeys = {};
         questions.forEach((q) => {
@@ -218,6 +278,11 @@ const TestFormManagementPage = () => {
         const answerKeyPayload = {
           answerKeys,
           passingScore: values.passingScore,
+          isLiveWindowEnabled: !!values.isLiveWindowEnabled,
+          liveFrom: toIsoOrUndefined(values.liveFrom),
+          liveUntil: toIsoOrUndefined(values.liveUntil),
+          enforceTimer: values.enforceTimer !== false,
+          durationMinutes: autoDurationMinutes ?? values.durationMinutes,
         };
 
         if (activeTab === "pre-test") {
@@ -254,6 +319,11 @@ const TestFormManagementPage = () => {
         points: q.points || 1,
       }));
 
+      const autoDurationMinutes = calculateDurationMinutes(
+        values.liveFrom,
+        values.liveUntil,
+      );
+
       const payload = {
         title: values.title,
         description: values.description,
@@ -261,6 +331,11 @@ const TestFormManagementPage = () => {
         passingScore: values.passingScore,
         questions: cleanedQuestions,
         publish: values.publish,
+        isLiveWindowEnabled: !!values.isLiveWindowEnabled,
+        liveFrom: toIsoOrUndefined(values.liveFrom),
+        liveUntil: toIsoOrUndefined(values.liveUntil),
+        enforceTimer: values.enforceTimer !== false,
+        durationMinutes: autoDurationMinutes ?? values.durationMinutes,
       };
 
       if (editing) {
@@ -765,7 +840,24 @@ const TestFormManagementPage = () => {
               }
             />
           )}
-          <Form layout="vertical" form={form} size="small">
+          <Form
+            layout="vertical"
+            form={form}
+            size="small"
+            onValuesChange={(changedValues, allValues) => {
+              if (
+                changedValues.liveFrom !== undefined ||
+                changedValues.liveUntil !== undefined
+              ) {
+                const autoDuration = calculateDurationMinutes(
+                  allValues.liveFrom,
+                  allValues.liveUntil,
+                );
+
+                form.setFieldValue("durationMinutes", autoDuration);
+              }
+            }}
+          >
             <Form.Item
               name="title"
               label={
@@ -842,6 +934,59 @@ const TestFormManagementPage = () => {
                   valuePropName="checked"
                 >
                   <Switch checkedChildren="Yes" unCheckedChildren="No" disabled={hasResponses} />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={12}>
+              <Col xs={24} sm={8}>
+                <Form.Item
+                  name="isLiveWindowEnabled"
+                  label="Enable Live Window"
+                  valuePropName="checked"
+                >
+                  <Switch checkedChildren="Yes" unCheckedChildren="No" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={8}>
+                <Form.Item
+                  name="enforceTimer"
+                  label="Enforce Timer"
+                  valuePropName="checked"
+                >
+                  <Switch checkedChildren="Yes" unCheckedChildren="No" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={8}>
+                <Form.Item
+                  name="durationMinutes"
+                  label="Duration (Minutes)"
+                >
+                  <InputNumber
+                    min={1}
+                    placeholder="Auto-calculated"
+                    className="w-full"
+                    disabled
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={12}>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="liveFrom"
+                  label="Live From"
+                >
+                  <Input type="datetime-local" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="liveUntil"
+                  label="Live Until"
+                >
+                  <Input type="datetime-local" />
                 </Form.Item>
               </Col>
             </Row>

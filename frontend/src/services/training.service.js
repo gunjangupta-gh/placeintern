@@ -207,6 +207,11 @@ const trainingService = {
     return response.data;
   },
 
+  async startPreTest(trainingId) {
+    const response = await API.post(`/faculty/training/${trainingId}/pre-test/start`);
+    return response.data;
+  },
+
   async submitPreTest(trainingId, data) {
     const response = await API.post(`/faculty/training/${trainingId}/pre-test/submit`, data);
     return response.data;
@@ -220,6 +225,11 @@ const trainingService = {
 
   async getPostTestStatus(trainingId) {
     const response = await API.get(`/faculty/training/${trainingId}/post-test/status`);
+    return response.data;
+  },
+
+  async startPostTest(trainingId) {
+    const response = await API.post(`/faculty/training/${trainingId}/post-test/start`);
     return response.data;
   },
 

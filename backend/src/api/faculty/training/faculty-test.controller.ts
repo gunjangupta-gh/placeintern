@@ -41,6 +41,12 @@ export class FacultyTestController {
     return this.testResponseService.getPreTestStatus(trainingId, req.user.userId);
   }
 
+  @Post(':id/pre-test/start')
+  @ApiOperation({ summary: 'Start pre-test attempt timer' })
+  async startPreTest(@Param('id') trainingId: string, @Req() req) {
+    return this.testResponseService.startPreTestAttempt(trainingId, req.user.userId);
+  }
+
   @Post(':id/pre-test/submit')
   @ApiOperation({ summary: 'Submit pre-test response' })
   async submitPreTest(
@@ -65,6 +71,12 @@ export class FacultyTestController {
   @ApiOperation({ summary: 'Get post-test submission status' })
   async getPostTestStatus(@Param('id') trainingId: string, @Req() req) {
     return this.testResponseService.getPostTestStatus(trainingId, req.user.userId);
+  }
+
+  @Post(':id/post-test/start')
+  @ApiOperation({ summary: 'Start post-test attempt timer' })
+  async startPostTest(@Param('id') trainingId: string, @Req() req) {
+    return this.testResponseService.startPostTestAttempt(trainingId, req.user.userId);
   }
 
   @Post(':id/post-test/submit')

@@ -14,6 +14,7 @@ import {
   Tabs,
   Popconfirm,
   Typography,
+  Switch,
 } from 'antd';
 import {
   UserOutlined,
@@ -213,6 +214,7 @@ const UserProfile = ({ visible, onClose }) => {
         designation: normalizeDesignation(data.designation),
         qualification: data.qualification || '',
         dateOfJoining: data.dateOfJoining ? dayjs(data.dateOfJoining) : null,
+        guestTeacher: !!data.guestTeacher,
         branchId,
       });
     } catch (error) {
@@ -292,6 +294,7 @@ const UserProfile = ({ visible, onClose }) => {
         designation: values.designation,
         qualification: values.qualification,
         dateOfJoining: values.dateOfJoining ? values.dateOfJoining.toISOString() : null,
+        guestTeacher: !!values.guestTeacher,
         branchName,
       };
 
@@ -331,6 +334,7 @@ const UserProfile = ({ visible, onClose }) => {
         designation: normalizeDesignation(userData.designation),
         qualification: userData.qualification || '',
         dateOfJoining: userData.dateOfJoining ? dayjs(userData.dateOfJoining) : null,
+        guestTeacher: !!userData.guestTeacher,
         branchId:
           userData.branchId ||
           branches.find(
@@ -458,6 +462,9 @@ const UserProfile = ({ visible, onClose }) => {
                       2FA Enabled
                     </Tag>
                   )}
+                  <Tag color={userData.guestTeacher ? 'orange' : 'green'} className="rounded-md text-xs">
+                    {userData.guestTeacher ? 'Part-time' : 'Full-time'}
+                  </Tag>
                 </div>
               </div>
             </div>
@@ -570,6 +577,18 @@ const UserProfile = ({ visible, onClose }) => {
                               size="small"
                               format="DD-MM-YYYY"
                               className="w-full rounded-lg"
+                            />
+                          </Form.Item>
+
+                          <Form.Item
+                            name="guestTeacher"
+                            label="Employment Type"
+                            valuePropName="checked"
+                          >
+                            <Switch
+                              size="small"
+                              checkedChildren="Part-time"
+                              unCheckedChildren="Full-time"
                             />
                           </Form.Item>
 
