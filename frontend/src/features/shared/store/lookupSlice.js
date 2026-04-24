@@ -33,6 +33,13 @@ const initialState = {
     error: null,
     lastFetched: null,
   },
+  // Scholarships
+  scholarships: {
+    data: [],
+    loading: false,
+    error: null,
+    lastFetched: null,
+  },
   // Institutions
   institutions: {
     data: [],
@@ -107,6 +114,22 @@ export const fetchBatches = createAsyncThunk(
   }
 );
 
+export const fetchScholarships = createAsyncThunk(
+  'lookup/fetchScholarships',
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const { lookup } = getState();
+      if (isCacheValid(lookup.scholarships.lastFetched, CACHE_DURATIONS.MASTER_DATA)) {
+        return { cached: true, data: lookup.scholarships.data };
+      }
+      const response = await lookupService.getScholarships();
+      return { cached: false, data: response.scholarships || [] };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch scholarships');
+    }
+  }
+);
+
 export const fetchInstitutions = createAsyncThunk(
   'lookup/fetchInstitutions',
   async (includeInactive = false, { getState, rejectWithValue }) => {
@@ -163,6 +186,7 @@ export const fetchAllLookupData = createAsyncThunk(
       dispatch(fetchDepartments()),
       dispatch(fetchBranches()),
       dispatch(fetchBatches()),
+      dispatch(fetchScholarships()),
       dispatch(fetchInstitutions()),
       dispatch(fetchRoles()),
     ]);
@@ -182,6 +206,7 @@ const lookupSlice = createSlice({
       state.departments.lastFetched = null;
       state.branches.lastFetched = null;
       state.batches.lastFetched = null;
+      state.scholarships.lastFetched = null;
       state.institutions.lastFetched = null;
       state.industries.lastFetched = null;
     },
@@ -276,6 +301,23 @@ const lookupSlice = createSlice({
         state.batches.error = action.payload;
       })
 
+      // Scholarships
+      .addCase(fetchScholarships.pending, (state) => {
+        state.scholarships.loading = true;
+        state.scholarships.error = null;
+      })
+      .addCase(fetchScholarships.fulfilled, (state, action) => {
+        state.scholarships.loading = false;
+        if (!action.payload.cached) {
+          state.scholarships.data = action.payload.data;
+          state.scholarships.lastFetched = Date.now();
+        }
+      })
+      .addCase(fetchScholarships.rejected, (state, action) => {
+        state.scholarships.loading = false;
+        state.scholarships.error = action.payload;
+      })
+
       // Institutions
       .addCase(fetchInstitutions.pending, (state) => {
         state.institutions.loading = true;
@@ -362,6 +404,11 @@ export const selectBatchesLoading = (state) => state.lookup.batches.loading;
 export const selectActiveBatches = (state) =>
   state.lookup.batches.data.filter(b => b.isActive);
 
+export const selectScholarships = (state) => state.lookup.scholarships.data;
+export const selectScholarshipsLoading = (state) => state.lookup.scholarships.loading;
+export const selectActiveScholarships = (state) =>
+  state.lookup.scholarships.data.filter(s => s.isActive);
+
 export const selectInstitutions = (state) => state.lookup.institutions.data;
 export const selectInstitutionsLoading = (state) => state.lookup.institutions.loading;
 export const selectActiveInstitutions = (state) =>
@@ -393,4 +440,5 @@ export const selectInstitutionById = (state, id) =>
 export const selectIsLookupLoaded = (state) =>
   state.lookup.departments.lastFetched !== null &&
   state.lookup.branches.lastFetched !== null &&
-  state.lookup.batches.lastFetched !== null;
+  state.lookup.batches.lastFetched !== null &&
+  state.lookup.scholarships.lastFetched !== null;

@@ -385,6 +385,7 @@ export class FacultyService {
         user: true,
         batch: true,
         branch: true,
+        scholarship: true,
         Institution: true,
         internshipApplications: {
           orderBy: { createdAt: 'desc' },
@@ -867,6 +868,7 @@ export class FacultyService {
               user: true,
               batch: true,
               branch: true,
+              scholarship: true,
               Institution: {
                 select: { id: true, name: true, code: true, city: true, state: true },
               },
@@ -3203,6 +3205,13 @@ export class FacultyService {
         updateData.branch = { disconnect: true };
       }
     }
+    if (updateDto.scholarshipId !== undefined) {
+      if (updateDto.scholarshipId) {
+        updateData.scholarship = { connect: { id: updateDto.scholarshipId } };
+      } else {
+        updateData.scholarship = { disconnect: true };
+      }
+    }
     if (updateDto.clearanceStatus !== undefined) updateData.clearanceStatus = updateDto.clearanceStatus;
 
     // Parent info
@@ -3236,6 +3245,7 @@ export class FacultyService {
       include: {
         batch: true,
         branch: true,
+        scholarship: true,
         Institution: true,
         user: true,
       },

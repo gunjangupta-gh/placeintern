@@ -4,6 +4,7 @@ import {
   fetchDepartments,
   fetchBranches,
   fetchBatches,
+  fetchScholarships,
   fetchInstitutions,
   fetchRoles,
   fetchIndustries,
@@ -17,6 +18,9 @@ import {
   selectBatches,
   selectBatchesLoading,
   selectActiveBatches,
+  selectScholarships,
+  selectScholarshipsLoading,
+  selectActiveScholarships,
   selectInstitutions,
   selectInstitutionsLoading,
   selectActiveInstitutions,
@@ -58,6 +62,10 @@ export const useLookup = (options = {}) => {
   const batchesLoading = useSelector(selectBatchesLoading);
   const activeBatches = useSelector(selectActiveBatches);
 
+  const scholarships = useSelector(selectScholarships);
+  const scholarshipsLoading = useSelector(selectScholarshipsLoading);
+  const activeScholarships = useSelector(selectActiveScholarships);
+
   const institutions = useSelector(selectInstitutions);
   const institutionsLoading = useSelector(selectInstitutionsLoading);
   const activeInstitutions = useSelector(selectActiveInstitutions);
@@ -74,6 +82,7 @@ export const useLookup = (options = {}) => {
   const loadDepartments = useCallback(() => dispatch(fetchDepartments()), [dispatch]);
   const loadBranches = useCallback(() => dispatch(fetchBranches()), [dispatch]);
   const loadBatches = useCallback(() => dispatch(fetchBatches()), [dispatch]);
+  const loadScholarships = useCallback(() => dispatch(fetchScholarships()), [dispatch]);
   const loadInstitutions = useCallback((includeInactive = false) =>
     dispatch(fetchInstitutions(includeInactive)), [dispatch]);
   const loadRoles = useCallback(() => dispatch(fetchRoles()), [dispatch]);
@@ -94,11 +103,12 @@ export const useLookup = (options = {}) => {
       if (include.includes('departments')) fetchPromises.push(loadDepartments());
       if (include.includes('branches')) fetchPromises.push(loadBranches());
       if (include.includes('batches')) fetchPromises.push(loadBatches());
+      if (include.includes('scholarships')) fetchPromises.push(loadScholarships());
       if (include.includes('institutions')) fetchPromises.push(loadInstitutions());
       if (include.includes('roles')) fetchPromises.push(loadRoles());
       if (include.includes('industries')) fetchPromises.push(loadIndustries());
     }
-  }, [autoFetch, include.join(','), loadAll, loadDepartments, loadBranches, loadBatches, loadInstitutions, loadRoles, loadIndustries]);
+  }, [autoFetch, include.join(','), loadAll, loadDepartments, loadBranches, loadBatches, loadScholarships, loadInstitutions, loadRoles, loadIndustries]);
 
   // Get by ID functions using selectors with state
   const getBranchById = useCallback((id) => {
@@ -137,6 +147,14 @@ export const useLookup = (options = {}) => {
     label: b.name,
   }));
 
+  const scholarshipOptions = activeScholarships.map(s => ({
+    value: s.id,
+    label: `${s.code} - ${s.name}`,
+    code: s.code,
+    category: s.category,
+    cmsPercent: s.cmsPercent,
+  }));
+
   const institutionOptions = activeInstitutions.map(i => ({
     value: i.id,
     label: i.name,
@@ -157,13 +175,14 @@ export const useLookup = (options = {}) => {
 
   // Loading state
   const isLoading = departmentsLoading || branchesLoading || batchesLoading ||
-                    institutionsLoading || rolesLoading || industriesLoading;
+                    scholarshipsLoading || institutionsLoading || rolesLoading || industriesLoading;
 
   return {
     // Raw data
     departments,
     branches,
     batches,
+    scholarships,
     institutions,
     roles,
     industries,
@@ -172,12 +191,14 @@ export const useLookup = (options = {}) => {
     activeDepartments,
     activeBranches,
     activeBatches,
+    activeScholarships,
     activeInstitutions,
 
     // Dropdown options
     branchOptions,
     departmentOptions,
     batchOptions,
+    scholarshipOptions,
     institutionOptions,
     roleOptions,
     industryOptions,
@@ -186,6 +207,7 @@ export const useLookup = (options = {}) => {
     departmentsLoading,
     branchesLoading,
     batchesLoading,
+    scholarshipsLoading,
     institutionsLoading,
     rolesLoading,
     industriesLoading,
@@ -196,6 +218,7 @@ export const useLookup = (options = {}) => {
     loadDepartments,
     loadBranches,
     loadBatches,
+    loadScholarships,
     loadInstitutions,
     loadRoles,
     loadIndustries,

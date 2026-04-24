@@ -10,6 +10,7 @@ const CACHE_TTL = {
   BATCHES: 10 * 60 * 1000, // 10 minutes
   INDUSTRIES: 15 * 60 * 1000, // 15 minutes
   DEPARTMENTS: 10 * 60 * 1000, // 10 minutes
+  SCHOLARSHIPS: 10 * 60 * 1000, // 10 minutes
   SEMESTERS: 10 * 60 * 1000, // 10 minutes
   ROLES: 60 * 60 * 1000, // 1 hour (static data)
 };
@@ -242,6 +243,42 @@ export class LookupService {
         }
       },
       { ttl: CACHE_TTL.DEPARTMENTS, tags: ['lookup', 'branches'] },
+    );
+  }
+
+  /**
+   * Get active scholarships (global master data)
+   */
+  async getScholarships() {
+    const cacheKey = 'lookup:scholarships:all';
+
+    return this.cache.getOrSet(
+      cacheKey,
+      async () => {
+        try {
+          const scholarships = await this.prisma.scholarship.findMany({
+            where: { isActive: true },
+            select: {
+              id: true,
+              code: true,
+              name: true,
+              category: true,
+              cmsPercent: true,
+              isActive: true,
+            },
+            orderBy: [{ category: 'asc' }, { code: 'asc' }],
+          });
+
+          return {
+            scholarships,
+            total: scholarships.length,
+          };
+        } catch (error) {
+          this.logger.error('Failed to get scholarships', error.stack);
+          throw error;
+        }
+      },
+      { ttl: CACHE_TTL.SCHOLARSHIPS, tags: ['lookup', 'scholarships'] },
     );
   }
 

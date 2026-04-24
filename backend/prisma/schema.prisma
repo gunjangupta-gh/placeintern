@@ -202,6 +202,9 @@ model Student {
   userId       String  @unique
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  scholarshipId String?
+  scholarship   Scholarship? @relation(fields: [scholarshipId], references: [id], onDelete: SetNull)
+
   // REMOVED DUPLICATES - Now use User fields via relation:
   // name → user.name
   // email → user.email
@@ -271,6 +274,7 @@ model Student {
   @@index([institutionId])
   @@index([batchId])
   @@index([branchId])
+  @@index([scholarshipId])
   @@index([institutionId, batchId])
   @@index([institutionId, branchId])
   @@index([clearanceStatus])
@@ -2471,4 +2475,37 @@ model Company {
   @@index([city])
   @@index([state])
   @@map("companies")
+}
+
+// =============================================
+// SCHOLARSHIP MASTER DATA
+// =============================================
+
+enum ScholarshipCategory {
+  FWS
+  PMS
+  CMS
+}
+
+model Scholarship {
+  id       String              @id @default(uuid())
+  code     String              @unique // e.g., FWS, PMS, CMS50
+  name     String
+  category ScholarshipCategory
+
+  // Nullable for non-CMS scholarships
+  cmsPercent Int?
+
+  // Status
+  isActive Boolean @default(true)
+
+  students Student[]
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([isActive])
+  @@map("scholarships")
 }

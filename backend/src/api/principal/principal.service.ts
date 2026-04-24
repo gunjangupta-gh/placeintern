@@ -1285,6 +1285,7 @@ export class PrincipalService {
         include: {
           batch: true,
           branch: true,
+          scholarship: true,
           user: {
             select: {
               id: true,
@@ -1388,6 +1389,7 @@ export class PrincipalService {
         user: true,
         batch: true,
         branch: true,
+        scholarship: true,
         internshipApplications: {
           orderBy: { createdAt: 'desc' },
           include: {
@@ -1569,6 +1571,26 @@ export class PrincipalService {
       parentContact: createStudentDto.parentPhone,
     });
 
+    // Optionally connect scholarship after student is created.
+    if (createStudentDto.scholarshipId) {
+      await this.prisma.student.update({
+        where: { id: result.student.id },
+        data: {
+          scholarship: { connect: { id: createStudentDto.scholarshipId } },
+        },
+      });
+    }
+
+    const createdStudent = await this.prisma.student.findUnique({
+      where: { id: result.student.id },
+      include: {
+        user: true,
+        batch: true,
+        branch: true,
+        scholarship: true,
+      },
+    });
+
     // Log student creation
     this.auditService.log({
       action: AuditAction.USER_REGISTRATION,
@@ -1586,6 +1608,7 @@ export class PrincipalService {
         email: createStudentDto.email,
         rollNumber: createStudentDto.rollNumber,
         batchId: createStudentDto.batchId,
+        scholarshipId: createStudentDto.scholarshipId,
       },
     }).catch(() => {}); // Non-blocking
 
@@ -1594,7 +1617,7 @@ export class PrincipalService {
 
     await this.cache.invalidateByTags(['students', `institution:${principal.institutionId}`]);
 
-    return result.student;
+    return createdStudent || result.student;
   }
 
   /**
@@ -1698,6 +1721,16 @@ export class PrincipalService {
       delete studentUpdateData.branchId;
     }
 
+    // Handle scholarshipId -> scholarship relation
+    if (studentUpdateData.scholarshipId !== undefined) {
+      if (studentUpdateData.scholarshipId) {
+        studentUpdateData.scholarship = { connect: { id: studentUpdateData.scholarshipId } };
+      } else {
+        studentUpdateData.scholarship = { disconnect: true };
+      }
+      delete studentUpdateData.scholarshipId;
+    }
+
     // Handle institutionId -> Institution relation
     if (studentUpdateData.institutionId !== undefined) {
       if (studentUpdateData.institutionId) {
@@ -1724,6 +1757,7 @@ export class PrincipalService {
             user: true,
             batch: true,
             branch: true,
+            scholarship: true,
           },
         }),
         this.prisma.user.update({
@@ -1744,6 +1778,7 @@ export class PrincipalService {
         user: true,
         batch: true,
         branch: true,
+        scholarship: true,
       },
     });
 

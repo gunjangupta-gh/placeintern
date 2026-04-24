@@ -20,6 +20,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "seed": "ts-node prisma/seed.ts",
     "seed:master-data": "ts-node prisma/seed-master-data.ts",
+    "seed:scholarships": "ts-node prisma/seed-scholarships.ts",
     "seed:faculty-training-feedback": "ts-node prisma/seed-faculty-training-feedback-form.ts",
     "seed:faculty-trainings-2026": "ts-node prisma/seed-faculty-trainings-2026.ts",
     "seed:training-nominations": "ts-node prisma/seed-training-nominations.ts",

@@ -43,6 +43,14 @@ export const lookupService = {
   },
 
   /**
+   * Get all scholarships for filters/dropdowns (global data)
+   */
+  async getScholarships() {
+    const response = await API.get('/shared/lookup/scholarships');
+    return response.data;
+  },
+
+  /**
    * Get all designation enum values for filters/dropdowns (global data)
    * Returns static list matching Prisma Designation enum
    */

@@ -40,8 +40,8 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
   const isEditMode = !!studentId;
 
   // Use global lookup data
-  const { activeBatches, activeBranches, isLoading: lookupLoading } = useLookup({
-    include: ['batches', 'branches']
+  const { activeBatches, activeBranches, scholarshipOptions, isLoading: lookupLoading } = useLookup({
+    include: ['batches', 'branches', 'scholarships']
   });
 
   useEffect(() => {
@@ -121,6 +121,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
           category: studentData.category,
           batchId: studentData.batchId || studentData.batch?.id,
           branchId: studentData.branchId || studentData.branch?.id,
+          scholarshipId: studentData.scholarshipId || studentData.scholarship?.id,
           currentYear: studentData.currentYear,
           currentSemester: studentData.currentSemester,
           clearanceStatus: studentData.clearanceStatus,
@@ -209,6 +210,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
       const formattedValues = {
         ...values,
         dob: values.dob ? values.dob.format('YYYY-MM-DD') : null,
+        scholarshipId: values.scholarshipId ?? null,
       };
 
       // Remove profileImage from form values - we handle it separately
@@ -427,6 +429,17 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
             <Col xs={24} sm={8}>
               <Form.Item name="clearanceStatus" label="Clearance Status">
                 <Select placeholder="Select status" options={clearanceStatusOptions} allowClear />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="scholarshipId" label="Scholarship">
+                <Select
+                  placeholder="Select scholarship"
+                  options={scholarshipOptions}
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                />
               </Form.Item>
             </Col>
           </Row>

@@ -31,6 +31,11 @@ export class LookupController {
     return this.lookupService.getBranches();
   }
 
+  @Get('scholarships')
+  async getScholarships() {
+    return this.lookupService.getScholarships();
+  }
+
   @Get('industries')
   async getIndustries() {
     return this.lookupService.getIndustries();

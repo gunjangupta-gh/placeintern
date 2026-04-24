@@ -39,6 +39,11 @@ export class UpdateStudentDto {
   @IsOptional()
   branchId?: string;
 
+  @ApiProperty({ description: 'Scholarship ID', required: false })
+  @IsString()
+  @IsOptional()
+  scholarshipId?: string;
+
   @ApiProperty({ description: 'Department ID (alias for branchId)', required: false })
   @IsString()
   @IsOptional()

@@ -1013,6 +1013,11 @@ export class UpdateStudentDto {
   @IsUUID()
   branchId?: string;
 
+  @ApiPropertyOptional({ description: 'Scholarship ID' })
+  @IsOptional()
+  @IsUUID()
+  scholarshipId?: string;
+
   @ApiPropertyOptional({ description: 'Clearance status' })
   @IsOptional()
   @IsString()

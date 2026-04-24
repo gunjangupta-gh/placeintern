@@ -21,8 +21,8 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
   const isEditMode = !!studentId;
 
   // Use global lookup data
-  const { activeBatches, activeBranches, isLoading: lookupLoading } = useLookup({
-    include: ['batches', 'branches']
+  const { activeBatches, activeBranches, scholarshipOptions, isLoading: lookupLoading } = useLookup({
+    include: ['batches', 'branches', 'scholarships']
   });
 
   useEffect(() => {
@@ -105,6 +105,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
           category: student.category,
           batchId: student.batchId || student.batch?.id,
           branchId: student.branchId || student.branch?.id,
+          scholarshipId: student.scholarshipId || student.scholarship?.id,
           currentYear: student.currentYear,
           currentSemester: student.currentSemester,
           clearanceStatus: student.clearanceStatus,
@@ -146,6 +147,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
         ...values,
         dob: values.dob ? values.dob.format('YYYY-MM-DD') : null,
         dateOfBirth: values.dob ? values.dob.format('YYYY-MM-DD') : null,
+        scholarshipId: values.scholarshipId ?? null,
       };
 
       // Remove profileImage from values if it's not a new file
@@ -341,6 +343,17 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
             <Col xs={24} sm={8}>
               <Form.Item name="clearanceStatus" label="Clearance Status">
                 <Select placeholder="Select status" options={clearanceStatusOptions} allowClear />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="scholarshipId" label="Scholarship">
+                <Select
+                  placeholder="Select scholarship"
+                  options={scholarshipOptions}
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                />
               </Form.Item>
             </Col>
           </Row>
