@@ -8,14 +8,36 @@ import { MarkAttendanceDto, BulkMarkAttendanceDto, AttendanceFilterDto, MarkSelf
 @Injectable()
 export class TrainingAttendanceService {
   private readonly logger = new Logger(TrainingAttendanceService.name);
+  private readonly attendanceTimeZone = 'Asia/Kolkata';
 
-  private toUtcDateOnly(date: Date): Date {
-    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  private toDateOnlyInTimeZone(date: Date, timeZone: string = this.attendanceTimeZone): Date {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+
+    const parts = formatter.formatToParts(date);
+    const year = Number(parts.find((part) => part.type === 'year')?.value);
+    const month = Number(parts.find((part) => part.type === 'month')?.value);
+    const day = Number(parts.find((part) => part.type === 'day')?.value);
+
+    if (!year || !month || !day) {
+      throw new BadRequestException('Failed to resolve attendance date');
+    }
+
+    // Persist as UTC midnight of the target timezone calendar date.
+    return new Date(Date.UTC(year, month - 1, day));
   }
 
-  private resolveAttendanceDate(attendanceDate?: string, fallback: Date = new Date()): Date {
+  private resolveAttendanceDate(
+    attendanceDate?: string,
+    fallback: Date = new Date(),
+    timeZone: string = this.attendanceTimeZone,
+  ): Date {
     if (!attendanceDate) {
-      return this.toUtcDateOnly(fallback);
+      return this.toDateOnlyInTimeZone(fallback, timeZone);
     }
 
     // Treat YYYY-MM-DD as a calendar date and avoid local timezone shifting.
@@ -30,7 +52,7 @@ export class TrainingAttendanceService {
       throw new BadRequestException('Invalid attendance date format');
     }
 
-    return this.toUtcDateOnly(parsed);
+    return this.toDateOnlyInTimeZone(parsed, timeZone);
   }
 
   constructor(
@@ -66,10 +88,10 @@ export class TrainingAttendanceService {
 
       // Check if training is currently running
       const now = new Date();
-      const dateOnly = this.resolveAttendanceDate(dto.attendanceDate, now);
+      const dateOnly = this.resolveAttendanceDate(dto.attendanceDate, now, this.attendanceTimeZone);
 
-      const trainingStart = this.toUtcDateOnly(training.startDate);
-      const trainingEnd = this.toUtcDateOnly(training.endDate);
+      const trainingStart = this.toDateOnlyInTimeZone(training.startDate, this.attendanceTimeZone);
+      const trainingEnd = this.toDateOnlyInTimeZone(training.endDate, this.attendanceTimeZone);
 
       if (dateOnly < trainingStart || dateOnly > trainingEnd) {
         throw new BadRequestException('Attendance can only be marked during the training period');
@@ -142,10 +164,10 @@ export class TrainingAttendanceService {
         throw new NotFoundException('Training not found');
       }
 
-      const dateOnly = this.resolveAttendanceDate(attendanceDate);
+      const dateOnly = this.resolveAttendanceDate(attendanceDate, new Date(), this.attendanceTimeZone);
 
-      const trainingStart = this.toUtcDateOnly(training.startDate);
-      const trainingEnd = this.toUtcDateOnly(training.endDate);
+      const trainingStart = this.toDateOnlyInTimeZone(training.startDate, this.attendanceTimeZone);
+      const trainingEnd = this.toDateOnlyInTimeZone(training.endDate, this.attendanceTimeZone);
 
       if (dateOnly < trainingStart || dateOnly > trainingEnd) {
         throw new BadRequestException('Attendance can only be marked during the training period');
