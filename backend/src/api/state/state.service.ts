@@ -112,6 +112,25 @@ export class StateService {
     return this.institutionService.getInstitutionOverview(id);
   }
 
+  async getInstitutionBranchIntakes(institutionId: string) {
+    return this.institutionService.getInstitutionBranchIntakes(institutionId);
+  }
+
+  async replaceInstitutionBranchIntakes(
+    institutionId: string,
+    intakes: Array<{
+      branchId: string;
+      academicYear: string;
+      batchId?: string | null;
+      sanctionedSeats: number;
+      feeWaiverSeats?: number;
+      isActive?: boolean;
+    }>,
+    userId?: string,
+  ) {
+    return this.institutionService.replaceInstitutionBranchIntakes(institutionId, intakes, userId);
+  }
+
   async getInstitutionStudents(
     institutionId: string,
     params: {

@@ -272,6 +272,32 @@ export class StateController {
     return this.stateService.getInstitutionOverview(id);
   }
 
+  @Get('institutions/:id/intakes')
+  @ApiOperation({ summary: 'Get branch-wise intake records for an institution' })
+  async getInstitutionBranchIntakes(@Param('id') id: string) {
+    return this.stateService.getInstitutionBranchIntakes(id);
+  }
+
+  @Put('institutions/:id/intakes')
+  @ApiOperation({ summary: 'Replace branch-wise intake records for an institution' })
+  async replaceInstitutionBranchIntakes(
+    @Param('id') id: string,
+    @Body() body: {
+      intakes: Array<{
+        branchId: string;
+        academicYear: string;
+        batchId?: string | null;
+        sanctionedSeats: number;
+        feeWaiverSeats?: number;
+        isActive?: boolean;
+      }>;
+    },
+    @Req() req,
+  ) {
+    const userId = req.user?.userId || 'state-admin';
+    return this.stateService.replaceInstitutionBranchIntakes(id, body?.intakes || [], userId);
+  }
+
   @Throttle({ default: THROTTLE_PRESETS.list })
   @Get('institutions/:id/students')
   @ApiOperation({ summary: 'Get institution students with cursor pagination and filters' })

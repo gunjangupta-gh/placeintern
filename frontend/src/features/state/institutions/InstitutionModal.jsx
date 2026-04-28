@@ -31,6 +31,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import stateService from '../../../services/state.service';
+import lookupService from '../../../services/lookup.service';
 import {
   createInstitution,
   updateInstitution,
@@ -45,6 +46,11 @@ const INTEGER_FIELDS = new Set([
   'establishedYear',
   'totalStudentSeats',
   'totalStaffSeats',
+]);
+
+const INTAKE_FIELDS = new Set([
+  'sanctionedSeats',
+  'feeWaiverSeats',
 ]);
 
 const FLOAT_FIELDS = new Set([
@@ -101,6 +107,29 @@ const buildDefaultCoveredAreaRows = () => COVERED_AREA_ENTITIES.map((entity) => 
   futureExpansionScope: '',
 }));
 
+const getDefaultAcademicYear = () => {
+  const year = new Date().getFullYear();
+  const nextYear = String((year + 1) % 100).padStart(2, '0');
+  return `${year}-${nextYear}`;
+};
+
+const buildDefaultBranchIntakeRows = () => ([{
+  branchId: undefined,
+  batchId: undefined,
+  academicYear: getDefaultAcademicYear(),
+  sanctionedSeats: 0,
+  feeWaiverSeats: 0,
+  isActive: true,
+}]);
+
+const normalizeLookupList = (response, key) => {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.[key])) return response[key];
+  if (Array.isArray(response?.data?.[key])) return response.data[key];
+  if (Array.isArray(response?.data)) return response.data;
+  return [];
+};
+
 const sanitizeInstitutionPayload = (values) => {
   const basePayload = {
     ...values,
@@ -112,6 +141,10 @@ const sanitizeInstitutionPayload = (values) => {
   };
 
   const sanitized = Object.entries(basePayload).reduce((acc, [key, value]) => {
+    if (key === 'branchIntakes') {
+      return acc;
+    }
+
     if (value === '' || value === null || value === undefined) {
       return acc;
     }
@@ -159,6 +192,21 @@ const sanitizeInstitutionPayload = (values) => {
   return sanitized;
 };
 
+const sanitizeBranchIntakeRows = (rows = []) => rows
+  .map((row) => ({
+    branchId: row.branchId || undefined,
+    batchId: row.batchId || undefined,
+    academicYear: row.academicYear ? String(row.academicYear).trim() : undefined,
+    sanctionedSeats: row.sanctionedSeats === '' || row.sanctionedSeats === null || row.sanctionedSeats === undefined
+      ? 0
+      : Number(row.sanctionedSeats),
+    feeWaiverSeats: row.feeWaiverSeats === '' || row.feeWaiverSeats === null || row.feeWaiverSeats === undefined
+      ? 0
+      : Number(row.feeWaiverSeats),
+    isActive: row.isActive !== false,
+  }))
+  .filter((row) => row.branchId && row.academicYear);
+
 const buildInstitutionFormValues = (institution) => {
   const existingCoveredArea = (institution?.coveredAreaDetails || []).reduce((acc, row) => {
     acc[row.entityType] = {
@@ -179,6 +227,14 @@ const buildInstitutionFormValues = (institution) => {
       entityType: entity.value,
       ...(existingCoveredArea[entity.value] || {}),
     })),
+    branchIntakes: (institution?.branchIntakes?.length ? institution.branchIntakes : buildDefaultBranchIntakeRows()).map((row) => ({
+      branchId: row.branchId,
+      batchId: row.batchId || undefined,
+      academicYear: row.academicYear || getDefaultAcademicYear(),
+      sanctionedSeats: row.sanctionedSeats ?? 0,
+      feeWaiverSeats: row.feeWaiverSeats ?? 0,
+      isActive: row.isActive !== false,
+    })),
   };
 };
 
@@ -188,6 +244,8 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
   const institutions = useSelector(selectInstitutions);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [branchOptions, setBranchOptions] = useState([]);
+  const [batchOptions, setBatchOptions] = useState([]);
   const [createPrincipal, setCreatePrincipal] = useState(false);
   const [activeFormTab, setActiveFormTab] = useState('basic');
 
@@ -209,18 +267,32 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
     const loadInstitutionForEdit = async () => {
       setLoading(true);
       try {
-        // Always fetch latest detail so coveredAreaDetails is available for edit.
-        const response = await stateService.getInstitutionById(institutionId);
-        const detailedInstitution = response?.data || response;
+        const [institutionResponse, intakesResponse] = await Promise.all([
+          stateService.getInstitutionById(institutionId),
+          stateService.getInstitutionBranchIntakes(institutionId),
+        ]);
+
+        const detailedInstitution = institutionResponse?.data || institutionResponse;
 
         if (alive && detailedInstitution) {
-          form.setFieldsValue(buildInstitutionFormValues(detailedInstitution));
+          const fetchedIntakes = Array.isArray(intakesResponse)
+            ? intakesResponse
+            : intakesResponse?.data || detailedInstitution.branchIntakes || [];
+          const institutionWithIntakes = {
+            ...detailedInstitution,
+            branchIntakes: fetchedIntakes,
+          };
+          form.setFieldsValue(buildInstitutionFormValues(institutionWithIntakes));
         }
       } catch (error) {
         // Fallback to store item if detail API fails.
         const fallbackInstitution = institutions.find((i) => i.id === institutionId);
         if (alive && fallbackInstitution) {
           form.setFieldsValue(buildInstitutionFormValues(fallbackInstitution));
+        }
+        if (alive) {
+          setBranchOptions([]);
+          setBatchOptions([]);
         }
       } finally {
         if (alive) {
@@ -231,6 +303,36 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
     };
 
     if (open) {
+      const loadOptions = async () => {
+        try {
+          const [branchesResponse, batchesResponse] = await Promise.all([
+            lookupService.getBranches(),
+            lookupService.getBatches(),
+          ]);
+
+          if (!alive) return;
+
+          const branches = normalizeLookupList(branchesResponse, 'branches');
+          const batches = normalizeLookupList(batchesResponse, 'batches');
+
+          setBranchOptions(branches.map((branch) => ({
+            label: `${branch.name} (${branch.code})`,
+            value: branch.id,
+          })));
+          setBatchOptions(batches.map((batch) => ({
+            label: batch.name,
+            value: batch.id,
+          })));
+        } catch (error) {
+          if (alive) {
+            setBranchOptions([]);
+            setBatchOptions([]);
+          }
+        }
+      };
+
+      loadOptions();
+
       if (isEditMode) {
         loadInstitutionForEdit();
       } else {
@@ -241,6 +343,7 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
           isActive: "true",
           type: "POLYTECHNIC",
           coveredAreaDetails: buildDefaultCoveredAreaRows(),
+          branchIntakes: buildDefaultBranchIntakeRows(),
         });
         setCreatePrincipal(false);
       }
@@ -264,12 +367,19 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
     try {
       // Normalize optional empty fields and ensure numeric fields are numbers.
       const payload = sanitizeInstitutionPayload(values);
+      const intakePayload = sanitizeBranchIntakeRows(values.branchIntakes || []);
 
       if (isEditMode) {
-        await dispatch(updateInstitution({ id: institutionId, data: payload })).unwrap();
+        const updatedInstitution = await dispatch(updateInstitution({ id: institutionId, data: payload })).unwrap();
+        const savedInstitutionId = updatedInstitution?.institution?.id || updatedInstitution?.id || institutionId;
+        await stateService.replaceInstitutionBranchIntakes(savedInstitutionId, intakePayload);
         toast.success('Institution updated successfully');
       } else {
-        await dispatch(createInstitution(payload)).unwrap();
+        const createdInstitution = await dispatch(createInstitution(payload)).unwrap();
+        const savedInstitutionId = createdInstitution?.institution?.id || createdInstitution?.id;
+        if (savedInstitutionId) {
+          await stateService.replaceInstitutionBranchIntakes(savedInstitutionId, intakePayload);
+        }
         toast.success('Institution created successfully');
       }
       
@@ -538,6 +648,167 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
                   </>
                 ),
               },
+              {
+                key: 'intake',
+                label: (
+                  <span
+                    className={`inline-flex items-center gap-2 px-2 py-1 rounded-md border transition-all ${
+                      activeFormTab === 'intake'
+                        ? 'border-blue-200 bg-blue-50 text-blue-700'
+                        : 'border-slate-200 bg-white text-slate-600'
+                    }`}
+                  >
+                    <span
+                      className={`inline-flex items-center justify-center w-5 h-5 text-[10px] font-semibold rounded-full ${
+                        activeFormTab === 'intake'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      4
+                    </span>
+                    <span className="font-medium">Intake</span>
+                  </span>
+                ),
+                children: (
+                  <div className="space-y-3">
+                    <Alert
+                      type="info"
+                      showIcon
+                      className="rounded-lg border-info/20"
+                      message="Course-wise seats are stored separately from the institution totals."
+                      description="Add one row per branch and academic year. Sanctioned seats and fee-waiver seats are captured per institution."
+                    />
+                    <Form.List name="branchIntakes">
+                      {(fields, { add, remove }) => {
+                        const tableColumns = [
+                          {
+                            title: 'Branch',
+                            width: 220,
+                            render: (_, __, index) => (
+                              <Form.Item
+                                name={[index, 'branchId']}
+                                className="mb-0"
+                                rules={[{ required: true, message: 'Select a branch' }]}
+                              >
+                                <Select
+                                  showSearch
+                                  optionFilterProp="label"
+                                  placeholder="Select branch"
+                                  options={branchOptions}
+                                />
+                              </Form.Item>
+                            ),
+                          },
+                          {
+                            title: 'Academic Year',
+                            width: 150,
+                            render: (_, __, index) => (
+                              <Form.Item
+                                name={[index, 'academicYear']}
+                                className="mb-0"
+                                rules={[{ required: true, message: 'Enter academic year' }]}
+                              >
+                                <Input placeholder="2026-27" />
+                              </Form.Item>
+                            ),
+                          },
+                          {
+                            title: 'Batch',
+                            width: 180,
+                            render: (_, __, index) => (
+                              <Form.Item name={[index, 'batchId']} className="mb-0">
+                                <Select
+                                  allowClear
+                                  showSearch
+                                  optionFilterProp="label"
+                                  placeholder="Optional batch"
+                                  options={batchOptions}
+                                />
+                              </Form.Item>
+                            ),
+                          },
+                          {
+                            title: 'Sanctioned',
+                            width: 120,
+                            render: (_, __, index) => (
+                              <Form.Item
+                                name={[index, 'sanctionedSeats']}
+                                className="mb-0"
+                                rules={[{ required: true, message: 'Enter seats' }]}
+                              >
+                                <Input type="number" min={0} placeholder="0" />
+                              </Form.Item>
+                            ),
+                          },
+                          {
+                            title: 'Fee Waiver',
+                            width: 120,
+                            render: (_, __, index) => (
+                              <Form.Item
+                                name={[index, 'feeWaiverSeats']}
+                                className="mb-0"
+                                rules={[{ required: true, message: 'Enter fee waiver seats' }]}
+                              >
+                                <Input type="number" min={0} placeholder="0" />
+                              </Form.Item>
+                            ),
+                          },
+                          {
+                            title: 'Active',
+                            width: 90,
+                            render: (_, __, index) => (
+                              <Form.Item name={[index, 'isActive']} className="mb-0" valuePropName="checked">
+                                <Checkbox />
+                              </Form.Item>
+                            ),
+                          },
+                          {
+                            title: 'Actions',
+                            width: 90,
+                            render: (_, __, index) => (
+                              <Button
+                                danger
+                                type="text"
+                                size="small"
+                                onClick={() => remove(index)}
+                                disabled={fields.length === 1}
+                              >
+                                Remove
+                              </Button>
+                            ),
+                          },
+                        ];
+
+                        return (
+                          <div className="space-y-2">
+                            <div className="flex justify-end">
+                              <Button type="dashed" icon={<PlusOutlined />} onClick={() => add({
+                                branchId: undefined,
+                                batchId: undefined,
+                                academicYear: getDefaultAcademicYear(),
+                                sanctionedSeats: 0,
+                                feeWaiverSeats: 0,
+                                isActive: true,
+                              })}>
+                                Add Intake Row
+                              </Button>
+                            </div>
+                            <Table
+                              size="small"
+                              bordered
+                              pagination={false}
+                              scroll={{ x: 980 }}
+                              columns={tableColumns}
+                              dataSource={fields.map((field) => ({ key: field.key }))}
+                            />
+                          </div>
+                        );
+                      }}
+                    </Form.List>
+                  </div>
+                ),
+              },
               ...(!isEditMode
                 ? [{
                     key: 'principal',
@@ -556,7 +827,7 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
                               : 'bg-slate-100 text-slate-600'
                           }`}
                         >
-                          4
+                          5
                         </span>
                         <span className="font-medium">Principal</span>
                       </span>

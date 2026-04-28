@@ -549,6 +549,16 @@ export class StateInstitutionService {
         coveredAreaDetails: {
           orderBy: { entityType: 'asc' },
         },
+        branchIntakes: {
+          include: {
+            branch: true,
+            batch: true,
+          },
+          orderBy: [
+            { academicYear: 'desc' },
+            { branch: { name: 'asc' } },
+          ],
+        },
         users: {
           where: { role: 'PRINCIPAL' },
           take: 10,
@@ -576,6 +586,135 @@ export class StateInstitutionService {
     return institution;
   }
 
+  async getInstitutionBranchIntakes(institutionId: string) {
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: institutionId },
+      select: { id: true },
+    });
+
+    if (!institution) {
+      throw new NotFoundException(`Institution with ID ${institutionId} not found`);
+    }
+
+    return this.prisma.branchIntake.findMany({
+      where: { institutionId },
+      include: {
+        branch: true,
+        batch: true,
+      },
+      orderBy: [
+        { academicYear: 'desc' },
+        { branch: { name: 'asc' } },
+      ],
+    });
+  }
+
+  async replaceInstitutionBranchIntakes(
+    institutionId: string,
+    intakes: Array<{
+      branchId: string;
+      academicYear: string;
+      batchId?: string | null;
+      sanctionedSeats: number;
+      feeWaiverSeats?: number;
+      isActive?: boolean;
+    }>,
+    userId?: string,
+  ) {
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: institutionId },
+      select: { id: true, name: true, code: true },
+    });
+
+    if (!institution) {
+      throw new NotFoundException(`Institution with ID ${institutionId} not found`);
+    }
+
+    const normalizedIntakes = (intakes || [])
+      .filter((item) => item.branchId && item.academicYear)
+      .map((item) => ({
+        institutionId,
+        branchId: item.branchId,
+        batchId: item.batchId ?? null,
+        academicYear: item.academicYear.trim(),
+        sanctionedSeats: Number(item.sanctionedSeats) || 0,
+        feeWaiverSeats: Number(item.feeWaiverSeats) || 0,
+        isActive: item.isActive !== false,
+      }));
+
+    const seen = new Set<string>();
+    for (const intake of normalizedIntakes) {
+      const dedupeKey = `${intake.branchId}:${intake.academicYear}`;
+      if (seen.has(dedupeKey)) {
+        throw new BadRequestException('Duplicate branch intake rows for the same branch and academic year are not allowed');
+      }
+      seen.add(dedupeKey);
+    }
+
+    const branchIds = [...new Set(normalizedIntakes.map((item) => item.branchId))];
+    if (branchIds.length > 0) {
+      const existingBranches = await this.prisma.branch.findMany({
+        where: { id: { in: branchIds } },
+        select: { id: true },
+      });
+
+      if (existingBranches.length !== branchIds.length) {
+        throw new BadRequestException('One or more branch IDs are invalid');
+      }
+    }
+
+    const batchIds = [...new Set(normalizedIntakes.map((item) => item.batchId).filter(Boolean))] as string[];
+    if (batchIds.length > 0) {
+      const existingBatches = await this.prisma.batch.findMany({
+        where: { id: { in: batchIds } },
+        select: { id: true },
+      });
+
+      if (existingBatches.length !== batchIds.length) {
+        throw new BadRequestException('One or more batch IDs are invalid');
+      }
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.branchIntake.deleteMany({ where: { institutionId } });
+
+      if (normalizedIntakes.length > 0) {
+        await tx.branchIntake.createMany({ data: normalizedIntakes });
+      }
+
+      return tx.branchIntake.findMany({
+        where: { institutionId },
+        include: {
+          branch: true,
+          batch: true,
+        },
+        orderBy: [
+          { academicYear: 'desc' },
+          { branch: { name: 'asc' } },
+        ],
+      });
+    });
+
+    this.auditService.log({
+      action: AuditAction.INSTITUTION_UPDATE,
+      entityType: 'Institution',
+      entityId: institution.id,
+      userId: userId || 'SYSTEM',
+      userRole: Role.STATE_DIRECTORATE,
+      description: `Branch intake updated for institution ${institution.name}`,
+      category: AuditCategory.SYSTEM_ADMIN,
+      severity: AuditSeverity.MEDIUM,
+      institutionId,
+      oldValues: null,
+      newValues: {
+        branchIntakesCount: result.length,
+      },
+    }).catch(() => {});
+
+    await this.cache.invalidateByTags(['state', 'institutions', `institution:${institutionId}`]);
+    return result;
+  }
+
   /**
    * Get institution overview with detailed statistics including self-identified internships
    */
@@ -594,6 +733,13 @@ export class StateInstitutionService {
         address: true,
         contactEmail: true,
         contactPhone: true,
+        branchIntakes: {
+          select: {
+            sanctionedSeats: true,
+            feeWaiverSeats: true,
+            isActive: true,
+          },
+        },
       },
     });
 
@@ -606,6 +752,18 @@ export class StateInstitutionService {
       email: contactEmail ?? null,
       phoneNo: contactPhone ?? null,
     };
+    const branchIntakeSummary = (institution.branchIntakes || []).reduce(
+      (summary, intake) => {
+        if (!intake.isActive) {
+          return summary;
+        }
+
+        summary.sanctionedSeats += intake.sanctionedSeats || 0;
+        summary.feeWaiverSeats += intake.feeWaiverSeats || 0;
+        return summary;
+      },
+      { sanctionedSeats: 0, feeWaiverSeats: 0 },
+    );
 
     // Get current month/year for time-based queries
     const now = new Date();
@@ -1148,6 +1306,7 @@ export class StateInstitutionService {
       })),
       companiesCount,
       facultyCount,
+      branchIntakeSummary,
       complianceScore,
     };
   }

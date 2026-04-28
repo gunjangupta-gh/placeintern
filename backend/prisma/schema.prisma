@@ -305,6 +305,7 @@ model Batch {
   name          String       @unique // e.g., "2023-26"
   isActive      Boolean      @default(true)
   students      Student[]
+  intakes       BranchIntake[]
   createdAt     DateTime     @default(now())
   Institution   Institution? @relation(fields: [institutionId], references: [id])
   institutionId String?
@@ -412,6 +413,7 @@ model Institution {
   users     User[]
   batches   Batch[]
   auditLogs AuditLog[] // Audit logs should track the institution context
+  branchIntakes BranchIntake[]
 
   Student Student[]
 
@@ -499,6 +501,7 @@ model Branch {
   // Relations
   users    User[] // Teachers and Students with branchId
   students Student[] // Direct student relation (for backward compatibility)
+  intakes  BranchIntake[]
 
   // Training Module - Target disciplines for trainings
   trainings Training[] @relation("TrainingBranches")
@@ -508,6 +511,36 @@ model Branch {
   updatedAt DateTime @updatedAt
 
   @@map("branches")
+}
+
+model BranchIntake {
+  id            String      @id @default(uuid())
+
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  branchId      String
+  branch        Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  // Optional: tie intake to a specific Batch (preferred if you manage cohorts)
+  batchId       String?
+  batch         Batch?      @relation(fields: [batchId], references: [id])
+
+  // Intake year is required so each institution/branch row is unique and auditable
+  academicYear  String      // e.g., "2023-24"
+
+  sanctionedSeats Int       @default(0)
+  feeWaiverSeats  Int       @default(0)
+
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([institutionId, branchId, academicYear])
+  @@index([institutionId])
+  @@index([branchId])
+  @@index([academicYear])
+  @@map("branch_intakes")
 }
 
 model Department {

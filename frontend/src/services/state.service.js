@@ -125,6 +125,16 @@ export const stateService = {
     return response.data;
   },
 
+  async getInstitutionBranchIntakes(id) {
+    const response = await API.get(`/state/institutions/${id}/intakes`);
+    return response.data;
+  },
+
+  async replaceInstitutionBranchIntakes(id, intakes) {
+    const response = await API.put(`/state/institutions/${id}/intakes`, { intakes });
+    return response.data;
+  },
+
   async getInstitutionStudents(id, params = {}) {
     // Filter out undefined/null values to prevent "undefined" strings in query
     const cleanParams = Object.fromEntries(
