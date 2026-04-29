@@ -4,6 +4,7 @@ import {
   Modal,
   Form,
   Input,
+  InputNumber,
   Button,
   Select,
   Tabs,
@@ -83,17 +84,6 @@ const toNumberOrUndefined = (value) => {
   return Number.isNaN(parsed) ? undefined : parsed;
 };
 
-const toNumberOrString = (value) => {
-  if (value === '' || value === null || value === undefined) {
-    return undefined;
-  }
-  const parsed = Number(value);
-  if (!Number.isNaN(parsed)) {
-    return parsed;
-  }
-  const textValue = String(value).trim();
-  return textValue === '' ? undefined : textValue;
-};
 
 const isCoveredAreaRowFilled = (row = {}) => {
   const keysToCheck = [
@@ -184,11 +174,11 @@ const sanitizeInstitutionPayload = (values) => {
   const coveredAreaRows = (values.coveredAreaDetails || [])
     .map((row) => ({
       entityType: row.entityType,
-      numberOfRooms: toNumberOrString(row.numberOfRooms),
-      requiredAreaSqFt: toNumberOrString(row.requiredAreaSqFt),
-      availableAreaSqFt: toNumberOrString(row.availableAreaSqFt),
-      additionalRequirementSqFt: toNumberOrString(row.additionalRequirementSqFt),
-      declaredUnsafeAreaSqFt: toNumberOrString(row.declaredUnsafeAreaSqFt),
+      numberOfRooms: toNumberOrUndefined(row.numberOfRooms),
+      requiredAreaSqFt: toNumberOrUndefined(row.requiredAreaSqFt),
+      availableAreaSqFt: toNumberOrUndefined(row.availableAreaSqFt),
+      additionalRequirementSqFt: toNumberOrUndefined(row.additionalRequirementSqFt),
+      declaredUnsafeAreaSqFt: toNumberOrUndefined(row.declaredUnsafeAreaSqFt),
       lastMajorRepairDate: row.lastMajorRepairDate ? row.lastMajorRepairDate.toISOString() : undefined,
       futureExpansionScope: row.futureExpansionScope || undefined,
     }))
@@ -647,11 +637,11 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
                       {(fields) => {
                         const tableColumns = [
                           { title: 'Entity', width: 140, render: (_, __, index) => <Form.Item name={[index, 'entityType']} className="mb-0"><Select disabled options={COVERED_AREA_ENTITIES} /></Form.Item> },
-                          { title: 'Rooms', width: 100, render: (_, __, index) => <Form.Item name={[index, 'numberOfRooms']} className="mb-0"><Input inputMode="numeric" /></Form.Item> },
-                          { title: 'Required', width: 110, render: (_, __, index) => <Form.Item name={[index, 'requiredAreaSqFt']} className="mb-0"><Input inputMode="decimal" /></Form.Item> },
-                          { title: 'Available', width: 110, render: (_, __, index) => <Form.Item name={[index, 'availableAreaSqFt']} className="mb-0"><Input inputMode="decimal" /></Form.Item> },
-                          { title: 'Additional', width: 120, render: (_, __, index) => <Form.Item name={[index, 'additionalRequirementSqFt']} className="mb-0"><Input inputMode="decimal" /></Form.Item> },
-                          { title: 'Unsafe', width: 100, render: (_, __, index) => <Form.Item name={[index, 'declaredUnsafeAreaSqFt']} className="mb-0"><Input inputMode="decimal" /></Form.Item> },
+                          { title: 'Rooms', width: 100, render: (_, __, index) => <Form.Item name={[index, 'numberOfRooms']} className="mb-0"><InputNumber min={0} precision={0} className="w-full" /></Form.Item> },
+                          { title: 'Required', width: 110, render: (_, __, index) => <Form.Item name={[index, 'requiredAreaSqFt']} className="mb-0"><InputNumber min={0} step={0.01} className="w-full" /></Form.Item> },
+                          { title: 'Available', width: 110, render: (_, __, index) => <Form.Item name={[index, 'availableAreaSqFt']} className="mb-0"><InputNumber min={0} step={0.01} className="w-full" /></Form.Item> },
+                          { title: 'Additional', width: 120, render: (_, __, index) => <Form.Item name={[index, 'additionalRequirementSqFt']} className="mb-0"><InputNumber min={0} step={0.01} className="w-full" /></Form.Item> },
+                          { title: 'Unsafe', width: 100, render: (_, __, index) => <Form.Item name={[index, 'declaredUnsafeAreaSqFt']} className="mb-0"><InputNumber min={0} step={0.01} className="w-full" /></Form.Item> },
                           { title: 'Last Repair Date', width: 160, render: (_, __, index) => <Form.Item name={[index, 'lastMajorRepairDate']} className="mb-0"><DatePicker className="w-full" format="DD-MM-YYYY" /></Form.Item> },
                           { title: 'Future Expansion', width: 190, render: (_, __, index) => <Form.Item name={[index, 'futureExpansionScope']} className="mb-0"><Input placeholder="Optional" /></Form.Item> },
                         ];
