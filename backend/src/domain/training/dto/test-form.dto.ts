@@ -41,6 +41,7 @@ export class CreateTestFormDto {
   @IsBoolean()
   publish?: boolean;
 
+
   @ApiPropertyOptional({ description: 'Enable live window for test availability' })
   @IsOptional()
   @IsBoolean()
@@ -103,6 +104,11 @@ export class UpdateTestFormDto {
   @Min(0)
   @Max(100)
   passingScore?: number;
+
+  @ApiPropertyOptional({ description: 'Publish immediately' })
+  @IsOptional()
+  @IsBoolean()
+  publish?: boolean;
 
   @ApiPropertyOptional({ description: 'Active status' })
   @IsOptional()
