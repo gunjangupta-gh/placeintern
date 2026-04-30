@@ -1,18 +1,20 @@
-import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
-import { InternshipStatus, MonthlyReportStatus, Role } from '../../../generated/prisma/client';
-import { PrismaService } from '../../../core/database/prisma.service';
-import { ReportType } from './interfaces/report.interface';
+import { Injectable, Logger, ForbiddenException } from "@nestjs/common";
 import {
-  getMonthCycle,
-} from '../../../common/utils/monthly-cycle.util';
+  InternshipStatus,
+  MonthlyReportStatus,
+  Role,
+} from "../../../generated/prisma/client";
+import { PrismaService } from "../../../core/database/prisma.service";
+import { ReportType } from "./interfaces/report.interface";
+import { getMonthCycle } from "../../../common/utils/monthly-cycle.util";
 
 /**
  * Pagination options for report generation
  * Prevents memory overflow on large datasets
  */
 export interface ReportPaginationOptions {
-  take?: number;  // Number of records to fetch (default: 10000)
-  skip?: number;  // Number of records to skip (default: 0)
+  take?: number; // Number of records to fetch (default: 10000)
+  skip?: number; // Number of records to skip (default: 0)
 }
 
 /** Default maximum records to prevent memory overflow */
@@ -26,45 +28,42 @@ const WARNING_THRESHOLD = 5000;
  * Non-admin users MUST have institutionId to prevent cross-tenant data leakage
  */
 const INSTITUTION_REQUIRED_REPORTS = [
-  'internship',
-  'faculty',
-  'mentor',
-  'monthly',
-  'placement',
-  'compliance',
-  'pending',
+  "internship",
+  "faculty",
+  "mentor",
+  "monthly",
+  "placement",
+  "compliance",
+  "pending",
 ];
 
 /**
  * Reports that allow viewing all institutions for admin users
  * When institutionId is not provided, returns data from all institutions
  */
-const INSTITUTION_OPTIONAL_REPORTS = [
-  'student',
-  'industry',
-];
+const INSTITUTION_OPTIONAL_REPORTS = ["student", "industry"];
 
 /**
  * Reports that can be run without institution filter (admin-only)
  */
-const ADMIN_ONLY_REPORTS = ['institution_performance', 'system'];
+const ADMIN_ONLY_REPORTS = ["institution_performance", "system"];
 
 @Injectable()
 export class ReportGeneratorService {
   private readonly logger = new Logger(ReportGeneratorService.name);
   private readonly monthMatrix = [
-    { month: 1, key: 'jan' },
-    { month: 2, key: 'feb' },
-    { month: 3, key: 'mar' },
-    { month: 4, key: 'apr' },
-    { month: 5, key: 'may' },
-    { month: 6, key: 'jun' },
-    { month: 7, key: 'jul' },
-    { month: 8, key: 'aug' },
-    { month: 9, key: 'sep' },
-    { month: 10, key: 'oct' },
-    { month: 11, key: 'nov' },
-    { month: 12, key: 'dec' },
+    { month: 1, key: "jan" },
+    { month: 2, key: "feb" },
+    { month: 3, key: "mar" },
+    { month: 4, key: "apr" },
+    { month: 5, key: "may" },
+    { month: 6, key: "jun" },
+    { month: 7, key: "jul" },
+    { month: 8, key: "aug" },
+    { month: 9, key: "sep" },
+    { month: 10, key: "oct" },
+    { month: 11, key: "nov" },
+    { month: 12, key: "dec" },
   ] as const;
 
   constructor(private prisma: PrismaService) {}
@@ -76,36 +75,36 @@ export class ReportGeneratorService {
    */
   private formatToIST(date: any): string {
     try {
-      if (date === null || date === undefined || date === '') return '';
+      if (date === null || date === undefined || date === "") return "";
 
       // Convert to Date object
       let dateObj: Date;
       if (date instanceof Date) {
         dateObj = date;
-      } else if (typeof date === 'string' || typeof date === 'number') {
+      } else if (typeof date === "string" || typeof date === "number") {
         dateObj = new Date(date);
       } else {
-        return '';
+        return "";
       }
 
       // Check if date is valid
       const timestamp = dateObj.getTime();
-      if (isNaN(timestamp) || !isFinite(timestamp)) return '';
+      if (isNaN(timestamp) || !isFinite(timestamp)) return "";
 
       // IST is UTC+5:30
       const istOffset = 5.5 * 60 * 60 * 1000; // 5 hours 30 minutes in milliseconds
       const istDate = new Date(timestamp + istOffset);
 
-      const day = String(istDate.getUTCDate()).padStart(2, '0');
-      const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(istDate.getUTCDate()).padStart(2, "0");
+      const month = String(istDate.getUTCMonth() + 1).padStart(2, "0");
       const year = istDate.getUTCFullYear();
-      const hours = String(istDate.getUTCHours()).padStart(2, '0');
-      const minutes = String(istDate.getUTCMinutes()).padStart(2, '0');
-      const seconds = String(istDate.getUTCSeconds()).padStart(2, '0');
+      const hours = String(istDate.getUTCHours()).padStart(2, "0");
+      const minutes = String(istDate.getUTCMinutes()).padStart(2, "0");
+      const seconds = String(istDate.getUTCSeconds()).padStart(2, "0");
 
       return `${day}/${month}/${year} ${hours}:${minutes}:${seconds} IST`;
     } catch (error) {
-      return '';
+      return "";
     }
   }
 
@@ -116,33 +115,33 @@ export class ReportGeneratorService {
    */
   private formatToISTDateOnly(date: any): string {
     try {
-      if (date === null || date === undefined || date === '') return '';
+      if (date === null || date === undefined || date === "") return "";
 
       // Convert to Date object
       let dateObj: Date;
       if (date instanceof Date) {
         dateObj = date;
-      } else if (typeof date === 'string' || typeof date === 'number') {
+      } else if (typeof date === "string" || typeof date === "number") {
         dateObj = new Date(date);
       } else {
-        return '';
+        return "";
       }
 
       // Check if date is valid
       const timestamp = dateObj.getTime();
-      if (isNaN(timestamp) || !isFinite(timestamp)) return '';
+      if (isNaN(timestamp) || !isFinite(timestamp)) return "";
 
       // IST is UTC+5:30
       const istOffset = 5.5 * 60 * 60 * 1000;
       const istDate = new Date(timestamp + istOffset);
 
-      const day = String(istDate.getUTCDate()).padStart(2, '0');
-      const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(istDate.getUTCDate()).padStart(2, "0");
+      const month = String(istDate.getUTCMonth() + 1).padStart(2, "0");
       const year = istDate.getUTCFullYear();
 
       return `${day}/${month}/${year}`;
     } catch (error) {
-      return '';
+      return "";
     }
   }
 
@@ -150,11 +149,25 @@ export class ReportGeneratorService {
    * Format month/year pair as readable report month label (e.g. "March 2026")
    */
   private formatReportMonth(month: number, year: number): string {
-    const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthNames = [
+      "",
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
     const safeMonth = Number(month);
     const safeYear = Number(year);
     if (!safeMonth || safeMonth < 1 || safeMonth > 12 || !safeYear) {
-      return '';
+      return "";
     }
     return `${monthNames[safeMonth]} ${safeYear}`;
   }
@@ -162,10 +175,12 @@ export class ReportGeneratorService {
   /**
    * Build report month label from a date value in local calendar month/year.
    */
-  private formatReportMonthFromDate(date: Date | string | null | undefined): string {
-    if (!date) return '';
+  private formatReportMonthFromDate(
+    date: Date | string | null | undefined,
+  ): string {
+    if (!date) return "";
     const d = new Date(date);
-    if (isNaN(d.getTime())) return '';
+    if (isNaN(d.getTime())) return "";
     return this.formatReportMonth(d.getMonth() + 1, d.getFullYear());
   }
 
@@ -177,12 +192,17 @@ export class ReportGeneratorService {
     submittedMonths: Set<number>,
     eligibleMonths: Set<number>,
   ): Record<string, number | null> {
-    return this.monthMatrix.reduce((acc, { month, key }) => {
-      acc[key] = eligibleMonths.has(month)
-        ? (submittedMonths.has(month) ? 1 : 0)
-        : null;
-      return acc;
-    }, {} as Record<string, number | null>);
+    return this.monthMatrix.reduce(
+      (acc, { month, key }) => {
+        acc[key] = eligibleMonths.has(month)
+          ? submittedMonths.has(month)
+            ? 1
+            : 0
+          : null;
+        return acc;
+      },
+      {} as Record<string, number | null>,
+    );
   }
 
   /**
@@ -200,9 +220,10 @@ export class ReportGeneratorService {
     if (isNaN(parsedStart.getTime())) return expectedMonths;
 
     const parsedEnd = endDate ? new Date(endDate) : null;
-    const effectiveEnd = parsedEnd && !isNaN(parsedEnd.getTime())
-      ? parsedEnd
-      : new Date(year, 11, 31, 23, 59, 59, 999);
+    const effectiveEnd =
+      parsedEnd && !isNaN(parsedEnd.getTime())
+        ? parsedEnd
+        : new Date(year, 11, 31, 23, 59, 59, 999);
 
     const yearStart = new Date(year, 0, 1, 0, 0, 0, 0);
     const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999);
@@ -231,7 +252,7 @@ export class ReportGeneratorService {
     startDate: Date | string | null | undefined,
     endDate: Date | string | null | undefined,
     year: number,
-    mode: 'report' | 'visit',
+    mode: "report" | "visit",
   ): Set<number> {
     const eligibleMonths = new Set<number>();
     if (!startDate) return eligibleMonths;
@@ -247,7 +268,7 @@ export class ReportGeneratorService {
     for (let month = 1; month <= 12; month++) {
       const cycle = getMonthCycle(year, month, parsedStart, effectiveEnd);
       if (!cycle) continue;
-      if (mode === 'report' && month === 1) continue;
+      if (mode === "report" && month === 1) continue;
       eligibleMonths.add(month);
     }
 
@@ -259,21 +280,33 @@ export class ReportGeneratorService {
    * Returns undefined when the value is "not provided".
    */
   private parseBooleanLike(value: unknown): boolean | undefined {
-    if (value === undefined || value === null || value === '') {
+    if (value === undefined || value === null || value === "") {
       return undefined;
     }
-    if (typeof value === 'boolean') {
+    if (typeof value === "boolean") {
       return value;
     }
-    if (typeof value === 'number') {
+    if (typeof value === "number") {
       if (value === 1) return true;
       if (value === 0) return false;
       return Boolean(value);
     }
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       const normalized = value.trim().toLowerCase();
-      if (normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'y') return true;
-      if (normalized === 'false' || normalized === '0' || normalized === 'no' || normalized === 'n') return false;
+      if (
+        normalized === "true" ||
+        normalized === "1" ||
+        normalized === "yes" ||
+        normalized === "y"
+      )
+        return true;
+      if (
+        normalized === "false" ||
+        normalized === "0" ||
+        normalized === "no" ||
+        normalized === "n"
+      )
+        return false;
     }
     return undefined;
   }
@@ -282,8 +315,14 @@ export class ReportGeneratorService {
    * Get pagination parameters with defaults
    * Enforces maximum record limit to prevent memory overflow
    */
-  private getPaginationParams(pagination?: ReportPaginationOptions): { take: number; skip: number } {
-    const take = Math.min(pagination?.take ?? DEFAULT_MAX_RECORDS, DEFAULT_MAX_RECORDS);
+  private getPaginationParams(pagination?: ReportPaginationOptions): {
+    take: number;
+    skip: number;
+  } {
+    const take = Math.min(
+      pagination?.take ?? DEFAULT_MAX_RECORDS,
+      DEFAULT_MAX_RECORDS,
+    );
     const skip = pagination?.skip ?? 0;
     return { take, skip };
   }
@@ -295,7 +334,7 @@ export class ReportGeneratorService {
     if (resultCount >= WARNING_THRESHOLD) {
       this.logger.warn(
         `Large result set: ${reportType} returned ${resultCount} records. ` +
-        `Consider using pagination (skip/take) for better performance.`
+          `Consider using pagination (skip/take) for better performance.`,
       );
     }
   }
@@ -313,32 +352,34 @@ export class ReportGeneratorService {
     const typeStr = reportType.toLowerCase();
 
     // Check if this report type strictly requires institution isolation
-    const requiresInstitution = INSTITUTION_REQUIRED_REPORTS.some(
-      (r) => typeStr.includes(r),
+    const requiresInstitution = INSTITUTION_REQUIRED_REPORTS.some((r) =>
+      typeStr.includes(r),
     );
 
     // Check if this report type allows optional institution for admins
-    const isOptionalReport = INSTITUTION_OPTIONAL_REPORTS.some(
-      (r) => typeStr.includes(r),
+    const isOptionalReport = INSTITUTION_OPTIONAL_REPORTS.some((r) =>
+      typeStr.includes(r),
     );
 
     // For optional reports, admins can view all institutions
     if (isOptionalReport && isAdmin) {
       if (!filters?.institutionId) {
-        this.logger.log(
-          `Admin generating ${reportType} for all institutions`,
-        );
+        this.logger.log(`Admin generating ${reportType} for all institutions`);
       }
       return; // Allow admin to proceed without institutionId
     }
 
     // For required reports or non-admin users on optional reports
-    if ((requiresInstitution || isOptionalReport) && !filters?.institutionId && !isAdmin) {
+    if (
+      (requiresInstitution || isOptionalReport) &&
+      !filters?.institutionId &&
+      !isAdmin
+    ) {
       this.logger.warn(
         `Report generation blocked: ${reportType} requires institutionId for non-admin users`,
       );
       throw new ForbiddenException(
-        'Institution ID is required for this report type',
+        "Institution ID is required for this report type",
       );
     }
   }
@@ -372,7 +413,10 @@ export class ReportGeneratorService {
     // Year filter - support multiple filter names for flexibility
     if (filters?.year !== undefined && filters?.year !== null) {
       where.currentYear = Number(filters.year);
-    } else if (filters?.currentYear !== undefined && filters?.currentYear !== null) {
+    } else if (
+      filters?.currentYear !== undefined &&
+      filters?.currentYear !== null
+    ) {
       where.currentYear = Number(filters.currentYear);
     } else if (filters?.academicYear) {
       // For academicYear like "2024-2025", extract first year
@@ -386,7 +430,10 @@ export class ReportGeneratorService {
     // Semester filter
     if (filters?.semester !== undefined && filters?.semester !== null) {
       where.currentSemester = Number(filters.semester);
-    } else if (filters?.currentSemester !== undefined && filters?.currentSemester !== null) {
+    } else if (
+      filters?.currentSemester !== undefined &&
+      filters?.currentSemester !== null
+    ) {
       where.currentSemester = Number(filters.currentSemester);
     }
 
@@ -421,7 +468,7 @@ export class ReportGeneratorService {
             active: true,
             rollNumber: true,
             branchName: true,
-          }
+          },
         },
         branch: { select: { id: true, name: true } },
         Institution: { select: { id: true, name: true, shortName: true } },
@@ -435,7 +482,7 @@ export class ReportGeneratorService {
             jobProfile: true,
             mentor: { select: { id: true, name: true } },
           },
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
           take: 1, // Get most recent application
         },
         // Get mentor assignments
@@ -444,16 +491,16 @@ export class ReportGeneratorService {
           select: {
             mentor: { select: { id: true, name: true } },
           },
-          orderBy: { assignmentDate: 'desc' },
+          orderBy: { assignmentDate: "desc" },
           take: 1, // Get current mentor
         },
       },
       take,
       skip,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
-    this.warnOnLargeResultSet(students.length, 'StudentProgressReport');
+    this.warnOnLargeResultSet(students.length, "StudentProgressReport");
 
     // Apply mentor filter if specified (post-query filter for complex relation)
     let filteredStudents = students;
@@ -461,7 +508,9 @@ export class ReportGeneratorService {
       filteredStudents = students.filter((student) => {
         const applicationMentor = student.internshipApplications[0]?.mentor?.id;
         const assignedMentor = student.mentorAssignments[0]?.mentor?.id;
-        return applicationMentor === mentorFilter || assignedMentor === mentorFilter;
+        return (
+          applicationMentor === mentorFilter || assignedMentor === mentorFilter
+        );
       });
     }
 
@@ -470,32 +519,32 @@ export class ReportGeneratorService {
       const mentorName =
         student.mentorAssignments[0]?.mentor?.name ??
         student.internshipApplications[0]?.mentor?.name ??
-        'Not Assigned';
+        "Not Assigned";
 
       // Determine internship status
       const latestApplication = student.internshipApplications[0];
-      let internshipStatus = 'Not Started';
+      let internshipStatus = "Not Started";
       if (latestApplication) {
         switch (latestApplication.status) {
-          case 'COMPLETED':
-            internshipStatus = 'Completed';
+          case "COMPLETED":
+            internshipStatus = "Completed";
             break;
-          case 'JOINED':
-          case 'APPROVED':
-          case 'SELECTED':
-            internshipStatus = 'In Progress';
+          case "JOINED":
+          case "APPROVED":
+          case "SELECTED":
+            internshipStatus = "In Progress";
             break;
-          case 'APPLIED':
-          case 'UNDER_REVIEW':
-          case 'SHORTLISTED':
-            internshipStatus = 'Applied';
+          case "APPLIED":
+          case "UNDER_REVIEW":
+          case "SHORTLISTED":
+            internshipStatus = "Applied";
             break;
-          case 'REJECTED':
-          case 'WITHDRAWN':
-            internshipStatus = 'Not Active';
+          case "REJECTED":
+          case "WITHDRAWN":
+            internshipStatus = "Not Active";
             break;
           default:
-            internshipStatus = latestApplication.status ?? 'Unknown';
+            internshipStatus = latestApplication.status ?? "Unknown";
         }
       }
 
@@ -503,18 +552,18 @@ export class ReportGeneratorService {
         // Core student info
         rollNumber: student.user.rollNumber,
         name: student.user.name,
-        gender: student.gender ?? 'N/A',
-        email: student.user.email ?? '',
-        phoneNumber: student.user.phoneNo ?? '',
+        gender: student.gender ?? "N/A",
+        email: student.user.email ?? "",
+        phoneNumber: student.user.phoneNo ?? "",
 
         // Academic info
-        branchName: student.branch?.name ?? student.user.branchName ?? '',
+        branchName: student.branch?.name ?? student.user.branchName ?? "",
         currentYear: student.currentYear,
         currentSemester: student.currentSemester,
 
         // Institution info
-        institutionName: student.Institution?.name ?? '',
-        institutionShortName: student.Institution?.shortName ?? '',
+        institutionName: student.Institution?.name ?? "",
+        institutionShortName: student.Institution?.shortName ?? "",
 
         // Mentor info
         mentorName,
@@ -652,34 +701,39 @@ export class ReportGeneratorService {
       },
       take,
       skip,
-      orderBy: { submittedAt: 'desc' },
+      orderBy: { submittedAt: "desc" },
     });
 
-    this.warnOnLargeResultSet(interests.length, 'StudentPlacementInterestPpoReport');
+    this.warnOnLargeResultSet(
+      interests.length,
+      "StudentPlacementInterestPpoReport",
+    );
 
     return interests.map((interest) => ({
-      studentName: interest.student?.user?.name ?? 'N/A',
-      rollNumber: interest.student?.user?.rollNumber ?? 'N/A',
-      institutionName: interest.student?.Institution?.name ?? 'N/A',
-      institutionShortName: interest.student?.Institution?.shortName ?? 'N/A',
-      branchName: interest.student?.branch?.name ?? 'N/A',
+      studentName: interest.student?.user?.name ?? "N/A",
+      rollNumber: interest.student?.user?.rollNumber ?? "N/A",
+      institutionName: interest.student?.Institution?.name ?? "N/A",
+      institutionShortName: interest.student?.Institution?.shortName ?? "N/A",
+      branchName: interest.student?.branch?.name ?? "N/A",
 
-      planAfterDiploma: interest.planAfterDiploma ?? 'N/A',
-      interestedForPrivateJob: interest.interestedForPrivateJob ?? 'N/A',
-      expectedSalary: interest.expectedSalary ?? 'N/A',
+      planAfterDiploma: interest.planAfterDiploma ?? "N/A",
+      interestedForPrivateJob: interest.interestedForPrivateJob ?? "N/A",
+      expectedSalary: interest.expectedSalary ?? "N/A",
 
-      prePlacementOfferReceived: interest.student?.prePlacementOfferReceived ?? false,
-      prePlacementOfferCompany: interest.student?.prePlacementOfferCompany ?? 'N/A',
+      prePlacementOfferReceived:
+        interest.student?.prePlacementOfferReceived ?? false,
+      prePlacementOfferCompany:
+        interest.student?.prePlacementOfferCompany ?? "N/A",
       prePlacementOfferMarkedAt: interest.student?.prePlacementOfferMarkedAt
         ? this.formatToIST(interest.student.prePlacementOfferMarkedAt)
-        : 'N/A',
+        : "N/A",
 
       interestSubmittedAt: interest.submittedAt
         ? this.formatToIST(interest.submittedAt)
-        : 'N/A',
+        : "N/A",
       interestUpdatedAt: interest.updatedAt
         ? this.formatToIST(interest.updatedAt)
-        : 'N/A',
+        : "N/A",
 
       isActive: interest.student?.user?.active ?? false,
       userActive: interest.student?.user?.active ?? false,
@@ -719,7 +773,7 @@ export class ReportGeneratorService {
     // Handle institution name filter (text search)
     if (filters?.institutionName) {
       studentWhere.institution = {
-        name: { contains: filters.institutionName, mode: 'insensitive' },
+        name: { contains: filters.institutionName, mode: "insensitive" },
       };
     }
 
@@ -758,12 +812,32 @@ export class ReportGeneratorService {
       if (filters.startDate) {
         // Parse date and create UTC start of day
         const startDate = new Date(filters.startDate);
-        dateFilter.gte = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate(), 0, 0, 0, 0));
+        dateFilter.gte = new Date(
+          Date.UTC(
+            startDate.getUTCFullYear(),
+            startDate.getUTCMonth(),
+            startDate.getUTCDate(),
+            0,
+            0,
+            0,
+            0,
+          ),
+        );
       }
       if (filters.endDate) {
         // Parse date and create UTC end of day
         const endDate = new Date(filters.endDate);
-        dateFilter.lte = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate(), 23, 59, 59, 999));
+        dateFilter.lte = new Date(
+          Date.UTC(
+            endDate.getUTCFullYear(),
+            endDate.getUTCMonth(),
+            endDate.getUTCDate(),
+            23,
+            59,
+            59,
+            999,
+          ),
+        );
       }
       // Apply to createdAt (which has actual application date from migrated data)
       where.createdAt = dateFilter;
@@ -772,15 +846,24 @@ export class ReportGeneratorService {
     // Handle internship start date range filter (for self-identified internships)
     // This filters by the actual internship start date, not the application date
     // Note: Frontend sends startDateRange: [start, end], processor transforms to startDateStart/startDateEnd
-    this.logger.log(`[InternshipReport] Checking startDate filters - startDateStart: ${filters?.startDateStart}, startDateEnd: ${filters?.startDateEnd}, startDateRange: ${JSON.stringify(filters?.startDateRange)}`);
+    this.logger.log(
+      `[InternshipReport] Checking startDate filters - startDateStart: ${filters?.startDateStart}, startDateEnd: ${filters?.startDateEnd}, startDateRange: ${JSON.stringify(filters?.startDateRange)}`,
+    );
 
     // Also check for startDateRange array format (in case transformation didn't happen)
     let startDateStartValue = filters?.startDateStart;
     let startDateEndValue = filters?.startDateEnd;
 
     // Handle case where startDateRange array is passed directly
-    if (!startDateStartValue && !startDateEndValue && Array.isArray(filters?.startDateRange) && filters.startDateRange.length === 2) {
-      this.logger.log(`[InternshipReport] Found startDateRange array, transforming inline`);
+    if (
+      !startDateStartValue &&
+      !startDateEndValue &&
+      Array.isArray(filters?.startDateRange) &&
+      filters.startDateRange.length === 2
+    ) {
+      this.logger.log(
+        `[InternshipReport] Found startDateRange array, transforming inline`,
+      );
       startDateStartValue = filters.startDateRange[0];
       startDateEndValue = filters.startDateRange[1];
     }
@@ -790,7 +873,9 @@ export class ReportGeneratorService {
       if (startDateStartValue) {
         // Parse ISO date string and use it directly (dates are stored in UTC)
         startDateFilter.gte = new Date(startDateStartValue);
-        this.logger.log(`[InternshipReport] Applied startDate >= ${startDateFilter.gte}`);
+        this.logger.log(
+          `[InternshipReport] Applied startDate >= ${startDateFilter.gte}`,
+        );
       }
       if (startDateEndValue) {
         // Parse ISO date string and set to end of day in UTC
@@ -798,11 +883,15 @@ export class ReportGeneratorService {
         // Set to end of the day (23:59:59.999)
         endDate.setUTCHours(23, 59, 59, 999);
         startDateFilter.lte = endDate;
-        this.logger.log(`[InternshipReport] Applied startDate <= ${startDateFilter.lte}`);
+        this.logger.log(
+          `[InternshipReport] Applied startDate <= ${startDateFilter.lte}`,
+        );
       }
       // Apply to startDate field (internship start date)
       where.startDate = startDateFilter;
-      this.logger.log(`[InternshipReport] Final startDate filter applied to where clause`);
+      this.logger.log(
+        `[InternshipReport] Final startDate filter applied to where clause`,
+      );
     }
 
     const applications = await this.prisma.internshipApplication.findMany({
@@ -814,62 +903,78 @@ export class ReportGeneratorService {
             gender: true,
             Institution: { select: { id: true, name: true, code: true } },
             branch: { select: { id: true, name: true } },
-            user: { select: { name: true, rollNumber: true, branchName: true, active: true, phoneNo: true, email: true } },
+            user: {
+              select: {
+                name: true,
+                rollNumber: true,
+                branchName: true,
+                active: true,
+                phoneNo: true,
+                email: true,
+              },
+            },
             mentorAssignments: {
               where: { isActive: true },
-              include: { mentor: { select: { name: true, email: true, phoneNo: true } } },
+              include: {
+                mentor: { select: { name: true, email: true, phoneNo: true } },
+              },
               take: 1,
             },
           },
         },
-        mentor: { select: { id: true, name: true, email: true, phoneNo: true } },
+        mentor: {
+          select: { id: true, name: true, email: true, phoneNo: true },
+        },
         _count: { select: { monthlyReports: true } },
       },
       take,
       skip,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
-    this.warnOnLargeResultSet(applications.length, 'InternshipReport');
+    this.warnOnLargeResultSet(applications.length, "InternshipReport");
 
     return applications.map((application) => {
       // Parse city from companyAddress (e.g., "123 Street, City, State" -> "City")
-      let companyCity = '';
+      let companyCity = "";
       if (application.companyAddress) {
-        const addressParts = application.companyAddress.split(',').map(part => part.trim());
+        const addressParts = application.companyAddress
+          .split(",")
+          .map((part) => part.trim());
         // Assume city is the second-to-last part or second part
         if (addressParts.length >= 2) {
-          companyCity = addressParts[1] || '';
+          companyCity = addressParts[1] || "";
         }
       }
 
       // Get mentor name from application's direct mentor or from student's mentor assignment
-      const mentorName = application.mentor?.name
-        ?? application.student.mentorAssignments?.[0]?.mentor?.name
-        ?? 'N/A';
+      const mentorName =
+        application.mentor?.name ??
+        application.student.mentorAssignments?.[0]?.mentor?.name ??
+        "N/A";
 
       // Determine internship status (same logic as student directory report)
-      let internshipStatus = 'Not Started';
+      let internshipStatus = "Not Started";
       switch (application.status) {
-        case 'COMPLETED':
-          internshipStatus = 'Completed';
+        case "COMPLETED":
+          internshipStatus = "Completed";
           break;
-        case 'JOINED':
-        case 'APPROVED':
-        case 'SELECTED':
-          internshipStatus = 'In Progress';
+        case "JOINED":
+        case "APPROVED":
+        case "SELECTED":
+          internshipStatus = "In Progress";
           break;
-        case 'APPLIED':
-        case 'UNDER_REVIEW':
-        case 'SHORTLISTED':
-          internshipStatus = 'Applied';
+        case "APPLIED":
+        case "UNDER_REVIEW":
+        case "SHORTLISTED":
+          internshipStatus = "Applied";
           break;
-        case 'REJECTED':
-        case 'WITHDRAWN':
-          internshipStatus = 'Not Active';
+        case "REJECTED":
+        case "WITHDRAWN":
+          internshipStatus = "Not Active";
           break;
         default:
-          internshipStatus = application.status ?? 'Unknown';
+          internshipStatus = application.status ?? "Unknown";
       }
 
       // Calculate application fill rate for self-identified internships
@@ -885,75 +990,100 @@ export class ReportGeneratorService {
         application.endDate,
         application.stipend,
       ];
-      const filledFieldsCount = requiredFields.filter(field => field !== null && field !== undefined && field !== '').length;
-      const applicationFillRate = Math.round((filledFieldsCount / requiredFields.length) * 100);
+      const filledFieldsCount = requiredFields.filter(
+        (field) => field !== null && field !== undefined && field !== "",
+      ).length;
+      const applicationFillRate = Math.round(
+        (filledFieldsCount / requiredFields.length) * 100,
+      );
 
       // Parse stipend (stored as String in DB) to number
-      const stipendValue = application.stipend ? parseFloat(application.stipend) : 0;
+      const stipendValue = application.stipend
+        ? parseFloat(application.stipend)
+        : 0;
 
       // Parse duration (stored as String in DB) - extract numeric value
-      let durationValue = 'N/A';
+      let durationValue = "N/A";
       if (application.internshipDuration) {
         // Try to extract number from string like "8 weeks" or "2 months" or just "8"
         const durationMatch = application.internshipDuration.match(/\d+/);
-        durationValue = durationMatch ? durationMatch[0] : application.internshipDuration;
+        durationValue = durationMatch
+          ? durationMatch[0]
+          : application.internshipDuration;
       }
 
       // Map internship phase to readable verification status
-      let verificationStatus = 'N/A';
+      let verificationStatus = "N/A";
       switch (application.internshipPhase) {
-        case 'NOT_STARTED':
-          verificationStatus = 'Pending';
+        case "NOT_STARTED":
+          verificationStatus = "Pending";
           break;
-        case 'ACTIVE':
-          verificationStatus = 'Verified';
+        case "ACTIVE":
+          verificationStatus = "Verified";
           break;
-        case 'COMPLETED':
-          verificationStatus = 'Completed';
+        case "COMPLETED":
+          verificationStatus = "Completed";
           break;
-        case 'TERMINATED':
-          verificationStatus = 'Terminated';
+        case "TERMINATED":
+          verificationStatus = "Terminated";
           break;
         default:
-          verificationStatus = application.internshipPhase ?? 'N/A';
+          verificationStatus = application.internshipPhase ?? "N/A";
       }
 
       return {
-        studentName: application.student.user?.name ?? 'N/A',
-        rollNumber: application.student.user?.rollNumber ?? 'N/A',
-        gender: application.student.gender ?? 'N/A',
-        phoneNumber: application.student.user?.phoneNo ?? 'N/A',
-        email: application.student.user?.email ?? 'N/A',
-        branchName: application.student.branch?.name ?? application.student.user?.branchName ?? 'N/A',
-        institutionName: application.student.Institution?.name ?? 'N/A',
-        institutionCode: application.student.Institution?.code ?? 'N/A',
-        companyName: application.companyName ?? 'N/A',
+        studentName: application.student.user?.name ?? "N/A",
+        rollNumber: application.student.user?.rollNumber ?? "N/A",
+        gender: application.student.gender ?? "N/A",
+        phoneNumber: application.student.user?.phoneNo ?? "N/A",
+        email: application.student.user?.email ?? "N/A",
+        branchName:
+          application.student.branch?.name ??
+          application.student.user?.branchName ??
+          "N/A",
+        institutionName: application.student.Institution?.name ?? "N/A",
+        institutionCode: application.student.Institution?.code ?? "N/A",
+        companyName: application.companyName ?? "N/A",
         companyCity,
-        companyAddress: application.companyAddress ?? 'N/A',
-        companyContact: application.companyContact ?? 'N/A',
-        companyEmail: application.companyEmail ?? 'N/A',
-        hrName: application.hrName ?? 'N/A',
-        hrDesignation: application.hrDesignation ?? 'N/A',
-        hrContact: application.hrContact ?? 'N/A',
-        hrEmail: application.hrEmail ?? 'N/A',
-        jobProfile: application.jobProfile ?? 'N/A',
+        companyAddress: application.companyAddress ?? "N/A",
+        companyContact: application.companyContact ?? "N/A",
+        companyEmail: application.companyEmail ?? "N/A",
+        hrName: application.hrName ?? "N/A",
+        hrDesignation: application.hrDesignation ?? "N/A",
+        hrContact: application.hrContact ?? "N/A",
+        hrEmail: application.hrEmail ?? "N/A",
+        jobProfile: application.jobProfile ?? "N/A",
         stipend: stipendValue,
         // Use createdAt as the applied date since it's properly migrated from source data
         // (appliedDate and applicationDate both default to migration timestamp)
-        appliedDate: application.createdAt ? this.formatToIST(application.createdAt) : 'N/A',
-        startDate: application.startDate ? this.formatToISTDateOnly(application.startDate) : 'N/A',
-        endDate: application.endDate ? this.formatToISTDateOnly(application.endDate) : 'N/A',
+        appliedDate: application.createdAt
+          ? this.formatToIST(application.createdAt)
+          : "N/A",
+        startDate: application.startDate
+          ? this.formatToISTDateOnly(application.startDate)
+          : "N/A",
+        endDate: application.endDate
+          ? this.formatToISTDateOnly(application.endDate)
+          : "N/A",
         duration: durationValue,
-        status: application.status ?? 'N/A',
+        status: application.status ?? "N/A",
         internshipStatus,
         verificationStatus,
         mentorName,
-        mentorEmail: application.mentor?.email ?? application.student.mentorAssignments?.[0]?.mentor?.email ?? 'N/A',
-        mentorPhone: application.mentor?.phoneNo ?? application.student.mentorAssignments?.[0]?.mentor?.phoneNo ?? 'N/A',
+        mentorEmail:
+          application.mentor?.email ??
+          application.student.mentorAssignments?.[0]?.mentor?.email ??
+          "N/A",
+        mentorPhone:
+          application.mentor?.phoneNo ??
+          application.student.mentorAssignments?.[0]?.mentor?.phoneNo ??
+          "N/A",
         applicationFillRate,
-        joiningLetterStatus: application.joiningLetterUrl ? 'Submitted' : 'Pending',
+        joiningLetterStatus: application.joiningLetterUrl
+          ? "Submitted"
+          : "Pending",
         reportsSubmitted: application._count.monthlyReports ?? 0,
-        location: application.companyAddress ?? 'N/A',
+        location: application.companyAddress ?? "N/A",
         isSelfIdentified: application.isSelfIdentified ?? false,
         isActive: application.student.user?.active ?? false,
         userActive: application.student.user?.active ?? true,
@@ -970,7 +1100,10 @@ export class ReportGeneratorService {
     filters: any,
     pagination?: ReportPaginationOptions,
   ): Promise<any[]> {
-    const where: Record<string, unknown> = { isDeleted: false, status: 'COMPLETED' };
+    const where: Record<string, unknown> = {
+      isDeleted: false,
+      status: "COMPLETED",
+    };
     const { take, skip } = this.getPaginationParams(pagination);
 
     // Build student filter with active checks
@@ -1016,24 +1149,62 @@ export class ReportGeneratorService {
       const dateFilter: Record<string, unknown> = {};
       if (filters.startDate) {
         const startDate = new Date(filters.startDate);
-        dateFilter.gte = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate(), 0, 0, 0, 0));
+        dateFilter.gte = new Date(
+          Date.UTC(
+            startDate.getUTCFullYear(),
+            startDate.getUTCMonth(),
+            startDate.getUTCDate(),
+            0,
+            0,
+            0,
+            0,
+          ),
+        );
       }
       if (filters.endDate) {
         const endDate = new Date(filters.endDate);
-        dateFilter.lte = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate(), 23, 59, 59, 999));
+        dateFilter.lte = new Date(
+          Date.UTC(
+            endDate.getUTCFullYear(),
+            endDate.getUTCMonth(),
+            endDate.getUTCDate(),
+            23,
+            59,
+            59,
+            999,
+          ),
+        );
       }
       where.visitDate = dateFilter;
     }
 
     // Support direct month/year filtering for report builders using month selectors.
     if (filters?.month || filters?.year) {
-      const resolvedYear = filters?.year ? Number(filters.year) : new Date().getFullYear();
+      const resolvedYear = filters?.year
+        ? Number(filters.year)
+        : new Date().getFullYear();
       const dateFilter: Record<string, unknown> = {};
 
       if (filters?.month) {
         const resolvedMonth = Number(filters.month);
-        dateFilter.gte = new Date(resolvedYear, resolvedMonth - 1, 1, 0, 0, 0, 0);
-        dateFilter.lte = new Date(resolvedYear, resolvedMonth, 0, 23, 59, 59, 999);
+        dateFilter.gte = new Date(
+          resolvedYear,
+          resolvedMonth - 1,
+          1,
+          0,
+          0,
+          0,
+          0,
+        );
+        dateFilter.lte = new Date(
+          resolvedYear,
+          resolvedMonth,
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
       } else {
         dateFilter.gte = new Date(resolvedYear, 0, 1, 0, 0, 0, 0);
         dateFilter.lte = new Date(resolvedYear, 11, 31, 23, 59, 59, 999);
@@ -1056,21 +1227,30 @@ export class ReportGeneratorService {
     const visits = await this.prisma.facultyVisitLog.findMany({
       where,
       include: {
-        faculty: { select: { id: true, name: true, designation: true, active: true } },
+        faculty: {
+          select: { id: true, name: true, designation: true, active: true },
+        },
         application: {
           select: {
             id: true,
             companyName: true,
-            student: { select: { id: true, user: { select: { name: true, rollNumber: true, active: true } } } },
+            student: {
+              select: {
+                id: true,
+                user: {
+                  select: { name: true, rollNumber: true, active: true },
+                },
+              },
+            },
           },
         },
       },
       take,
       skip,
-      orderBy: { visitDate: 'desc' },
+      orderBy: { visitDate: "desc" },
     });
 
-    this.warnOnLargeResultSet(visits.length, 'FacultyVisitReport');
+    this.warnOnLargeResultSet(visits.length, "FacultyVisitReport");
 
     return visits.map((visit) => ({
       facultyName: visit.faculty.name,
@@ -1152,18 +1332,21 @@ export class ReportGeneratorService {
       },
       take,
       skip,
-      orderBy: [{ reportYear: 'desc' }, { reportMonth: 'desc' }],
+      orderBy: [{ reportYear: "desc" }, { reportMonth: "desc" }],
     });
 
-    this.warnOnLargeResultSet(reports.length, 'MonthlyReport');
+    this.warnOnLargeResultSet(reports.length, "MonthlyReport");
 
     return reports.map((report) => ({
       studentName: report.student.user?.name,
       rollNumber: report.student.user?.rollNumber,
-      companyName: report.application.companyName ?? '',
+      companyName: report.application.companyName ?? "",
       month: report.reportMonth,
       year: report.reportYear,
-      reportMonth: this.formatReportMonth(report.reportMonth, report.reportYear),
+      reportMonth: this.formatReportMonth(
+        report.reportMonth,
+        report.reportYear,
+      ),
       status: report.status,
       submittedAt: this.formatToIST(report.submittedAt),
       reportFileUrl: report.reportFileUrl,
@@ -1192,7 +1375,7 @@ export class ReportGeneratorService {
     const institutionId = filters.institutionId;
 
     if (!institutionId) {
-      throw new Error('Institution ID is required');
+      throw new Error("Institution ID is required");
     }
 
     const [
@@ -1225,7 +1408,7 @@ export class ReportGeneratorService {
         where: {
           isActive: true,
           isSelfIdentified: true,
-          internshipPhase: 'ACTIVE' as any,
+          internshipPhase: "ACTIVE" as any,
           student: { institutionId, user: { active: true } },
         },
       }),
@@ -1233,7 +1416,7 @@ export class ReportGeneratorService {
         where: {
           isActive: true,
           isSelfIdentified: true,
-          internshipPhase: 'COMPLETED' as any,
+          internshipPhase: "COMPLETED" as any,
           student: { institutionId, user: { active: true } },
         },
       }),
@@ -1262,49 +1445,49 @@ export class ReportGeneratorService {
 
     return [
       {
-        metric: 'Total Students',
+        metric: "Total Students",
         value: totalStudents,
-        category: 'Students',
+        category: "Students",
       },
       {
-        metric: 'Total Faculty',
+        metric: "Total Faculty",
         value: totalFaculty,
-        category: 'Faculty',
+        category: "Faculty",
       },
       {
-        metric: 'Active Internships',
+        metric: "Active Internships",
         value: activeInternships,
-        category: 'Internships',
+        category: "Internships",
       },
       {
-        metric: 'Completed Internships',
+        metric: "Completed Internships",
         value: completedInternships,
-        category: 'Internships',
+        category: "Internships",
       },
       {
-        metric: 'Total Applications',
+        metric: "Total Applications",
         value: totalApplications,
-        category: 'Internships',
+        category: "Internships",
       },
       {
-        metric: 'Total Placements',
+        metric: "Total Placements",
         value: totalPlacements,
-        category: 'Placements',
+        category: "Placements",
       },
       {
-        metric: 'Average Placement Salary',
+        metric: "Average Placement Salary",
         value: (avgPlacementSalary as any)._avg?.salary || 0,
-        category: 'Placements',
+        category: "Placements",
       },
       {
-        metric: 'Total Branches',
+        metric: "Total Branches",
         value: branches.length,
-        category: 'Academic',
+        category: "Academic",
       },
       ...branches.map((branch) => ({
         metric: `${branch.name} - Students`,
         value: branch._count.students,
-        category: 'Branch',
+        category: "Branch",
       })),
     ];
   }
@@ -1343,7 +1526,14 @@ export class ReportGeneratorService {
     const students = await this.prisma.student.findMany({
       where,
       include: {
-        user: { select: { name: true, rollNumber: true, branchName: true, active: true } },
+        user: {
+          select: {
+            name: true,
+            rollNumber: true,
+            branchName: true,
+            active: true,
+          },
+        },
         branch: { select: { name: true } },
         Institution: { select: { name: true } },
         internshipApplications: {
@@ -1354,7 +1544,7 @@ export class ReportGeneratorService {
             mentor: { select: { name: true, active: true } },
             monthlyReports: {
               select: { status: true, submittedAt: true },
-              orderBy: { submittedAt: 'desc' },
+              orderBy: { submittedAt: "desc" },
             },
           },
         },
@@ -1364,16 +1554,16 @@ export class ReportGeneratorService {
           select: {
             mentor: { select: { id: true, name: true } },
           },
-          orderBy: { assignmentDate: 'desc' },
+          orderBy: { assignmentDate: "desc" },
           take: 1, // Get current mentor
         },
       },
       take,
       skip,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
-    this.warnOnLargeResultSet(students.length, 'StudentComplianceReport');
+    this.warnOnLargeResultSet(students.length, "StudentComplianceReport");
 
     const results = students.map((student) => {
       const allApplications = student.internshipApplications;
@@ -1381,16 +1571,33 @@ export class ReportGeneratorService {
 
       // Filter to approved/selected applications for compliance tracking
       const activeApplications = allApplications.filter(
-        (app) => app.status === 'APPROVED' || app.status === 'SELECTED' || app.status === 'JOINED'
+        (app) =>
+          app.status === "APPROVED" ||
+          app.status === "SELECTED" ||
+          app.status === "JOINED",
       );
 
-      const allReports = activeApplications.flatMap((app) => app.monthlyReports);
-      const submittedReports = allReports.filter((r) => r.status === MonthlyReportStatus.APPROVED || r.status === MonthlyReportStatus.SUBMITTED);
-      const pendingReports = allReports.filter((r) => r.status === MonthlyReportStatus.DRAFT || r.status === MonthlyReportStatus.UNDER_REVIEW || r.status === MonthlyReportStatus.REVISION_REQUIRED);
+      const allReports = activeApplications.flatMap(
+        (app) => app.monthlyReports,
+      );
+      const submittedReports = allReports.filter(
+        (r) =>
+          r.status === MonthlyReportStatus.APPROVED ||
+          r.status === MonthlyReportStatus.SUBMITTED,
+      );
+      const pendingReports = allReports.filter(
+        (r) =>
+          r.status === MonthlyReportStatus.DRAFT ||
+          r.status === MonthlyReportStatus.UNDER_REVIEW ||
+          r.status === MonthlyReportStatus.REVISION_REQUIRED,
+      );
 
       // Calculate expected reports (assume 1 per month of active internship)
       const expectedReports = Math.max(activeApplications.length * 3, 1); // At least 3 months expected
-      const complianceScore = expectedReports > 0 ? Math.round((submittedReports.length / expectedReports) * 100) : 0;
+      const complianceScore =
+        expectedReports > 0
+          ? Math.round((submittedReports.length / expectedReports) * 100)
+          : 0;
 
       const lastReport = allReports[0];
 
@@ -1399,34 +1606,36 @@ export class ReportGeneratorService {
         student.mentorAssignments?.[0]?.mentor?.name ??
         activeApplications[0]?.mentor?.name ??
         allApplications[0]?.mentor?.name ??
-        'Not Assigned';
+        "Not Assigned";
 
       // Determine joining report status based on joiningLetterUrl
-      let joiningReportStatus = 'No Internship';
+      let joiningReportStatus = "No Internship";
       if (hasInternship) {
-        const hasJoiningLetter = activeApplications.some((app) => app.joiningLetterUrl);
+        const hasJoiningLetter = activeApplications.some(
+          (app) => app.joiningLetterUrl,
+        );
         if (hasJoiningLetter) {
-          joiningReportStatus = 'Submitted';
+          joiningReportStatus = "Submitted";
         } else if (activeApplications.length > 0) {
-          joiningReportStatus = 'Pending';
+          joiningReportStatus = "Pending";
         } else {
-          joiningReportStatus = 'Not Started';
+          joiningReportStatus = "Not Started";
         }
       }
 
       // Determine compliance level
-      let complianceLevel = 'low';
-      if (complianceScore >= 80) complianceLevel = 'high';
-      else if (complianceScore >= 50) complianceLevel = 'medium';
+      let complianceLevel = "low";
+      if (complianceScore >= 80) complianceLevel = "high";
+      else if (complianceScore >= 50) complianceLevel = "medium";
 
       return {
         rollNumber: student.user?.rollNumber,
         name: student.user?.name,
-        gender: student.gender ?? 'N/A',
+        gender: student.gender ?? "N/A",
         branchName: student.branch?.name ?? student.user?.branchName,
-        institutionName: student.Institution?.name ?? 'N/A',
+        institutionName: student.Institution?.name ?? "N/A",
         mentorName,
-        hasInternship: hasInternship ? 'Yes' : 'No',
+        hasInternship: hasInternship ? "Yes" : "No",
         joiningReportStatus,
         monthlyReportsSubmitted: submittedReports.length,
         monthlyReportsPending: pendingReports.length,
@@ -1440,7 +1649,6 @@ export class ReportGeneratorService {
 
     return results;
   }
-
 
   /**
    * Generate Students Without Internship Report
@@ -1509,16 +1717,19 @@ export class ReportGeneratorService {
           select: {
             mentor: { select: { id: true, name: true } },
           },
-          orderBy: { assignmentDate: 'desc' },
+          orderBy: { assignmentDate: "desc" },
           take: 1,
         },
       },
       take,
       skip,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
-    this.warnOnLargeResultSet(students.length, 'StudentsWithoutInternshipReport');
+    this.warnOnLargeResultSet(
+      students.length,
+      "StudentsWithoutInternshipReport",
+    );
 
     // Apply mentor filter if specified
     let filteredStudents = students;
@@ -1530,17 +1741,18 @@ export class ReportGeneratorService {
     }
 
     return filteredStudents.map((student) => {
-      const mentorName = student.mentorAssignments[0]?.mentor?.name ?? 'Not Assigned';
+      const mentorName =
+        student.mentorAssignments[0]?.mentor?.name ?? "Not Assigned";
 
       return {
         rollNumber: student.user.rollNumber,
         name: student.user.name,
-        email: student.user.email ?? '',
-        phoneNumber: student.user.phoneNo ?? '',
-        branchName: student.branch?.name ?? student.user.branchName ?? '',
+        email: student.user.email ?? "",
+        phoneNumber: student.user.phoneNo ?? "",
+        branchName: student.branch?.name ?? student.user.branchName ?? "",
         currentYear: student.currentYear,
         currentSemester: student.currentSemester,
-        institutionName: student.Institution?.name ?? '',
+        institutionName: student.Institution?.name ?? "",
         mentorName,
         isActive: student.user?.active ?? false,
         createdAt: this.formatToIST(student.createdAt),
@@ -1574,16 +1786,16 @@ export class ReportGeneratorService {
     }
 
     // Handle login status filter
-    if (filters?.loginStatus === 'logged_in') {
+    if (filters?.loginStatus === "logged_in") {
       where.loginCount = { gt: 0 };
-    } else if (filters?.loginStatus === 'never_logged_in') {
+    } else if (filters?.loginStatus === "never_logged_in") {
       where.loginCount = 0;
     }
 
     // Handle password status filter
-    if (filters?.passwordStatus === 'changed') {
+    if (filters?.passwordStatus === "changed") {
       where.hasChangedDefaultPassword = true;
-    } else if (filters?.passwordStatus === 'default') {
+    } else if (filters?.passwordStatus === "default") {
       where.hasChangedDefaultPassword = false;
     }
 
@@ -1591,21 +1803,33 @@ export class ReportGeneratorService {
     if (filters?.activityStatus) {
       const now = new Date();
       switch (filters.activityStatus) {
-        case 'active_7':
-          where.lastLoginAt = { gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) };
+        case "active_7":
+          where.lastLoginAt = {
+            gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+          };
           break;
-        case 'active_30':
-          where.lastLoginAt = { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) };
+        case "active_30":
+          where.lastLoginAt = {
+            gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+          };
           break;
-        case 'inactive_30':
+        case "inactive_30":
           where.OR = [
-            { lastLoginAt: { lt: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) } },
+            {
+              lastLoginAt: {
+                lt: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+              },
+            },
             { lastLoginAt: null },
           ];
           break;
-        case 'inactive_90':
+        case "inactive_90":
           where.OR = [
-            { lastLoginAt: { lt: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000) } },
+            {
+              lastLoginAt: {
+                lt: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
+              },
+            },
             { lastLoginAt: null },
           ];
           break;
@@ -1619,17 +1843,14 @@ export class ReportGeneratorService {
       // For students, also check that Student record exists
       if (accountActive === true) {
         const activeAccountOr = [
-          { role: { not: 'STUDENT' } }, // Non-students just need User.active
-          { role: 'STUDENT', Student: { isNot: null } }, // Students need User.active AND Student record
+          { role: { not: "STUDENT" } }, // Non-students just need User.active
+          { role: "STUDENT", Student: { isNot: null } }, // Students need User.active AND Student record
         ];
 
         if (where.OR) {
           const existingOr = where.OR;
           delete where.OR;
-          where.AND = [
-            { OR: existingOr },
-            { OR: activeAccountOr },
-          ];
+          where.AND = [{ OR: existingOr }, { OR: activeAccountOr }];
         } else {
           where.OR = activeAccountOr;
         }
@@ -1649,38 +1870,45 @@ export class ReportGeneratorService {
       },
       take,
       skip,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
-    this.warnOnLargeResultSet(users.length, 'UserLoginActivityReport');
+    this.warnOnLargeResultSet(users.length, "UserLoginActivityReport");
 
     const now = new Date();
 
     return users.map((user) => {
-      const daysSinceCreation = Math.floor((now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+      const daysSinceCreation = Math.floor(
+        (now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24),
+      );
       const daysSinceLastLogin = user.lastLoginAt
-        ? Math.floor((now.getTime() - user.lastLoginAt.getTime()) / (1000 * 60 * 60 * 24))
+        ? Math.floor(
+            (now.getTime() - user.lastLoginAt.getTime()) /
+              (1000 * 60 * 60 * 24),
+          )
         : null;
 
-      let status = 'Never Logged In';
+      let status = "Never Logged In";
       if (user.loginCount > 0) {
         if (daysSinceLastLogin !== null && daysSinceLastLogin <= 7) {
-          status = 'Active';
+          status = "Active";
         } else if (daysSinceLastLogin !== null && daysSinceLastLogin <= 30) {
-          status = 'Recently Active';
+          status = "Recently Active";
         } else {
-          status = 'Inactive';
+          status = "Inactive";
         }
       }
 
       // For students: check User.active AND Student record exists
       // For non-students: only check User.active
       const userActive = user.active;
-      const studentActive = user.role === 'STUDENT' ? ((user as any).Student ? true : false) : null;
+      const studentActive =
+        user.role === "STUDENT" ? ((user as any).Student ? true : false) : null;
       // isActive is true only when BOTH conditions are met (for students)
-      const isActive = user.role === 'STUDENT'
-        ? (userActive && studentActive === true)
-        : userActive;
+      const isActive =
+        user.role === "STUDENT"
+          ? userActive && studentActive === true
+          : userActive;
 
       return {
         userId: user.id,
@@ -1688,8 +1916,8 @@ export class ReportGeneratorService {
         email: user.email,
         phoneNo: user.phoneNo,
         role: user.role,
-        isMentor: user.mentorAssignments.length > 0 ? 'Yes' : 'No',
-        institutionName: user.Institution?.name ?? 'N/A',
+        isMentor: user.mentorAssignments.length > 0 ? "Yes" : "No",
+        institutionName: user.Institution?.name ?? "N/A",
         rollNumber: user.rollNumber,
         designation: user.designation,
         accountCreatedAt: this.formatToIST(user.createdAt),
@@ -1738,16 +1966,16 @@ export class ReportGeneratorService {
       userFilter.active = accountActive;
       if (accountActive === true) {
         userFilter.OR = [
-          { role: { not: 'STUDENT' } },
-          { role: 'STUDENT', Student: { isNot: null } },
+          { role: { not: "STUDENT" } },
+          { role: "STUDENT", Student: { isNot: null } },
         ];
       }
     } else {
       // Default to active users only
       userFilter.active = true;
       userFilter.OR = [
-        { role: { not: 'STUDENT' } },
-        { role: 'STUDENT', Student: { isNot: null } },
+        { role: { not: "STUDENT" } },
+        { role: "STUDENT", Student: { isNot: null } },
       ];
     }
 
@@ -1757,12 +1985,12 @@ export class ReportGeneratorService {
 
     // Handle session status filter
     const now = new Date();
-    if (filters?.sessionStatus === 'active') {
+    if (filters?.sessionStatus === "active") {
       where.expiresAt = { gt: now };
       where.invalidatedAt = null;
-    } else if (filters?.sessionStatus === 'expired') {
+    } else if (filters?.sessionStatus === "expired") {
       where.expiresAt = { lt: now };
-    } else if (filters?.sessionStatus === 'invalidated') {
+    } else if (filters?.sessionStatus === "invalidated") {
       where.invalidatedAt = { not: null };
     }
 
@@ -1772,11 +2000,31 @@ export class ReportGeneratorService {
       const dateFilter: Record<string, unknown> = {};
       if (filters.startDate) {
         const startDate = new Date(filters.startDate);
-        dateFilter.gte = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate(), 0, 0, 0, 0));
+        dateFilter.gte = new Date(
+          Date.UTC(
+            startDate.getUTCFullYear(),
+            startDate.getUTCMonth(),
+            startDate.getUTCDate(),
+            0,
+            0,
+            0,
+            0,
+          ),
+        );
       }
       if (filters.endDate) {
         const endDate = new Date(filters.endDate);
-        dateFilter.lte = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate(), 23, 59, 59, 999));
+        dateFilter.lte = new Date(
+          Date.UTC(
+            endDate.getUTCFullYear(),
+            endDate.getUTCMonth(),
+            endDate.getUTCDate(),
+            23,
+            59,
+            59,
+            999,
+          ),
+        );
       }
       where.createdAt = dateFilter;
     }
@@ -1798,32 +2046,37 @@ export class ReportGeneratorService {
       },
       take,
       skip,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
-    this.warnOnLargeResultSet(sessions.length, 'UserSessionHistoryReport');
+    this.warnOnLargeResultSet(sessions.length, "UserSessionHistoryReport");
 
     return sessions.map((session) => {
       const sessionDuration = Math.floor(
-        (session.lastActivityAt.getTime() - session.createdAt.getTime()) / (1000 * 60)
+        (session.lastActivityAt.getTime() - session.createdAt.getTime()) /
+          (1000 * 60),
       );
       const isSessionActive = session.expiresAt > now && !session.invalidatedAt;
 
       // User active status
       const userActive = session.user.active;
-      const studentActive = session.user.role === 'STUDENT'
-        ? ((session.user as any).Student ? true : false)
-        : null;
-      const isUserActive = session.user.role === 'STUDENT'
-        ? (userActive && studentActive === true)
-        : userActive;
+      const studentActive =
+        session.user.role === "STUDENT"
+          ? (session.user as any).Student
+            ? true
+            : false
+          : null;
+      const isUserActive =
+        session.user.role === "STUDENT"
+          ? userActive && studentActive === true
+          : userActive;
 
       return {
         userId: session.userId,
         userName: session.user.name,
         email: session.user.email,
         role: session.user.role,
-        institutionName: session.user.Institution?.name ?? 'N/A',
+        institutionName: session.user.Institution?.name ?? "N/A",
         sessionStartedAt: this.formatToIST(session.createdAt),
         lastActivityAt: this.formatToIST(session.lastActivityAt),
         sessionDuration,
@@ -1863,16 +2116,16 @@ export class ReportGeneratorService {
       // For students, also filter by Student record existence when filtering for active users
       if (accountActive === true) {
         where.OR = [
-          { role: { not: 'STUDENT' } }, // Non-students just need User.active
-          { role: 'STUDENT', Student: { isNot: null } }, // Students need User.active AND Student record
+          { role: { not: "STUDENT" } }, // Non-students just need User.active
+          { role: "STUDENT", Student: { isNot: null } }, // Students need User.active AND Student record
         ];
       }
     } else {
       // Default to active users only (User.active AND Student record exists for students)
       where.active = true;
       where.OR = [
-        { role: { not: 'STUDENT' } },
-        { role: 'STUDENT', Student: { isNot: null } },
+        { role: { not: "STUDENT" } },
+        { role: "STUDENT", Student: { isNot: null } },
       ];
     }
 
@@ -1889,11 +2142,17 @@ export class ReportGeneratorService {
     }
 
     if (filters?.createdAfter) {
-      where.createdAt = { ...(where.createdAt as object || {}), gte: new Date(filters.createdAfter) };
+      where.createdAt = {
+        ...((where.createdAt as object) || {}),
+        gte: new Date(filters.createdAfter),
+      };
     }
 
     if (filters?.createdBefore) {
-      where.createdAt = { ...(where.createdAt as object || {}), lte: new Date(filters.createdBefore) };
+      where.createdAt = {
+        ...((where.createdAt as object) || {}),
+        lte: new Date(filters.createdBefore),
+      };
     }
 
     const users = await this.prisma.user.findMany({
@@ -1904,19 +2163,21 @@ export class ReportGeneratorService {
       },
       take,
       skip,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
-    this.warnOnLargeResultSet(users.length, 'NeverLoggedInUsersReport');
+    this.warnOnLargeResultSet(users.length, "NeverLoggedInUsersReport");
 
     const now = new Date();
 
     return users.map((user) => {
       const userActive = user.active;
-      const studentActive = user.role === 'STUDENT' ? ((user as any).Student ? true : false) : null;
-      const isActive = user.role === 'STUDENT'
-        ? (userActive && studentActive === true)
-        : userActive;
+      const studentActive =
+        user.role === "STUDENT" ? ((user as any).Student ? true : false) : null;
+      const isActive =
+        user.role === "STUDENT"
+          ? userActive && studentActive === true
+          : userActive;
 
       return {
         userId: user.id,
@@ -1924,10 +2185,12 @@ export class ReportGeneratorService {
         email: user.email,
         phoneNo: user.phoneNo,
         role: user.role,
-        institutionName: user.Institution?.name ?? 'N/A',
+        institutionName: user.Institution?.name ?? "N/A",
         rollNumber: user.rollNumber,
         accountCreatedAt: this.formatToIST(user.createdAt),
-        daysSinceCreation: Math.floor((now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
+        daysSinceCreation: Math.floor(
+          (now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24),
+        ),
         hasChangedPassword: user.hasChangedDefaultPassword,
         isActive, // Combined: User.active AND (for students) Student record exists
         userActive,
@@ -1959,16 +2222,16 @@ export class ReportGeneratorService {
       where.active = accountActive;
       if (accountActive === true) {
         where.OR = [
-          { role: { not: 'STUDENT' } },
-          { role: 'STUDENT', Student: { isNot: null } },
+          { role: { not: "STUDENT" } },
+          { role: "STUDENT", Student: { isNot: null } },
         ];
       }
     } else {
       // Default to active users only (User.active AND Student record exists for students)
       where.active = true;
       where.OR = [
-        { role: { not: 'STUDENT' } },
-        { role: 'STUDENT', Student: { isNot: null } },
+        { role: { not: "STUDENT" } },
+        { role: "STUDENT", Student: { isNot: null } },
       ];
     }
 
@@ -1997,19 +2260,21 @@ export class ReportGeneratorService {
       },
       take,
       skip,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
-    this.warnOnLargeResultSet(users.length, 'DefaultPasswordUsersReport');
+    this.warnOnLargeResultSet(users.length, "DefaultPasswordUsersReport");
 
     const now = new Date();
 
     return users.map((user) => {
       const userActive = user.active;
-      const studentActive = user.role === 'STUDENT' ? ((user as any).Student ? true : false) : null;
-      const isActive = user.role === 'STUDENT'
-        ? (userActive && studentActive === true)
-        : userActive;
+      const studentActive =
+        user.role === "STUDENT" ? ((user as any).Student ? true : false) : null;
+      const isActive =
+        user.role === "STUDENT"
+          ? userActive && studentActive === true
+          : userActive;
 
       return {
         userId: user.id,
@@ -2017,9 +2282,11 @@ export class ReportGeneratorService {
         email: user.email,
         phoneNo: user.phoneNo,
         role: user.role,
-        institutionName: user.Institution?.name ?? 'N/A',
+        institutionName: user.Institution?.name ?? "N/A",
         accountCreatedAt: this.formatToIST(user.createdAt),
-        daysSinceCreation: Math.floor((now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
+        daysSinceCreation: Math.floor(
+          (now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24),
+        ),
         loginCount: user.loginCount,
         lastLoginAt: this.formatToIST(user.lastLoginAt),
         isActive,
@@ -2052,8 +2319,8 @@ export class ReportGeneratorService {
         where.AND = [
           {
             OR: [
-              { role: { not: 'STUDENT' } },
-              { role: 'STUDENT', Student: { isNot: null } },
+              { role: { not: "STUDENT" } },
+              { role: "STUDENT", Student: { isNot: null } },
             ],
           },
         ];
@@ -2064,8 +2331,8 @@ export class ReportGeneratorService {
       where.AND = [
         {
           OR: [
-            { role: { not: 'STUDENT' } },
-            { role: 'STUDENT', Student: { isNot: null } },
+            { role: { not: "STUDENT" } },
+            { role: "STUDENT", Student: { isNot: null } },
           ],
         },
       ];
@@ -2085,7 +2352,9 @@ export class ReportGeneratorService {
 
     // Apply inactive days filter
     const inactiveDays = Number(filters?.inactiveDays) || 30;
-    const cutoffDate = new Date(Date.now() - inactiveDays * 24 * 60 * 60 * 1000);
+    const cutoffDate = new Date(
+      Date.now() - inactiveDays * 24 * 60 * 60 * 1000,
+    );
 
     // Add to existing AND array or create new one
     const inactiveCondition = {
@@ -2112,19 +2381,21 @@ export class ReportGeneratorService {
       },
       take,
       skip,
-      orderBy: { lastLoginAt: 'asc' },
+      orderBy: { lastLoginAt: "asc" },
     });
 
-    this.warnOnLargeResultSet(users.length, 'InactiveUsersReport');
+    this.warnOnLargeResultSet(users.length, "InactiveUsersReport");
 
     const now = new Date();
 
     return users.map((user) => {
       const userActive = user.active;
-      const studentActive = user.role === 'STUDENT' ? ((user as any).Student ? true : false) : null;
-      const isActive = user.role === 'STUDENT'
-        ? (userActive && studentActive === true)
-        : userActive;
+      const studentActive =
+        user.role === "STUDENT" ? ((user as any).Student ? true : false) : null;
+      const isActive =
+        user.role === "STUDENT"
+          ? userActive && studentActive === true
+          : userActive;
 
       return {
         userId: user.id,
@@ -2132,10 +2403,13 @@ export class ReportGeneratorService {
         email: user.email,
         phoneNo: user.phoneNo,
         role: user.role,
-        institutionName: user.Institution?.name ?? 'N/A',
+        institutionName: user.Institution?.name ?? "N/A",
         lastLoginAt: this.formatToIST(user.lastLoginAt),
         daysSinceLastLogin: user.lastLoginAt
-          ? Math.floor((now.getTime() - user.lastLoginAt.getTime()) / (1000 * 60 * 60 * 24))
+          ? Math.floor(
+              (now.getTime() - user.lastLoginAt.getTime()) /
+                (1000 * 60 * 60 * 24),
+            )
           : null,
         loginCount: user.loginCount,
         accountCreatedAt: this.formatToIST(user.createdAt),
@@ -2185,11 +2459,31 @@ export class ReportGeneratorService {
       const dateFilter: Record<string, unknown> = {};
       if (filters.startDate) {
         const startDate = new Date(filters.startDate);
-        dateFilter.gte = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate(), 0, 0, 0, 0));
+        dateFilter.gte = new Date(
+          Date.UTC(
+            startDate.getUTCFullYear(),
+            startDate.getUTCMonth(),
+            startDate.getUTCDate(),
+            0,
+            0,
+            0,
+            0,
+          ),
+        );
       }
       if (filters.endDate) {
         const endDate = new Date(filters.endDate);
-        dateFilter.lte = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate(), 23, 59, 59, 999));
+        dateFilter.lte = new Date(
+          Date.UTC(
+            endDate.getUTCFullYear(),
+            endDate.getUTCMonth(),
+            endDate.getUTCDate(),
+            23,
+            59,
+            59,
+            999,
+          ),
+        );
       }
       where.timestamp = dateFilter;
     }
@@ -2206,20 +2500,20 @@ export class ReportGeneratorService {
       },
       take,
       skip,
-      orderBy: { timestamp: 'desc' },
+      orderBy: { timestamp: "desc" },
     });
 
-    this.warnOnLargeResultSet(auditLogs.length, 'UserAuditLogReport');
+    this.warnOnLargeResultSet(auditLogs.length, "UserAuditLogReport");
 
     return auditLogs.map((log) => ({
       userId: log.userId,
-      userName: log.userName ?? log.user?.name ?? 'Unknown',
+      userName: log.userName ?? log.user?.name ?? "Unknown",
       userRole: log.userRole,
       action: log.action,
       entityType: log.entityType,
       entityId: log.entityId,
       description: log.description,
-      institutionName: log.user?.Institution?.name ?? 'N/A',
+      institutionName: log.user?.Institution?.name ?? "N/A",
       category: log.category,
       severity: log.severity,
       timestamp: this.formatToIST(log.timestamp),
@@ -2246,90 +2540,102 @@ export class ReportGeneratorService {
     this.validateInstitutionIsolation(typeStr, filters, isAdmin);
 
     this.logger.log(
-      `Generating report: ${type}, institutionId: ${filters?.institutionId || 'N/A'}, ` +
-      `pagination: take=${pagination?.take ?? DEFAULT_MAX_RECORDS}, skip=${pagination?.skip ?? 0}`,
+      `Generating report: ${type}, institutionId: ${filters?.institutionId || "N/A"}, ` +
+        `pagination: take=${pagination?.take ?? DEFAULT_MAX_RECORDS}, skip=${pagination?.skip ?? 0}`,
     );
 
     // Use exact type matching to prevent routing bugs
     switch (typeStr) {
       // ==================== Student Reports (4) ====================
-      case 'student-directory':
-      case 'student-by-branch':
+      case "student-directory":
+      case "student-by-branch":
         return this.generateStudentProgressReport(filters, pagination);
-      case 'student-compliance':
+      case "student-compliance":
         return this.generateStudentComplianceReport(filters, pagination);
-      case 'students-without-internship':
-        return this.generateStudentsWithoutInternshipReport(filters, pagination);
-      case 'student-placement-interest-ppo':
-        return this.generateStudentPlacementInterestPpoReport(filters, pagination);
+      case "students-without-internship":
+        return this.generateStudentsWithoutInternshipReport(
+          filters,
+          pagination,
+        );
+      case "student-placement-interest-ppo":
+        return this.generateStudentPlacementInterestPpoReport(
+          filters,
+          pagination,
+        );
 
       // ==================== Mentor Reports (3) ====================
-      case 'mentor-list':
+      case "mentor-list":
         return this.generateMentorListReport(filters, pagination);
-      case 'mentor-student-assignments':
+      case "mentor-student-assignments":
         return this.generateMentorStudentAssignmentsReport(filters, pagination);
-      case 'unassigned-students':
+      case "unassigned-students":
         return this.generateUnassignedStudentsReport(filters, pagination);
 
       // ==================== Internship Reports (2) ====================
-      case 'internship-by-institution':
+      case "internship-by-institution":
         return this.generateInternshipByInstitutionReport(filters, pagination);
-      case 'self-identified-internships':
+      case "self-identified-internships":
         // Set filter to only show self-identified internships
-        return this.generateInternshipReport({ ...filters, isSelfIdentified: true }, pagination);
+        return this.generateInternshipReport(
+          { ...filters, isSelfIdentified: true },
+          pagination,
+        );
 
       // ==================== Compliance Reports (4) ====================
-      case 'faculty-visit-compliance':
+      case "faculty-visit-compliance":
         return this.generateFacultyVisitComplianceReport(filters, pagination);
-      case 'monthly-report-compliance':
+      case "monthly-report-compliance":
         return this.generateMonthlyReportComplianceReport(filters, pagination);
-      case 'joining-report-status':
+      case "joining-report-status":
         return this.generateJoiningReportStatusReport(filters, pagination);
-      case 'faculty-visit-details':
+      case "faculty-visit-details":
         return this.generateFacultyVisitDetailsReport(filters, pagination);
 
       // ==================== Institute Reports (3) ====================
-      case 'institute-summary':
+      case "institute-summary":
         return this.generateInstituteSummaryReport(filters, pagination);
-      case 'institute-comparison':
+      case "institute-comparison":
         return this.generateInstituteComparisonReport(filters, pagination);
-      case 'branch-wise-summary':
+      case "branch-wise-summary":
         return this.generateBranchWiseSummaryReport(filters, pagination);
 
       // ==================== Pending Reports (4) ====================
-      case 'pending-monthly-visits':
+      case "pending-monthly-visits":
         return this.generatePendingMonthlyVisitsReport(filters, pagination);
-      case 'pending-monthly-reports':
+      case "pending-monthly-reports":
         return this.generatePendingMonthlyReportsReport(filters, pagination);
-      case 'pending-joining-letters':
+      case "pending-joining-letters":
         return this.generatePendingJoiningLettersReport(filters, pagination);
-      case 'pending-mentor-assignments':
+      case "pending-mentor-assignments":
         return this.generateUnassignedStudentsReport(filters, pagination); // Same as unassigned-students
 
       // ==================== User Activity Reports (6) ====================
-      case 'user-login-activity':
+      case "user-login-activity":
         return this.generateUserLoginActivityReport(filters, pagination);
-      case 'user-session-history':
+      case "user-session-history":
         return this.generateUserSessionHistoryReport(filters, pagination);
-      case 'never-logged-in-users':
+      case "never-logged-in-users":
         return this.generateNeverLoggedInUsersReport(filters, pagination);
-      case 'default-password-users':
+      case "default-password-users":
         return this.generateDefaultPasswordUsersReport(filters, pagination);
-      case 'inactive-users':
+      case "inactive-users":
         return this.generateInactiveUsersReport(filters, pagination);
-      case 'user-audit-log':
+      case "user-audit-log":
         return this.generateUserAuditLogReport(filters, pagination);
 
       // ==================== Industry Reports (2) ====================
-      case 'industry-wise-students-stipend':
-        return this.generateIndustryWiseStudentsStipendReport(filters, pagination);
-      case 'top-institutes-per-industry':
+      case "industry-wise-students-stipend":
+        return this.generateIndustryWiseStudentsStipendReport(
+          filters,
+          pagination,
+        );
+      case "top-institutes-per-industry":
         return this.generateTopInstitutesPerIndustryReport(filters, pagination);
 
       // ==================== Principal Reports (2) ====================
-      case 'principal-visit-logs':
+      case "principal-visit-logs":
         return this.generatePrincipalVisitLogsReport(filters, pagination);
-      case 'principal-visit-summary':
+      case "principal-visit-summary":
         return this.generatePrincipalVisitSummaryReport(filters, pagination);
 
       // ==================== Legacy Support ====================
@@ -2349,7 +2655,9 @@ export class ReportGeneratorService {
 
       default:
         this.logger.error(`Unknown report type requested: ${type}`);
-        throw new ForbiddenException(`Unknown report type: ${type}. Valid types: student-directory, mentor-list, internship-applications, etc.`);
+        throw new ForbiddenException(
+          `Unknown report type: ${type}. Valid types: student-directory, mentor-list, internship-applications, etc.`,
+        );
     }
   }
 
@@ -2392,8 +2700,12 @@ export class ReportGeneratorService {
       where.active = true;
     }
 
-    this.logger.log(`[MentorListReport] Query filters: ${JSON.stringify(filters)}`);
-    this.logger.log(`[MentorListReport] Where clause: ${JSON.stringify(where)}`);
+    this.logger.log(
+      `[MentorListReport] Query filters: ${JSON.stringify(filters)}`,
+    );
+    this.logger.log(
+      `[MentorListReport] Where clause: ${JSON.stringify(where)}`,
+    );
 
     const mentors = await this.prisma.user.findMany({
       where,
@@ -2409,7 +2721,7 @@ export class ReportGeneratorService {
                   select: {
                     id: true,
                     facultyVisitLogs: {
-                      where: { isDeleted: false, status: 'COMPLETED' },
+                      where: { isDeleted: false, status: "COMPLETED" },
                       select: { id: true },
                     },
                   },
@@ -2426,11 +2738,11 @@ export class ReportGeneratorService {
       },
       take,
       skip,
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
 
     this.logger.log(`[MentorListReport] Found ${mentors.length} mentors`);
-    this.warnOnLargeResultSet(mentors.length, 'MentorListReport');
+    this.warnOnLargeResultSet(mentors.length, "MentorListReport");
 
     // Apply hasAssignments filter if specified
     let filteredMentors = mentors;
@@ -2439,7 +2751,9 @@ export class ReportGeneratorService {
       if (hasAssignments === true) {
         filteredMentors = mentors.filter((m) => m._count.mentorAssignments > 0);
       } else if (hasAssignments === false) {
-        filteredMentors = mentors.filter((m) => m._count.mentorAssignments === 0);
+        filteredMentors = mentors.filter(
+          (m) => m._count.mentorAssignments === 0,
+        );
       }
     }
 
@@ -2460,8 +2774,8 @@ export class ReportGeneratorService {
         email: mentor.email,
         phoneNumber: mentor.phoneNo,
         designation: mentor.designation,
-        department: mentor.branchName ?? 'N/A',
-        institutionName: mentor.Institution?.name ?? 'N/A',
+        department: mentor.branchName ?? "N/A",
+        institutionName: mentor.Institution?.name ?? "N/A",
         role: mentor.role,
         assignedStudents: mentor._count.mentorAssignments,
         activeInternships,
@@ -2516,11 +2830,26 @@ export class ReportGeneratorService {
     const assignments = await this.prisma.mentorAssignment.findMany({
       where,
       include: {
-        mentor: { select: { id: true, name: true, email: true, designation: true, active: true } },
+        mentor: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            designation: true,
+            active: true,
+          },
+        },
         student: {
           select: {
             id: true,
-            user: { select: { name: true, rollNumber: true, branchName: true, active: true } },
+            user: {
+              select: {
+                name: true,
+                rollNumber: true,
+                branchName: true,
+                active: true,
+              },
+            },
             Institution: { select: { name: true } },
             branch: { select: { name: true } },
             internshipApplications: {
@@ -2531,17 +2860,17 @@ export class ReportGeneratorService {
                 status: true,
                 submittedReportsCount: true,
                 facultyVisitLogs: {
-                  where: { isDeleted: false, status: 'COMPLETED' },
+                  where: { isDeleted: false, status: "COMPLETED" },
                   select: { visitDate: true },
-                  orderBy: { visitDate: 'desc' },
+                  orderBy: { visitDate: "desc" },
                   take: 1,
                 },
               },
               take: 1,
-              orderBy: { createdAt: 'desc' },
+              orderBy: { createdAt: "desc" },
             },
             monthlyReports: {
-              where: { status: 'APPROVED' },
+              where: { status: "APPROVED" },
               select: { id: true },
             },
           },
@@ -2549,23 +2878,33 @@ export class ReportGeneratorService {
       },
       take,
       skip,
-      orderBy: { assignmentDate: 'desc' },
+      orderBy: { assignmentDate: "desc" },
     });
 
-    this.warnOnLargeResultSet(assignments.length, 'MentorStudentAssignmentsReport');
+    this.warnOnLargeResultSet(
+      assignments.length,
+      "MentorStudentAssignmentsReport",
+    );
 
     return assignments.map((assignment) => {
       const app = assignment.student.internshipApplications[0];
       const lastVisit = app?.facultyVisitLogs[0]?.visitDate ?? null;
 
       // Map internship phase to status string
-      let internshipStatus = 'Not Started';
+      let internshipStatus = "Not Started";
       if (app) {
         switch (app.internshipPhase) {
-          case 'ACTIVE': internshipStatus = 'Active'; break;
-          case 'COMPLETED': internshipStatus = 'Completed'; break;
-          case 'NOT_STARTED': internshipStatus = 'Not Started'; break;
-          default: internshipStatus = app.status ?? 'Unknown';
+          case "ACTIVE":
+            internshipStatus = "Active";
+            break;
+          case "COMPLETED":
+            internshipStatus = "Completed";
+            break;
+          case "NOT_STARTED":
+            internshipStatus = "Not Started";
+            break;
+          default:
+            internshipStatus = app.status ?? "Unknown";
         }
       }
 
@@ -2574,8 +2913,10 @@ export class ReportGeneratorService {
         mentorEmail: assignment.mentor.email,
         studentName: assignment.student.user?.name,
         studentRollNumber: assignment.student.user?.rollNumber,
-        branchName: assignment.student.branch?.name ?? assignment.student.user?.branchName,
-        companyName: app?.companyName ?? 'N/A',
+        branchName:
+          assignment.student.branch?.name ??
+          assignment.student.user?.branchName,
+        companyName: app?.companyName ?? "N/A",
         internshipStatus,
         assignedDate: this.formatToISTDateOnly(assignment.assignmentDate),
         lastVisitDate: this.formatToIST(lastVisit),
@@ -2627,22 +2968,31 @@ export class ReportGeneratorService {
     const students = await this.prisma.student.findMany({
       where,
       include: {
-        user: { select: { name: true, rollNumber: true, branchName: true, email: true, phoneNo: true, active: true } },
+        user: {
+          select: {
+            name: true,
+            rollNumber: true,
+            branchName: true,
+            email: true,
+            phoneNo: true,
+            active: true,
+          },
+        },
         branch: { select: { name: true } },
         Institution: { select: { name: true } },
         internshipApplications: {
           where: { isActive: true },
           select: { id: true, status: true, companyName: true },
           take: 1,
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         },
       },
       take,
       skip,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
-    this.warnOnLargeResultSet(students.length, 'UnassignedStudentsReport');
+    this.warnOnLargeResultSet(students.length, "UnassignedStudentsReport");
 
     return students.map((student) => {
       const activeInternship = student.internshipApplications[0];
@@ -2654,10 +3004,10 @@ export class ReportGeneratorService {
         branchName: student.branch?.name ?? student.user?.branchName,
         currentYear: student.currentYear,
         currentSemester: student.currentSemester,
-        institutionName: student.Institution?.name ?? 'N/A',
+        institutionName: student.Institution?.name ?? "N/A",
         hasActiveInternship: !!activeInternship,
-        internshipStatus: activeInternship?.status ?? 'None',
-        companyName: activeInternship?.companyName ?? 'N/A',
+        internshipStatus: activeInternship?.status ?? "None",
+        companyName: activeInternship?.companyName ?? "N/A",
         isActive: student.user?.active ?? false,
         userActive: student.user?.active ?? true,
       };
@@ -2689,14 +3039,19 @@ export class ReportGeneratorService {
 
     // Build internship application where clause with start date filter
     const internshipWhere: Record<string, unknown> = { isActive: true };
-    
+
     // Handle internship start date range filter
     // Note: Frontend sends startDateRange: [start, end], processor transforms to startDateStart/startDateEnd
     let startDateStartValue = filters?.startDateStart;
     let startDateEndValue = filters?.startDateEnd;
 
     // Handle case where startDateRange array is passed directly
-    if (!startDateStartValue && !startDateEndValue && Array.isArray(filters?.startDateRange) && filters.startDateRange.length === 2) {
+    if (
+      !startDateStartValue &&
+      !startDateEndValue &&
+      Array.isArray(filters?.startDateRange) &&
+      filters.startDateRange.length === 2
+    ) {
       startDateStartValue = filters.startDateRange[0];
       startDateEndValue = filters.startDateRange[1];
     }
@@ -2715,7 +3070,8 @@ export class ReportGeneratorService {
     }
 
     const institutions = await this.prisma.institution.findMany({
-      where: Object.keys(institutionWhere).length > 0 ? institutionWhere : undefined,
+      where:
+        Object.keys(institutionWhere).length > 0 ? institutionWhere : undefined,
       include: {
         _count: {
           select: {
@@ -2742,7 +3098,7 @@ export class ReportGeneratorService {
                 monthlyReports: {
                   where: {
                     isDeleted: false,
-                    status: { in: ['SUBMITTED', 'UNDER_REVIEW', 'APPROVED'] },
+                    status: { in: ["SUBMITTED", "UNDER_REVIEW", "APPROVED"] },
                   },
                   select: { id: true },
                 },
@@ -2753,10 +3109,13 @@ export class ReportGeneratorService {
       },
       take,
       skip,
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
 
-    this.warnOnLargeResultSet(institutions.length, 'InternshipByInstitutionReport');
+    this.warnOnLargeResultSet(
+      institutions.length,
+      "InternshipByInstitutionReport",
+    );
 
     return institutions.map((inst) => {
       let activeInternships = 0;
@@ -2769,9 +3128,10 @@ export class ReportGeneratorService {
 
       inst.Student.forEach((student) => {
         student.internshipApplications.forEach((app) => {
-          if (app.internshipPhase  === 'ACTIVE') activeInternships++;
-          if (app.internshipPhase === 'COMPLETED') completedInternships++;
-          if (['SUBMITTED', 'UNDER_REVIEW'].includes(app.status)) pendingApplications++;
+          if (app.internshipPhase === "ACTIVE") activeInternships++;
+          if (app.internshipPhase === "COMPLETED") completedInternships++;
+          if (["SUBMITTED", "UNDER_REVIEW"].includes(app.status))
+            pendingApplications++;
           if (app.isSelfIdentified) selfIdentified++;
           // Count actual faculty visit logs
           totalSubmittedVisits += app.facultyVisitLogs?.length ?? 0;
@@ -2783,7 +3143,10 @@ export class ReportGeneratorService {
 
       const totalStudents = inst._count.Student;
       const totalInternships = activeInternships + completedInternships;
-      const internshipRate = totalStudents > 0 ? Math.round((totalInternships / totalStudents) * 100) : 0;
+      const internshipRate =
+        totalStudents > 0
+          ? Math.round((totalInternships / totalStudents) * 100)
+          : 0;
 
       return {
         institutionName: inst.name,
@@ -2808,7 +3171,7 @@ export class ReportGeneratorService {
   /**
    * Generate Faculty Visit Compliance Report
    * Tracks faculty visit compliance for internship monitoring
-    * @param filters - Filter criteria (institutionId, month, year)
+   * @param filters - Filter criteria (institutionId, month, year)
    * @param pagination - Optional pagination options
    */
   async generateFacultyVisitComplianceReport(
@@ -2818,7 +3181,10 @@ export class ReportGeneratorService {
     const { take, skip } = this.getPaginationParams(pagination);
     // Determine reporting period
     const now = new Date();
-    const hasMonthFilter = filters?.month !== undefined && filters?.month !== null && filters?.month !== '';
+    const hasMonthFilter =
+      filters?.month !== undefined &&
+      filters?.month !== null &&
+      filters?.month !== "";
     const reportMonth = hasMonthFilter ? Number(filters.month) : undefined;
     const reportYear = filters?.year ? Number(filters.year) : now.getFullYear();
     const reportMonthStr = reportMonth
@@ -2842,7 +3208,7 @@ export class ReportGeneratorService {
     const internshipAppWhere: Record<string, unknown> = {
       isActive: true,
       isSelfIdentified: true,
-      status: 'APPROVED',
+      status: "APPROVED",
       startDate: { not: null },
     };
     if (filters?.internshipStartDate) {
@@ -2871,7 +3237,14 @@ export class ReportGeneratorService {
     const students = await this.prisma.student.findMany({
       where: studentWhere,
       include: {
-        user: { select: { name: true, rollNumber: true, branchName: true, active: true } },
+        user: {
+          select: {
+            name: true,
+            rollNumber: true,
+            branchName: true,
+            active: true,
+          },
+        },
         branch: { select: { name: true } },
         Institution: { select: { name: true } },
         mentorAssignments: {
@@ -2891,50 +3264,53 @@ export class ReportGeneratorService {
             facultyVisitLogs: {
               where: {
                 isDeleted: false,
-                status: 'COMPLETED',
+                status: "COMPLETED",
                 visitDate: {
                   gte: yearStartDate,
                   lte: yearEndDate,
                 },
               },
               select: { visitDate: true, visitType: true, status: true },
-              orderBy: { visitDate: 'desc' as const },
+              orderBy: { visitDate: "desc" as const },
             },
           },
         },
       },
       take,
       skip,
-      orderBy: { user: { name: 'asc' } },
+      orderBy: { user: { name: "asc" } },
     });
 
-    this.warnOnLargeResultSet(students.length, 'FacultyVisitComplianceReport');
+    this.warnOnLargeResultSet(students.length, "FacultyVisitComplianceReport");
 
     const results: any[] = [];
 
     for (const student of students) {
-      const mentorName = student.mentorAssignments[0]?.mentor?.name ?? 'N/A';
-      const emptyMonthColumns = this.buildMonthSubmissionColumns(new Set<number>(), new Set<number>());
+      const mentorName = student.mentorAssignments[0]?.mentor?.name ?? "N/A";
+      const emptyMonthColumns = this.buildMonthSubmissionColumns(
+        new Set<number>(),
+        new Set<number>(),
+      );
 
       if (student.internshipApplications.length === 0) {
         // Student with no active application — still show them
         results.push({
           studentName: student.user?.name,
           rollNumber: student.user?.rollNumber,
-          gender: student.gender ?? 'N/A',
+          gender: student.gender ?? "N/A",
           branchName: student.branch?.name ?? student.user?.branchName,
-          institutionName: student.Institution?.name ?? 'N/A',
-          companyName: 'N/A',
-          companyAddress: 'N/A',
+          institutionName: student.Institution?.name ?? "N/A",
+          companyName: "N/A",
+          companyAddress: "N/A",
           internshipStartDate: null,
           mentorName,
           requiredVisits: 0,
           completedVisits: 0,
           pendingVisits: 0,
           compliancePercent: 0,
-          complianceLevel: 'low',
+          complianceLevel: "low",
           lastVisitDate: null,
-          lastVisitType: 'N/A',
+          lastVisitType: "N/A",
           reportMonth: reportMonthStr,
           studentActive: student.user?.active ?? false,
           ...emptyMonthColumns,
@@ -2947,7 +3323,7 @@ export class ReportGeneratorService {
             startDate,
             app.endDate,
             reportYear,
-            'visit',
+            "visit",
           );
 
           if (reportMonth && !expectedMonths.has(reportMonth)) {
@@ -2961,30 +3337,37 @@ export class ReportGeneratorService {
           );
 
           const requiredVisits = reportMonth
-            ? (expectedMonths.has(reportMonth) ? 1 : 0)
+            ? expectedMonths.has(reportMonth)
+              ? 1
+              : 0
             : expectedMonths.size;
           const completedVisits = reportMonth
-            ? (completedVisitMonths.has(reportMonth) ? 1 : 0)
-            : Array.from(expectedMonths).filter((month) => completedVisitMonths.has(month)).length;
+            ? completedVisitMonths.has(reportMonth)
+              ? 1
+              : 0
+            : Array.from(expectedMonths).filter((month) =>
+                completedVisitMonths.has(month),
+              ).length;
           const pendingVisits = Math.max(0, requiredVisits - completedVisits);
-          const compliancePercent = requiredVisits > 0
-            ? Math.round((completedVisits / requiredVisits) * 100)
-            : 0;
+          const compliancePercent =
+            requiredVisits > 0
+              ? Math.round((completedVisits / requiredVisits) * 100)
+              : 0;
 
-          let complianceLevel = 'low';
-          if (compliancePercent >= 80) complianceLevel = 'high';
-          else if (compliancePercent >= 50) complianceLevel = 'medium';
+          let complianceLevel = "low";
+          if (compliancePercent >= 80) complianceLevel = "high";
+          else if (compliancePercent >= 50) complianceLevel = "medium";
 
           const lastVisitLog = app.facultyVisitLogs?.[0];
 
           results.push({
             studentName: student.user?.name,
             rollNumber: student.user?.rollNumber,
-            gender: student.gender ?? 'N/A',
+            gender: student.gender ?? "N/A",
             branchName: student.branch?.name ?? student.user?.branchName,
-            institutionName: student.Institution?.name ?? 'N/A',
-            companyName: app.companyName ?? 'N/A',
-            companyAddress: app.companyAddress ?? 'N/A',
+            institutionName: student.Institution?.name ?? "N/A",
+            companyName: app.companyName ?? "N/A",
+            companyAddress: app.companyAddress ?? "N/A",
             internshipStartDate: this.formatToISTDateOnly(startDate),
             mentorName,
             requiredVisits,
@@ -2993,10 +3376,13 @@ export class ReportGeneratorService {
             compliancePercent,
             complianceLevel,
             lastVisitDate: this.formatToIST(lastVisitLog?.visitDate ?? null),
-            lastVisitType: lastVisitLog?.visitType ?? 'N/A',
+            lastVisitType: lastVisitLog?.visitType ?? "N/A",
             reportMonth: reportMonthStr,
             studentActive: student.user?.active ?? false,
-            ...this.buildMonthSubmissionColumns(completedVisitMonths, expectedMonths),
+            ...this.buildMonthSubmissionColumns(
+              completedVisitMonths,
+              expectedMonths,
+            ),
           });
         }
       }
@@ -3037,9 +3423,14 @@ export class ReportGeneratorService {
 
     // Reporting period controls monthly matrix and expected month calculation.
     const now = new Date();
-    const hasMonthFilter = filters?.month !== undefined && filters?.month !== null && filters?.month !== '';
+    const hasMonthFilter =
+      filters?.month !== undefined &&
+      filters?.month !== null &&
+      filters?.month !== "";
     const resolvedMonth = hasMonthFilter ? Number(filters.month) : undefined;
-    const resolvedYear = filters?.year ? Number(filters.year) : now.getFullYear();
+    const resolvedYear = filters?.year
+      ? Number(filters.year)
+      : now.getFullYear();
     const reportMonthStr = resolvedMonth
       ? this.formatReportMonth(resolvedMonth, resolvedYear)
       : `Jan-Dec ${resolvedYear}`;
@@ -3054,7 +3445,7 @@ export class ReportGeneratorService {
     const internshipWhere: Record<string, unknown> = {
       isActive: true,
       isSelfIdentified: true,
-      status: 'APPROVED',
+      status: "APPROVED",
       startDate: { not: null },
     };
     if (selectedMonthStartDate && selectedMonthEndDate) {
@@ -3068,7 +3459,14 @@ export class ReportGeneratorService {
     const students = await this.prisma.student.findMany({
       where,
       include: {
-        user: { select: { name: true, rollNumber: true, branchName: true, active: true } },
+        user: {
+          select: {
+            name: true,
+            rollNumber: true,
+            branchName: true,
+            active: true,
+          },
+        },
         branch: { select: { name: true } },
         Institution: { select: { name: true } },
         mentorAssignments: {
@@ -3077,7 +3475,7 @@ export class ReportGeneratorService {
             mentor: { select: { id: true, name: true } },
           },
           take: 1,
-          orderBy: { assignmentDate: 'desc' },
+          orderBy: { assignmentDate: "desc" },
         },
         internshipApplications: {
           where: internshipWhere,
@@ -3094,41 +3492,44 @@ export class ReportGeneratorService {
                 reportMonth: true,
                 reportYear: true,
               },
-              orderBy: { submittedAt: 'desc' },
+              orderBy: { submittedAt: "desc" },
             },
           },
-          orderBy: { startDate: 'desc' },
+          orderBy: { startDate: "desc" },
         },
       },
       take,
       skip,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
-    this.warnOnLargeResultSet(students.length, 'MonthlyReportComplianceReport');
+    this.warnOnLargeResultSet(students.length, "MonthlyReportComplianceReport");
 
     const results: any[] = [];
 
     for (const student of students) {
-      const emptyMonthColumns = this.buildMonthSubmissionColumns(new Set<number>(), new Set<number>());
+      const emptyMonthColumns = this.buildMonthSubmissionColumns(
+        new Set<number>(),
+        new Set<number>(),
+      );
       const assignedMentor = student.mentorAssignments?.[0]?.mentor;
 
       if (student.internshipApplications.length === 0) {
         results.push({
           studentName: student.user?.name,
           rollNumber: student.user?.rollNumber,
-          gender: student.gender ?? 'N/A',
+          gender: student.gender ?? "N/A",
           branchName: student.branch?.name ?? student.user?.branchName,
-          institutionName: student.Institution?.name ?? 'N/A',
-          mentorName: assignedMentor?.name ?? 'N/A',
-          companyName: 'N/A',
+          institutionName: student.Institution?.name ?? "N/A",
+          mentorName: assignedMentor?.name ?? "N/A",
+          companyName: "N/A",
           reportMonth: reportMonthStr,
           totalReportsExpected: 0,
           reportsSubmitted: 0,
           reportsApproved: 0,
           reportsPending: 0,
           compliancePercent: 0,
-          lastSubmissionDate: '',
+          lastSubmissionDate: "",
           isActive: student.user?.active ?? false,
           userActive: student.user?.active ?? true,
           ...emptyMonthColumns,
@@ -3138,7 +3539,8 @@ export class ReportGeneratorService {
 
       for (const app of student.internshipApplications) {
         const resolvedMentorId = assignedMentor?.id ?? app?.mentor?.id;
-        const resolvedMentorName = assignedMentor?.name ?? app?.mentor?.name ?? 'N/A';
+        const resolvedMentorName =
+          assignedMentor?.name ?? app?.mentor?.name ?? "N/A";
 
         if (filters?.mentorId && resolvedMentorId !== filters.mentorId) {
           continue;
@@ -3149,7 +3551,7 @@ export class ReportGeneratorService {
           internshipStart,
           app.endDate,
           resolvedYear,
-          'report',
+          "report",
         );
         if (resolvedMonth && !expectedMonths.has(resolvedMonth)) {
           continue;
@@ -3172,30 +3574,41 @@ export class ReportGeneratorService {
         }
 
         const totalExpected = resolvedMonth
-          ? (expectedMonths.has(resolvedMonth) ? 1 : 0)
+          ? expectedMonths.has(resolvedMonth)
+            ? 1
+            : 0
           : expectedMonths.size;
         const submitted = resolvedMonth
-          ? (submittedMonths.has(resolvedMonth) ? 1 : 0)
-          : Array.from(expectedMonths).filter((month) => submittedMonths.has(month)).length;
+          ? submittedMonths.has(resolvedMonth)
+            ? 1
+            : 0
+          : Array.from(expectedMonths).filter((month) =>
+              submittedMonths.has(month),
+            ).length;
         const approved = resolvedMonth
-          ? (approvedMonths.has(resolvedMonth) ? 1 : 0)
-          : Array.from(expectedMonths).filter((month) => approvedMonths.has(month)).length;
+          ? approvedMonths.has(resolvedMonth)
+            ? 1
+            : 0
+          : Array.from(expectedMonths).filter((month) =>
+              approvedMonths.has(month),
+            ).length;
 
         const pending = Math.max(0, totalExpected - submitted);
-        const compliancePercent = totalExpected > 0
-          ? Math.round((submitted / totalExpected) * 100)
-          : 0;
+        const compliancePercent =
+          totalExpected > 0 ? Math.round((submitted / totalExpected) * 100) : 0;
 
-        const lastSubmission = (app.monthlyReports ?? []).find((report) => !!report.submittedAt)?.submittedAt;
+        const lastSubmission = (app.monthlyReports ?? []).find(
+          (report) => !!report.submittedAt,
+        )?.submittedAt;
 
         results.push({
           studentName: student.user?.name,
           rollNumber: student.user?.rollNumber,
-          gender: student.gender ?? 'N/A',
+          gender: student.gender ?? "N/A",
           branchName: student.branch?.name ?? student.user?.branchName,
-          institutionName: student.Institution?.name ?? 'N/A',
+          institutionName: student.Institution?.name ?? "N/A",
           mentorName: resolvedMentorName,
-          companyName: (app as any)?.companyName ?? 'N/A',
+          companyName: (app as any)?.companyName ?? "N/A",
           reportMonth: reportMonthStr,
           totalReportsExpected: totalExpected,
           reportsSubmitted: submitted,
@@ -3250,7 +3663,14 @@ export class ReportGeneratorService {
     const students = await this.prisma.student.findMany({
       where: studentWhere,
       include: {
-        user: { select: { name: true, rollNumber: true, branchName: true, active: true } },
+        user: {
+          select: {
+            name: true,
+            rollNumber: true,
+            branchName: true,
+            active: true,
+          },
+        },
         branch: { select: { name: true } },
         Institution: { select: { name: true } },
         // Include mentor assignments to get the assigned faculty mentor
@@ -3266,15 +3686,15 @@ export class ReportGeneratorService {
           include: {
             mentor: { select: { name: true } },
           },
-          orderBy: { startDate: 'desc' },
+          orderBy: { startDate: "desc" },
         },
       },
       take,
       skip,
-      orderBy: { user: { name: 'asc' } },
+      orderBy: { user: { name: "asc" } },
     });
 
-    this.warnOnLargeResultSet(students.length, 'JoiningReportStatusReport');
+    this.warnOnLargeResultSet(students.length, "JoiningReportStatusReport");
 
     const now = new Date();
 
@@ -3289,46 +3709,53 @@ export class ReportGeneratorService {
         results.push({
           studentName: student.user?.name,
           rollNumber: student.user?.rollNumber,
-          gender: student.gender ?? 'N/A',
+          gender: student.gender ?? "N/A",
           branchName: student.branch?.name ?? student.user?.branchName,
-          institutionName: student.Institution?.name ?? 'N/A',
-          companyName: 'N/A',
+          institutionName: student.Institution?.name ?? "N/A",
+          companyName: "N/A",
           internshipStartDate: null,
-          joiningLetterStatus: 'NO APPLICATION',
+          joiningLetterStatus: "NO APPLICATION",
           joiningLetterSubmittedAt: null,
           joiningLetterApprovedAt: null,
           daysSinceStart: 0,
-          mentorName: assignedMentorName ?? 'N/A',
+          mentorName: assignedMentorName ?? "N/A",
           isActive: student.user?.active ?? false,
           userActive: student.user?.active ?? true,
         });
       } else {
         // Include a row for each active application
         for (const app of student.internshipApplications) {
-          let joiningLetterStatus = 'PENDING';
+          let joiningLetterStatus = "PENDING";
           if (app.joiningLetterUrl) {
-            joiningLetterStatus = 'APPROVED';
+            joiningLetterStatus = "APPROVED";
           }
 
           const startDate = app.startDate ?? app.joiningDate;
           const daysSinceStart = startDate
-            ? Math.floor((now.getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+            ? Math.floor(
+                (now.getTime() - new Date(startDate).getTime()) /
+                  (1000 * 60 * 60 * 24),
+              )
             : 0;
 
           // Use assigned mentor, then fall back to application mentor
-          const mentorName = assignedMentorName ?? app.mentor?.name ?? 'N/A';
+          const mentorName = assignedMentorName ?? app.mentor?.name ?? "N/A";
 
           results.push({
             studentName: student.user?.name,
             rollNumber: student.user?.rollNumber,
-            gender: student.gender ?? 'N/A',
+            gender: student.gender ?? "N/A",
             branchName: student.branch?.name ?? student.user?.branchName,
-            institutionName: student.Institution?.name ?? 'N/A',
+            institutionName: student.Institution?.name ?? "N/A",
             companyName: app.companyName,
             internshipStartDate: this.formatToISTDateOnly(startDate),
             joiningLetterStatus,
-            joiningLetterSubmittedAt: this.formatToIST(app.joiningLetterUrl ? app.createdAt : null),
-            joiningLetterApprovedAt: this.formatToIST(app.joiningLetterUrl ? app.createdAt : null),
+            joiningLetterSubmittedAt: this.formatToIST(
+              app.joiningLetterUrl ? app.createdAt : null,
+            ),
+            joiningLetterApprovedAt: this.formatToIST(
+              app.joiningLetterUrl ? app.createdAt : null,
+            ),
             daysSinceStart,
             mentorName,
             isActive: student.user?.active ?? false,
@@ -3340,7 +3767,9 @@ export class ReportGeneratorService {
 
     // Apply joining letter status filter if specified
     if (filters?.joiningLetterStatus) {
-      return results.filter((r) => r.joiningLetterStatus === filters.joiningLetterStatus);
+      return results.filter(
+        (r) => r.joiningLetterStatus === filters.joiningLetterStatus,
+      );
     }
 
     return results;
@@ -3396,7 +3825,9 @@ export class ReportGeneratorService {
 
     // Support month/year filters directly for compliance-style period filtering.
     if (filters?.month || filters?.year) {
-      const resolvedYear = filters?.year ? Number(filters.year) : new Date().getFullYear();
+      const resolvedYear = filters?.year
+        ? Number(filters.year)
+        : new Date().getFullYear();
       if (filters?.month) {
         const resolvedMonth = Number(filters.month);
         visitWhere.visitDate = {
@@ -3425,13 +3856,22 @@ export class ReportGeneratorService {
         application: {
           select: {
             companyName: true,
+            companyAddress: true,
+            companyContact: true,
             student: {
               select: {
                 id: true,
                 institutionId: true,
                 branchId: true,
                 gender: true,
-                user: { select: { name: true, rollNumber: true, branchName: true, active: true } },
+                user: {
+                  select: {
+                    name: true,
+                    rollNumber: true,
+                    branchName: true,
+                    active: true,
+                  },
+                },
                 branch: { select: { name: true } },
                 Institution: { select: { name: true } },
               },
@@ -3441,10 +3881,10 @@ export class ReportGeneratorService {
       },
       take,
       skip,
-      orderBy: { visitDate: 'desc' },
+      orderBy: { visitDate: "desc" },
     });
 
-    this.warnOnLargeResultSet(visitLogs.length, 'FacultyVisitDetailsReport');
+    this.warnOnLargeResultSet(visitLogs.length, "FacultyVisitDetailsReport");
 
     const results: any[] = [];
 
@@ -3467,29 +3907,33 @@ export class ReportGeneratorService {
         continue;
       }
 
-      const visitDone = visit.status === 'COMPLETED';
+      const visitDone = visit.status === "COMPLETED";
 
       results.push({
-        mentorName: visit.faculty?.name ?? 'N/A',
+        mentorName: visit.faculty?.name ?? "N/A",
         reportMonth: this.formatReportMonthFromDate(visit.visitDate),
-        studentName: student?.user?.name ?? 'N/A',
-        rollNumber: student?.user?.rollNumber ?? 'N/A',
-        institutionName: student?.Institution?.name ?? 'N/A',
-        branchName: student?.branch?.name ?? student?.user?.branchName ?? 'N/A',
-        companyName: visit.application?.companyName ?? 'N/A',
+        studentName: student?.user?.name ?? "N/A",
+        rollNumber: student?.user?.rollNumber ?? "N/A",
+        institutionName: student?.Institution?.name ?? "N/A",
+        branchName: student?.branch?.name ?? student?.user?.branchName ?? "N/A",
+        companyName: visit.application?.companyName ?? "N/A",
+        companyAddress: visit.application?.companyAddress ?? "N/A",
+        companyContact: visit.application?.companyContact ?? "N/A",
         visitDone,
         visitDate: this.formatToISTDateOnly(visit.visitDate),
-        visitType: visit.visitType ?? 'N/A',
-        visitLocation: visit.visitLocation ?? 'N/A',
+        visitType: visit.visitType ?? "N/A",
+        visitLocation: visit.visitLocation ?? "N/A",
         visitNumber: visit.visitNumber ?? 0,
-        visitStatus: visit.status ?? 'N/A',
-        titleOfProjectWork: visit.titleOfProjectWork ?? 'N/A',
-        assistanceRequiredFromInstitute: visit.assistanceRequiredFromInstitute ?? 'N/A',
-        responseFromOrganisation: visit.responseFromOrganisation ?? 'N/A',
-        remarksOfOrganisationSupervisor: visit.remarksOfOrganisationSupervisor ?? 'N/A',
-        significantChangeInPlan: visit.significantChangeInPlan ?? 'N/A',
-        observationsAboutStudent: visit.observationsAboutStudent ?? 'N/A',
-        feedbackSharedWithStudent: visit.feedbackSharedWithStudent ?? 'N/A',
+        visitStatus: visit.status ?? "N/A",
+        titleOfProjectWork: visit.titleOfProjectWork ?? "N/A",
+        assistanceRequiredFromInstitute:
+          visit.assistanceRequiredFromInstitute ?? "N/A",
+        responseFromOrganisation: visit.responseFromOrganisation ?? "N/A",
+        remarksOfOrganisationSupervisor:
+          visit.remarksOfOrganisationSupervisor ?? "N/A",
+        significantChangeInPlan: visit.significantChangeInPlan ?? "N/A",
+        observationsAboutStudent: visit.observationsAboutStudent ?? "N/A",
+        feedbackSharedWithStudent: visit.feedbackSharedWithStudent ?? "N/A",
       });
     }
 
@@ -3531,10 +3975,10 @@ export class ReportGeneratorService {
       },
       take,
       skip,
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
 
-    this.warnOnLargeResultSet(institutions.length, 'InstituteSummaryReport');
+    this.warnOnLargeResultSet(institutions.length, "InstituteSummaryReport");
 
     return institutions.map((inst) => {
       let activeInternships = 0;
@@ -3542,15 +3986,19 @@ export class ReportGeneratorService {
 
       inst.Student.forEach((student) => {
         student.internshipApplications.forEach((app) => {
-          if (app.internshipPhase === 'ACTIVE') activeInternships++;
-          if (app.internshipPhase === 'COMPLETED') completedInternships++;
+          if (app.internshipPhase === "ACTIVE") activeInternships++;
+          if (app.internshipPhase === "COMPLETED") completedInternships++;
         });
       });
 
       const totalStudents = inst._count.Student;
-      const internshipRate = totalStudents > 0
-        ? Math.round(((activeInternships + completedInternships) / totalStudents) * 100)
-        : 0;
+      const internshipRate =
+        totalStudents > 0
+          ? Math.round(
+              ((activeInternships + completedInternships) / totalStudents) *
+                100,
+            )
+          : 0;
 
       return {
         institutionName: inst.name,
@@ -3614,10 +4062,10 @@ export class ReportGeneratorService {
       },
       take,
       skip,
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
 
-    this.warnOnLargeResultSet(branches.length, 'BranchWiseSummaryReport');
+    this.warnOnLargeResultSet(branches.length, "BranchWiseSummaryReport");
 
     return branches.map((branch) => {
       let activeInternships = 0;
@@ -3626,21 +4074,25 @@ export class ReportGeneratorService {
 
       branch.students.forEach((student) => {
         student.internshipApplications.forEach((app) => {
-          if (app.internshipPhase === 'ACTIVE') activeInternships++;
-          if (app.internshipPhase === 'COMPLETED') completedInternships++;
-          if (['APPLIED', 'SUBMITTED'].includes(app.status)) appliedCount++;
+          if (app.internshipPhase === "ACTIVE") activeInternships++;
+          if (app.internshipPhase === "COMPLETED") completedInternships++;
+          if (["APPLIED", "SUBMITTED"].includes(app.status)) appliedCount++;
         });
       });
 
       const totalStudents = branch.students.length;
-      const internshipRate = totalStudents > 0
-        ? Math.round(((activeInternships + completedInternships) / totalStudents) * 100)
-        : 0;
+      const internshipRate =
+        totalStudents > 0
+          ? Math.round(
+              ((activeInternships + completedInternships) / totalStudents) *
+                100,
+            )
+          : 0;
 
       return {
         branchName: branch.name,
         branchCode: branch.code,
-        institutionName: branch.institution?.name ?? 'N/A',
+        institutionName: branch.institution?.name ?? "N/A",
         totalStudents,
         activeInternships,
         completedInternships,
@@ -3655,7 +4107,7 @@ export class ReportGeneratorService {
   /**
    * Generate Pending Monthly Visits Report
    * Faculty with overdue visits - matches pending-reports.definition.ts columns
-    * @param filters - Filter criteria (institutionId, mentorId, month, year)
+   * @param filters - Filter criteria (institutionId, mentorId, month, year)
    * @param pagination - Optional pagination options
    */
   async generatePendingMonthlyVisitsReport(
@@ -3677,10 +4129,17 @@ export class ReportGeneratorService {
     }
 
     // Build date filter for visits based on month/year
-    const visitLogsWhere: Record<string, unknown> = { isDeleted: false, status: 'COMPLETED' };
+    const visitLogsWhere: Record<string, unknown> = {
+      isDeleted: false,
+      status: "COMPLETED",
+    };
     const now = new Date();
     const filterMonth = filters?.month ? Number(filters.month) : null;
-    const filterYear = filters?.year ? Number(filters.year) : (filterMonth ? now.getFullYear() : null);
+    const filterYear = filters?.year
+      ? Number(filters.year)
+      : filterMonth
+        ? now.getFullYear()
+        : null;
 
     if (filterMonth && filterYear) {
       const startDate = new Date(filterYear, filterMonth - 1, 1);
@@ -3707,7 +4166,9 @@ export class ReportGeneratorService {
           include: {
             student: {
               include: {
-                user: { select: { name: true, rollNumber: true, active: true } },
+                user: {
+                  select: { name: true, rollNumber: true, active: true },
+                },
                 internshipApplications: {
                   where: { isActive: true },
                   select: {
@@ -3717,7 +4178,7 @@ export class ReportGeneratorService {
                     facultyVisitLogs: {
                       where: visitLogsWhere,
                       select: { visitDate: true },
-                      orderBy: { visitDate: 'desc' },
+                      orderBy: { visitDate: "desc" },
                     },
                   },
                 },
@@ -3728,10 +4189,10 @@ export class ReportGeneratorService {
       },
       take,
       skip,
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
 
-    this.warnOnLargeResultSet(mentors.length, 'PendingMonthlyVisitsReport');
+    this.warnOnLargeResultSet(mentors.length, "PendingMonthlyVisitsReport");
 
     const results: any[] = [];
 
@@ -3750,27 +4211,36 @@ export class ReportGeneratorService {
         assignment.student.internshipApplications.forEach((app) => {
           // When filtering by month/year, calculate visits due based on filtered visits
           const completedVisits = app.facultyVisitLogs.length;
-          const visitsDue = filterMonth && filterYear
-            ? (completedVisits === 0 ? 1 : 0) // If no visit in the period, 1 visit is due
-            : app.totalExpectedVisits - completedVisits;
+          const visitsDue =
+            filterMonth && filterYear
+              ? completedVisits === 0
+                ? 1
+                : 0 // If no visit in the period, 1 visit is due
+              : app.totalExpectedVisits - completedVisits;
 
           if (visitsDue > 0) {
             const lastVisit = app.facultyVisitLogs[0]?.visitDate ?? null;
             const daysSinceLastVisit = lastVisit
-              ? Math.floor((referenceDate.getTime() - new Date(lastVisit).getTime()) / (1000 * 60 * 60 * 24))
+              ? Math.floor(
+                  (referenceDate.getTime() - new Date(lastVisit).getTime()) /
+                    (1000 * 60 * 60 * 24),
+                )
               : null;
 
             results.push({
               mentorName: mentor.name,
               mentorEmail: mentor.email,
               mentorPhone: mentor.phoneNo,
-              department: mentor.designation ?? 'N/A',
-              institutionName: mentor.Institution?.name ?? 'N/A',
+              department: mentor.designation ?? "N/A",
+              institutionName: mentor.Institution?.name ?? "N/A",
               studentName: assignment.student.user?.name,
               rollNumber: assignment.student.user?.rollNumber,
               companyName: app.companyName,
               lastVisitDate: this.formatToIST(lastVisit),
-              pendingMonth: this.formatReportMonth(referenceDate.getMonth() + 1, referenceDate.getFullYear()),
+              pendingMonth: this.formatReportMonth(
+                referenceDate.getMonth() + 1,
+                referenceDate.getFullYear(),
+              ),
               pendingYear: referenceDate.getFullYear(),
               daysSinceLastVisit,
               visitsDue,
@@ -3809,7 +4279,14 @@ export class ReportGeneratorService {
     const students = await this.prisma.student.findMany({
       where,
       include: {
-        user: { select: { name: true, rollNumber: true, branchName: true, active: true } },
+        user: {
+          select: {
+            name: true,
+            rollNumber: true,
+            branchName: true,
+            active: true,
+          },
+        },
         branch: { select: { name: true } },
         Institution: { select: { name: true } },
         internshipApplications: {
@@ -3823,31 +4300,48 @@ export class ReportGeneratorService {
             mentor: { select: { id: true, name: true } },
           },
           take: 1,
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         },
         monthlyReports: {
           select: { submittedAt: true, reportMonth: true, reportYear: true },
-          orderBy: { submittedAt: 'desc' },
+          orderBy: { submittedAt: "desc" },
         },
       },
       take,
       skip,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
-    this.warnOnLargeResultSet(students.length, 'PendingMonthlyReportsReport');
+    this.warnOnLargeResultSet(students.length, "PendingMonthlyReportsReport");
 
     const now = new Date();
     const currentMonth = now.getMonth() + 1; // 1-12
     const currentYear = now.getFullYear();
-    const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June',
-                        'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthNames = [
+      "",
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
 
     const results: any[] = [];
 
     // Determine if we're filtering by specific month/year
     const filterMonth = filters?.month ? Number(filters.month) : null;
-    const filterYear = filters?.year ? Number(filters.year) : (filterMonth ? currentYear : null);
+    const filterYear = filters?.year
+      ? Number(filters.year)
+      : filterMonth
+        ? currentYear
+        : null;
 
     for (const student of students) {
       const app = student.internshipApplications[0];
@@ -3864,7 +4358,7 @@ export class ReportGeneratorService {
 
       // Create a set of submitted report months for quick lookup
       const submittedMonths = new Set(
-        student.monthlyReports.map(r => `${r.reportYear}-${r.reportMonth}`)
+        student.monthlyReports.map((r) => `${r.reportYear}-${r.reportMonth}`),
       );
 
       // Get the last submitted report
@@ -3897,7 +4391,10 @@ export class ReportGeneratorService {
         let tempYear = internshipStartYear;
         let tempMonth = internshipStartMonth;
 
-        while (tempYear < filterYear || (tempYear === filterYear && tempMonth <= filterMonth)) {
+        while (
+          tempYear < filterYear ||
+          (tempYear === filterYear && tempMonth <= filterMonth)
+        ) {
           // Check if internship was active in this month
           const monthStart = new Date(tempYear, tempMonth - 1, 1);
           if (!endDate || endDate >= monthStart) {
@@ -3911,21 +4408,29 @@ export class ReportGeneratorService {
         }
 
         // Calculate reports submitted up to and including the filtered month
-        const reportsSubmittedUpToFilter = student.monthlyReports.filter(r => {
-          if (r.reportYear < filterYear) return true;
-          if (r.reportYear === filterYear && r.reportMonth <= filterMonth) return true;
-          return false;
-        }).length;
+        const reportsSubmittedUpToFilter = student.monthlyReports.filter(
+          (r) => {
+            if (r.reportYear < filterYear) return true;
+            if (r.reportYear === filterYear && r.reportMonth <= filterMonth)
+              return true;
+            return false;
+          },
+        ).length;
 
         // Calculate days past due
         const dueDate = new Date(filterYear, filterMonth, 5); // 5th of the next month
-        const daysPastDue = Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
+        const daysPastDue = Math.max(
+          0,
+          Math.floor(
+            (now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24),
+          ),
+        );
 
         results.push({
           studentName: student.user?.name,
           rollNumber: student.user?.rollNumber,
           branchName: student.branch?.name ?? student.user?.branchName,
-          mentorName: app.mentor?.name ?? 'N/A',
+          mentorName: app.mentor?.name ?? "N/A",
           companyName: app.companyName,
           pendingMonth: this.formatReportMonth(filterMonth, filterYear),
           pendingYear: filterYear,
@@ -3958,13 +4463,18 @@ export class ReportGeneratorService {
 
         // Calculate days past due (assuming reports due by 5th of following month)
         const dueDate = new Date(pendingYear, pendingMonth, 5);
-        const daysPastDue = Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
+        const daysPastDue = Math.max(
+          0,
+          Math.floor(
+            (now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24),
+          ),
+        );
 
         results.push({
           studentName: student.user?.name,
           rollNumber: student.user?.rollNumber,
           branchName: student.branch?.name ?? student.user?.branchName,
-          mentorName: app.mentor?.name ?? 'N/A',
+          mentorName: app.mentor?.name ?? "N/A",
           companyName: app.companyName,
           pendingMonth: this.formatReportMonth(pendingMonth, pendingYear),
           pendingYear,
@@ -3982,7 +4492,7 @@ export class ReportGeneratorService {
   /**
    * Generate Pending Joining Letters Report
    * Students who haven't submitted joining letter - matches pending-reports.definition.ts columns
-    * @param filters - Filter criteria (institutionId, branchId, mentorId)
+   * @param filters - Filter criteria (institutionId, branchId, mentorId)
    * @param pagination - Optional pagination options
    */
   async generatePendingJoiningLettersReport(
@@ -4018,7 +4528,16 @@ export class ReportGeneratorService {
       include: {
         student: {
           select: {
-            user: { select: { name: true, email: true, phoneNo: true, rollNumber: true, branchName: true, active: true } },
+            user: {
+              select: {
+                name: true,
+                email: true,
+                phoneNo: true,
+                rollNumber: true,
+                branchName: true,
+                active: true,
+              },
+            },
             branch: { select: { name: true } },
             Institution: { select: { name: true } },
           },
@@ -4027,17 +4546,23 @@ export class ReportGeneratorService {
       },
       take,
       skip,
-      orderBy: { startDate: 'desc' },
+      orderBy: { startDate: "desc" },
     });
 
-    this.warnOnLargeResultSet(applications.length, 'PendingJoiningLettersReport');
+    this.warnOnLargeResultSet(
+      applications.length,
+      "PendingJoiningLettersReport",
+    );
 
     const now = new Date();
 
     const results = applications.map((app) => {
       const startDate = app.startDate ?? app.joiningDate;
       const daysSinceStart = startDate
-        ? Math.floor((now.getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+        ? Math.floor(
+            (now.getTime() - new Date(startDate).getTime()) /
+              (1000 * 60 * 60 * 24),
+          )
         : 0;
 
       return {
@@ -4046,11 +4571,11 @@ export class ReportGeneratorService {
         email: app.student.user?.email,
         phoneNumber: app.student.user?.phoneNo,
         branchName: app.student.branch?.name ?? app.student.user?.branchName,
-        mentorName: app.mentor?.name ?? 'N/A',
+        mentorName: app.mentor?.name ?? "N/A",
         companyName: app.companyName,
         internshipStartDate: this.formatToISTDateOnly(startDate),
         daysSinceStart,
-        institutionName: app.student.Institution?.name ?? 'N/A',
+        institutionName: app.student.Institution?.name ?? "N/A",
       };
     });
 
@@ -4099,13 +4624,13 @@ export class ReportGeneratorService {
     }
 
     // Handle status filter - use internshipPhase for accurate active status
-    if (filters?.status && filters.status !== 'ALL') {
-      if (filters.status === 'ACTIVE') {
+    if (filters?.status && filters.status !== "ALL") {
+      if (filters.status === "ACTIVE") {
         // Active internships: use internshipPhase for accuracy
-        where.internshipPhase = 'ACTIVE';
+        where.internshipPhase = "ACTIVE";
         where.isActive = true; // Also ensure application is active
-      } else if (filters.status === 'COMPLETED') {
-        where.internshipPhase = 'COMPLETED';
+      } else if (filters.status === "COMPLETED") {
+        where.internshipPhase = "COMPLETED";
       }
     } else {
       // By default, only include active applications (exclude terminated/withdrawn)
@@ -4116,7 +4641,12 @@ export class ReportGeneratorService {
     let startDateStartValue = filters?.startDateStart;
     let startDateEndValue = filters?.startDateEnd;
 
-    if (!startDateStartValue && !startDateEndValue && Array.isArray(filters?.startDateRange) && filters.startDateRange.length === 2) {
+    if (
+      !startDateStartValue &&
+      !startDateEndValue &&
+      Array.isArray(filters?.startDateRange) &&
+      filters.startDateRange.length === 2
+    ) {
       startDateStartValue = filters.startDateRange[0];
       startDateEndValue = filters.startDateRange[1];
     }
@@ -4134,7 +4664,9 @@ export class ReportGeneratorService {
       where.startDate = startDateFilter;
     }
 
-    this.logger.log(`[IndustryWiseReport] Fetching applications with filters: ${JSON.stringify(where)}`);
+    this.logger.log(
+      `[IndustryWiseReport] Fetching applications with filters: ${JSON.stringify(where)}`,
+    );
 
     const applications = await this.prisma.internshipApplication.findMany({
       where,
@@ -4161,24 +4693,33 @@ export class ReportGeneratorService {
       skip,
     });
 
-    this.logger.log(`[IndustryWiseReport] Fetched ${applications.length} applications`);
+    this.logger.log(
+      `[IndustryWiseReport] Fetched ${applications.length} applications`,
+    );
 
     // Group by company name (already normalized at database level)
-    const companyMap = new Map<string, {
-      companyName: string;
-      addressCounts: Map<string, number>;
-      students: Set<string>;
-      stipends: number[];
-      activeStudents: number;
-      completedStudents: number;
-    }>();
+    const companyMap = new Map<
+      string,
+      {
+        companyName: string;
+        addressCounts: Map<string, number>;
+        students: Set<string>;
+        stipends: number[];
+        activeStudents: number;
+        completedStudents: number;
+      }
+    >();
 
-    applications.forEach(app => {
+    applications.forEach((app) => {
       if (!app.companyName) return;
 
       const companyName = app.companyName.trim();
       // Normalize key: lowercase, collapse whitespace, strip punctuation for dedup
-      const companyKey = companyName.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+      const companyKey = companyName
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
 
       if (!companyMap.has(companyKey)) {
         companyMap.set(companyKey, {
@@ -4194,13 +4735,19 @@ export class ReportGeneratorService {
       if (app.companyAddress) {
         const address = app.companyAddress.trim();
         if (address) {
-          companyData.addressCounts.set(address, (companyData.addressCounts.get(address) || 0) + 1);
+          companyData.addressCounts.set(
+            address,
+            (companyData.addressCounts.get(address) || 0) + 1,
+          );
         }
       }
       companyData.students.add(app.student.id);
 
       // Parse stipend (handle string format like "10000" or "10,000" or "₹10000")
-      const stipendStr = (app.stipend ?? '0').toString().replace(/[₹,]/g, '').trim();
+      const stipendStr = (app.stipend ?? "0")
+        .toString()
+        .replace(/[₹,]/g, "")
+        .trim();
       const stipendNum = parseFloat(stipendStr) || 0;
       if (stipendNum > 0) {
         companyData.stipends.push(stipendNum);
@@ -4209,26 +4756,34 @@ export class ReportGeneratorService {
       // Count by internshipPhase for accurate active/completed status
       // Only count if student's user account is also active
       if (app.student?.user?.active !== false) {
-        if (app.internshipPhase === 'ACTIVE' && app.isActive) {
+        if (app.internshipPhase === "ACTIVE" && app.isActive) {
           companyData.activeStudents++;
-        } else if (app.internshipPhase === 'COMPLETED') {
+        } else if (app.internshipPhase === "COMPLETED") {
           companyData.completedStudents++;
         }
       }
     });
 
-    this.logger.log(`[IndustryWiseReport] Grouped into ${companyMap.size} unique companies`);
+    this.logger.log(
+      `[IndustryWiseReport] Grouped into ${companyMap.size} unique companies`,
+    );
 
     // Convert to array and calculate aggregates
-    let results = Array.from(companyMap.values()).map(data => {
+    let results = Array.from(companyMap.values()).map((data) => {
       const totalStudents = data.students.size;
       const totalStipend = data.stipends.reduce((sum, s) => sum + s, 0);
-      const avgStipend = data.stipends.length > 0 ? totalStipend / data.stipends.length : 0;
-      const minStipend = data.stipends.length > 0 ? Math.min(...data.stipends) : 0;
-      const maxStipend = data.stipends.length > 0 ? Math.max(...data.stipends) : 0;
-      const companyAddress = data.addressCounts.size > 0
-        ? Array.from(data.addressCounts.entries()).sort((a, b) => b[1] - a[1])[0][0]
-        : '';
+      const avgStipend =
+        data.stipends.length > 0 ? totalStipend / data.stipends.length : 0;
+      const minStipend =
+        data.stipends.length > 0 ? Math.min(...data.stipends) : 0;
+      const maxStipend =
+        data.stipends.length > 0 ? Math.max(...data.stipends) : 0;
+      const companyAddress =
+        data.addressCounts.size > 0
+          ? Array.from(data.addressCounts.entries()).sort(
+              (a, b) => b[1] - a[1],
+            )[0][0]
+          : "";
 
       return {
         companyName: data.companyName,
@@ -4247,16 +4802,21 @@ export class ReportGeneratorService {
     if (filters?.minStudents) {
       const minStudents = parseInt(filters.minStudents);
       if (!isNaN(minStudents)) {
-        results = results.filter(r => r.totalStudents >= minStudents);
+        results = results.filter((r) => r.totalStudents >= minStudents);
       }
     }
 
     // Sort by total students descending
     results.sort((a, b) => b.totalStudents - a.totalStudents);
 
-    this.warnOnLargeResultSet(results.length, 'IndustryWiseStudentsStipendReport');
+    this.warnOnLargeResultSet(
+      results.length,
+      "IndustryWiseStudentsStipendReport",
+    );
 
-    this.logger.log(`[IndustryWiseReport] Returning ${results.length} industry records`);
+    this.logger.log(
+      `[IndustryWiseReport] Returning ${results.length} industry records`,
+    );
 
     return results;
   }
@@ -4294,12 +4854,12 @@ export class ReportGeneratorService {
       where.student = studentWhere;
     }
 
-    if (filters?.status && filters.status !== 'ALL') {
-      if (filters.status === 'ACTIVE') {
-        where.internshipPhase = 'ACTIVE';
+    if (filters?.status && filters.status !== "ALL") {
+      if (filters.status === "ACTIVE") {
+        where.internshipPhase = "ACTIVE";
         where.isActive = true;
-      } else if (filters.status === 'COMPLETED') {
-        where.internshipPhase = 'COMPLETED';
+      } else if (filters.status === "COMPLETED") {
+        where.internshipPhase = "COMPLETED";
       }
     } else {
       where.isActive = true;
@@ -4308,7 +4868,12 @@ export class ReportGeneratorService {
     let startDateStartValue = filters?.startDateStart;
     let startDateEndValue = filters?.startDateEnd;
 
-    if (!startDateStartValue && !startDateEndValue && Array.isArray(filters?.startDateRange) && filters.startDateRange.length === 2) {
+    if (
+      !startDateStartValue &&
+      !startDateEndValue &&
+      Array.isArray(filters?.startDateRange) &&
+      filters.startDateRange.length === 2
+    ) {
       startDateStartValue = filters.startDateRange[0];
       startDateEndValue = filters.startDateRange[1];
     }
@@ -4326,7 +4891,9 @@ export class ReportGeneratorService {
       where.startDate = startDateFilter;
     }
 
-    this.logger.log(`[TopInstitutesPerIndustry] Fetching applications with filters: ${JSON.stringify(where)}`);
+    this.logger.log(
+      `[TopInstitutesPerIndustry] Fetching applications with filters: ${JSON.stringify(where)}`,
+    );
 
     const applications = await this.prisma.internshipApplication.findMany({
       where,
@@ -4358,35 +4925,47 @@ export class ReportGeneratorService {
       skip,
     });
 
-    this.logger.log(`[TopInstitutesPerIndustry] Fetched ${applications.length} applications`);
+    this.logger.log(
+      `[TopInstitutesPerIndustry] Fetched ${applications.length} applications`,
+    );
 
     // Group by company -> institute
-    const companyMap = new Map<string, {
-      companyName: string;
-      companyAddress: string;
-      companyTotalStudents: Set<string>;
-      institutes: Map<string, {
-        instituteName: string;
-        students: Set<string>;
-        stipends: number[];
-        activeStudents: number;
-        completedStudents: number;
-      }>;
-    }>();
+    const companyMap = new Map<
+      string,
+      {
+        companyName: string;
+        companyAddress: string;
+        companyTotalStudents: Set<string>;
+        institutes: Map<
+          string,
+          {
+            instituteName: string;
+            students: Set<string>;
+            stipends: number[];
+            activeStudents: number;
+            completedStudents: number;
+          }
+        >;
+      }
+    >();
 
-    applications.forEach(app => {
+    applications.forEach((app) => {
       if (!app.companyName) return;
 
       const companyName = app.companyName.trim();
       // Normalize key: lowercase, collapse whitespace, strip punctuation for dedup
-      const companyKey = companyName.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
-      const instituteName = app.student?.Institution?.name ?? 'Unknown';
-      const instituteKey = app.student?.institutionId ?? 'unknown';
+      const companyKey = companyName
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      const instituteName = app.student?.Institution?.name ?? "Unknown";
+      const instituteKey = app.student?.institutionId ?? "unknown";
 
       if (!companyMap.has(companyKey)) {
         companyMap.set(companyKey, {
           companyName,
-          companyAddress: app.companyAddress ?? '',
+          companyAddress: app.companyAddress ?? "",
           companyTotalStudents: new Set(),
           institutes: new Map(),
         });
@@ -4408,22 +4987,27 @@ export class ReportGeneratorService {
       const instData = companyData.institutes.get(instituteKey)!;
       instData.students.add(app.student.id);
 
-      const stipendStr = (app.stipend ?? '0').toString().replace(/[₹,]/g, '').trim();
+      const stipendStr = (app.stipend ?? "0")
+        .toString()
+        .replace(/[₹,]/g, "")
+        .trim();
       const stipendNum = parseFloat(stipendStr) || 0;
       if (stipendNum > 0) {
         instData.stipends.push(stipendNum);
       }
 
       if (app.student?.user?.active !== false) {
-        if (app.internshipPhase === 'ACTIVE' && app.isActive) {
+        if (app.internshipPhase === "ACTIVE" && app.isActive) {
           instData.activeStudents++;
-        } else if (app.internshipPhase === 'COMPLETED') {
+        } else if (app.internshipPhase === "COMPLETED") {
           instData.completedStudents++;
         }
       }
     });
 
-    this.logger.log(`[TopInstitutesPerIndustry] Grouped into ${companyMap.size} companies`);
+    this.logger.log(
+      `[TopInstitutesPerIndustry] Grouped into ${companyMap.size} companies`,
+    );
 
     // Build flat result: for each company, take top 3 institutes by student count
     const results: any[] = [];
@@ -4434,13 +5018,17 @@ export class ReportGeneratorService {
 
     for (const company of companies) {
       const institutesList = Array.from(company.institutes.values())
-        .map(inst => ({
+        .map((inst) => ({
           instituteName: inst.instituteName,
           totalStudents: inst.students.size,
           totalStipend: Math.round(inst.stipends.reduce((s, v) => s + v, 0)),
-          avgStipend: inst.stipends.length > 0
-            ? Math.round(inst.stipends.reduce((s, v) => s + v, 0) / inst.stipends.length)
-            : 0,
+          avgStipend:
+            inst.stipends.length > 0
+              ? Math.round(
+                  inst.stipends.reduce((s, v) => s + v, 0) /
+                    inst.stipends.length,
+                )
+              : 0,
           activeStudents: inst.activeStudents,
           completedStudents: inst.completedStudents,
         }))
@@ -4463,9 +5051,11 @@ export class ReportGeneratorService {
       });
     }
 
-    this.warnOnLargeResultSet(results.length, 'TopInstitutesPerIndustryReport');
+    this.warnOnLargeResultSet(results.length, "TopInstitutesPerIndustryReport");
 
-    this.logger.log(`[TopInstitutesPerIndustry] Returning ${results.length} records`);
+    this.logger.log(
+      `[TopInstitutesPerIndustry] Returning ${results.length} records`,
+    );
 
     return results;
   }
@@ -4549,47 +5139,51 @@ export class ReportGeneratorService {
       },
       take,
       skip,
-      orderBy: { visitDate: 'desc' },
+      orderBy: { visitDate: "desc" },
     });
 
-    this.warnOnLargeResultSet(visitLogs.length, 'PrincipalVisitLogsReport');
+    this.warnOnLargeResultSet(visitLogs.length, "PrincipalVisitLogsReport");
 
     const visitTypeMap: Record<string, string> = {
-      PHYSICAL: 'Physical',
-      VIRTUAL: 'Virtual',
-      TELEPHONIC: 'Telephonic',
-      PHONE: 'Telephonic',
+      PHYSICAL: "Physical",
+      VIRTUAL: "Virtual",
+      TELEPHONIC: "Telephonic",
+      PHONE: "Telephonic",
     };
 
     const statusMap: Record<string, string> = {
-      DRAFT: 'Draft',
-      SCHEDULED: 'Scheduled',
-      IN_PROGRESS: 'In Progress',
-      COMPLETED: 'Completed',
-      CANCELLED: 'Cancelled',
+      DRAFT: "Draft",
+      SCHEDULED: "Scheduled",
+      IN_PROGRESS: "In Progress",
+      COMPLETED: "Completed",
+      CANCELLED: "Cancelled",
     };
 
     return visitLogs.map((log) => {
       const companyNames = log.students
-        .map((s) => s.student?.internshipApplications?.[0]?.companyName || '-')
+        .map((s) => s.student?.internshipApplications?.[0]?.companyName || "-")
         .filter((name, index, arr) => arr.indexOf(name) === index)
-        .join(', ');
+        .join(", ");
 
       // Build attendance status
-      const presentCount = log.students.filter((s) => s.isPresent !== false).length;
-      const absentCount = log.students.filter((s) => s.isPresent === false).length;
+      const presentCount = log.students.filter(
+        (s) => s.isPresent !== false,
+      ).length;
+      const absentCount = log.students.filter(
+        (s) => s.isPresent === false,
+      ).length;
       const attendanceStatus = `${presentCount} Present, ${absentCount} Absent`;
 
       return {
         visitDate: this.formatToISTDateOnly(log.visitDate),
-        institutionName: log.institution?.name ?? 'N/A',
-        principalName: log.principal?.name ?? 'N/A',
+        institutionName: log.institution?.name ?? "N/A",
+        principalName: log.principal?.name ?? "N/A",
         companyNames,
         visitType: visitTypeMap[log.visitType] || log.visitType,
-        visitLocation: log.visitLocation ?? 'N/A',
+        visitLocation: log.visitLocation ?? "N/A",
         status: statusMap[log.status] || log.status,
-        responseFromOrganisation: log.responseFromOrganisation ?? '',
-        observationsAboutIndustry: log.observationsAboutIndustry ?? '',
+        responseFromOrganisation: log.responseFromOrganisation ?? "",
+        observationsAboutIndustry: log.observationsAboutIndustry ?? "",
         followUpRequired: log.followUpRequired,
         nextVisitDate: log.nextVisitDate,
         attendanceStatus,
@@ -4652,36 +5246,39 @@ export class ReportGeneratorService {
           },
         },
       },
-      orderBy: { visitDate: 'desc' },
+      orderBy: { visitDate: "desc" },
     });
 
     // Group by institution and principal
-    const summaryMap = new Map<string, {
-      institutionId: string;
-      institutionName: string;
-      principalId: string;
-      principalName: string;
-      totalVisits: number;
-      physicalVisits: number;
-      virtualVisits: number;
-      telephonicVisits: number;
-      completedVisits: number;
-      draftVisits: number;
-      ratings: number[];
-      studentsVisited: Set<string>;
-      followUpsRequired: number;
-      lastVisitDate: Date | null;
-    }>();
+    const summaryMap = new Map<
+      string,
+      {
+        institutionId: string;
+        institutionName: string;
+        principalId: string;
+        principalName: string;
+        totalVisits: number;
+        physicalVisits: number;
+        virtualVisits: number;
+        telephonicVisits: number;
+        completedVisits: number;
+        draftVisits: number;
+        ratings: number[];
+        studentsVisited: Set<string>;
+        followUpsRequired: number;
+        lastVisitDate: Date | null;
+      }
+    >();
 
     visitLogs.forEach((log) => {
       const key = `${log.institutionId}-${log.principalId}`;
 
       if (!summaryMap.has(key)) {
         summaryMap.set(key, {
-          institutionId: log.institutionId ?? '',
-          institutionName: log.institution?.name ?? 'N/A',
+          institutionId: log.institutionId ?? "",
+          institutionName: log.institution?.name ?? "N/A",
           principalId: log.principalId,
-          principalName: log.principal?.name ?? 'N/A',
+          principalName: log.principal?.name ?? "N/A",
           totalVisits: 0,
           physicalVisits: 0,
           virtualVisits: 0,
@@ -4699,13 +5296,14 @@ export class ReportGeneratorService {
       summary.totalVisits++;
 
       // Count by visit type
-      if (log.visitType === 'PHYSICAL') summary.physicalVisits++;
-      else if (log.visitType === 'VIRTUAL') summary.virtualVisits++;
-      else if (log.visitType === 'TELEPHONIC' || log.visitType === 'PHONE') summary.telephonicVisits++;
+      if (log.visitType === "PHYSICAL") summary.physicalVisits++;
+      else if (log.visitType === "VIRTUAL") summary.virtualVisits++;
+      else if (log.visitType === "TELEPHONIC" || log.visitType === "PHONE")
+        summary.telephonicVisits++;
 
       // Count by status
-      if (log.status === 'COMPLETED') summary.completedVisits++;
-      else if (log.status === 'DRAFT') summary.draftVisits++;
+      if (log.status === "COMPLETED") summary.completedVisits++;
+      else if (log.status === "DRAFT") summary.draftVisits++;
 
       // Track ratings
       if (log.overallSatisfactionRating) {
@@ -4719,10 +5317,12 @@ export class ReportGeneratorService {
       if (log.followUpRequired) summary.followUpsRequired++;
 
       // Track last visit date
-      if (log.visitDate && (!summary.lastVisitDate || log.visitDate > summary.lastVisitDate)) {
+      if (
+        log.visitDate &&
+        (!summary.lastVisitDate || log.visitDate > summary.lastVisitDate)
+      ) {
         summary.lastVisitDate = log.visitDate;
       }
-
     });
 
     const results = Array.from(summaryMap.values()).map((summary) => {
@@ -4735,9 +5335,14 @@ export class ReportGeneratorService {
         telephonicVisits: summary.telephonicVisits,
         completedVisitLogs: summary.completedVisits,
         draftVisits: summary.draftVisits,
-        avgSatisfactionRating: summary.ratings.length > 0
-          ? Math.round((summary.ratings.reduce((a, b) => a + b, 0) / summary.ratings.length) * 10) / 10
-          : 0,
+        avgSatisfactionRating:
+          summary.ratings.length > 0
+            ? Math.round(
+                (summary.ratings.reduce((a, b) => a + b, 0) /
+                  summary.ratings.length) *
+                  10,
+              ) / 10
+            : 0,
         studentsVisited: summary.studentsVisited.size,
         followUpsRequired: summary.followUpsRequired,
         lastVisitDate: summary.lastVisitDate,
@@ -4747,7 +5352,7 @@ export class ReportGeneratorService {
     // Sort by total visits descending
     results.sort((a, b) => b.totalVisits - a.totalVisits);
 
-    this.warnOnLargeResultSet(results.length, 'PrincipalVisitSummaryReport');
+    this.warnOnLargeResultSet(results.length, "PrincipalVisitSummaryReport");
 
     return results;
   }

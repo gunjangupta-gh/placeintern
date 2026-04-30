@@ -59,8 +59,8 @@ const normalizeVisitType = (value) => {
 
 const VISIT_TYPES = [
   { value: 'PHYSICAL', label: 'Physical' },
-  { value: 'VIRTUAL', label: 'Virtual' },
-  { value: 'PHONE', label: 'Phone' },
+  // { value: 'VIRTUAL', label: 'Virtual' },
+  // { value: 'PHONE', label: 'Phone' },
 ];
 
 const physicalLocationRule = {

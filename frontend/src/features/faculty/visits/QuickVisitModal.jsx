@@ -460,8 +460,8 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
                 onChange={handleVisitTypeChange}
               >
                 <Option value="PHYSICAL">Physical Visit</Option>
-                <Option value="VIRTUAL">Virtual Visit</Option>
-                <Option value="PHONE">Phone</Option>
+                {/* <Option value="VIRTUAL">Virtual Visit</Option>
+                <Option value="PHONE">Phone</Option> */}
               </Select>
             </Form.Item>
           </Col>

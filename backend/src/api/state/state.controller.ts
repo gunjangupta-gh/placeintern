@@ -298,6 +298,30 @@ export class StateController {
     return this.stateService.replaceInstitutionBranchIntakes(id, body?.intakes || [], userId);
   }
 
+  @Get('institutions/:id/staff-capacities')
+  @ApiOperation({ summary: 'Get branch-wise staff capacity records for an institution' })
+  async getInstitutionBranchStaffCapacities(@Param('id') id: string) {
+    return this.stateService.getInstitutionBranchStaffCapacities(id);
+  }
+
+  @Put('institutions/:id/staff-capacities')
+  @ApiOperation({ summary: 'Replace branch-wise staff capacity records for an institution' })
+  async replaceInstitutionBranchStaffCapacities(
+    @Param('id') id: string,
+    @Body() body: {
+      capacities: Array<{
+        branchId: string;
+        academicYear: string;
+        sanctionedPosts: number;
+        isActive?: boolean;
+      }>;
+    },
+    @Req() req,
+  ) {
+    const userId = req.user?.userId || 'state-admin';
+    return this.stateService.replaceInstitutionBranchStaffCapacities(id, body?.capacities || [], userId);
+  }
+
   @Throttle({ default: THROTTLE_PRESETS.list })
   @Get('institutions/:id/students')
   @ApiOperation({ summary: 'Get institution students with cursor pagination and filters' })

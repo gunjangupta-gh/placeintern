@@ -414,6 +414,7 @@ model Institution {
   batches   Batch[]
   auditLogs AuditLog[] // Audit logs should track the institution context
   branchIntakes BranchIntake[]
+  branchStaffCapacities BranchStaffCapacity[]
 
   Student Student[]
 
@@ -502,6 +503,7 @@ model Branch {
   users    User[] // Teachers and Students with branchId
   students Student[] // Direct student relation (for backward compatibility)
   intakes  BranchIntake[]
+  staffCapacities BranchStaffCapacity[]
 
   // Training Module - Target disciplines for trainings
   trainings Training[] @relation("TrainingBranches")
@@ -541,6 +543,33 @@ model BranchIntake {
   @@index([branchId])
   @@index([academicYear])
   @@map("branch_intakes")
+}
+
+model BranchStaffCapacity {
+  id            String      @id @default(uuid())
+
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  branchId      String
+  branch        Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  academicYear  String      // e.g., "2023-24"
+
+  // Staff numbers for this specific branch
+  sanctionedPosts Int       @default(0) // Total officially allocated teaching posts
+  filledPosts     Int       @default(0) // Regular staff currently filling those posts
+  guestFaculty    Int       @default(0) // Guest/contract faculty count
+
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([institutionId, branchId, academicYear])
+  @@index([institutionId])
+  @@index([branchId])
+  @@index([academicYear])
+  @@map("branch_staff_capacities")
 }
 
 model Department {

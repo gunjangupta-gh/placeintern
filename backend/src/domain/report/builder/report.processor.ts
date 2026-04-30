@@ -507,6 +507,8 @@ export class ReportProcessor extends WorkerHost {
         { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
         { field: 'branchName', header: 'Branch', type: 'string' as const, width: 15 },
         { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'companyAddress', header: 'Company Address', type: 'string' as const, width: 35 },
+        { field: 'companyContact', header: 'Company Contact', type: 'string' as const, width: 15 },
         { field: 'visitDone', header: 'Visit Done', type: 'boolean' as const, width: 10 },
         { field: 'visitDate', header: 'Visit Date', type: 'date' as const, width: 12 },
         { field: 'visitType', header: 'Visit Type', type: 'string' as const, width: 12 },

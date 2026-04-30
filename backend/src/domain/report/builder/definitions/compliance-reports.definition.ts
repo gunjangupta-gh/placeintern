@@ -185,6 +185,8 @@ export const complianceReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'institutionName', label: 'Institution', type: 'string', default: true, sortable: true },
       { id: 'branchName', label: 'Branch', type: 'string', default: true },
       { id: 'companyName', label: 'Company', type: 'string', default: true },
+      { id: 'companyAddress', label: 'Company Address', type: 'string', default: true },
+      { id: 'companyContact', label: 'Company Contact', type: 'string', default: true },
       { id: 'visitDone', label: 'Visit Done', type: 'boolean', default: true },
       { id: 'visitDate', label: 'Visit Date', type: 'date', default: true, sortable: true },
       { id: 'visitType', label: 'Visit Type', type: 'string', default: true },

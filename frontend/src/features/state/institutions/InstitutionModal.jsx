@@ -124,6 +124,15 @@ const buildDefaultBranchIntakeRows = () => ([{
   isActive: true,
 }]);
 
+const buildDefaultStaffCapacityRows = () => ([{
+  branchId: undefined,
+  academicYear: getDefaultAcademicYear(),
+  sanctionedPosts: 0,
+  filledPosts: 0,
+  guestFaculty: 0,
+  isActive: true,
+}]);
+
 const normalizeLookupList = (response, key) => {
   if (Array.isArray(response)) return response;
   if (Array.isArray(response?.[key])) return response[key];
@@ -143,7 +152,7 @@ const sanitizeInstitutionPayload = (values) => {
   };
 
   const sanitized = Object.entries(basePayload).reduce((acc, [key, value]) => {
-    if (key === 'branchIntakes') {
+    if (key === 'branchIntakes' || key === 'staffCapacities') {
       return acc;
     }
 
@@ -209,6 +218,18 @@ const sanitizeBranchIntakeRows = (rows = []) => rows
   }))
   .filter((row) => row.branchId && row.academicYear);
 
+const sanitizeStaffCapacityRows = (rows = []) => rows
+  .map((row) => ({
+    branchId: row.branchId || undefined,
+    academicYear: row.academicYear ? String(row.academicYear).trim() : undefined,
+    sanctionedPosts: row.sanctionedPosts === '' || row.sanctionedPosts === null || row.sanctionedPosts === undefined
+      ? 0
+      : Number(row.sanctionedPosts),
+    isActive: row.isActive !== false,
+  }))
+  .filter((row) => row.branchId && row.academicYear);
+
+
 const buildInstitutionFormValues = (institution) => {
   const existingCoveredArea = (institution?.coveredAreaDetails || []).reduce((acc, row) => {
     acc[row.entityType] = {
@@ -235,6 +256,14 @@ const buildInstitutionFormValues = (institution) => {
       academicYear: row.academicYear || getDefaultAcademicYear(),
       sanctionedSeats: row.sanctionedSeats ?? 0,
       feeWaiverSeats: row.feeWaiverSeats ?? 0,
+      isActive: row.isActive !== false,
+    })),
+    staffCapacities: (institution?.staffCapacities?.length ? institution.staffCapacities : buildDefaultStaffCapacityRows()).map((row) => ({
+      branchId: row.branchId,
+      academicYear: row.academicYear || getDefaultAcademicYear(),
+      sanctionedPosts: row.sanctionedPosts ?? 0,
+      filledPosts: row.filledPosts ?? 0,
+      guestFaculty: row.guestFaculty ?? 0,
       isActive: row.isActive !== false,
     })),
   };
@@ -269,9 +298,10 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
     const loadInstitutionForEdit = async () => {
       setLoading(true);
       try {
-        const [institutionResponse, intakesResponse] = await Promise.all([
+        const [institutionResponse, intakesResponse, staffCapacitiesResponse] = await Promise.all([
           stateService.getInstitutionById(institutionId),
           stateService.getInstitutionBranchIntakes(institutionId),
+          stateService.getInstitutionBranchStaffCapacities(institutionId),
         ]);
 
         const detailedInstitution = institutionResponse?.data || institutionResponse;
@@ -280,9 +310,13 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
           const fetchedIntakes = Array.isArray(intakesResponse)
             ? intakesResponse
             : intakesResponse?.data || detailedInstitution.branchIntakes || [];
+          const fetchedStaffCapacities = Array.isArray(staffCapacitiesResponse)
+            ? staffCapacitiesResponse
+            : staffCapacitiesResponse?.data || detailedInstitution.staffCapacities || [];
           const institutionWithIntakes = {
             ...detailedInstitution,
             branchIntakes: fetchedIntakes,
+            staffCapacities: fetchedStaffCapacities,
           };
           form.setFieldsValue(buildInstitutionFormValues(institutionWithIntakes));
         }
@@ -346,6 +380,7 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
           type: "POLYTECHNIC",
           coveredAreaDetails: buildDefaultCoveredAreaRows(),
           branchIntakes: buildDefaultBranchIntakeRows(),
+          staffCapacities: buildDefaultStaffCapacityRows(),
         });
         setCreatePrincipal(false);
       }
@@ -370,17 +405,20 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
       // Normalize optional empty fields and ensure numeric fields are numbers.
       const payload = sanitizeInstitutionPayload(values);
       const intakePayload = sanitizeBranchIntakeRows(values.branchIntakes || []);
+      const staffCapacityPayload = sanitizeStaffCapacityRows(values.staffCapacities || []);
 
       if (isEditMode) {
         const updatedInstitution = await dispatch(updateInstitution({ id: institutionId, data: payload })).unwrap();
         const savedInstitutionId = updatedInstitution?.institution?.id || updatedInstitution?.id || institutionId;
         await stateService.replaceInstitutionBranchIntakes(savedInstitutionId, intakePayload);
+        await stateService.replaceInstitutionBranchStaffCapacities(savedInstitutionId, staffCapacityPayload);
         toast.success('Institution updated successfully');
       } else {
         const createdInstitution = await dispatch(createInstitution(payload)).unwrap();
         const savedInstitutionId = createdInstitution?.institution?.id || createdInstitution?.id;
         if (savedInstitutionId) {
           await stateService.replaceInstitutionBranchIntakes(savedInstitutionId, intakePayload);
+        await stateService.replaceInstitutionBranchStaffCapacities(savedInstitutionId, staffCapacityPayload);
         }
         toast.success('Institution created successfully');
       }
@@ -802,6 +840,161 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
                               bordered
                               pagination={false}
                               scroll={{ x: 980 }}
+                              columns={tableColumns}
+                              dataSource={fields.map((field) => ({ key: field.key }))}
+                            />
+                          </div>
+                        );
+                      }}
+                    </Form.List>
+                  </div>
+                ),
+              },
+              {
+                key: 'staff',
+                label: (
+                  <span
+                    className={`inline-flex items-center gap-2 px-2 py-1 rounded-md border transition-all ${
+                      activeFormTab === 'staff'
+                        ? 'border-blue-200 bg-blue-50 text-blue-700'
+                        : 'border-slate-200 bg-white text-slate-600'
+                    }`}
+                  >
+                    <span
+                      className={`inline-flex items-center justify-center w-5 h-5 text-[10px] font-semibold rounded-full ${
+                        activeFormTab === 'staff'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      5
+                    </span>
+                    <span className="font-medium">Staff</span>
+                  </span>
+                ),
+                children: (
+                  <div className="space-y-3">
+                    <Alert
+                      type="info"
+                      showIcon
+                      className="rounded-lg border-info/20"
+                      message="Branch-wise staff capacity tracking."
+                      description="Add one row per branch and academic year. Track sanctioned posts, filled posts, and guest faculty."
+                    />
+                    <Form.List name="staffCapacities">
+                      {(fields, { add, remove }) => {
+                        const tableColumns = [
+                          {
+                            title: 'Branch',
+                            width: 220,
+                            render: (_, __, index) => (
+                              <Form.Item
+                                name={[index, 'branchId']}
+                                className="mb-0"
+                                rules={[{ required: true, message: 'Select a branch' }]}
+                              >
+                                <Select
+                                  showSearch
+                                  optionFilterProp="label"
+                                  placeholder="Select branch"
+                                  options={branchOptions}
+                                />
+                              </Form.Item>
+                            ),
+                          },
+                          {
+                            title: 'Academic Year',
+                            width: 130,
+                            render: (_, __, index) => (
+                              <Form.Item
+                                name={[index, 'academicYear']}
+                                className="mb-0"
+                                rules={[{ required: true, message: 'Enter academic year' }]}
+                              >
+                                <Input placeholder="2026-27" />
+                              </Form.Item>
+                            ),
+                          },
+                          {
+                            title: 'Sanctioned',
+                            width: 100,
+                            render: (_, __, index) => (
+                              <Form.Item
+                                name={[index, 'sanctionedPosts']}
+                                className="mb-0"
+                                rules={[{ required: true, message: 'Required' }]}
+                              >
+                                <InputNumber min={0} placeholder="0" className="w-full" />
+                              </Form.Item>
+                            ),
+                          },
+                          {
+                            title: 'Filled (Auto)',
+                            width: 100,
+                            render: (_, __, index) => (
+                              <Form.Item
+                                name={[index, 'filledPosts']}
+                                className="mb-0"
+                              >
+                                <InputNumber min={0} disabled className="w-full" />
+                              </Form.Item>
+                            ),
+                          },
+                          {
+                            title: 'Guest (Auto)',
+                            width: 100,
+                            render: (_, __, index) => (
+                              <Form.Item
+                                name={[index, 'guestFaculty']}
+                                className="mb-0"
+                              >
+                                <InputNumber min={0} disabled className="w-full" />
+                              </Form.Item>
+                            ),
+                          },
+                          {
+                            title: 'Active',
+                            width: 70,
+                            render: (_, __, index) => (
+                              <Form.Item name={[index, 'isActive']} className="mb-0" valuePropName="checked">
+                                <Checkbox />
+                              </Form.Item>
+                            ),
+                          },
+                          {
+                            title: '',
+                            width: 80,
+                            render: (_, __, index) => (
+                              <Button
+                                danger
+                                type="text"
+                                size="small"
+                                onClick={() => remove(index)}
+                                disabled={fields.length === 1}
+                              >
+                                Remove
+                              </Button>
+                            ),
+                          },
+                        ];
+
+                        return (
+                          <div className="space-y-2">
+                            <div className="flex justify-end">
+                              <Button type="dashed" icon={<PlusOutlined />} onClick={() => add({
+                                branchId: undefined,
+                                academicYear: getDefaultAcademicYear(),
+                                sanctionedPosts: 0,
+                                isActive: true,
+                              })}>
+                                Add Staff Row
+                              </Button>
+                            </div>
+                            <Table
+                              size="small"
+                              bordered
+                              pagination={false}
+                              scroll={{ x: 800 }}
                               columns={tableColumns}
                               dataSource={fields.map((field) => ({ key: field.key }))}
                             />

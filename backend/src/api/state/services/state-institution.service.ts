@@ -716,6 +716,177 @@ export class StateInstitutionService {
   }
 
   /**
+   * Get branch-wise staff capacity records for an institution
+   * filledPosts and guestFaculty are calculated dynamically from User records
+   */
+  async getInstitutionBranchStaffCapacities(institutionId: string) {
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: institutionId },
+      select: { id: true },
+    });
+
+    if (!institution) {
+      throw new NotFoundException(`Institution with ID ${institutionId} not found`);
+    }
+
+    const capacities = await this.prisma.branchStaffCapacity.findMany({
+      where: { institutionId },
+      include: {
+        branch: true,
+      },
+      orderBy: [
+        { academicYear: 'desc' },
+        { branch: { name: 'asc' } },
+      ],
+    });
+
+    // Get staff counts per branch (regular staff vs guest teachers)
+    const staffRoles = [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF];
+
+    // Count regular staff (guestTeacher = false or null) per branch
+    const regularStaffCounts = await this.prisma.user.groupBy({
+      by: ['branchId'],
+      where: {
+        institutionId,
+        role: { in: staffRoles },
+        branchId: { not: null },
+        active: true,
+        guestTeacher: { not: true },
+      },
+      _count: { id: true },
+    });
+
+    // Count guest teachers per branch
+    const guestStaffCounts = await this.prisma.user.groupBy({
+      by: ['branchId'],
+      where: {
+        institutionId,
+        role: { in: staffRoles },
+        branchId: { not: null },
+        active: true,
+        guestTeacher: true,
+      },
+      _count: { id: true },
+    });
+
+    const regularCountMap = new Map(
+      regularStaffCounts.map(s => [s.branchId, s._count.id])
+    );
+    const guestCountMap = new Map(
+      guestStaffCounts.map(s => [s.branchId, s._count.id])
+    );
+
+    // Enrich capacities with dynamically calculated staff counts
+    return capacities.map(capacity => {
+      const filledPosts = regularCountMap.get(capacity.branchId) || 0;
+      const guestFaculty = guestCountMap.get(capacity.branchId) || 0;
+      const totalStaff = filledPosts + guestFaculty;
+      const vacantPosts = Math.max(0, capacity.sanctionedPosts - filledPosts);
+      const capacityExceeded = totalStaff > capacity.sanctionedPosts;
+
+      return {
+        ...capacity,
+        filledPosts,
+        guestFaculty,
+        totalStaff,
+        vacantPosts,
+        capacityExceeded,
+      };
+    });
+  }
+
+
+  /**
+   * Replace all branch staff capacity records for an institution
+   * Only sanctionedPosts is accepted - filledPosts and guestFaculty are calculated dynamically
+   */
+  async replaceInstitutionBranchStaffCapacities(
+    institutionId: string,
+    capacities: Array<{
+      branchId: string;
+      academicYear: string;
+      sanctionedPosts: number;
+      isActive?: boolean;
+    }>,
+    userId?: string,
+  ) {
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: institutionId },
+      select: { id: true, name: true, code: true },
+    });
+
+    if (!institution) {
+      throw new NotFoundException(`Institution with ID ${institutionId} not found`);
+    }
+
+    const normalizedCapacities = (capacities || [])
+      .filter((item) => item.branchId && item.academicYear)
+      .map((item) => ({
+        institutionId,
+        branchId: item.branchId,
+        academicYear: item.academicYear.trim(),
+        sanctionedPosts: Number(item.sanctionedPosts) || 0,
+        filledPosts: 0, // Calculated dynamically, stored as 0
+        guestFaculty: 0, // Calculated dynamically, stored as 0
+        isActive: item.isActive !== false,
+      }));
+
+    // Check for duplicates
+    const seen = new Set<string>();
+    for (const capacity of normalizedCapacities) {
+      const dedupeKey = `${capacity.branchId}:${capacity.academicYear}`;
+      if (seen.has(dedupeKey)) {
+        throw new BadRequestException('Duplicate staff capacity rows for the same branch and academic year are not allowed');
+      }
+      seen.add(dedupeKey);
+    }
+
+    // Validate branch IDs
+    const branchIds = [...new Set(normalizedCapacities.map((item) => item.branchId))];
+    if (branchIds.length > 0) {
+      const existingBranches = await this.prisma.branch.findMany({
+        where: { id: { in: branchIds } },
+        select: { id: true },
+      });
+
+      if (existingBranches.length !== branchIds.length) {
+        throw new BadRequestException('One or more branch IDs are invalid');
+      }
+    }
+
+    // Execute transaction: delete all, then create new
+    await this.prisma.$transaction(async (tx) => {
+      await tx.branchStaffCapacity.deleteMany({ where: { institutionId } });
+
+      if (normalizedCapacities.length > 0) {
+        await tx.branchStaffCapacity.createMany({ data: normalizedCapacities });
+      }
+    });
+
+    // Audit log
+    this.auditService.log({
+      action: AuditAction.INSTITUTION_UPDATE,
+      entityType: 'Institution',
+      entityId: institution.id,
+      userId: userId || 'SYSTEM',
+      userRole: Role.STATE_DIRECTORATE,
+      description: `Branch staff capacities updated for institution ${institution.name}`,
+      category: AuditCategory.SYSTEM_ADMIN,
+      severity: AuditSeverity.MEDIUM,
+      institutionId,
+      oldValues: null,
+      newValues: {
+        branchStaffCapacitiesCount: normalizedCapacities.length,
+      },
+    }).catch(() => {});
+
+    await this.cache.invalidateByTags(['state', 'institutions', `institution:${institutionId}`]);
+
+    // Return with dynamically calculated filledPosts and guestFaculty
+    return this.getInstitutionBranchStaffCapacities(institutionId);
+  }
+
+  /**
    * Get institution overview with detailed statistics including self-identified internships
    */
   async getInstitutionOverview(id: string) {
@@ -726,15 +897,39 @@ export class StateInstitutionService {
         id: true,
         name: true,
         code: true,
+        shortName: true,
         city: true,
         district: true,
+        state: true,
+        pinCode: true,
         type: true,
         isActive: true,
         address: true,
         contactEmail: true,
         contactPhone: true,
-        branchIntakes: {
+        // Land & Infrastructure fields
+        totalLandAcres: true,
+        landOwnership: true,
+        hasLandDispute: true,
+        totalStudentSeats: true,
+        totalStaffSeats: true,
+        // Covered area details
+        coveredAreaDetails: {
           select: {
+            entityType: true,
+            numberOfRooms: true,
+            requiredAreaSqFt: true,
+            availableAreaSqFt: true,
+            additionalRequirementSqFt: true,
+            declaredUnsafeAreaSqFt: true,
+          },
+        },
+        branchIntakes: {
+          where: { isActive: true },
+          select: {
+            branchId: true,
+            branch: { select: { name: true, shortName: true } },
+            academicYear: true,
             sanctionedSeats: true,
             feeWaiverSeats: true,
             isActive: true,

@@ -131,6 +131,23 @@ export class StateService {
     return this.institutionService.replaceInstitutionBranchIntakes(institutionId, intakes, userId);
   }
 
+  async getInstitutionBranchStaffCapacities(institutionId: string) {
+    return this.institutionService.getInstitutionBranchStaffCapacities(institutionId);
+  }
+
+  async replaceInstitutionBranchStaffCapacities(
+    institutionId: string,
+    capacities: Array<{
+      branchId: string;
+      academicYear: string;
+      sanctionedPosts: number;
+      isActive?: boolean;
+    }>,
+    userId?: string,
+  ) {
+    return this.institutionService.replaceInstitutionBranchStaffCapacities(institutionId, capacities, userId);
+  }
+
   async getInstitutionStudents(
     institutionId: string,
     params: {

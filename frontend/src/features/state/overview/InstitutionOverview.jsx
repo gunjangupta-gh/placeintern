@@ -12,10 +12,22 @@ import {
   Empty,
   Spin,
   theme,
+  Row,
+  Col,
+  Input,
+  Select,
+  List,
+  Tag,
+  Grid
 } from "antd";
 import {
   BankOutlined,
   ReloadOutlined,
+  SearchOutlined,
+  CheckCircleOutlined,
+  StopOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
 } from "@ant-design/icons";
 import {
   fetchInstitutions,
@@ -28,6 +40,8 @@ import {
 import { InstituteDetailView } from "../dashboard/components";
 
 const { Text, Title } = Typography;
+const { Option } = Select;
+const { useBreakpoint } = Grid;
 
 /**
  * InstitutionOverview - A page with sidebar showing institutions list
@@ -37,12 +51,18 @@ const { Text, Title } = Typography;
 const InstitutionOverview = () => {
   const dispatch = useDispatch();
   const { token } = theme.useToken();
+  const screens = useBreakpoint();
   const [searchParams, setSearchParams] = useSearchParams();
   const institutions = useSelector(selectInstitutions);
   const selectedInstitute = useSelector(selectSelectedInstitute);
   const loading = useSelector(selectInstitutionsLoading);
   const apiTotalStudents = useSelector(selectInstitutionsTotalStudents);
   const [initialTab, setInitialTab] = useState(null);
+
+  // Filters state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [listCollapsed, setListCollapsed] = useState(false);
 
   // Get URL params
   const urlInstitutionId = searchParams.get("id");
@@ -98,65 +118,164 @@ const InstitutionOverview = () => {
     (i) => i.id === selectedInstitute?.id,
   );
 
+  // Filtering Institutions
+  const filteredInstitutions = useMemo(() => {
+    return institutions.filter((inst) => {
+      // Name or Code match
+      const lowerSearch = searchQuery.toLowerCase();
+      const matchesSearch =
+        (inst.name && inst.name.toLowerCase().includes(lowerSearch)) ||
+        (inst.code && inst.code.toLowerCase().includes(lowerSearch)) ||
+        (inst.shortName && inst.shortName.toLowerCase().includes(lowerSearch));
+
+      // Status match
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" && inst.isActive) ||
+        (statusFilter === "inactive" && !inst.isActive);
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [institutions, searchQuery, statusFilter]);
+
+  const handleSelectInstitution = (inst) => {
+    dispatch(setSelectedInstitute(inst.id));
+    setSearchParams({ id: inst.id }, { replace: true });
+  };
+
   return (
-    <div style={{ padding: 24 }}>
-      {/* Header - Compact */}
-      {/* <div
-        style={{
-          marginBottom: 16,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "12px 16px",
-          backgroundColor: token.colorBgContainer,
-          borderRadius: token.borderRadiusLG,
-          border: `1px solid ${token.colorBorderSecondary}`,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <BankOutlined style={{ fontSize: 20, color: token.colorPrimary }} />
-          <div>
-            <Title level={4} style={{ margin: 0, lineHeight: 1.2 }}>
-              Institutions
-            </Title>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {institutions.length} total •{" "}
-              {totalStudents.toLocaleString()} students
-            </Text>
-          </div>
-        </div>
+    <div style={{ padding: 12, backgroundColor: token.colorBgLayout, minHeight: "100vh" }}>
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 16, gap: 12 }}>
+        <Button
+          type="text"
+          icon={listCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+          onClick={() => setListCollapsed(!listCollapsed)}
+          style={{ fontSize: 16 }}
+        />
+        <Title level={4} style={{ color: token.colorTextHeading, margin: 0, flex: 1 }}>
+          Institution Overview
+        </Title>
         <Button
           icon={<ReloadOutlined />}
           onClick={handleRefresh}
           loading={loading}
           size="small"
-        />
-      </div> */}
+        >
+          Refresh
+        </Button>
+      </div>
 
-      <Card
-        style={{ height: "calc(100vh - 100px)", overflow: "hidden" }}
-        bodyStyle={{
-          padding: 0,
-          height: "100%",
-          overflowY: "auto",
-          overflowX: "hidden",
-          scrollbarGutter: "stable",
-        }}
-      >
-        {loading && !selectedInstitute ? (
-          <div style={{ textAlign: "center", padding: 48 }}>
-            <Spin tip="Loading institution..." />
+      <div style={{ display: "flex", gap: 12, height: screens.md ? "calc(100vh - 100px)" : "auto" }}>
+        {/* Left Panel - List */}
+        <div style={{
+          width: listCollapsed ? 0 : (screens.lg ? 280 : 240),
+          minWidth: listCollapsed ? 0 : (screens.lg ? 280 : 240),
+          overflow: "hidden",
+          transition: "all 0.3s ease",
+          opacity: listCollapsed ? 0 : 1,
+        }}>
+          <div style={{
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            backgroundColor: token.colorBgContainer,
+            borderRadius: token.borderRadius,
+          }}>
+            {/* Header */}
+            <div style={{ padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Text strong style={{ fontSize: 13 }}>Directory</Text>
+              <Text type="secondary" style={{ fontSize: 11 }}>{filteredInstitutions.length}/{institutions.length}</Text>
+            </div>
+
+            {/* Filters */}
+            <div style={{ padding: "0 12px 10px" }}>
+              <Input
+                placeholder="Search..."
+                size="small"
+                style={{ marginBottom: 8 }}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                prefix={<SearchOutlined style={{ color: token.colorTextDisabled, fontSize: 12 }} />}
+                allowClear
+              />
+              <Select
+                size="small"
+                style={{ width: "100%" }}
+                value={statusFilter}
+                onChange={setStatusFilter}
+              >
+                <Option value="all">All Status</Option>
+                <Option value="active">Active Only</Option>
+                <Option value="inactive">Inactive Only</Option>
+              </Select>
+            </div>
+
+            {/* List */}
+            <div style={{ overflowY: "auto", padding: "0 8px 8px", flex: 1 }}>
+              {loading && institutions.length === 0 ? (
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 100 }}>
+                  <Spin size="small" />
+                </div>
+              ) : (
+                <List
+                  itemLayout="horizontal"
+                  dataSource={filteredInstitutions}
+                  locale={{ emptyText: "No institutions found" }}
+                  renderItem={(inst) => (
+                    <List.Item
+                      onClick={() => handleSelectInstitution(inst)}
+                      style={{
+                        cursor: "pointer",
+                        margin: "2px 0",
+                        padding: "6px 10px",
+                        borderRadius: token.borderRadius,
+                        backgroundColor: selectedInstitute?.id === inst.id ? token.colorPrimaryBg : "transparent",
+                        borderLeft: `3px solid ${selectedInstitute?.id === inst.id ? token.colorPrimary : "transparent"}`,
+                      }}
+                    >
+                      <List.Item.Meta
+                        title={
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                            <Text style={{ fontWeight: 500, fontSize: 12, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {inst.shortName || inst.name}
+                            </Text>
+                            <Tag color={inst.isActive ? "success" : "default"} bordered={false} style={{ fontSize: 9, lineHeight: "14px", height: 16, margin: 0, padding: "0 4px" }}>
+                              {inst.isActive ? "Active" : "Inactive"}
+                            </Tag>
+                          </div>
+                        }
+                        description={
+                          <div style={{ fontSize: 10, color: token.colorTextDescription, display: "flex", gap: 8 }}>
+                            {inst.code && <span style={{ fontFamily: "monospace" }}>{inst.code}</span>}
+                            {inst._count?.Student > 0 && <span>{inst._count.Student} students</span>}
+                          </div>
+                        }
+                      />
+                    </List.Item>
+                  )}
+                />
+              )}
+            </div>
           </div>
-        ) : selectedInstitute ? (
-          <InstituteDetailView defaultTab={initialTab} />
-        ) : (
-          <Empty
-            description="Select an institution from Institution Management to view details"
-            style={{ marginTop: "20%" }}
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-          />
-        )}
-      </Card>
+        </div>
+
+        {/* Right Panel - Details */}
+        <div style={{ flex: 1, minWidth: 0, backgroundColor: token.colorBgContainer, borderRadius: token.borderRadius, overflow: "hidden" }}>
+          {loading && !selectedInstitute ? (
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100%" }}>
+              <Spin tip="Loading..." />
+            </div>
+          ) : selectedInstitute ? (
+            <InstituteDetailView defaultTab={initialTab} />
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100%" }}>
+              <BankOutlined style={{ fontSize: 40, color: token.colorTextDisabled, marginBottom: 12 }} />
+              <Title level={5} style={{ color: token.colorTextSecondary, margin: 0 }}>Select an Institution</Title>
+              <Text type="secondary" style={{ fontSize: 12 }}>Choose from the directory</Text>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

@@ -106,855 +106,240 @@ const STATUS_COLORS = {
 
 const getStatusColor = (status) => STATUS_COLORS[status] || "default";
 
-// Memoized Mentor Overview Tab - Shows detailed mentor stats for selected institution
+// Memoized Mentor Overview Tab - Removed
 const MentorOverviewTab = memo(({ institutionId }) => {
-  const [overviewData, setOverviewData] = useState(null);
-  const [mentorDetails, setMentorDetails] = useState({
-    internal: [],
-    incoming: [],
-    outgoing: [],
-  });
-  const [loading, setLoading] = useState(true);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [activeSection, setActiveSection] = useState("internal");
-  const [studentBreakdown, setStudentBreakdown] = useState(null);
-
-  useEffect(() => {
-    if (!institutionId) return;
-
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Fetch overview data
-        const overviewResponse =
-          await stateService.getInstitutionMentorOverview();
-        const allData = overviewResponse?.data || [];
-        const institutionData = allData.find(
-          (inst) => inst.institutionId === institutionId,
-        );
-        setOverviewData(institutionData || null);
-
-        // Fetch detailed mentor assignments
-        setDetailsLoading(true);
-        const [studentsResponse, mentorsResponse] = await Promise.all([
-          stateService.getInstitutionStudents(institutionId, {
-            page: 1,
-            limit: 1000,
-          }),
-          stateService.getInstitutionMentors(institutionId),
-        ]);
-
-        const students = studentsResponse?.students || [];
-        const mentors = mentorsResponse?.data || [];
-
-        // Calculate student breakdown for discrepancy display
-        // Use User SOT pattern: prefer user.active, fallback to isActive
-        const totalStudents = students.length;
-        const activeStudents = students.filter(
-          (s) => (s.user?.active ?? s.isActive) === true,
-        );
-        const inactiveStudents = students.filter(
-          (s) => (s.user?.active ?? s.isActive) !== true,
-        );
-        const studentsWithMentor = activeStudents.filter((s) =>
-          s.mentorAssignments?.some((ma) => ma.isActive === true),
-        );
-        const studentsWithoutMentor = activeStudents.filter(
-          (s) => !s.mentorAssignments?.some((ma) => ma.isActive === true),
-        );
-
-        setStudentBreakdown({
-          total: totalStudents,
-          active: activeStudents.length,
-          inactive: inactiveStudents.length,
-          withMentor: studentsWithMentor.length,
-          withoutMentor: studentsWithoutMentor.length,
-        });
-
-        // Process internal mentors
-        const internalMentors = mentors
-          .map((mentor) => {
-            const assignedStudents = activeStudents.filter((s) =>
-              s.mentorAssignments?.some(
-                (ma) => ma.isActive && ma.mentorId === mentor.id,
-              ),
-            );
-            return {
-              ...mentor,
-              studentCount: assignedStudents.length,
-              students: assignedStudents,
-            };
-          })
-          .filter((m) => m.studentCount > 0);
-
-        // Process external assignments (mock for now - would need specific endpoint)
-        setMentorDetails({
-          internal: internalMentors,
-          incoming: [],
-          outgoing: [],
-        });
-      } catch (err) {
-        setError(err?.message || "Failed to load mentor overview");
-      } finally {
-        setLoading(false);
-        setDetailsLoading(false);
-      }
-    };
-    fetchData();
-  }, [institutionId]);
-
-  // Internal Mentors Table Columns
-  const internalMentorColumns = [
-    {
-      title: "Mentor",
-      key: "mentor",
-      fixed: "left",
-      width: 180,
-      render: (_, record) => (
-        <div className="min-w-0">
-          <div className="font-medium text-text-primary text-xs truncate">
-            {record.name}
-          </div>
-          <div className="text-[10px] text-text-tertiary">{record.email}</div>
-        </div>
-      ),
-    },
-    {
-      title: "Role",
-      dataIndex: "role",
-      key: "role",
-      width: 120,
-      render: (role) => (
-        <Tag color="blue" className="text-[10px] m-0">
-          {role?.replace(/_/g, " ")}
-        </Tag>
-      ),
-    },
-    {
-      title: "Students",
-      key: "students",
-      width: 100,
-      align: "center",
-      render: (_, record) => (
-        <Badge
-          count={record.studentCount}
-          showZero
-          style={{ backgroundColor: "#16a34a" }}
-        />
-      ),
-    },
-    {
-      title: "Contact",
-      dataIndex: "phoneNo",
-      key: "contact",
-      width: 110,
-      render: (phone) => (
-        <span className="text-xs text-text-secondary">{phone || "-"}</span>
-      ),
-    },
-  ];
-
-  if (!institutionId)
-    return <Empty description="No institution selected" className="py-20" />;
-  if (loading)
-    return (
-      <div className="flex justify-center py-20">
-        <Spin size="large" tip="Loading mentor overview..." />
-      </div>
-    );
-  if (error)
-    return (
-      <Alert
-        type="error"
-        message="Failed to load"
-        description={error}
-        showIcon
-        className="m-4"
-      />
-    );
-  if (!overviewData)
-    return (
-      <Empty
-        description="No mentor data available for this institution"
-        className="py-20"
-      />
-    );
-
-  return (
-    <div className="space-y-5">
-      {/* Top Stats Row - Compact Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-surface rounded-xl border border-border p-3 text-center border-l-4 border-l-green-500">
-          <div className="text-2xl font-bold text-green-700">
-            {overviewData.internal.mentors}
-          </div>
-          <div className="text-[10px] text-text-tertiary mt-1">
-            Internal Mentors
-          </div>
-        </div>
-        <div className="bg-surface rounded-xl border border-border p-3 text-center border-l-4 border-l-green-600">
-          <div className="text-2xl font-bold text-green-600">
-            {overviewData.internal.students}
-          </div>
-          <div className="text-[10px] text-text-tertiary mt-1">
-            Students Mentored
-          </div>
-        </div>
-        <div className="bg-surface rounded-xl border border-border p-3 text-center border-l-4 border-l-blue-500">
-          <div className="text-2xl font-bold text-blue-600">
-            {overviewData.incomingExternal.students}
-          </div>
-          <div className="text-[10px] text-text-tertiary mt-1">
-            Incoming Help
-          </div>
-        </div>
-        <div className="bg-surface rounded-xl border border-border p-3 text-center border-l-4 border-l-orange-500">
-          <div className="text-2xl font-bold text-orange-600">
-            {overviewData.outgoingExternal.students}
-          </div>
-          <div className="text-[10px] text-text-tertiary mt-1">
-            Outgoing Help
-          </div>
-        </div>
-      </div>
-
-      {/* Summary Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card
-          size="small"
-          title={
-            <span className="text-xs font-semibold">Internal Mentoring</span>
-          }
-          className="rounded-xl border-border"
-        >
-          <div className="space-y-2 text-xs">
-            <div className="flex justify-between">
-              <span className="text-text-tertiary">Mentors:</span>
-              <span className="font-semibold text-text-primary">
-                {overviewData.internal.mentors}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-text-tertiary">Students:</span>
-              <span className="font-semibold text-success">
-                {overviewData.internal.students}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-text-tertiary">Assignments:</span>
-              <span className="font-semibold text-text-primary">
-                {overviewData.internal.assignments}
-              </span>
-            </div>
-          </div>
-        </Card>
-
-        <Card
-          size="small"
-          title={
-            <span className="text-xs font-semibold">Incoming External</span>
-          }
-          className="rounded-xl border-border"
-        >
-          <div className="space-y-2 text-xs">
-            <div className="flex justify-between">
-              <span className="text-text-tertiary">External Mentors:</span>
-              <span className="font-semibold text-primary">
-                {overviewData.incomingExternal.mentors}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-text-tertiary">Your Students:</span>
-              <span className="font-semibold text-primary">
-                {overviewData.incomingExternal.students}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-text-tertiary">From Institutions:</span>
-              <span className="font-semibold text-text-primary">
-                {overviewData.incomingExternal.fromInstitutions}
-              </span>
-            </div>
-          </div>
-        </Card>
-
-        <Card
-          size="small"
-          title={
-            <span className="text-xs font-semibold">Outgoing External</span>
-          }
-          className="rounded-xl border-border"
-        >
-          <div className="space-y-2 text-xs">
-            <div className="flex justify-between">
-              <span className="text-text-tertiary">Your Mentors:</span>
-              <span className="font-semibold text-warning">
-                {overviewData.outgoingExternal.mentors}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-text-tertiary">External Students:</span>
-              <span className="font-semibold text-warning">
-                {overviewData.outgoingExternal.students}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-text-tertiary">To Institutions:</span>
-              <span className="font-semibold text-text-primary">
-                {overviewData.outgoingExternal.toInstitutions}
-              </span>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Student Mentoring Status & Discrepancy Explanation */}
-      {studentBreakdown && (
-        <Card
-          size="small"
-          title={
-            <div className="flex items-center gap-2">
-              <TeamOutlined className="text-primary" />
-              <span className="text-sm font-semibold">
-                Student Mentoring Status
-              </span>
-            </div>
-          }
-          className="rounded-xl border-border bg-blue-50/30"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2.5 text-xs">
-              <div className="flex justify-between items-center py-1">
-                <span className="text-text-tertiary font-medium">
-                  Total Students:
-                </span>
-                <span className="font-bold text-text-primary text-base">
-                  {studentBreakdown.total}
-                </span>
-              </div>
-              <div className="pl-4 space-y-1.5">
-                <div className="flex justify-between items-center py-0.5">
-                  <span className="text-text-tertiary flex items-center gap-1">
-                    <CheckCircleOutlined className="text-success text-xs" />
-                    Active Students:
-                  </span>
-                  <span className="font-semibold text-success text-sm">
-                    {studentBreakdown.active}
-                  </span>
-                </div>
-                <div className="pl-6 space-y-1">
-                  <div className="flex justify-between items-center py-0.5">
-                    <span className="text-text-tertiary">• With Mentor:</span>
-                    <Tag color="green" className="m-0 font-semibold">
-                      {studentBreakdown.withMentor}
-                    </Tag>
-                  </div>
-                  <div className="flex justify-between items-center py-0.5">
-                    <span className="text-text-tertiary">
-                      • Without Mentor:
-                    </span>
-                    <Tag
-                      color={
-                        studentBreakdown.withoutMentor > 0
-                          ? "orange"
-                          : "default"
-                      }
-                      className="m-0 font-semibold"
-                    >
-                      {studentBreakdown.withoutMentor}
-                    </Tag>
-                  </div>
-                </div>
-              </div>
-              <div className="pl-4">
-                <div className="flex justify-between items-center py-0.5">
-                  <span className="text-text-tertiary flex items-center gap-1">
-                    <CloseCircleOutlined className="text-text-tertiary text-xs" />
-                    Inactive Students:
-                  </span>
-                  <span className="font-semibold text-text-tertiary text-sm">
-                    {studentBreakdown.inactive}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center">
-              <Alert
-                type="info"
-                message={
-                  <span className="text-xs font-semibold">
-                    {studentBreakdown.inactive > 0
-                      ? "Discrepancy Explained"
-                      : "All Students Active"}
-                  </span>
-                }
-                description={
-                  <div className="text-[11px] mt-1 space-y-1">
-                    {studentBreakdown.inactive > 0 ? (
-                      <>
-                        <p className="text-text-secondary leading-relaxed">
-                          Only{" "}
-                          <strong className="text-primary">
-                            {studentBreakdown.active} active students
-                          </strong>{" "}
-                          are considered for mentoring.
-                          <strong className="text-text-tertiary">
-                            {" "}
-                            {studentBreakdown.inactive} inactive students
-                          </strong>{" "}
-                          are excluded from all mentor assignment counts and
-                          statistics.
-                        </p>
-                        {studentBreakdown.withoutMentor > 0 && (
-                          <p className="text-warning font-medium mt-2">
-                            ⚠ {studentBreakdown.withoutMentor} active{" "}
-                            {studentBreakdown.withoutMentor === 1
-                              ? "student needs"
-                              : "students need"}{" "}
-                            mentor assignment.
-                          </p>
-                        )}
-                      </>
-                    ) : (
-                      <p className="text-text-secondary leading-relaxed">
-                        All {studentBreakdown.total} students are active.
-                        {studentBreakdown.withMentor ===
-                        studentBreakdown.active ? (
-                          <span className="text-success font-medium">
-                            {" "}
-                            All students have been assigned mentors.
-                          </span>
-                        ) : (
-                          <span className="text-warning font-medium">
-                            {" "}
-                            {studentBreakdown.withoutMentor}{" "}
-                            {studentBreakdown.withoutMentor === 1
-                              ? "student needs"
-                              : "students need"}{" "}
-                            mentor assignment.
-                          </span>
-                        )}
-                      </p>
-                    )}
-                  </div>
-                }
-                showIcon
-                className="w-full"
-              />
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Detailed Mentor List */}
-      <Card
-        size="small"
-        title={
-          <span className="text-sm font-semibold text-text-primary">
-            Internal Mentors & Assignments
-          </span>
-        }
-        extra={
-          <Space size="small">
-            <Tag color="green" className="text-[10px] m-0">
-              {mentorDetails.internal.length} Active Mentors
-            </Tag>
-          </Space>
-        }
-        className="rounded-xl border-border"
-      >
-        {detailsLoading ? (
-          <div className="flex justify-center py-8">
-            <Spin />
-          </div>
-        ) : mentorDetails.internal.length > 0 ? (
-          <Table
-            columns={internalMentorColumns}
-            dataSource={mentorDetails.internal}
-            rowKey="id"
-            size="small"
-            pagination={{ pageSize: 10, size: "small", showSizeChanger: false }}
-            scroll={{ x: 'max-content' }}
-            className="custom-table"
-          />
-        ) : (
-          <Empty description="No mentor assignments yet" className="py-8" />
-        )}
-      </Card>
-
-      {/* Cross-Institutional Info */}
-      {(overviewData.incomingExternal.students > 0 ||
-        overviewData.outgoingExternal.students > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {overviewData.incomingExternal.students > 0 && (
-            <Alert
-              type="info"
-              message={
-                <span className="text-xs font-semibold">
-                  Receiving External Support
-                </span>
-              }
-              description={
-                <div className="text-[11px] mt-1 text-text-secondary">
-                  {overviewData.incomingExternal.mentors} faculty from{" "}
-                  {overviewData.incomingExternal.fromInstitutions} other{" "}
-                  {overviewData.incomingExternal.fromInstitutions === 1
-                    ? "institution"
-                    : "institutions"}{" "}
-                  are helping mentor {overviewData.incomingExternal.students} of
-                  your students.
-                </div>
-              }
-              showIcon
-              className="rounded-lg"
-            />
-          )}
-
-          {overviewData.outgoingExternal.students > 0 && (
-            <Alert
-              type="warning"
-              message={
-                <span className="text-xs font-semibold">
-                  Providing External Support
-                </span>
-              }
-              description={
-                <div className="text-[11px] mt-1 text-text-secondary">
-                  {overviewData.outgoingExternal.mentors} of your faculty are
-                  mentoring {overviewData.outgoingExternal.students} students
-                  from {overviewData.outgoingExternal.toInstitutions} other{" "}
-                  {overviewData.outgoingExternal.toInstitutions === 1
-                    ? "institution"
-                    : "institutions"}
-                  .
-                </div>
-              }
-              showIcon
-              className="rounded-lg"
-            />
-          )}
-        </div>
-      )}
-    </div>
-  );
+  return null;
 });
 
-// Memoized Overview Tab Component
-const OverviewTab = memo(({ data, loading, error }) => {
-  if (loading)
-    return (
-      <div className="flex justify-center py-12">
-        <Spin size="large" />
-      </div>
-    );
-  if (error)
-    return (
-      <Alert
-        type="error"
-        message="Failed to load overview"
-        description={error}
-        showIcon
-        className="rounded-xl"
-      />
-    );
+const OverviewTab = memo(({ data, loading, error, staffCapacities, staffCapacitiesLoading }) => {
+  if (loading) return <div className="flex justify-center py-12"><Spin size="large" /></div>;
+  if (error) return <Alert type="error" message="Failed to load overview" description={error} showIcon />;
   if (!data) return <Empty description="No data available" className="py-12" />;
 
   return (
     <div className="space-y-3 max-w-6xl mx-auto">
-      {/* Top Stats Row - Compact */}
+      {/* Top Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <div className="bg-surface rounded-lg border border-border p-2.5 text-center">
-          <div className="text-2xl font-bold text-text-primary">
-            {data.activeStudents || 0}
-          </div>
-          <div className="text-[10px] text-text-tertiary mt-0.5">
-            Active Students
-          </div>
+          <div className="text-2xl font-bold text-text-primary">{data.activeStudents || 0}</div>
+          <div className="text-[10px] text-text-tertiary mt-0.5">Active Students</div>
         </div>
         <div className="bg-surface rounded-lg border border-border p-2.5 text-center">
-          <div className="text-2xl font-bold text-text-primary">
-            {data.companiesCount || 0}
-          </div>
+          <div className="text-2xl font-bold text-text-primary">{data.companiesCount || 0}</div>
           <div className="text-[10px] text-text-tertiary mt-0.5">Companies</div>
         </div>
         <div className="bg-surface rounded-lg border border-border p-2.5 text-center">
-          <div className="text-2xl font-bold text-text-primary">
-            {data.facultyCount || 0}
-          </div>
+          <div className="text-2xl font-bold text-text-primary">{data.facultyCount || 0}</div>
           <div className="text-[10px] text-text-tertiary mt-0.5">Faculty</div>
         </div>
         <div className="bg-surface rounded-lg border border-border p-2.5 text-center">
-          <Progress
-            type="circle"
-            percent={data.complianceScore || 0}
-            size={40}
-            strokeWidth={6}
-            strokeColor={
-              data.complianceScore >= 80
-                ? "rgb(var(--color-success))"
-                : data.complianceScore >= 50
-                  ? "rgb(var(--color-warning))"
-                  : "rgb(var(--color-error))"
-            }
-          />
-          <div className="text-[10px] text-text-tertiary mt-0.5">
-            Compliance
-          </div>
+          <Progress type="circle" percent={data.complianceScore || 0} size={40} strokeWidth={6}
+            strokeColor={data.complianceScore >= 80 ? "rgb(var(--color-success))" : data.complianceScore >= 50 ? "rgb(var(--color-warning))" : "rgb(var(--color-error))"} />
+          <div className="text-[10px] text-text-tertiary mt-0.5">Compliance</div>
         </div>
       </div>
 
       {/* Two Column Layout for Main Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
         {/* Self-Identified Internships */}
-        <Card
-          size="small"
-          title={
-            <span className="text-xs font-semibold">
-              Self-Identified Internships
-            </span>
-          }
-          extra={
-            <Tag color="blue" className="text-[10px] m-0">
-              {data.selfIdentifiedInternships?.rate || 0}%
-            </Tag>
-          }
-          className="rounded-lg border-border"
-          bodyStyle={{ padding: "8px" }}
-        >
+        <Card size="small" title={<span className="text-xs font-semibold">Self-Identified Internships</span>}
+          extra={<Tag color="blue" className="text-[10px] m-0">{data.selfIdentifiedInternships?.rate || 0}%</Tag>}
+          className="rounded-lg" bodyStyle={{ padding: "8px" }}>
           <div className="grid grid-cols-4 gap-2">
             <div className="text-center">
-              <div className="text-lg font-bold text-text-primary">
-                {data.selfIdentifiedInternships?.total || 0}
-              </div>
+              <div className="text-lg font-bold text-text-primary">{data.selfIdentifiedInternships?.total || 0}</div>
               <div className="text-[9px] text-text-tertiary">Total</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-success">
-                {data.selfIdentifiedInternships?.approved || 0}
-              </div>
+              <div className="text-lg font-bold text-success">{data.selfIdentifiedInternships?.approved || 0}</div>
               <div className="text-[9px] text-text-tertiary">Approved</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-warning">
-                {data.selfIdentifiedInternships?.pending || 0}
-              </div>
+              <div className="text-lg font-bold text-warning">{data.selfIdentifiedInternships?.pending || 0}</div>
               <div className="text-[9px] text-text-tertiary">Pending</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-error">
-                {data.selfIdentifiedInternships?.rejected || 0}
-              </div>
+              <div className="text-lg font-bold text-error">{data.selfIdentifiedInternships?.rejected || 0}</div>
               <div className="text-[9px] text-text-tertiary">Rejected</div>
             </div>
           </div>
         </Card>
 
         {/* Mentor Assignment */}
-        <Card
-          size="small"
-          title={
-            <span className="text-xs font-semibold">Mentor Assignment</span>
-          }
-          extra={
-            <Tag
-              color={data.mentorAssignment?.rate >= 80 ? "green" : "orange"}
-              className="text-[10px] m-0"
-            >
-              {Math.round(data.mentorAssignment?.rate || 0)}%
-            </Tag>
-          }
-          className="rounded-lg border-border"
-          bodyStyle={{ padding: "8px" }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex-1 grid grid-cols-3 gap-2">
-              <div className="text-center">
-                <div className="text-lg font-bold text-success">
-                  {data.mentorAssignment?.assigned || 0}
-                </div>
-                <div className="text-[9px] text-text-tertiary">Assigned</div>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-bold text-error">
-                  {data.mentorAssignment?.unassigned || 0}
-                </div>
-                <div className="text-[9px] text-text-tertiary">Unassigned</div>
-              </div>
-              <Tooltip
-                title={`${data.mentorAssignment?.studentsWithExternalMentors || 0} students have mentors from other institutions`}
-              >
-                <div className="text-center">
-                  <div className="text-lg font-bold text-purple-500">
-                    {data.mentorAssignment?.externalMentors || 0}
-                  </div>
-                  <div className="text-[9px] text-text-tertiary">External</div>
-                </div>
-              </Tooltip>
+        <Card size="small" title={<span className="text-xs font-semibold">Mentor Assignment</span>}
+          extra={<Tag color={data.mentorAssignment?.rate >= 80 ? "green" : "orange"} className="text-[10px] m-0">{Math.round(data.mentorAssignment?.rate || 0)}%</Tag>}
+          className="rounded-lg" bodyStyle={{ padding: "8px" }}>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="text-center">
+              <div className="text-lg font-bold text-success">{data.mentorAssignment?.assigned || 0}</div>
+              <div className="text-[9px] text-text-tertiary">Assigned</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-error">{data.mentorAssignment?.unassigned || 0}</div>
+              <div className="text-[9px] text-text-tertiary">Unassigned</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-purple-500">{data.mentorAssignment?.externalMentors || 0}</div>
+              <div className="text-[9px] text-text-tertiary">External</div>
             </div>
           </div>
         </Card>
 
         {/* Joining Report */}
-        <Card
-          size="small"
-          title={<span className="text-xs font-semibold">Joining Report</span>}
-          extra={
-            <Tag
-              color={data.joiningLetterStatus?.rate >= 80 ? "green" : "orange"}
-              className="text-[10px] m-0"
-            >
-              {data.joiningLetterStatus?.rate || 0}%
-            </Tag>
-          }
-          className="rounded-lg border-border"
-          bodyStyle={{ padding: "8px" }}
-        >
+        <Card size="small" title={<span className="text-xs font-semibold">Joining Report</span>}
+          extra={<Tag color={data.joiningLetterStatus?.rate >= 80 ? "green" : "orange"} className="text-[10px] m-0">{data.joiningLetterStatus?.rate || 0}%</Tag>}
+          className="rounded-lg" bodyStyle={{ padding: "8px" }}>
           <div className="grid grid-cols-4 gap-2">
             <div className="text-center">
-              <div className="text-lg font-bold text-text-primary">
-                {data.joiningLetterStatus?.submitted || 0}
-              </div>
+              <div className="text-lg font-bold text-text-primary">{data.joiningLetterStatus?.submitted || 0}</div>
               <div className="text-[9px] text-text-tertiary">Submitted</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-warning">
-                {data.joiningLetterStatus?.pending || 0}
-              </div>
+              <div className="text-lg font-bold text-warning">{data.joiningLetterStatus?.pending || 0}</div>
               <div className="text-[9px] text-text-tertiary">Pending</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-success">
-                {data.joiningLetterStatus?.approved || 0}
-              </div>
+              <div className="text-lg font-bold text-success">{data.joiningLetterStatus?.approved || 0}</div>
               <div className="text-[9px] text-text-tertiary">Approved</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-error">
-                {data.joiningLetterStatus?.rejected || 0}
-              </div>
+              <div className="text-lg font-bold text-error">{data.joiningLetterStatus?.rejected || 0}</div>
               <div className="text-[9px] text-text-tertiary">Rejected</div>
             </div>
           </div>
         </Card>
 
         {/* Monthly Reports */}
-        <Card
-          size="small"
-          title={<span className="text-xs font-semibold">Monthly Reports</span>}
-          extra={
-            <Tag
-              color={data.monthlyReportStatus?.rate >= 80 ? "green" : "orange"}
-              className="text-[10px] m-0"
-            >
-              {data.monthlyReportStatus?.rate || 0}%
-            </Tag>
-          }
-          className="rounded-lg border-border"
-          bodyStyle={{ padding: "8px" }}
-        >
+        <Card size="small" title={<span className="text-xs font-semibold">Monthly Reports</span>}
+          extra={<Tag color={data.monthlyReportStatus?.rate >= 80 ? "green" : "orange"} className="text-[10px] m-0">{data.monthlyReportStatus?.rate || 0}%</Tag>}
+          className="rounded-lg" bodyStyle={{ padding: "8px" }}>
           <div className="grid grid-cols-4 gap-2">
             <div className="text-center">
-              <div className="text-lg font-bold text-text-primary">
-                {data.monthlyReportStatus?.submitted || 0}
-              </div>
+              <div className="text-lg font-bold text-text-primary">{data.monthlyReportStatus?.submitted || 0}</div>
               <div className="text-[9px] text-text-tertiary">Submitted</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-warning">
-                {data.monthlyReportStatus?.pending || 0}
-              </div>
+              <div className="text-lg font-bold text-warning">{data.monthlyReportStatus?.pending || 0}</div>
               <div className="text-[9px] text-text-tertiary">Pending</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-success">
-                {data.monthlyReportStatus?.approved || 0}
-              </div>
+              <div className="text-lg font-bold text-success">{data.monthlyReportStatus?.approved || 0}</div>
               <div className="text-[9px] text-text-tertiary">Approved</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-error">
-                {data.monthlyReportStatus?.notSubmitted || 0}
-              </div>
+              <div className="text-lg font-bold text-error">{data.monthlyReportStatus?.notSubmitted || 0}</div>
               <div className="text-[9px] text-text-tertiary">Missing</div>
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Faculty Visits - Full Width */}
-      <Card
-        size="small"
-        title={
-          <span className="text-xs font-semibold">
-            Faculty Visits (This Month)
-          </span>
-        }
-        extra={
-          <Tag
-            color={
-              data.facultyVisits?.completionRate >= 80 ? "green" : "orange"
-            }
-            className="text-[10px] m-0"
-          >
-            {data.facultyVisits?.completionRate || 0}%
-          </Tag>
-        }
-        className="rounded-lg border-border"
-        bodyStyle={{ padding: "8px" }}
-      >
+      {/* Faculty Visits */}
+      <Card classNames="!mb-2" size="small" title={<span className="text-xs font-semibold">Faculty Visits (This Month)</span>}
+        extra={<Tag color={data.facultyVisits?.completionRate >= 80 ? "green" : "orange"} className="text-[10px] m-0">{data.facultyVisits?.completionRate || 0}%</Tag>}
+        className="rounded-lg" bodyStyle={{ padding: "8px" }}>
         <div className="grid grid-cols-3 gap-2">
           <div className="text-center p-2 bg-background-tertiary/30 rounded-lg">
-            <div className="text-lg font-bold text-text-primary">
-              {data.facultyVisits?.scheduled || 0}
-            </div>
+            <div className="text-lg font-bold text-text-primary">{data.facultyVisits?.scheduled || 0}</div>
             <div className="text-[10px] text-text-tertiary">Scheduled</div>
           </div>
           <div className="text-center p-2 bg-success/5 rounded-lg">
-            <div className="text-lg font-bold text-success">
-              {data.facultyVisits?.completed || 0}
-            </div>
+            <div className="text-lg font-bold text-success">{data.facultyVisits?.completed || 0}</div>
             <div className="text-[10px] text-text-tertiary">Completed</div>
           </div>
           <div className="text-center p-2 bg-warning/5 rounded-lg">
-            <div className="text-lg font-bold text-warning">
-              {data.facultyVisits?.toBeDone || 0}
-            </div>
+            <div className="text-lg font-bold text-warning">{data.facultyVisits?.toBeDone || 0}</div>
             <div className="text-[10px] text-text-tertiary">Pending</div>
           </div>
         </div>
       </Card>
 
-      {/* Branch Distribution */}
-      {data.branchWiseData?.length > 0 && (
-        <Card
-          size="small"
-          title={
-            <span className="text-xs font-semibold">Branch Distribution</span>
-          }
-          className="rounded-lg border-border"
-          bodyStyle={{ padding: "8px" }}
-        >
-          <div className="flex flex-wrap gap-1.5">
-            {data.branchWiseData.map((branch, index) => (
-              <div
-                key={index}
-                className="px-2 py-1 rounded-md bg-background-tertiary/50 border border-border flex items-center gap-1.5"
-              >
-                <span className="text-sm font-bold text-primary">
-                  {branch.count}
-                </span>
-                <span className="text-[10px] text-text-secondary">
-                  {branch.branch}
-                </span>
-              </div>
-            ))}
+      {/* Staff Capacity by Branch
+      {staffCapacities?.length > 0 && (
+        <Card size="small" title={<span className="text-xs font-semibold">Staff Capacity by Branch</span>}
+          extra={staffCapacitiesLoading ? <Spin size="small" /> : <Tag color="blue" className="text-[10px] m-0">{staffCapacities.length} branches</Tag>}
+          className="rounded-lg" bodyStyle={{ padding: "8px" }}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-background-tertiary/30">
+                  <th className="text-left py-1.5 px-2 text-text-tertiary font-medium">Branch</th>
+                  <th className="text-left py-1.5 px-2 text-text-tertiary font-medium">Year</th>
+                  <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Sanctioned</th>
+                  <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Filled</th>
+                  <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Guest</th>
+                  <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Total</th>
+                  <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {staffCapacities.map((capacity, index) => (
+                  <tr key={capacity.id || index} className="hover:bg-background-tertiary/30">
+                    <td className="py-1.5 px-2 text-text-primary font-medium">{capacity.branch?.name || capacity.branchName || '-'}</td>
+                    <td className="py-1.5 px-2 text-text-secondary">{capacity.academicYear}</td>
+                    <td className="py-1.5 px-2 text-center text-text-primary">{capacity.sanctionedPosts}</td>
+                    <td className="py-1.5 px-2 text-center text-success">{capacity.filledPosts}</td>
+                    <td className="py-1.5 px-2 text-center text-warning">{capacity.guestFaculty}</td>
+                    <td className="py-1.5 px-2 text-center font-bold text-text-primary">{capacity.totalStaff || (capacity.filledPosts + capacity.guestFaculty)}</td>
+                    <td className="py-1.5 px-2 text-center">
+                      {capacity.capacityExceeded ? (
+                        <Tag color="error" className="m-0 text-[9px]">Over</Tag>
+                      ) : capacity.vacantPosts > 0 ? (
+                        <Tag color="warning" className="m-0 text-[9px]">{capacity.vacantPosts} vacant</Tag>
+                      ) : (
+                        <Tag color="success" className="m-0 text-[9px]">Full</Tag>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Card>
-      )}
+      )} */}
+
+
+      {/* Student & Staff Branch Distribution Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mt-3">
+        {/* Student Branch Distribution */}
+        <Card size="small" title={<span className="text-xs font-semibold">Students by Branch</span>}
+          extra={<Tag color="blue" className="text-[10px] m-0">{data.activeStudents || 0} total</Tag>}
+          className="rounded-lg" bodyStyle={{ padding: "8px" }}>
+          {data.branchWiseData?.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {data.branchWiseData.map((branch, index) => (
+                <div key={index} className="px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-900/20 flex items-center gap-1.5">
+                  <span className="text-sm font-bold text-blue-600">{branch.count}</span>
+                  <span className="text-[10px] text-text-secondary">{branch.branch}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs text-text-tertiary text-center py-2">No branch data available</div>
+          )}
+        </Card>
+
+        {/* Staff Branch Distribution */}
+        <Card size="small" title={<span className="text-xs font-semibold">Staff by Branch</span>}
+          extra={<Tag color="green" className="text-[10px] m-0">{data.facultyCount || 0} total</Tag>}
+          className="rounded-lg" bodyStyle={{ padding: "8px" }}>
+          {staffCapacities?.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {staffCapacities.map((capacity, index) => {
+                const totalStaff = (capacity.filledPosts || 0) + (capacity.guestFaculty || 0);
+                return (
+                  <div key={capacity.id || index} className="px-2 py-1 rounded-md bg-green-50 dark:bg-green-900/20 flex items-center gap-1.5">
+                    <span className="text-sm font-bold text-green-600">{totalStaff}</span>
+                    <span className="text-[10px] text-text-secondary">{capacity.branch?.shortName || capacity.branch?.name || '-'}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-xs text-text-tertiary text-center py-2">No staff capacity data available</div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 });
@@ -964,224 +349,120 @@ OverviewTab.displayName = "OverviewTab";
 // Memoized Faculty Tab Component
 const FacultyTab = memo(
   ({ principal, faculty, summary, loading, error, onToggleFacultyStatus }) => {
-    if (loading) {
-      return (
-        <div className="flex justify-center py-20">
-          <Spin size="large" />
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <Alert
-          type="error"
-          message="Failed to load faculty data"
-          description={error}
-          showIcon
-          className="rounded-xl"
-        />
-      );
-    }
-
+    if (loading) return <div className="flex justify-center py-8"><Spin /></div>;
+    if (error) return <Alert type="error" message={error} showIcon className="rounded-lg" />;
     if (!principal && (!faculty || faculty.length === 0)) {
-      return (
-        <Empty description="No faculty data available" className="py-20" />
-      );
+      return <Empty description="No faculty data available" className="py-8" />;
     }
 
     return (
-      <div className="space-y-5 max-w-6xl mx-auto">
-        {/* Stats Summary Row */}
-        {summary && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-surface rounded-xl border border-border p-4 text-center">
-              <div className="text-2xl font-bold text-text-primary">
-                {summary.totalFaculty || 0}
+      <div className="space-y-3">
+        {/* Principal Info */}
+        {principal && (
+          <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 flex items-center gap-3">
+            <Avatar size={40} icon={<UserOutlined />} className="bg-purple-500 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <Text className="font-medium text-sm">{principal.name}</Text>
+                <Tag color="purple" className="text-[9px] m-0">Principal</Tag>
               </div>
-              <div className="text-xs text-text-tertiary mt-1">
-                Total Faculty
-              </div>
+              <div className="text-xs text-text-tertiary truncate">{principal.email}</div>
             </div>
-            <div className="bg-surface rounded-xl border border-border p-4 text-center">
-              <div className="text-2xl font-bold text-primary">
-                {summary.totalStudentsAssigned || 0}
+            {principal.stats && (
+              <div className="flex gap-4 text-center text-xs shrink-0">
+                <div><div className="font-bold">{principal.stats.totalStudents || 0}</div><div className="text-text-tertiary">Students</div></div>
+                <div><div className="font-bold">{principal.stats.totalFaculty || 0}</div><div className="text-text-tertiary">Faculty</div></div>
               </div>
-              <div className="text-xs text-text-tertiary mt-1">
-                Students Assigned
-              </div>
+            )}
+          </div>
+        )}
+
+        {/* Faculty Table */}
+        {faculty && faculty.length > 0 && (
+          <div className="rounded-lg bg-surface overflow-hidden">
+            <div className="px-3 py-2 bg-background-tertiary/50 flex items-center justify-between">
+              <Text className="font-medium text-sm">Faculty Members</Text>
+              <span className="text-[10px] text-text-tertiary">{faculty.length} members</span>
             </div>
-            <div className="bg-surface rounded-xl border border-border p-4 text-center">
-              <div className="text-2xl font-bold text-success">
-                {summary.totalVisitsCompleted || 0}
-              </div>
-              <div className="text-xs text-text-tertiary mt-1">
-                Visits Completed
-              </div>
-            </div>
-            <div className="bg-surface rounded-xl border border-border p-4 text-center">
-              <Progress
-                type="circle"
-                percent={summary.overallVisitCompletionRate || 0}
-                size={40}
-                strokeWidth={6}
-              />
-              <div className="text-xs text-text-tertiary mt-1">Visit Rate</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-background-tertiary/30">
+                    <th className="text-left py-2 px-3 font-medium">Name</th>
+                    <th className="text-left py-2 px-2 font-medium">Role</th>
+                    <th className="text-left py-2 px-2 font-medium">Branch</th>
+                    <th className="text-center py-2 px-2 font-medium">Students</th>
+                    <th className="text-center py-2 px-2 font-medium">Visits</th>
+                    <th className="text-center py-2 px-2 font-medium">Status</th>
+                    <th className="text-center py-2 px-2 font-medium w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {faculty.map((member, index) => {
+                    const isActive = member.active !== false;
+                    return (
+                      <tr key={member.id || index} className={`hover:bg-background-tertiary/20 ${!isActive ? 'opacity-60' : ''}`}>
+                        <td className="py-2 px-3">
+                          <div className="flex items-center gap-2">
+                            <Avatar size={24} icon={<UserOutlined />} className={isActive ? "bg-primary" : "bg-gray-400"} />
+                            <span className="font-medium truncate max-w-[120px]">{member.name}</span>
+                          </div>
+                        </td>
+                        <td className="py-2 px-2">
+                          <Tag color={member.role === "HOD" ? "purple" : member.role === "FACULTY_COORDINATOR" ? "blue" : "default"} className="text-[9px] m-0">
+                            {member.role === "FACULTY_COORDINATOR" ? "FC" : member.role}
+                          </Tag>
+                        </td>
+                        <td className="py-2 px-2 text-text-secondary truncate max-w-[80px]">{member.branchName || '-'}</td>
+                        <td className="py-2 px-2 text-center">{member.stats?.assignedStudents || 0}</td>
+                        <td className="py-2 px-2 text-center">
+                          <span className="text-success">{member.stats?.visitsCompleted || 0}</span>
+                          <span className="text-text-tertiary">/{member.stats?.visitsScheduled || 0}</span>
+                        </td>
+                        <td className="py-2 px-2 text-center">
+                          <Tag color={isActive ? "success" : "default"} className="text-[9px] m-0">{isActive ? "Active" : "Inactive"}</Tag>
+                        </td>
+                        <td className="py-2 px-2 text-center">
+                          <Tooltip title={isActive ? "Deactivate" : "Activate"}>
+                            <Button
+                              type="text"
+                              size="small"
+                              danger={isActive}
+                              icon={isActive ? <DeleteOutlined className="text-[10px]" /> : <CheckCircleOutlined className="text-[10px]" />}
+                              onClick={() => onToggleFacultyStatus?.(member)}
+                              className="w-6 h-6 min-w-0 p-0"
+                            />
+                          </Tooltip>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
 
-        {/* Principal Card */}
-        {principal && (
-          <Card size="small" className="rounded-xl border-border">
-            <div className="flex items-center gap-4">
-              <Avatar
-                size={48}
-                icon={<UserOutlined />}
-                className="bg-indigo-500"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <Text className="font-semibold text-text-primary">
-                    {principal.name}
-                  </Text>
-                  <Tag color="purple" className="text-xs">
-                    Principal
-                  </Tag>
-                </div>
-                <div className="flex items-center gap-4 mt-1 text-xs text-text-tertiary">
-                  <span>
-                    <MailOutlined className="mr-1" />
-                    {principal.email}
-                  </span>
-                  {principal.phoneNo && (
-                    <span>
-                      <PhoneOutlined className="mr-1" />
-                      {principal.phoneNo}
-                    </span>
-                  )}
-                </div>
-              </div>
-              {principal.stats && (
-                <div className="flex gap-4 text-center">
-                  <div>
-                    <div className="text-lg font-bold text-text-primary">
-                      {principal.stats.totalStudents || 0}
-                    </div>
-                    <div className="text-[10px] text-text-tertiary">
-                      Students
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-text-primary">
-                      {principal.stats.totalFaculty || 0}
-                    </div>
-                    <div className="text-[10px] text-text-tertiary">
-                      Faculty
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-warning">
-                      {principal.stats.pendingApprovals || 0}
-                    </div>
-                    <div className="text-[10px] text-text-tertiary">
-                      Pending
-                    </div>
-                  </div>
-                </div>
-              )}
+        {/* Summary Stats */}
+        {summary && (
+          <div className="grid grid-cols-4 gap-2">
+            <div className="p-2 rounded-lg bg-surface text-center">
+              <div className="text-lg font-bold">{summary.totalFaculty || 0}</div>
+              <div className="text-[10px] text-text-tertiary">Total</div>
             </div>
-          </Card>
-        )}
-
-        {/* Faculty List */}
-        {faculty && faculty.length > 0 && (
-          <Card
-            size="small"
-            title={
-              <span className="text-sm font-semibold">
-                Faculty Members ({faculty.length})
-              </span>
-            }
-            className="rounded-xl border-border"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {faculty.map((member, index) => {
-                const isActive = member.active !== false;
-                return (
-                  <div
-                    key={member.id || index}
-                    className={`flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:border-primary/30 transition-colors group ${isActive ? "bg-background-tertiary/30" : "bg-background-tertiary/10 opacity-75"}`}
-                  >
-                    <Avatar
-                      size={36}
-                      icon={<UserOutlined />}
-                      className={
-                        member.role === "HOD"
-                          ? "bg-purple-500"
-                          : isActive
-                            ? "bg-primary"
-                            : "bg-gray-400"
-                      }
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <Text
-                          className={`font-medium text-sm truncate ${isActive ? "text-text-primary" : "text-text-tertiary"}`}
-                        >
-                          {member.name}
-                        </Text>
-                        <Tag
-                          color={member.role === "HOD" ? "purple" : "blue"}
-                          className="text-[10px]"
-                        >
-                          {member.role}
-                        </Tag>
-                        <Tag
-                          color={isActive ? "success" : "default"}
-                          className="text-[10px]"
-                        >
-                          {isActive ? "Active" : "Inactive"}
-                        </Tag>
-                      </div>
-                      <div className="flex items-center gap-3 mt-0.5 text-[11px] text-text-tertiary">
-                        {member.branchName && <span>{member.branchName}</span>}
-                        <span>
-                          <TeamOutlined className="mr-1" />
-                          {member.stats?.assignedStudents || 0}
-                        </span>
-                        <span>
-                          <EnvironmentOutlined className="mr-1" />
-                          {member.stats?.visitsCompleted || 0}/
-                          {member.stats?.visitsScheduled || 0}
-                        </span>
-                      </div>
-                    </div>
-                    <Tooltip
-                      title={
-                        isActive ? "Deactivate Faculty" : "Activate Faculty"
-                      }
-                    >
-                      <Button
-                        type="text"
-                        size="small"
-                        danger={isActive}
-                        icon={
-                          isActive ? (
-                            <DeleteOutlined />
-                          ) : (
-                            <CheckCircleOutlined />
-                          )
-                        }
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => onToggleFacultyStatus?.(member)}
-                      />
-                    </Tooltip>
-                  </div>
-                );
-              })}
+            <div className="p-2 rounded-lg bg-surface text-center">
+              <div className="text-lg font-bold text-primary">{summary.totalStudentsAssigned || 0}</div>
+              <div className="text-[10px] text-text-tertiary">Assigned</div>
             </div>
-          </Card>
+            <div className="p-2 rounded-lg bg-surface text-center">
+              <div className="text-lg font-bold text-success">{summary.totalVisitsCompleted || 0}</div>
+              <div className="text-[10px] text-text-tertiary">Visits Done</div>
+            </div>
+            <div className="p-2 rounded-lg bg-surface text-center">
+              <div className="text-lg font-bold">{summary.overallVisitCompletionRate || 0}%</div>
+              <div className="text-[10px] text-text-tertiary">Visit Rate</div>
+            </div>
+          </div>
         )}
       </div>
     );
@@ -1189,6 +470,179 @@ const FacultyTab = memo(
 );
 
 FacultyTab.displayName = "FacultyTab";
+
+// Land Records Tab Component
+const LandRecordsTab = memo(({ data, loading, error }) => {
+  if (loading) return <div className="flex justify-center py-12"><Spin size="large" /></div>;
+  if (error) return <Alert type="error" message="Failed to load land records" description={error} showIcon />;
+
+  const institution = data?.institution || {};
+  const coveredAreas = institution.coveredAreaDetails || [];
+  const hasLandData = institution.totalLandAcres || coveredAreas.length > 0 || institution.address;
+
+  // Calculate totals from covered areas
+  const totalAvailableArea = coveredAreas.reduce((sum, area) => sum + (area.availableAreaSqFt || 0), 0);
+  const totalRequiredArea = coveredAreas.reduce((sum, area) => sum + (area.requiredAreaSqFt || 0), 0);
+  const totalRooms = coveredAreas.reduce((sum, area) => sum + (area.numberOfRooms || 0), 0);
+
+  // Get specific area types
+  const getAreaByType = (type) => coveredAreas.find(a => a.entityType === type);
+  const lectureRooms = getAreaByType('LECTURE_ROOMS');
+  const labs = getAreaByType('LABS');
+  const workshops = getAreaByType('WORKSHOPS');
+  const commonArea = getAreaByType('COMMON_AREA');
+
+  if (!hasLandData) {
+    return (
+      <Empty
+        description="No land records available"
+        className="py-12"
+        image={Empty.PRESENTED_IMAGE_SIMPLE}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-3 max-w-4xl mx-auto">
+      {/* Land Overview Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="bg-surface rounded-lg border border-border p-2.5 text-center">
+          <div className="text-2xl font-bold text-text-primary">{institution.totalLandAcres || 0}</div>
+          <div className="text-[10px] text-text-tertiary mt-0.5">Total Land (Acres)</div>
+        </div>
+        <div className="bg-surface rounded-lg border border-border p-2.5 text-center">
+          <div className="text-2xl font-bold text-text-primary">{totalAvailableArea.toLocaleString()}</div>
+          <div className="text-[10px] text-text-tertiary mt-0.5">Available Area (Sq.ft)</div>
+        </div>
+        <div className="bg-surface rounded-lg border border-border p-2.5 text-center">
+          <div className="text-2xl font-bold text-text-primary">{totalRequiredArea.toLocaleString()}</div>
+          <div className="text-[10px] text-text-tertiary mt-0.5">Required Area (Sq.ft)</div>
+        </div>
+        <div className="bg-surface rounded-lg border border-border p-2.5 text-center">
+          <div className="text-2xl font-bold text-text-primary">{totalRooms}</div>
+          <div className="text-[10px] text-text-tertiary mt-0.5">Total Rooms</div>
+        </div>
+      </div>
+
+      {/* Land Details Card */}
+      <Card size="small" title={<span className="text-xs font-semibold">Land Details</span>}
+        className="rounded-lg" bodyStyle={{ padding: "8px" }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <div className="flex justify-between py-1.5 border-b border-border/50">
+              <span className="text-xs text-text-tertiary">Land Ownership</span>
+              <Tag color={institution.landOwnership === 'OWNED' ? 'green' : institution.landOwnership === 'LEASED' ? 'blue' : 'default'} className="m-0 text-[10px]">
+                {institution.landOwnership || '-'}
+              </Tag>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-border/50">
+              <span className="text-xs text-text-tertiary">Total Land Area</span>
+              <span className="text-xs font-medium text-text-primary">{institution.totalLandAcres ? `${institution.totalLandAcres} Acres` : '-'}</span>
+            </div>
+            <div className="flex justify-between py-1.5">
+              <span className="text-xs text-text-tertiary">Land Dispute</span>
+              <Tag color={institution.hasLandDispute ? 'error' : 'success'} className="m-0 text-[10px]">
+                {institution.hasLandDispute ? 'Yes' : 'No'}
+              </Tag>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between py-1.5 border-b border-border/50">
+              <span className="text-xs text-text-tertiary">Student Seats</span>
+              <span className="text-xs font-medium text-text-primary">{institution.totalStudentSeats || '-'}</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-border/50">
+              <span className="text-xs text-text-tertiary">Staff Seats</span>
+              <span className="text-xs font-medium text-text-primary">{institution.totalStaffSeats || '-'}</span>
+            </div>
+            <div className="flex justify-between py-1.5">
+              <span className="text-xs text-text-tertiary">Institution Type</span>
+              <span className="text-xs font-medium text-text-primary">{institution.type?.replace(/_/g, ' ') || '-'}</span>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Covered Areas Card */}
+      {coveredAreas.length > 0 && (
+        <Card size="small" title={<span className="text-xs font-semibold">Covered Areas by Type</span>}
+          className="rounded-lg" bodyStyle={{ padding: "8px" }}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-background-tertiary/30">
+                  <th className="text-left py-1.5 px-2 text-text-tertiary font-medium">Type</th>
+                  <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Rooms</th>
+                  <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Available (Sq.ft)</th>
+                  <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Required (Sq.ft)</th>
+                  <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Additional Need</th>
+                </tr>
+              </thead>
+              <tbody>
+                {coveredAreas.map((area, index) => (
+                  <tr key={index} className="hover:bg-background-tertiary/20">
+                    <td className="py-1.5 px-2 text-text-primary font-medium">{area.entityType?.replace(/_/g, ' ')}</td>
+                    <td className="py-1.5 px-2 text-center">{area.numberOfRooms || '-'}</td>
+                    <td className="py-1.5 px-2 text-center text-success">{area.availableAreaSqFt?.toLocaleString() || '-'}</td>
+                    <td className="py-1.5 px-2 text-center">{area.requiredAreaSqFt?.toLocaleString() || '-'}</td>
+                    <td className="py-1.5 px-2 text-center">
+                      {area.additionalRequirementSqFt > 0 ? (
+                        <Tag color="warning" className="m-0 text-[9px]">{area.additionalRequirementSqFt.toLocaleString()}</Tag>
+                      ) : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* Infrastructure Summary */}
+      <Card size="small" title={<span className="text-xs font-semibold">Infrastructure Summary</span>}
+        className="rounded-lg" bodyStyle={{ padding: "8px" }}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-center">
+            <div className="text-lg font-bold text-blue-600">{lectureRooms?.numberOfRooms || 0}</div>
+            <div className="text-[10px] text-text-tertiary">Lecture Rooms</div>
+          </div>
+          <div className="p-2 rounded-lg bg-green-50 dark:bg-green-900/20 text-center">
+            <div className="text-lg font-bold text-green-600">{labs?.numberOfRooms || 0}</div>
+            <div className="text-[10px] text-text-tertiary">Labs</div>
+          </div>
+          <div className="p-2 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-center">
+            <div className="text-lg font-bold text-orange-600">{workshops?.numberOfRooms || 0}</div>
+            <div className="text-[10px] text-text-tertiary">Workshops</div>
+          </div>
+          <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-center">
+            <div className="text-lg font-bold text-purple-600">{commonArea?.availableAreaSqFt?.toLocaleString() || 0}</div>
+            <div className="text-[10px] text-text-tertiary">Common Area (Sq.ft)</div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Address Information */}
+      {(institution.address || institution.city || institution.district) && (
+        <Card size="small" title={<span className="text-xs font-semibold">Location</span>}
+          className="rounded-lg" bodyStyle={{ padding: "8px" }}>
+          <div className="space-y-1.5 text-xs">
+            {institution.address && (
+              <div className="text-text-primary">{institution.address}</div>
+            )}
+            <div className="flex flex-wrap gap-2 text-text-tertiary">
+              {institution.city && <span>{institution.city}</span>}
+              {institution.district && <span>• {institution.district}</span>}
+              {institution.state && <span>• {institution.state}</span>}
+              {institution.pinCode && <span>• {institution.pinCode}</span>}
+            </div>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+});
+
+LandRecordsTab.displayName = "LandRecordsTab";
 
 // Student Detail Modal Component
 const StudentDetailModal = memo(
@@ -1435,12 +889,14 @@ const InstituteDetailView = ({ defaultTab = null }) => {
   const allMentorsLoading = useSelector(selectAllMentorsLoading);
 
   const [activeTab, setActiveTab] = useState("overview");
+  const [staffCapacities, setStaffCapacities] = useState([]);
+  const [staffCapacitiesLoading, setStaffCapacitiesLoading] = useState(false);
 
   // Handle defaultTab prop
   useEffect(() => {
     if (
       defaultTab &&
-      ["overview", "students", "companies", "faculty"].includes(defaultTab)
+      ["overview", "students", "companies", "faculty", "landRecords"].includes(defaultTab)
     ) {
       setActiveTab(defaultTab);
     }
@@ -1448,15 +904,11 @@ const InstituteDetailView = ({ defaultTab = null }) => {
 
   const [studentModalVisible, setStudentModalVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [companyModalVisible, setCompanyModalVisible] = useState(false);
-  const [selectedCompany, setSelectedCompany] = useState(null);
   const [fileExplorerOpen, setFileExplorerOpen] = useState(false);
 
   // Search states
   const [studentSearchInput, setStudentSearchInput] = useState("");
-  const [companySearchInput, setCompanySearchInput] = useState("");
   const debouncedStudentSearch = useDebounce(studentSearchInput, 400);
-  const debouncedCompanySearch = useDebounce(companySearchInput, 400);
 
   // Filters
   const [studentFilter, setStudentFilter] = useState("all");
@@ -1477,12 +929,10 @@ const InstituteDetailView = ({ defaultTab = null }) => {
   // Track if initial fetch done
   const fetchedTabsRef = useRef({
     students: false,
-    companies: false,
     faculty: false,
   });
   // Track if search effects have skipped their first run (to prevent duplicate with tab fetch)
   const studentSearchInitializedRef = useRef(false);
-  const companySearchInitializedRef = useRef(false);
 
   // Get available branches
   const availableBranches = useMemo(
@@ -1490,27 +940,38 @@ const InstituteDetailView = ({ defaultTab = null }) => {
     [students.filters],
   );
 
-  // Fetch overview when institute changes
+  // Fetch overview and staff capacities when institute changes
   useEffect(() => {
     if (selectedInstitute?.id) {
       dispatch(fetchInstituteOverview(selectedInstitute.id));
       fetchedTabsRef.current = {
         students: false,
-        companies: false,
         faculty: false,
       };
       // Reset search skip flags for new institute
       studentSearchInitializedRef.current = false;
-      companySearchInitializedRef.current = false;
       // Reset all search and filter states for fresh start
       setStudentSearchInput("");
-      setCompanySearchInput("");
       setStudentFilter("all");
       setBranchFilter("all");
       setStatusFilter("all");
       setSelfIdentifiedFilter("all");
       // Reset to overview tab
       setActiveTab("overview");
+
+      // Fetch staff capacities
+      setStaffCapacitiesLoading(true);
+      stateService.getInstitutionBranchStaffCapacities(selectedInstitute.id)
+        .then((data) => {
+          setStaffCapacities(data || []);
+        })
+        .catch((err) => {
+          console.error("Failed to fetch staff capacities:", err);
+          setStaffCapacities([]);
+        })
+        .finally(() => {
+          setStaffCapacitiesLoading(false);
+        });
     }
   }, [dispatch, selectedInstitute?.id]);
 
@@ -1526,11 +987,6 @@ const InstituteDetailView = ({ defaultTab = null }) => {
           limit: 20,
           filter: "all",
         }),
-      );
-    } else if (activeTab === "companies" && !fetchedTabsRef.current.companies) {
-      fetchedTabsRef.current.companies = true;
-      dispatch(
-        fetchInstituteCompanies({ institutionId: selectedInstitute.id }),
       );
     } else if (activeTab === "faculty" && !fetchedTabsRef.current.faculty) {
       fetchedTabsRef.current.faculty = true;
@@ -1583,28 +1039,6 @@ const InstituteDetailView = ({ defaultTab = null }) => {
     statusFilter,
     selfIdentifiedFilter,
   ]);
-
-  // Handle debounced company search - only trigger on actual search changes
-  // NOT on tab changes (tab changes are handled by the tab effect above)
-  useEffect(() => {
-    if (!selectedInstitute?.id || activeTab !== "companies") return;
-
-    // Skip the very first run - the tab change effect handles initial fetch
-    if (!companySearchInitializedRef.current) {
-      companySearchInitializedRef.current = true;
-      return;
-    }
-
-    dispatch(
-      fetchInstituteCompanies({
-        institutionId: selectedInstitute.id,
-        search: debouncedCompanySearch || undefined,
-        forceRefresh: true,
-      }),
-    );
-    // Note: activeTab is intentionally NOT in dependencies - tab switches are handled by fetchedTabsRef
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedCompanySearch, selectedInstitute?.id, dispatch]);
 
   // Apply filters
   const applyFilters = useCallback(() => {
@@ -2266,105 +1700,6 @@ const InstituteDetailView = ({ defaultTab = null }) => {
     [getStudentActionItems],
   );
 
-  // Handler for viewing company details
-  const handleViewCompanyDetails = useCallback((record) => {
-    setSelectedCompany(record);
-    setCompanyModalVisible(true);
-  }, []);
-
-  // Memoized company columns
-  const companyColumns = useMemo(
-    () => [
-      {
-        title: "Company",
-        key: "company",
-        width: 280,
-        render: (_, record) => (
-          <div className="flex items-center gap-3 py-0.5">
-            <div
-              className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                record.isSelfIdentifiedCompany
-                  ? "bg-purple-500/10 text-purple-600"
-                  : "bg-primary/10 text-primary"
-              }`}
-            >
-              <BankOutlined className="text-sm" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <Text className="text-sm font-medium text-text-primary truncate max-w-[180px]">
-                  {record.companyName || "Unknown"}
-                </Text>
-                {record.isSelfIdentifiedCompany && (
-                  <Tag color="purple" className="text-[9px] m-0 px-1">
-                    Self-ID
-                  </Tag>
-                )}
-              </div>
-              <Text className="text-[11px] text-text-tertiary truncate block">
-                {record.isSelfIdentifiedCompany
-                  ? record.companyAddress || "-"
-                  : `${record.city || "-"}${record.state ? `, ${record.state}` : ""}`}
-              </Text>
-            </div>
-          </div>
-        ),
-      },
-      {
-        title: "Industry",
-        dataIndex: "industryType",
-        key: "industry",
-        width: 120,
-        render: (text) => (
-          <Text className="text-xs text-text-secondary">
-            {text || "General"}
-          </Text>
-        ),
-      },
-      {
-        title: "Contact",
-        key: "contact",
-        width: 180,
-        render: (_, record) => (
-          <div className="text-xs text-text-secondary">
-            <div className="truncate">
-              {record.email || record.companyEmail || "-"}
-            </div>
-            <div>{record.phoneNo || record.companyContact || "-"}</div>
-          </div>
-        ),
-      },
-      {
-        title: "Students",
-        key: "students",
-        width: 80,
-        align: "center",
-        render: (_, record) => (
-          <Text className="font-semibold text-primary">
-            {record.studentCount || 0}
-          </Text>
-        ),
-      },
-      {
-        title: "",
-        key: "action",
-        width: 70,
-        align: "center",
-        render: (_, record) => (
-          <Button
-            type="link"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => handleViewCompanyDetails(record)}
-          >
-            View
-          </Button>
-        ),
-      },
-    ],
-    [handleViewCompanyDetails],
-  );
-
   // No institute selected - Clean empty state
   if (!selectedInstitute?.id) {
     return (
@@ -2396,33 +1731,42 @@ const InstituteDetailView = ({ defaultTab = null }) => {
     );
   }
 
+  const institutionData = overview.data?.institution || selectedInstitute || {};
+
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
-      {/* Header - Minimal */}
-      <div className="px-4 py-2 flex items-center justify-between shrink-0 border-b border-border bg-surface">
-        <div className="flex items-center gap-2">
-          <Text className="font-medium text-text-primary text-sm">
-            {overview.data?.institution?.name || "Loading..."}
-          </Text>
+      {/* Compact Header */}
+      <div className="px-3 py-2 shrink-0 border-b border-border bg-surface flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <Text className="font-semibold text-sm text-text-primary truncate">
+                {institutionData.shortName || institutionData.name || "Institution"}
+              </Text>
+              {institutionData.code && (
+                <Text code className="text-[10px] shrink-0">{institutionData.code}</Text>
+              )}
+              <Tag
+                color={institutionData.isActive !== false ? "success" : "default"}
+                className="text-[9px] m-0 shrink-0"
+                bordered={false}
+              >
+                {institutionData.isActive !== false ? "Active" : "Inactive"}
+              </Tag>
+            </div>
+            <div className="flex items-center gap-4 text-[10px] text-text-tertiary mt-0.5">
+              {overview.data?.activeStudents > 0 && <span>{overview.data.activeStudents} Students</span>}
+              {overview.data?.facultyCount > 0 && <span>{overview.data.facultyCount} Faculty</span>}
+              {overview.data?.complianceScore !== undefined && <span>Compliance: {overview.data.complianceScore}%</span>}
+              {institutionData.city && <span>{institutionData.city}</span>}
+            </div>
+          </div>
         </div>
         <Space size={4}>
-          <Tooltip title="File Explorer">
-            <Button
-              icon={<FolderOpenOutlined />}
-              onClick={() => setFileExplorerOpen(true)}
-              size="small"
-              type="text"
-            />
+          <Tooltip title="Files">
+            <Button icon={<FolderOpenOutlined />} onClick={() => setFileExplorerOpen(true)} size="small" type="text" />
           </Tooltip>
-          <Button
-            icon={<ReloadOutlined spin={overview.loading} />}
-            onClick={() =>
-              dispatch(fetchInstituteOverview(selectedInstitute.id))
-            }
-            loading={overview.loading}
-            size="small"
-            type="text"
-          />
+          <Button icon={<ReloadOutlined spin={overview.loading} />} onClick={() => dispatch(fetchInstituteOverview(selectedInstitute.id))} size="small" type="text" />
         </Space>
       </div>
 
@@ -2446,6 +1790,8 @@ const InstituteDetailView = ({ defaultTab = null }) => {
                     data={overview.data}
                     loading={overview.loading}
                     error={overview.error}
+                    staffCapacities={staffCapacities}
+                    staffCapacitiesLoading={staffCapacitiesLoading}
                   />
                 </div>
               ),
@@ -2566,89 +1912,6 @@ const InstituteDetailView = ({ defaultTab = null }) => {
               ),
             },
             {
-              key: "companies",
-              label: (
-                <span className="flex items-center gap-2">
-                  <BankOutlined /> Companies ({companies.total})
-                </span>
-              ),
-              children: (
-                <div className="h-full flex flex-col p-4 gap-3 min-h-0">
-                  {/* Search & Stats Row */}
-                  <div className="flex items-center justify-between gap-3 shrink-0">
-                    <Input
-                      placeholder="Search companies..."
-                      prefix={<SearchOutlined className="text-text-tertiary" />}
-                      value={companySearchInput}
-                      onChange={(e) => setCompanySearchInput(e.target.value)}
-                      className="w-64 rounded-lg"
-                      allowClear
-                    />
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="text-text-tertiary">
-                        <span className="font-semibold text-text-primary">
-                          {companies.total || 0}
-                        </span>{" "}
-                        companies
-                      </span>
-                      <span className="text-text-tertiary">
-                        <span className="font-semibold text-success">
-                          {companies.summary?.totalStudents || 0}
-                        </span>{" "}
-                        students
-                      </span>
-                      <Tag color="purple" className="text-xs m-0">
-                        {companies.summary?.totalSelfIdentified || 0} Self-ID
-                      </Tag>
-                    </div>
-                  </div>
-
-                  {companies.error && (
-                    <Alert
-                      type="error"
-                      message={companies.error}
-                      className="rounded-lg"
-                      showIcon
-                      closable
-                    />
-                  )}
-
-                  {/* Table */}
-                  <div className="rounded-xl border border-border flex-1 min-h-0 overflow-hidden bg-surface flex flex-col">
-                    <div className="flex-1 min-h-0 overflow-auto">
-                      {companies.loading && companies.list?.length === 0 ? (
-                        <div className="flex items-center justify-center py-16">
-                          <Spin size="large" />
-                        </div>
-                      ) : companies.list?.length > 0 ? (
-                        <Table
-                          columns={companyColumns}
-                          dataSource={companies.list}
-                          rowKey="id"
-                          loading={
-                            companies.loading && companies.list.length > 0
-                          }
-                          pagination={{
-                            pageSize: 15,
-                            size: "small",
-                            showSizeChanger: false,
-                          }}
-                          size="small"
-                          scroll={{ x: 'max-content' }}
-                          className="custom-table"
-                        />
-                      ) : (
-                        <Empty
-                          description="No companies found"
-                          className="py-12"
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ),
-            },
-            {
               key: "faculty",
               label: (
                 <span className="flex items-center gap-2">
@@ -2669,15 +1932,19 @@ const InstituteDetailView = ({ defaultTab = null }) => {
               ),
             },
             {
-              key: "mentor-overview",
+              key: "landRecords",
               label: (
                 <span className="flex items-center gap-2">
-                  <GlobalOutlined /> Mentor Overview
+                  <EnvironmentOutlined /> Land Records
                 </span>
               ),
               children: (
                 <div className="h-full overflow-y-auto p-4">
-                  <MentorOverviewTab institutionId={selectedInstitute?.id} />
+                  <LandRecordsTab
+                    data={overview.data}
+                    loading={overview.loading}
+                    error={overview.error}
+                  />
                 </div>
               ),
             },
@@ -2692,169 +1959,6 @@ const InstituteDetailView = ({ defaultTab = null }) => {
         onClose={() => setStudentModalVisible(false)}
         institutionId={selectedInstitute?.id}
       />
-
-      {/* Company Detail Modal */}
-      <Modal
-        title={
-          <div className="flex items-center gap-2">
-            <BankOutlined className="text-primary" />
-            <span className="font-medium">
-              {selectedCompany?.companyName || "Company Details"}
-            </span>
-            {selectedCompany?.isSelfIdentifiedCompany && (
-              <Tag color="purple" className="text-[10px] m-0">
-                Self-ID
-              </Tag>
-            )}
-            <Text className="text-text-tertiary text-xs ml-2">
-              ({selectedCompany?.studentCount || 0} students)
-            </Text>
-          </div>
-        }
-        open={companyModalVisible}
-        onCancel={() => setCompanyModalVisible(false)}
-        footer={null}
-        width={800}
-        destroyOnHidden
-      >
-        {selectedCompany && (
-          <div className="space-y-4 pt-2">
-            {/* Company Info */}
-            <div className="flex flex-wrap gap-4 text-sm text-text-secondary pb-3 border-b border-border">
-              <span>
-                <EnvironmentOutlined className="mr-1" />
-                {selectedCompany.isSelfIdentifiedCompany
-                  ? selectedCompany.companyAddress || "-"
-                  : `${selectedCompany.city || "-"}${selectedCompany.state ? `, ${selectedCompany.state}` : ""}`}
-              </span>
-              <span>
-                <MailOutlined className="mr-1" />
-                {selectedCompany.email || selectedCompany.companyEmail || "-"}
-              </span>
-              <span>
-                <PhoneOutlined className="mr-1" />
-                {selectedCompany.phoneNo ||
-                  selectedCompany.companyContact ||
-                  "-"}
-              </span>
-              <span>Industry: {selectedCompany.industryType || "General"}</span>
-            </div>
-
-            {/* Branch Distribution */}
-            {selectedCompany.branchWiseData?.length > 0 && (
-              <div>
-                <Text className="text-xs text-text-tertiary font-medium mb-2 block">
-                  Branch Distribution
-                </Text>
-                <div className="flex flex-wrap gap-2">
-                  {selectedCompany.branchWiseData.map((b, i) => (
-                    <div
-                      key={i}
-                      className="px-3 py-1.5 rounded-lg bg-background-tertiary/50 border border-border text-center"
-                    >
-                      <span className="font-semibold text-primary mr-1">
-                        {b.total}
-                      </span>
-                      <span className="text-xs text-text-secondary">
-                        {b.branch}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Students Table */}
-            <div>
-              <Text className="text-xs text-text-tertiary font-medium mb-2 block">
-                Students ({selectedCompany.students?.length || 0})
-              </Text>
-              <Table
-                dataSource={selectedCompany.students || []}
-                columns={[
-                  {
-                    title: "Student",
-                    key: "student",
-                    width: 200,
-                    render: (_, record) => (
-                      <div>
-                        <div className="font-medium text-sm text-text-primary">
-                          {record.user?.name || record.name}
-                        </div>
-                        <div className="text-xs text-text-tertiary">
-                          {record.user?.rollNumber || record.rollNumber}
-                        </div>
-                      </div>
-                    ),
-                  },
-                  {
-                    title: "Branch",
-                    key: "branch",
-                    width: 100,
-                    render: (_, record) => (
-                      <Text className="text-xs">
-                        {record.user?.branchName || record.branch || "-"}
-                      </Text>
-                    ),
-                  },
-                  ...(selectedCompany.isSelfIdentifiedCompany
-                    ? [
-                        {
-                          title: "Job Profile",
-                          dataIndex: "jobProfile",
-                          key: "jobProfile",
-                          width: 140,
-                          render: (t) => (
-                            <Text className="text-xs">{t || "-"}</Text>
-                          ),
-                        },
-                        {
-                          title: "Stipend",
-                          dataIndex: "stipend",
-                          key: "stipend",
-                          width: 100,
-                          render: (v) =>
-                            v ? (
-                              <Text className="text-xs text-success font-medium">
-                                ₹{Number(v).toLocaleString()}
-                              </Text>
-                            ) : (
-                              "-"
-                            ),
-                        },
-                      ]
-                    : []),
-                  {
-                    title: "Joining Report",
-                    dataIndex: "joiningLetterStatus",
-                    key: "joiningLetterStatus",
-                    width: 120,
-                    render: (status) =>
-                      status ? (
-                        <Tag
-                          color={getStatusColor(status)}
-                          className="text-[10px] m-0"
-                        >
-                          {status}
-                        </Tag>
-                      ) : (
-                        <Text className="text-xs text-text-tertiary">-</Text>
-                      ),
-                  },
-                ]}
-                rowKey="id"
-                pagination={{
-                  pageSize: 5,
-                  size: "small",
-                  showSizeChanger: false,
-                }}
-                size="small"
-                scroll={{ x: 'max-content' }}
-              />
-            </div>
-          </div>
-        )}
-      </Modal>
 
       {/* Mentor Assignment Modal */}
       <Modal
