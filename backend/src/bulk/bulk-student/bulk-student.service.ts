@@ -100,6 +100,41 @@ export class BulkStudentService {
     const emailFirstOccurrence = new Map<string, number>();
     const enrollmentFirstOccurrence = new Map<string, number>();
 
+    // INTAKE CAPACITY PRE-CHECK (Warning Only)
+    const activeIntakes = await this.prisma.branchIntake.findMany({
+      where: { institutionId, isActive: true },
+    });
+    
+    // Map intakes by branchId AND (batchId OR academicYear)
+    const intakeLimitMap = new Map<string, number>();
+    for (const intake of activeIntakes) {
+      const limit = (intake.sanctionedSeats || 0) + (intake.feeWaiverSeats || 0);
+      if (intake.branchId) {
+        if (intake.batchId) intakeLimitMap.set(`${intake.branchId}_${intake.batchId}`, limit);
+        if (intake.academicYear) intakeLimitMap.set(`${intake.branchId}_${intake.academicYear}`, limit);
+      }
+    }
+
+    const currentStudentCounts = await this.prisma.student.groupBy({
+      by: ['branchId', 'batchId'],
+      where: {
+        institutionId,
+        user: { active: true },
+        branchId: { not: null },
+        batchId: { not: null },
+      },
+      _count: { id: true },
+    });
+
+    const currentCountMap = new Map<string, number>();
+    for (const count of currentStudentCounts) {
+      if (count.branchId && count.batchId) {
+        currentCountMap.set(`${count.branchId}_${count.batchId}`, count._count.id);
+      }
+    }
+
+    const incomingCountMap = new Map<string, number>();
+
     for (let i = 0; i < students.length; i++) {
       const student = students[i];
       const rowNumber = i + 2; // +2 because row 1 is header and array is 0-indexed
@@ -217,6 +252,38 @@ export class BulkStudentService {
             value: student.enrollmentNumber,
             error: 'Enrollment number already exists in the system',
           });
+        }
+      }
+
+      // Check intake capacities for warnings
+      let branchId: string | undefined;
+      let batchId: string | undefined;
+
+      if (student.branchName && branchMap.has(student.branchName.toLowerCase())) {
+        branchId = branchMap.get(student.branchName.toLowerCase());
+      }
+      if (student.batchName && batchMap.has(student.batchName.trim().toLowerCase())) {
+        batchId = batchMap.get(student.batchName.trim().toLowerCase());
+      }
+
+      if (branchId && batchId) {
+        // Try looking up the limit via exact batchId or the batch's name
+        const exactKey = `${branchId}_${batchId}`;
+        const nameKey = `${branchId}_${student.batchName?.trim()}`;
+        
+        const limit = intakeLimitMap.get(exactKey) ?? intakeLimitMap.get(nameKey);
+
+        if (limit !== undefined) {
+          const currentCount = currentCountMap.get(exactKey) || 0;
+          const incomingCount = incomingCountMap.get(exactKey) || 0;
+
+          if (currentCount + incomingCount >= limit) {
+            warnings.push({
+              row: rowNumber,
+              message: `Intake capacity exceeded: ${currentCount + incomingCount + 1} active students combined for ${limit} available seats in this branch/batch. Student will still be created.`,
+            });
+          }
+          incomingCountMap.set(exactKey, incomingCount + 1);
         }
       }
     }
@@ -349,6 +416,7 @@ export class BulkStudentService {
           studentId: result.student.id,
           userId: result.user.id,
           temporaryPassword: result.temporaryPassword,
+          warning: result.warning, // Propagate the warning from userService
         });
 
         // Add to existing sets to prevent duplicates in subsequent rows

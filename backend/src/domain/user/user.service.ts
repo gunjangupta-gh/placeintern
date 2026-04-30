@@ -43,7 +43,8 @@ export interface CreateStaffData {
 export interface CreateUserResult {
   user: any;
   student?: any;
-  temporaryPassword: string;
+  temporaryPassword?: string;
+  warning?: string;
 }
 
 @Injectable()
@@ -167,6 +168,48 @@ export class UserService {
       this.generateTemporaryPassword(data.name, data.admissionNumber || data.rollNumber || data.email);
     const hashedPassword = await bcrypt.hash(temporaryPassword, BCRYPT_SALT_ROUNDS);
 
+    let warningText: string | undefined;
+
+    // Check intake capacity limits (warning only)
+    if (data.batchId && data.branchId) {
+      const batchQuery = await this.prisma.batch.findUnique({
+        where: { id: data.batchId },
+        select: { name: true },
+      });
+
+      const intake = await this.prisma.branchIntake.findFirst({
+        where: {
+          institutionId,
+          branchId: data.branchId,
+          isActive: true,
+          OR: [
+            { batchId: data.batchId },
+            { academicYear: batchQuery?.name }, // fallback if batch name matches academicYear
+          ],
+        },
+      });
+
+      if (intake) {
+        const totalSeats = (intake.sanctionedSeats || 0) + (intake.feeWaiverSeats || 0);
+
+        const currentCount = await this.prisma.student.count({
+          where: {
+            institutionId,
+            branchId: data.branchId,
+            batchId: data.batchId,
+            user: { active: true },
+          },
+        });
+
+        // Current count doesn't include the one we are about to create,
+        // so if currentCount >= totalSeats, adding this one exceeds capacity.
+        if (currentCount >= totalSeats) {
+          warningText = `Intake capacity exceeded: ${currentCount + 1} active students for ${totalSeats} available seats.`;
+          this.logger.warn(`Intake capacity exceeded for institution: ${institutionId}, branch: ${data.branchId}, batch: ${data.batchId}`);
+        }
+      }
+    }
+
     // Create user and student in transaction
     const result = await this.prisma.$transaction(async (tx) => {
       // Create user account
@@ -246,6 +289,7 @@ export class UserService {
       user: result.user,
       student: result.student,
       temporaryPassword,
+      warning: warningText,
     };
   }
 

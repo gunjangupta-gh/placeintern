@@ -106,6 +106,7 @@ export class BulkStudentResultDto {
     studentId: string;
     userId: string;
     temporaryPassword: string;
+    warning?: string;
   }>;
 
   @ApiProperty({ description: 'List of failed student creations with error details' })

@@ -162,8 +162,13 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
         await dispatch(updateStudent({ id: studentId, data: formattedValues })).unwrap();
         toast.success('Student updated successfully');
       } else {
-        await dispatch(createStudent(formattedValues)).unwrap();
-        toast.success('Student created successfully');
+        const response = await dispatch(createStudent(formattedValues)).unwrap();
+        if (response?._warning) {
+          toast.success('Student created successfully', { duration: 3000 });
+          toast.warning(response._warning, { duration: 8000 });
+        } else {
+          toast.success('Student created successfully');
+        }
       }
       handleClose();
       onSuccess?.();

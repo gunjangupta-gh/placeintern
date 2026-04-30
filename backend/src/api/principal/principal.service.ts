@@ -1617,7 +1617,13 @@ export class PrincipalService {
 
     await this.cache.invalidateByTags(['students', `institution:${principal.institutionId}`]);
 
-    return createdStudent || result.student;
+    const response = createdStudent || result.student;
+    if (result.warning) {
+      // Append warning strictly as a property
+      (response as any)._warning = result.warning;
+    }
+
+    return response;
   }
 
   /**
