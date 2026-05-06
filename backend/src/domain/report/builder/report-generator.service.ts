@@ -336,6 +336,84 @@ export class ReportGeneratorService {
   }
 
   /**
+   * Extract numeric part from a question ID (e.g., "q1" -> 1, "uuid-abc-2" -> 2)
+   */
+  private extractNumericId(id: string): number | null {
+    if (!id) return null;
+    const match = id.match(/(\d+)/);
+    return match ? parseInt(match[1], 10) : null;
+  }
+
+  /**
+   * Find response value for a question using multiple matching strategies:
+   * 1. Exact ID match
+   * 2. Numeric ID match (q1 matches question with numeric "1" in its ID)
+   * 3. Common key patterns (q1, q2, question1, question2, etc.)
+   */
+  private findResponseForQuestion(
+    question: any,
+    questionIndex: number,
+    answers: Record<string, unknown>,
+  ): unknown {
+    if (!answers || typeof answers !== 'object') return undefined;
+
+    const questionId = question?.id ? String(question.id) : null;
+    const answerKeys = Object.keys(answers);
+
+    // Strategy 1: Exact ID match
+    if (questionId && answers[questionId] !== undefined) {
+      return answers[questionId];
+    }
+
+    // Strategy 2: Try common key patterns based on question index (1-based)
+    const indexBased = questionIndex + 1;
+    const commonPatterns = [
+      `q${indexBased}`,
+      `Q${indexBased}`,
+      `question${indexBased}`,
+      `Question${indexBased}`,
+      `${indexBased}`,
+    ];
+
+    for (const pattern of commonPatterns) {
+      if (answers[pattern] !== undefined) {
+        return answers[pattern];
+      }
+    }
+
+    // Strategy 3: Match by numeric part of question ID
+    const questionNumeric = this.extractNumericId(questionId || '');
+    if (questionNumeric !== null) {
+      for (const key of answerKeys) {
+        const keyNumeric = this.extractNumericId(key);
+        if (keyNumeric === questionNumeric) {
+          return answers[key];
+        }
+      }
+    }
+
+    // Strategy 4: If answer keys are simple q1, q2... format, match by index
+    const sortedNumericKeys = answerKeys
+      .filter(k => /^q?\d+$/i.test(k))
+      .sort((a, b) => {
+        const numA = this.extractNumericId(a) || 0;
+        const numB = this.extractNumericId(b) || 0;
+        return numA - numB;
+      });
+
+    if (sortedNumericKeys.length > 0 && questionIndex < sortedNumericKeys.length) {
+      // Check if the numeric part matches the expected index (1-based)
+      const expectedKey = sortedNumericKeys[questionIndex];
+      const keyNumeric = this.extractNumericId(expectedKey);
+      if (keyNumeric === indexBased) {
+        return answers[expectedKey];
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
    * Build user filter for training response reports
    */
   private buildTrainingUserWhere(filters: any): Record<string, unknown> {
@@ -2816,28 +2894,11 @@ export class ReportGeneratorService {
         institutionName: response.user?.Institution?.name ?? "N/A",
       };
 
-      // Build a map of question ID to question info for lookup
-      const questionMap = new Map<string, { question: string; index: number }>();
-      questions.forEach((q: any, idx: number) => {
-        if (q?.id) {
-          questionMap.set(String(q.id), { question: q.question || "", index: idx });
-        }
-      });
-
-      // Iterate over actual response keys to capture all submitted answers
-      const answerKeys = Object.keys(answers).sort((a, b) => {
-        // Sort by numeric part of key (q1, q2, etc.) or alphabetically
-        const numA = parseInt(a.replace(/\D/g, ''), 10) || 0;
-        const numB = parseInt(b.replace(/\D/g, ''), 10) || 0;
-        return numA - numB || a.localeCompare(b);
-      });
-
-      answerKeys.forEach((answerId, idx) => {
-        const questionInfo = questionMap.get(answerId);
-        const questionText = questionInfo?.question || "";
-        const questionIndex = questionInfo?.index ?? idx;
-        const key = this.buildQuestionKey({ id: answerId, question: questionText }, questionIndex);
-        row[key] = this.formatResponseValue(answers[answerId]);
+      // Iterate over form questions to ensure consistent column keys with question text
+      questions.forEach((question: any, index: number) => {
+        const key = this.buildQuestionKey(question, index);
+        const value = this.findResponseForQuestion(question, index, answers);
+        row[key] = this.formatResponseValue(value);
       });
 
       return row;
@@ -2916,28 +2977,11 @@ export class ReportGeneratorService {
           : "N/A",
       };
 
-      // Build a map of question ID to question info for lookup
-      const questionMap = new Map<string, { question: string; index: number }>();
-      questions.forEach((q: any, idx: number) => {
-        if (q?.id) {
-          questionMap.set(String(q.id), { question: q.question || "", index: idx });
-        }
-      });
-
-      // Iterate over actual response keys to capture all submitted answers
-      const answerKeys = Object.keys(answers).sort((a, b) => {
-        // Sort by numeric part of key (q1, q2, etc.) or alphabetically
-        const numA = parseInt(a.replace(/\D/g, ''), 10) || 0;
-        const numB = parseInt(b.replace(/\D/g, ''), 10) || 0;
-        return numA - numB || a.localeCompare(b);
-      });
-
-      answerKeys.forEach((answerId, idx) => {
-        const questionInfo = questionMap.get(answerId);
-        const questionText = questionInfo?.question || "";
-        const questionIndex = questionInfo?.index ?? idx;
-        const key = this.buildQuestionKey({ id: answerId, question: questionText }, questionIndex);
-        row[key] = this.formatResponseValue(answers[answerId]);
+      // Iterate over form questions to ensure consistent column keys with question text
+      questions.forEach((question: any, index: number) => {
+        const key = this.buildQuestionKey(question, index);
+        const value = this.findResponseForQuestion(question, index, answers);
+        row[key] = this.formatResponseValue(value);
       });
 
       return row;
@@ -3016,28 +3060,11 @@ export class ReportGeneratorService {
           : "N/A",
       };
 
-      // Build a map of question ID to question info for lookup
-      const questionMap = new Map<string, { question: string; index: number }>();
-      questions.forEach((q: any, idx: number) => {
-        if (q?.id) {
-          questionMap.set(String(q.id), { question: q.question || "", index: idx });
-        }
-      });
-
-      // Iterate over actual response keys to capture all submitted answers
-      const answerKeys = Object.keys(answers).sort((a, b) => {
-        // Sort by numeric part of key (q1, q2, etc.) or alphabetically
-        const numA = parseInt(a.replace(/\D/g, ''), 10) || 0;
-        const numB = parseInt(b.replace(/\D/g, ''), 10) || 0;
-        return numA - numB || a.localeCompare(b);
-      });
-
-      answerKeys.forEach((answerId, idx) => {
-        const questionInfo = questionMap.get(answerId);
-        const questionText = questionInfo?.question || "";
-        const questionIndex = questionInfo?.index ?? idx;
-        const key = this.buildQuestionKey({ id: answerId, question: questionText }, questionIndex);
-        row[key] = this.formatResponseValue(answers[answerId]);
+      // Iterate over form questions to ensure consistent column keys with question text
+      questions.forEach((question: any, index: number) => {
+        const key = this.buildQuestionKey(question, index);
+        const value = this.findResponseForQuestion(question, index, answers);
+        row[key] = this.formatResponseValue(value);
       });
 
       return row;
