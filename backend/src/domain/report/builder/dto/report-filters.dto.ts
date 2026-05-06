@@ -285,6 +285,19 @@ export class PlacementReportFilterDto extends BaseReportFilterDto {
 }
 
 // ============================================
+// TRAINING REPORT FILTERS
+// ============================================
+
+/**
+ * Filters for Training Response Reports (feedback/pre/post)
+ */
+export class TrainingResponseFilterDto extends BaseReportFilterDto {
+  @IsOptional()
+  @IsUUID('4', { message: 'Training ID must be a valid UUID' })
+  trainingId?: string;
+}
+
+// ============================================
 // USER ACTIVITY REPORT FILTERS
 // ============================================
 
@@ -458,6 +471,11 @@ export const REPORT_FILTER_DTO_MAP: Record<string, new () => BaseReportFilterDto
   'default-password-users': DefaultPasswordUsersFilterDto,
   'inactive-users': InactiveUsersFilterDto,
   'user-audit-log': UserAuditLogFilterDto,
+
+  // Training Reports
+  'training-feedback-responses': TrainingResponseFilterDto,
+  'training-pre-test-responses': TrainingResponseFilterDto,
+  'training-post-test-responses': TrainingResponseFilterDto,
 };
 
 /**

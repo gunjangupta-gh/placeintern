@@ -330,6 +330,9 @@ export class ReportProcessor extends WorkerHost {
       'principal_visit_logs': 'Principal Visit Logs Report',
       'principal_visit_summary': 'Principal Visit Summary Report',
       'user_login_activity': 'User Login Activity Report',
+      'training_feedback_responses': 'Training Feedback Responses Report',
+      'training_pre_test_responses': 'Training Pre-Test Responses Report',
+      'training_post_test_responses': 'Training Post-Test Responses Report',
     };
 
     // Column mapping - matches actual data fields from generator
@@ -720,6 +723,39 @@ export class ReportProcessor extends WorkerHost {
         { field: 'studentActive', header: 'Student Record Active', type: 'boolean' as const, width: 16 },
         { field: 'status', header: 'Login Status', type: 'string' as const, width: 16 },
       ],
+      'training_feedback_responses': [
+        { field: 'trainingName', header: 'Training Name', type: 'string' as const, width: 30 },
+        { field: 'trainingStartDate', header: 'Training Start Date', type: 'date' as const, width: 16 },
+        { field: 'trainingEndDate', header: 'Training End Date', type: 'date' as const, width: 16 },
+        { field: 'facultyName', header: 'Faculty Name', type: 'string' as const, width: 20 },
+        { field: 'facultyBranch', header: 'Branch', type: 'string' as const, width: 16 },
+        { field: 'facultyPhone', header: 'Phone', type: 'string' as const, width: 15 },
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
+      ],
+      'training_pre_test_responses': [
+        { field: 'trainingName', header: 'Training Name', type: 'string' as const, width: 30 },
+        { field: 'trainingStartDate', header: 'Training Start Date', type: 'date' as const, width: 16 },
+        { field: 'trainingEndDate', header: 'Training End Date', type: 'date' as const, width: 16 },
+        { field: 'facultyName', header: 'Faculty Name', type: 'string' as const, width: 20 },
+        { field: 'facultyBranch', header: 'Branch', type: 'string' as const, width: 16 },
+        { field: 'facultyPhone', header: 'Phone', type: 'string' as const, width: 15 },
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
+        { field: 'score', header: 'Score', type: 'number' as const, width: 10 },
+        { field: 'passed', header: 'Passed', type: 'boolean' as const, width: 10 },
+        { field: 'submittedAt', header: 'Submitted At', type: 'date' as const, width: 18 },
+      ],
+      'training_post_test_responses': [
+        { field: 'trainingName', header: 'Training Name', type: 'string' as const, width: 30 },
+        { field: 'trainingStartDate', header: 'Training Start Date', type: 'date' as const, width: 16 },
+        { field: 'trainingEndDate', header: 'Training End Date', type: 'date' as const, width: 16 },
+        { field: 'facultyName', header: 'Faculty Name', type: 'string' as const, width: 20 },
+        { field: 'facultyBranch', header: 'Branch', type: 'string' as const, width: 16 },
+        { field: 'facultyPhone', header: 'Phone', type: 'string' as const, width: 15 },
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
+        { field: 'score', header: 'Score', type: 'number' as const, width: 10 },
+        { field: 'passed', header: 'Passed', type: 'boolean' as const, width: 10 },
+        { field: 'submittedAt', header: 'Submitted At', type: 'date' as const, width: 18 },
+      ],
       // Compliance reports - matches generateStudentComplianceReport output
       'student_compliance': [
         { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
@@ -766,6 +802,28 @@ export class ReportProcessor extends WorkerHost {
       } else {
         columns = [];
       }
+    }
+
+    // For training response reports, append dynamic question columns from data
+    const dynamicColumnReports = new Set([
+      'training_feedback_responses',
+      'training_pre_test_responses',
+      'training_post_test_responses',
+    ]);
+
+    if (dynamicColumnReports.has(normalizedType) && data.length > 0) {
+      const existingFields = new Set(columns.map((c) => c.field));
+      const firstRow = data[0];
+      Object.keys(firstRow).forEach((key) => {
+        if (!existingFields.has(key)) {
+          columns.push({
+            field: key,
+            header: key,
+            type: this.inferColumnType(firstRow[key]),
+            width: 30,
+          });
+        }
+      });
     }
 
     // Filter columns based on user selection (if provided)

@@ -131,6 +131,10 @@ const VALID_REPORT_TYPES = [
   // Industry Reports (2)
   'industry-wise-students-stipend',
   'top-institutes-per-industry',
+  // Training Reports (3)
+  'training-feedback-responses',
+  'training-pre-test-responses',
+  'training-post-test-responses',
 ] as const;
 
 export class GenerateReportDto {

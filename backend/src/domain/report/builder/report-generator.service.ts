@@ -35,6 +35,7 @@ const INSTITUTION_REQUIRED_REPORTS = [
   "placement",
   "compliance",
   "pending",
+  "training",
 ];
 
 /**
@@ -309,6 +310,83 @@ export class ReportGeneratorService {
         return false;
     }
     return undefined;
+  }
+
+  /**
+   * Normalize response values for export columns
+   */
+  private formatResponseValue(value: unknown): string | number | boolean {
+    if (value === null || value === undefined || value === "") return "";
+    if (Array.isArray(value)) {
+      return value.map((item) => String(item)).join(", ");
+    }
+    if (typeof value === "object") {
+      return JSON.stringify(value);
+    }
+    return value as string | number | boolean;
+  }
+
+  /**
+   * Build a stable question key for export columns
+   */
+  private buildQuestionKey(question: any, index: number): string {
+    const questionId = question?.id ? String(question.id) : `q${index + 1}`;
+    const questionText = question?.question ? String(question.question) : "";
+    return questionText ? `${questionId}: ${questionText}` : questionId;
+  }
+
+  /**
+   * Build user filter for training response reports
+   */
+  private buildTrainingUserWhere(filters: any): Record<string, unknown> {
+    const userWhere: Record<string, unknown> = {};
+    if (filters?.institutionId) {
+      userWhere.institutionId = filters.institutionId;
+    }
+    if (filters?.branchId) {
+      userWhere.branchId = filters.branchId;
+    }
+    return userWhere;
+  }
+
+  /**
+   * Build training date range filter (applies to training start/end dates)
+   */
+  private buildTrainingDateWhere(filters: any): Record<string, unknown> {
+    const trainingWhere: Record<string, unknown> = {};
+    if (filters?.startDate) {
+      const startDate = new Date(filters.startDate);
+      trainingWhere.startDate = {
+        gte: new Date(
+          Date.UTC(
+            startDate.getUTCFullYear(),
+            startDate.getUTCMonth(),
+            startDate.getUTCDate(),
+            0,
+            0,
+            0,
+            0,
+          ),
+        ),
+      };
+    }
+    if (filters?.endDate) {
+      const endDate = new Date(filters.endDate);
+      trainingWhere.endDate = {
+        lte: new Date(
+          Date.UTC(
+            endDate.getUTCFullYear(),
+            endDate.getUTCMonth(),
+            endDate.getUTCDate(),
+            23,
+            59,
+            59,
+            999,
+          ),
+        ),
+      };
+    }
+    return trainingWhere;
   }
 
   /**
@@ -2638,6 +2716,14 @@ export class ReportGeneratorService {
       case "principal-visit-summary":
         return this.generatePrincipalVisitSummaryReport(filters, pagination);
 
+      // ==================== Training Reports (3) ====================
+      case "training-feedback-responses":
+        return this.generateTrainingFeedbackResponsesReport(filters, pagination);
+      case "training-pre-test-responses":
+        return this.generateTrainingPreTestResponsesReport(filters, pagination);
+      case "training-post-test-responses":
+        return this.generateTrainingPostTestResponsesReport(filters, pagination);
+
       // ==================== Legacy Support ====================
       // Support for legacy enum values
       case ReportType.STUDENT_PROGRESS:
@@ -2659,6 +2745,243 @@ export class ReportGeneratorService {
           `Unknown report type: ${type}. Valid types: student-directory, mentor-list, internship-applications, etc.`,
         );
     }
+  }
+
+  // ==================== Training Report Generators ====================
+
+  /**
+   * Generate Training Feedback Responses Report
+   */
+  async generateTrainingFeedbackResponsesReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const { take, skip } = this.getPaginationParams(pagination);
+    const userWhere = this.buildTrainingUserWhere(filters);
+    const trainingWhere = this.buildTrainingDateWhere(filters);
+
+    const where: Record<string, unknown> = {};
+    if (filters?.trainingId) {
+      where.trainingId = filters.trainingId;
+    }
+    if (Object.keys(userWhere).length > 0) {
+      where.user = userWhere;
+    }
+    if (Object.keys(trainingWhere).length > 0) {
+      where.training = trainingWhere;
+    }
+
+    const responses = await this.prisma.feedbackResponse.findMany({
+      where,
+      include: {
+        training: {
+          select: { id: true, title: true, startDate: true, endDate: true },
+        },
+        user: {
+          select: {
+            name: true,
+            phoneNo: true,
+            branchName: true,
+            branch: { select: { name: true } },
+            Institution: { select: { name: true } },
+          },
+        },
+        feedbackForm: { select: { questions: true } },
+      },
+      orderBy: { submittedAt: "desc" },
+      take,
+      skip,
+    });
+
+    this.warnOnLargeResultSet(responses.length, "TrainingFeedbackResponsesReport");
+
+    return responses.map((response) => {
+      const questions = Array.isArray(response.feedbackForm?.questions)
+        ? response.feedbackForm.questions
+        : [];
+      const answers = (response.responses || {}) as Record<string, unknown>;
+
+      const row: Record<string, unknown> = {
+        trainingName: response.training?.title ?? "N/A",
+        trainingStartDate: response.training?.startDate
+          ? this.formatToISTDateOnly(response.training.startDate)
+          : "N/A",
+        trainingEndDate: response.training?.endDate
+          ? this.formatToISTDateOnly(response.training.endDate)
+          : "N/A",
+        facultyName: response.user?.name ?? "N/A",
+        facultyBranch: response.user?.branch?.name ?? response.user?.branchName ?? "N/A",
+        facultyPhone: response.user?.phoneNo ?? "",
+        institutionName: response.user?.Institution?.name ?? "N/A",
+      };
+
+      questions.forEach((question: any, index: number) => {
+        const key = this.buildQuestionKey(question, index);
+        row[key] = this.formatResponseValue(answers[question?.id]);
+      });
+
+      return row;
+    });
+  }
+
+  /**
+   * Generate Training Pre-Test Responses Report
+   */
+  async generateTrainingPreTestResponsesReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const { take, skip } = this.getPaginationParams(pagination);
+    const userWhere = this.buildTrainingUserWhere(filters);
+    const trainingWhere = this.buildTrainingDateWhere(filters);
+
+    const where: Record<string, unknown> = {};
+    if (filters?.trainingId) {
+      where.trainingId = filters.trainingId;
+    }
+    if (Object.keys(userWhere).length > 0) {
+      where.user = userWhere;
+    }
+    if (Object.keys(trainingWhere).length > 0) {
+      where.training = trainingWhere;
+    }
+
+    const responses = await this.prisma.preTestResponse.findMany({
+      where,
+      include: {
+        training: {
+          select: { id: true, title: true, startDate: true, endDate: true },
+        },
+        user: {
+          select: {
+            name: true,
+            phoneNo: true,
+            branchName: true,
+            branch: { select: { name: true } },
+            Institution: { select: { name: true } },
+          },
+        },
+        preTestForm: { select: { questions: true } },
+      },
+      orderBy: { submittedAt: "desc" },
+      take,
+      skip,
+    });
+
+    this.warnOnLargeResultSet(responses.length, "TrainingPreTestResponsesReport");
+
+    return responses.map((response) => {
+      const questions = Array.isArray(response.preTestForm?.questions)
+        ? response.preTestForm.questions
+        : [];
+      const answers = (response.responses || {}) as Record<string, unknown>;
+
+      const row: Record<string, unknown> = {
+        trainingName: response.training?.title ?? "N/A",
+        trainingStartDate: response.training?.startDate
+          ? this.formatToISTDateOnly(response.training.startDate)
+          : "N/A",
+        trainingEndDate: response.training?.endDate
+          ? this.formatToISTDateOnly(response.training.endDate)
+          : "N/A",
+        facultyName: response.user?.name ?? "N/A",
+        facultyBranch: response.user?.branch?.name ?? response.user?.branchName ?? "N/A",
+        facultyPhone: response.user?.phoneNo ?? "",
+        institutionName: response.user?.Institution?.name ?? "N/A",
+        score: response.score ?? null,
+        passed: response.passed ?? null,
+        submittedAt: response.submittedAt
+          ? this.formatToIST(response.submittedAt)
+          : "N/A",
+      };
+
+      questions.forEach((question: any, index: number) => {
+        const key = this.buildQuestionKey(question, index);
+        row[key] = this.formatResponseValue(answers[question?.id]);
+      });
+
+      return row;
+    });
+  }
+
+  /**
+   * Generate Training Post-Test Responses Report
+   */
+  async generateTrainingPostTestResponsesReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const { take, skip } = this.getPaginationParams(pagination);
+    const userWhere = this.buildTrainingUserWhere(filters);
+    const trainingWhere = this.buildTrainingDateWhere(filters);
+
+    const where: Record<string, unknown> = {};
+    if (filters?.trainingId) {
+      where.trainingId = filters.trainingId;
+    }
+    if (Object.keys(userWhere).length > 0) {
+      where.user = userWhere;
+    }
+    if (Object.keys(trainingWhere).length > 0) {
+      where.training = trainingWhere;
+    }
+
+    const responses = await this.prisma.postTestResponse.findMany({
+      where,
+      include: {
+        training: {
+          select: { id: true, title: true, startDate: true, endDate: true },
+        },
+        user: {
+          select: {
+            name: true,
+            phoneNo: true,
+            branchName: true,
+            branch: { select: { name: true } },
+            Institution: { select: { name: true } },
+          },
+        },
+        postTestForm: { select: { questions: true } },
+      },
+      orderBy: { submittedAt: "desc" },
+      take,
+      skip,
+    });
+
+    this.warnOnLargeResultSet(responses.length, "TrainingPostTestResponsesReport");
+
+    return responses.map((response) => {
+      const questions = Array.isArray(response.postTestForm?.questions)
+        ? response.postTestForm.questions
+        : [];
+      const answers = (response.responses || {}) as Record<string, unknown>;
+
+      const row: Record<string, unknown> = {
+        trainingName: response.training?.title ?? "N/A",
+        trainingStartDate: response.training?.startDate
+          ? this.formatToISTDateOnly(response.training.startDate)
+          : "N/A",
+        trainingEndDate: response.training?.endDate
+          ? this.formatToISTDateOnly(response.training.endDate)
+          : "N/A",
+        facultyName: response.user?.name ?? "N/A",
+        facultyBranch: response.user?.branch?.name ?? response.user?.branchName ?? "N/A",
+        facultyPhone: response.user?.phoneNo ?? "",
+        institutionName: response.user?.Institution?.name ?? "N/A",
+        score: response.score ?? null,
+        passed: response.passed ?? null,
+        submittedAt: response.submittedAt
+          ? this.formatToIST(response.submittedAt)
+          : "N/A",
+      };
+
+      questions.forEach((question: any, index: number) => {
+        const key = this.buildQuestionKey(question, index);
+        row[key] = this.formatResponseValue(answers[question?.id]);
+      });
+
+      return row;
+    });
   }
 
   // ==================== Mentor Report Generators ====================
