@@ -28,7 +28,8 @@
       "Bash(dir:*)",
       "Bash(grep:*)",
       "Bash(xargs:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(python:*)"
     ]
   }
 }

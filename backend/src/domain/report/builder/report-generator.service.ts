@@ -2816,9 +2816,28 @@ export class ReportGeneratorService {
         institutionName: response.user?.Institution?.name ?? "N/A",
       };
 
-      questions.forEach((question: any, index: number) => {
-        const key = this.buildQuestionKey(question, index);
-        row[key] = this.formatResponseValue(answers[question?.id]);
+      // Build a map of question ID to question info for lookup
+      const questionMap = new Map<string, { question: string; index: number }>();
+      questions.forEach((q: any, idx: number) => {
+        if (q?.id) {
+          questionMap.set(String(q.id), { question: q.question || "", index: idx });
+        }
+      });
+
+      // Iterate over actual response keys to capture all submitted answers
+      const answerKeys = Object.keys(answers).sort((a, b) => {
+        // Sort by numeric part of key (q1, q2, etc.) or alphabetically
+        const numA = parseInt(a.replace(/\D/g, ''), 10) || 0;
+        const numB = parseInt(b.replace(/\D/g, ''), 10) || 0;
+        return numA - numB || a.localeCompare(b);
+      });
+
+      answerKeys.forEach((answerId, idx) => {
+        const questionInfo = questionMap.get(answerId);
+        const questionText = questionInfo?.question || "";
+        const questionIndex = questionInfo?.index ?? idx;
+        const key = this.buildQuestionKey({ id: answerId, question: questionText }, questionIndex);
+        row[key] = this.formatResponseValue(answers[answerId]);
       });
 
       return row;
@@ -2897,9 +2916,28 @@ export class ReportGeneratorService {
           : "N/A",
       };
 
-      questions.forEach((question: any, index: number) => {
-        const key = this.buildQuestionKey(question, index);
-        row[key] = this.formatResponseValue(answers[question?.id]);
+      // Build a map of question ID to question info for lookup
+      const questionMap = new Map<string, { question: string; index: number }>();
+      questions.forEach((q: any, idx: number) => {
+        if (q?.id) {
+          questionMap.set(String(q.id), { question: q.question || "", index: idx });
+        }
+      });
+
+      // Iterate over actual response keys to capture all submitted answers
+      const answerKeys = Object.keys(answers).sort((a, b) => {
+        // Sort by numeric part of key (q1, q2, etc.) or alphabetically
+        const numA = parseInt(a.replace(/\D/g, ''), 10) || 0;
+        const numB = parseInt(b.replace(/\D/g, ''), 10) || 0;
+        return numA - numB || a.localeCompare(b);
+      });
+
+      answerKeys.forEach((answerId, idx) => {
+        const questionInfo = questionMap.get(answerId);
+        const questionText = questionInfo?.question || "";
+        const questionIndex = questionInfo?.index ?? idx;
+        const key = this.buildQuestionKey({ id: answerId, question: questionText }, questionIndex);
+        row[key] = this.formatResponseValue(answers[answerId]);
       });
 
       return row;
@@ -2978,9 +3016,28 @@ export class ReportGeneratorService {
           : "N/A",
       };
 
-      questions.forEach((question: any, index: number) => {
-        const key = this.buildQuestionKey(question, index);
-        row[key] = this.formatResponseValue(answers[question?.id]);
+      // Build a map of question ID to question info for lookup
+      const questionMap = new Map<string, { question: string; index: number }>();
+      questions.forEach((q: any, idx: number) => {
+        if (q?.id) {
+          questionMap.set(String(q.id), { question: q.question || "", index: idx });
+        }
+      });
+
+      // Iterate over actual response keys to capture all submitted answers
+      const answerKeys = Object.keys(answers).sort((a, b) => {
+        // Sort by numeric part of key (q1, q2, etc.) or alphabetically
+        const numA = parseInt(a.replace(/\D/g, ''), 10) || 0;
+        const numB = parseInt(b.replace(/\D/g, ''), 10) || 0;
+        return numA - numB || a.localeCompare(b);
+      });
+
+      answerKeys.forEach((answerId, idx) => {
+        const questionInfo = questionMap.get(answerId);
+        const questionText = questionInfo?.question || "";
+        const questionIndex = questionInfo?.index ?? idx;
+        const key = this.buildQuestionKey({ id: answerId, question: questionText }, questionIndex);
+        row[key] = this.formatResponseValue(answers[answerId]);
       });
 
       return row;
