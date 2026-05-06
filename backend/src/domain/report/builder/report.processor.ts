@@ -88,9 +88,22 @@ export class ReportProcessor extends WorkerHost {
       let fileName: string;
       let mimeType: string;
 
+      const trainingSheetReports = new Set([
+        'training-pre-test-responses',
+        'training-post-test-responses',
+      ]);
+
       switch (format) {
         case ExportFormat.EXCEL:
-          fileBuffer = await this.excelService.generateExcel(config);
+          if (trainingSheetReports.has(reportType)) {
+            const sheets = this.buildTrainingSheets(config, data);
+            fileBuffer = await this.excelService.generateMultiSheetExcel(
+              config.title,
+              sheets,
+            );
+          } else {
+            fileBuffer = await this.excelService.generateExcel(config);
+          }
           fileName = `${reportType}_${Date.now()}.xlsx`;
           mimeType =
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -909,6 +922,73 @@ export class ReportProcessor extends WorkerHost {
       },
       mergeColumns: mergeColumnsMap[normalizedType],
     };
+  }
+
+  /**
+   * Build per-training sheet configs for test response reports.
+   */
+  private buildTrainingSheets(config: ExportConfig, data: any[]): { name: string; config: ExportConfig }[] {
+    const baseColumns = config.columns.filter((col) => col.field !== 'trainingId');
+    const grouped = new Map<string, { label: string; rows: any[] }>();
+
+    data.forEach((row) => {
+      const trainingId = row.trainingId || 'unknown-training';
+      const trainingName = row.trainingName || 'Training';
+      const label = String(trainingName);
+      if (!grouped.has(trainingId)) {
+        grouped.set(trainingId, { label, rows: [] });
+      }
+      grouped.get(trainingId)!.rows.push(row);
+    });
+
+    const sheets: { name: string; config: ExportConfig }[] = [];
+
+    grouped.forEach((group, trainingId) => {
+      const dynamicFields = new Set<string>();
+      const baseFieldSet = new Set(baseColumns.map((col) => col.field));
+
+      group.rows.forEach((row) => {
+        Object.keys(row).forEach((key) => {
+          if (!baseFieldSet.has(key) && key !== 'trainingId') {
+            dynamicFields.add(key);
+          }
+        });
+      });
+
+      const dynamicColumns = Array.from(dynamicFields).map((field) => {
+        const sampleRow = group.rows.find((r) => r[field] !== undefined && r[field] !== null) || group.rows[0];
+        return {
+          field,
+          header: field,
+          type: this.inferColumnType(sampleRow?.[field]),
+          width: 30,
+        };
+      });
+
+      const sheetColumns = [...baseColumns, ...dynamicColumns];
+      const sheetName = this.toWorksheetName(group.label || trainingId);
+
+      sheets.push({
+        name: sheetName,
+        config: {
+          ...config,
+          title: `${config.title} - ${group.label}`,
+          columns: sheetColumns,
+          data: group.rows,
+        },
+      });
+    });
+
+    return sheets;
+  }
+
+  /**
+   * Excel worksheet names are limited to 31 chars and cannot include certain symbols.
+   */
+  private toWorksheetName(label: string): string {
+    const cleaned = label.replace(/[\\/?*\[\]:]/g, ' ').trim();
+    if (!cleaned) return 'Training';
+    return cleaned.slice(0, 31);
   }
 
   /**

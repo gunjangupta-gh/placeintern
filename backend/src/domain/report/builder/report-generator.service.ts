@@ -2802,6 +2802,7 @@ export class ReportGeneratorService {
       const answers = (response.responses || {}) as Record<string, unknown>;
 
       const row: Record<string, unknown> = {
+        trainingId: response.training?.id ?? null,
         trainingName: response.training?.title ?? "N/A",
         trainingStartDate: response.training?.startDate
           ? this.formatToISTDateOnly(response.training.startDate)
@@ -2877,6 +2878,7 @@ export class ReportGeneratorService {
       const answers = (response.responses || {}) as Record<string, unknown>;
 
       const row: Record<string, unknown> = {
+        trainingId: response.training?.id ?? null,
         trainingName: response.training?.title ?? "N/A",
         trainingStartDate: response.training?.startDate
           ? this.formatToISTDateOnly(response.training.startDate)
