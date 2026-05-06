@@ -827,15 +827,25 @@ export class ReportProcessor extends WorkerHost {
     if (dynamicColumnReports.has(normalizedType) && data.length > 0) {
       const existingFields = new Set(columns.map((c) => c.field));
       const firstRow = data[0];
-      Object.keys(firstRow).forEach((key) => {
-        if (!existingFields.has(key)) {
-          columns.push({
-            field: key,
-            header: key,
-            type: this.inferColumnType(firstRow[key]),
-            width: 30,
-          });
-        }
+
+      // Collect dynamic fields and sort by question number
+      const dynamicFields = Object.keys(firstRow)
+        .filter((key) => !existingFields.has(key))
+        .sort((a, b) => {
+          const numA = parseInt(a.match(/Question (\d+)/)?.[1] || '0', 10);
+          const numB = parseInt(b.match(/Question (\d+)/)?.[1] || '0', 10);
+          return numA - numB;
+        });
+
+      dynamicFields.forEach((key) => {
+        // Calculate width based on header length (min 20, max 60)
+        const headerWidth = Math.min(60, Math.max(20, Math.ceil(key.length * 1.2)));
+        columns.push({
+          field: key,
+          header: key,
+          type: this.inferColumnType(firstRow[key]),
+          width: headerWidth,
+        });
       });
     }
 
@@ -986,13 +996,22 @@ export class ReportProcessor extends WorkerHost {
         });
       });
 
-      const dynamicColumns = Array.from(dynamicFields).map((field) => {
+      // Sort dynamic fields by question number (Question 1, Question 2, etc.)
+      const sortedDynamicFields = Array.from(dynamicFields).sort((a, b) => {
+        const numA = parseInt(a.match(/Question (\d+)/)?.[1] || '0', 10);
+        const numB = parseInt(b.match(/Question (\d+)/)?.[1] || '0', 10);
+        return numA - numB;
+      });
+
+      const dynamicColumns = sortedDynamicFields.map((field) => {
         const sampleRow = group.rows.find((r) => r[field] !== undefined && r[field] !== null) || group.rows[0];
+        // Calculate width based on header length (min 20, max 60)
+        const headerWidth = Math.min(60, Math.max(20, Math.ceil(field.length * 1.2)));
         return {
           field,
           header: field,
           type: this.inferColumnType(sampleRow?.[field]),
-          width: 30,
+          width: headerWidth,
         };
       });
 

@@ -330,9 +330,9 @@ export class ReportGeneratorService {
    * Build a stable question key for export columns
    */
   private buildQuestionKey(question: any, index: number): string {
-    const questionId = question?.id ? String(question.id) : `q${index + 1}`;
-    const questionText = question?.question ? String(question.question) : "";
-    return questionText ? `${questionId}: ${questionText}` : questionId;
+    const questionNumber = `Question ${index + 1}`;
+    const questionText = question?.question ? String(question.question).trim() : "";
+    return questionText ? `${questionNumber}: ${questionText}` : questionNumber;
   }
 
   /**
@@ -2959,6 +2959,7 @@ export class ReportGeneratorService {
       const answers = (response.responses || {}) as Record<string, unknown>;
 
       const row: Record<string, unknown> = {
+        trainingId: response.training?.id ?? null,
         trainingName: response.training?.title ?? "N/A",
         trainingStartDate: response.training?.startDate
           ? this.formatToISTDateOnly(response.training.startDate)

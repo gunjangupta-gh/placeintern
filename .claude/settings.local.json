@@ -27,7 +27,8 @@
       "Bash(xargs -I {} bash -c 'echo \"\"=== {} ===\"\" && ls {} | head -10')",
       "Bash(dir:*)",
       "Bash(grep:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
