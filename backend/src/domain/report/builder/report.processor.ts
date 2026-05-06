@@ -826,9 +826,11 @@ export class ReportProcessor extends WorkerHost {
       });
     }
 
+    const skipColumnFiltering = dynamicColumnReports.has(normalizedType);
+
     // Filter columns based on user selection (if provided)
     // Apply for both predefined and inferred columns.
-    if (selectedColumns && selectedColumns.length > 0) {
+    if (!skipColumnFiltering && selectedColumns && selectedColumns.length > 0) {
       let effectiveSelectedColumns = [...selectedColumns];
 
       if (dynamicColumnReports.has(normalizedType) && data.length > 0) {
