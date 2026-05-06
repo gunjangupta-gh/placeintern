@@ -829,7 +829,21 @@ export class ReportProcessor extends WorkerHost {
     // Filter columns based on user selection (if provided)
     // Apply for both predefined and inferred columns.
     if (selectedColumns && selectedColumns.length > 0) {
-      this.logger.log(`Filtering to selected columns: ${selectedColumns.join(', ')}`);
+      let effectiveSelectedColumns = [...selectedColumns];
+
+      if (dynamicColumnReports.has(normalizedType) && data.length > 0) {
+        const baseColumns = reportColumns[normalizedType] || [];
+        const baseFieldSet = new Set(baseColumns.map((col) => col.field));
+        const firstRow = data[0];
+        const dynamicFields = Object.keys(firstRow).filter(
+          (key) => !baseFieldSet.has(key) && !effectiveSelectedColumns.includes(key),
+        );
+        if (dynamicFields.length > 0) {
+          effectiveSelectedColumns = [...effectiveSelectedColumns, ...dynamicFields];
+        }
+      }
+
+      this.logger.log(`Filtering to selected columns: ${effectiveSelectedColumns.join(', ')}`);
 
       const inferredColumnsByField = new Map<string, any>();
       if (data.length > 0) {
@@ -847,7 +861,7 @@ export class ReportProcessor extends WorkerHost {
       }
 
       // Filter to only include selected columns while preserving order
-      const filteredColumns = selectedColumns
+      const filteredColumns = effectiveSelectedColumns
         .map(colId => columns.find(c => c.field === colId) || inferredColumnsByField.get(colId))
         .filter(Boolean);
 
@@ -856,7 +870,7 @@ export class ReportProcessor extends WorkerHost {
         columns = filteredColumns;
 
         // Also filter the data to only include selected fields
-        const selectedFields = new Set(selectedColumns);
+        const selectedFields = new Set(effectiveSelectedColumns);
         data = data.map(row => {
           const filteredRow: Record<string, unknown> = {};
           for (const field of selectedFields) {
