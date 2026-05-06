@@ -928,7 +928,38 @@ export class ReportProcessor extends WorkerHost {
    * Build per-training sheet configs for test response reports.
    */
   private buildTrainingSheets(config: ExportConfig, data: any[]): { name: string; config: ExportConfig }[] {
-    const baseColumns = config.columns.filter((col) => col.field !== 'trainingId');
+    const staticFieldMap: Record<string, string[]> = {
+      'Training Pre-Test Responses Report': [
+        'trainingName',
+        'trainingStartDate',
+        'trainingEndDate',
+        'facultyName',
+        'facultyBranch',
+        'facultyPhone',
+        'institutionName',
+        'score',
+        'passed',
+        'submittedAt',
+      ],
+      'Training Post-Test Responses Report': [
+        'trainingName',
+        'trainingStartDate',
+        'trainingEndDate',
+        'facultyName',
+        'facultyBranch',
+        'facultyPhone',
+        'institutionName',
+        'score',
+        'passed',
+        'submittedAt',
+      ],
+    };
+
+    const staticFields = staticFieldMap[config.title] ?? [];
+    const baseColumns = (staticFields.length > 0
+      ? config.columns.filter((col) => staticFields.includes(col.field))
+      : config.columns
+    ).filter((col) => col.field !== 'trainingId');
     const grouped = new Map<string, { label: string; rows: any[] }>();
 
     data.forEach((row) => {
