@@ -2179,6 +2179,60 @@ export class PrincipalService {
       throw new BadRequestException(`User with email ${createStaffDto.email} already exists`);
     }
 
+    // Staff capacity validation (warning only - non-blocking)
+    let warningText: string | undefined;
+
+    // Resolve branchId from branchName if not provided directly
+    let branchId = createStaffDto.branchId;
+    if (!branchId && createStaffDto.branchName) {
+      const branch = await this.prisma.branch.findFirst({
+        where: {
+          OR: [
+            { name: createStaffDto.branchName },
+            { shortName: createStaffDto.branchName },
+          ],
+        },
+        select: { id: true },
+      });
+      branchId = branch?.id;
+    }
+
+    if (branchId) {
+      // Get current academic year (format: "2024-25")
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth(); // 0-indexed
+      // Academic year starts in July, so if before July, use previous year
+      const academicStartYear = currentMonth < 6 ? currentYear - 1 : currentYear;
+      const academicYear = `${academicStartYear}-${(academicStartYear + 1).toString().slice(-2)}`;
+
+      const capacity = await this.prisma.branchStaffCapacity.findFirst({
+        where: {
+          institutionId: principal.institutionId,
+          branchId: branchId,
+          isActive: true,
+          academicYear,
+        },
+      });
+
+      if (capacity && capacity.sanctionedPosts > 0) {
+        // Count current regular staff (not guest faculty)
+        const currentCount = await this.prisma.user.count({
+          where: {
+            institutionId: principal.institutionId,
+            branchId: branchId,
+            role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF] },
+            active: true,
+            guestTeacher: { not: true },
+          },
+        });
+
+        if (currentCount >= capacity.sanctionedPosts) {
+          warningText = `Staff capacity exceeded: ${currentCount + 1} filled posts for ${capacity.sanctionedPosts} sanctioned posts in this branch.`;
+          this.logger.warn(`Staff capacity exceeded for institution: ${principal.institutionId}, branch: ${branchId}`);
+        }
+      }
+    }
+
     // Use the role directly from the DTO (already validated)
     const staffRole: Role = createStaffDto.role as Role;
 
@@ -2224,7 +2278,11 @@ export class PrincipalService {
 
     await this.cache.invalidateByTags(['staff', `institution:${principal.institutionId}`]);
 
-    return staff;
+    // Return staff with optional warning
+    return {
+      ...staff,
+      _warning: warningText,
+    };
   }
 
   /**

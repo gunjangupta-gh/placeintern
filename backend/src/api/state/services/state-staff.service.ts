@@ -137,6 +137,7 @@ export class StateStaffService {
     institutionId: string;
     role: string;
     phoneNo?: string;
+    branchId?: string;
     branchName?: string;
     designation?: string;
     designationEnum?: string;
@@ -157,6 +158,60 @@ export class StateStaffService {
       throw new BadRequestException(`User with email ${data.email} already exists`);
     }
 
+    // Staff capacity validation (warning only - non-blocking)
+    let warningText: string | undefined;
+
+    // Resolve branchId from branchName if not provided directly
+    let branchId = data.branchId;
+    if (!branchId && data.branchName) {
+      const branch = await this.prisma.branch.findFirst({
+        where: {
+          OR: [
+            { name: data.branchName },
+            { shortName: data.branchName },
+          ],
+        },
+        select: { id: true },
+      });
+      branchId = branch?.id;
+    }
+
+    if (branchId) {
+      // Get current academic year (format: "2024-25")
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth(); // 0-indexed
+      // Academic year starts in July, so if before July, use previous year
+      const academicStartYear = currentMonth < 6 ? currentYear - 1 : currentYear;
+      const academicYear = `${academicStartYear}-${(academicStartYear + 1).toString().slice(-2)}`;
+
+      const capacity = await this.prisma.branchStaffCapacity.findFirst({
+        where: {
+          institutionId: data.institutionId,
+          branchId: branchId,
+          isActive: true,
+          academicYear,
+        },
+      });
+
+      if (capacity && capacity.sanctionedPosts > 0) {
+        // Count current regular staff (not guest faculty)
+        const currentCount = await this.prisma.user.count({
+          where: {
+            institutionId: data.institutionId,
+            branchId: branchId,
+            role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF] },
+            active: true,
+            guestTeacher: { not: true },
+          },
+        });
+
+        if (currentCount >= capacity.sanctionedPosts) {
+          warningText = `Staff capacity exceeded: ${currentCount + 1} filled posts for ${capacity.sanctionedPosts} sanctioned posts in this branch.`;
+          this.logger.warn(`Staff capacity exceeded for institution: ${data.institutionId}, branch: ${branchId}`);
+        }
+      }
+    }
+
     // Hash the password before storing
     const hashedPassword = await bcrypt.hash(data.password, BCRYPT_SALT_ROUNDS);
 
@@ -168,6 +223,7 @@ export class StateStaffService {
         role: data.role as Role,
         institutionId: data.institutionId,
         phoneNo: data.phoneNo,
+        branchId: branchId || null,
         branchName: data.branchName,
         designation: data.designation,
         designationEnum: data.designationEnum ? (data.designationEnum as Designation) : undefined,
@@ -181,7 +237,12 @@ export class StateStaffService {
     const { password: _, ...staffWithoutPassword } = staff;
 
     await this.cache.invalidateByTags(['state', 'staff']);
-    return staffWithoutPassword;
+
+    // Return staff with optional warning
+    return {
+      ...staffWithoutPassword,
+      _warning: warningText,
+    };
   }
 
   /**

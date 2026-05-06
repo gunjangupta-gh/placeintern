@@ -672,6 +672,7 @@ export class BulkUserService {
           branch: branchName,
           userId: createdUser.id,
           password: createdUser.plainPassword,
+          warning: createdUser.warning,
         });
 
         // Add to existing set
@@ -881,6 +882,45 @@ export class BulkUserService {
     const role = ROLE_MAPPING[userDto.role] || Role.TEACHER;
     const designationEnum = mapDesignationToEnum(userDto.designation);
 
+    // Staff capacity validation (warning only - non-blocking)
+    let warningText: string | undefined;
+
+    if (branchId) {
+      // Get current academic year (format: "2024-25")
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth(); // 0-indexed
+      // Academic year starts in July, so if before July, use previous year
+      const academicStartYear = currentMonth < 6 ? currentYear - 1 : currentYear;
+      const academicYear = `${academicStartYear}-${(academicStartYear + 1).toString().slice(-2)}`;
+
+      const capacity = await this.prisma.branchStaffCapacity.findFirst({
+        where: {
+          institutionId,
+          branchId,
+          isActive: true,
+          academicYear,
+        },
+      });
+
+      if (capacity && capacity.sanctionedPosts > 0) {
+        // Count current regular staff (not guest faculty)
+        const currentCount = await this.prisma.user.count({
+          where: {
+            institutionId,
+            branchId,
+            role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF] },
+            active: true,
+            guestTeacher: { not: true },
+          },
+        });
+
+        if (currentCount >= capacity.sanctionedPosts) {
+          warningText = `Staff capacity exceeded: ${currentCount + 1} filled posts for ${capacity.sanctionedPosts} sanctioned posts.`;
+          this.logger.warn(`Staff capacity exceeded for institution: ${institutionId}, branch: ${branchId}`);
+        }
+      }
+    }
+
     // Generate custom password
     const plainPassword = generateCustomPassword(userDto.name, userDto.phone);
     if (!plainPassword) {
@@ -906,7 +946,7 @@ export class BulkUserService {
       },
     });
 
-    return { ...user, plainPassword };
+    return { ...user, plainPassword, warning: warningText };
   }
 
   /**

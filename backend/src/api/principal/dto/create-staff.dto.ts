@@ -32,6 +32,11 @@ export class CreateStaffDto {
   @IsNotEmpty()
   role: string;
 
+  @ApiProperty({ description: 'Branch ID (for capacity validation)', required: false })
+  @IsString()
+  @IsOptional()
+  branchId?: string;
+
   @ApiProperty({ description: 'Branch name', required: false })
   @IsString()
   @IsOptional()

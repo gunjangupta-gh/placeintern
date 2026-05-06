@@ -82,6 +82,7 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
         phoneNo: values.phoneNo,
         role: values.role,
         designation: values.designation,
+        branchId: values.branchId,
         branchName: branchName,
       };
 
@@ -89,8 +90,13 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
         await dispatch(updateStaff({ id: staffId, data: formattedValues })).unwrap();
         toast.success('Staff updated successfully');
       } else {
-        await dispatch(createStaff(formattedValues)).unwrap();
-        toast.success('Staff created successfully');
+        const response = await dispatch(createStaff(formattedValues)).unwrap();
+        if (response?._warning) {
+          toast.success('Staff created successfully', { duration: 3000 });
+          toast.warning(response._warning, { duration: 8000 });
+        } else {
+          toast.success('Staff created successfully');
+        }
       }
       handleClose();
       onSuccess?.();

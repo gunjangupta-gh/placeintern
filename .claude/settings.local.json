@@ -24,7 +24,10 @@
       "Bash(npm run build:*)",
       "Bash(npx tsc --noEmit)",
       "WebFetch(domain:miro.com)",
-      "Bash(xargs -I {} bash -c 'echo \"\"=== {} ===\"\" && ls {} | head -10')"
+      "Bash(xargs -I {} bash -c 'echo \"\"=== {} ===\"\" && ls {} | head -10')",
+      "Bash(dir:*)",
+      "Bash(grep:*)",
+      "Bash(xargs:*)"
     ]
   }
 }

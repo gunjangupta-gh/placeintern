@@ -79,6 +79,7 @@ export class BulkUserResultDto {
     branch?: string;
     userId: string;
     password: string;
+    warning?: string;
   }>;
 
   @ApiProperty({ description: 'List of failed user creations with error details' })
