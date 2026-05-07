@@ -154,8 +154,15 @@ export class ExcelService {
 
   /**
    * Get nested value from object using dot notation
+   * First checks if the field exists as a direct property (to handle field names containing periods)
    */
   private getNestedValue(obj: any, path: string): any {
+    // First, check if the path exists as a direct property
+    // This handles cases where field names contain periods (e.g., question text with sentences)
+    if (obj && path in obj) {
+      return obj[path];
+    }
+    // Fall back to nested access for actual nested properties
     return path.split('.').reduce((current, prop) => current?.[prop], obj);
   }
 
