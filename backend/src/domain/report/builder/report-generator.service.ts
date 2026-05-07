@@ -347,13 +347,16 @@ export class ReportGeneratorService {
   /**
    * Find response value for a question using multiple matching strategies:
    * 1. Exact ID match
-   * 2. Numeric ID match (q1 matches question with numeric "1" in its ID)
+   * 2. Case-insensitive ID match
    * 3. Common key patterns (q1, q2, question1, question2, etc.)
+   * 4. Simple numeric key index match (for q1, q2, etc. NOT timestamp IDs)
+   * 5. Position-based matching when answer count matches question count
    */
   private findResponseForQuestion(
     question: any,
     questionIndex: number,
     answers: Record<string, unknown>,
+    totalQuestions?: number,
   ): unknown {
     if (!answers || typeof answers !== 'object') return undefined;
 
@@ -365,7 +368,17 @@ export class ReportGeneratorService {
       return answers[questionId];
     }
 
-    // Strategy 2: Try common key patterns based on question index (1-based)
+    // Strategy 2: Case-insensitive exact ID match
+    if (questionId) {
+      const lowerQuestionId = questionId.toLowerCase();
+      for (const key of answerKeys) {
+        if (key.toLowerCase() === lowerQuestionId) {
+          return answers[key];
+        }
+      }
+    }
+
+    // Strategy 3: Try common key patterns based on question index (1-based)
     const indexBased = questionIndex + 1;
     const commonPatterns = [
       `q${indexBased}`,
@@ -381,32 +394,44 @@ export class ReportGeneratorService {
       }
     }
 
-    // Strategy 3: Match by numeric part of question ID
-    const questionNumeric = this.extractNumericId(questionId || '');
-    if (questionNumeric !== null) {
-      for (const key of answerKeys) {
-        const keyNumeric = this.extractNumericId(key);
-        if (keyNumeric === questionNumeric) {
-          return answers[key];
-        }
-      }
-    }
-
-    // Strategy 4: If answer keys are simple q1, q2... format, match by index
-    const sortedNumericKeys = answerKeys
-      .filter(k => /^q?\d+$/i.test(k))
+    // Strategy 4: If answer keys are simple short numeric format (q1, q2, NOT timestamps)
+    // Only match keys that look like simple sequential IDs (1-3 digits)
+    const simpleNumericKeys = answerKeys
+      .filter(k => /^q?\d{1,3}$/i.test(k))
       .sort((a, b) => {
         const numA = this.extractNumericId(a) || 0;
         const numB = this.extractNumericId(b) || 0;
         return numA - numB;
       });
 
-    if (sortedNumericKeys.length > 0 && questionIndex < sortedNumericKeys.length) {
-      // Check if the numeric part matches the expected index (1-based)
-      const expectedKey = sortedNumericKeys[questionIndex];
+    if (simpleNumericKeys.length > 0 && questionIndex < simpleNumericKeys.length) {
+      const expectedKey = simpleNumericKeys[questionIndex];
       const keyNumeric = this.extractNumericId(expectedKey);
       if (keyNumeric === indexBased) {
         return answers[expectedKey];
+      }
+    }
+
+    // Strategy 5: Position-based matching when answer count equals question count
+    // This handles timestamp-based IDs (q1715000000000) by matching in order
+    const questionsCount = totalQuestions ?? 0;
+    if (questionsCount > 0 && answerKeys.length === questionsCount) {
+      // Sort answer keys to maintain consistent order (by the key string itself)
+      const sortedKeys = [...answerKeys].sort();
+      if (questionIndex < sortedKeys.length) {
+        return answers[sortedKeys[questionIndex]];
+      }
+    }
+
+    // Strategy 6: Match by numeric part for non-timestamp numeric IDs
+    // Only apply if the numeric part is small (< 1000) to avoid timestamp confusion
+    const questionNumeric = this.extractNumericId(questionId || '');
+    if (questionNumeric !== null && questionNumeric < 1000) {
+      for (const key of answerKeys) {
+        const keyNumeric = this.extractNumericId(key);
+        if (keyNumeric === questionNumeric && keyNumeric < 1000) {
+          return answers[key];
+        }
       }
     }
 
@@ -2897,7 +2922,7 @@ export class ReportGeneratorService {
       // Iterate over form questions to ensure consistent column keys with question text
       questions.forEach((question: any, index: number) => {
         const key = this.buildQuestionKey(question, index);
-        const value = this.findResponseForQuestion(question, index, answers);
+        const value = this.findResponseForQuestion(question, index, answers, questions.length);
         row[key] = this.formatResponseValue(value);
       });
 
@@ -2980,7 +3005,7 @@ export class ReportGeneratorService {
       // Iterate over form questions to ensure consistent column keys with question text
       questions.forEach((question: any, index: number) => {
         const key = this.buildQuestionKey(question, index);
-        const value = this.findResponseForQuestion(question, index, answers);
+        const value = this.findResponseForQuestion(question, index, answers, questions.length);
         row[key] = this.formatResponseValue(value);
       });
 
@@ -3063,7 +3088,7 @@ export class ReportGeneratorService {
       // Iterate over form questions to ensure consistent column keys with question text
       questions.forEach((question: any, index: number) => {
         const key = this.buildQuestionKey(question, index);
-        const value = this.findResponseForQuestion(question, index, answers);
+        const value = this.findResponseForQuestion(question, index, answers, questions.length);
         row[key] = this.formatResponseValue(value);
       });
 
