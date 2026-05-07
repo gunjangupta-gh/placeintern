@@ -29,7 +29,12 @@
       "Bash(grep:*)",
       "Bash(xargs:*)",
       "Bash(npx tsc:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker cp:*)",
+      "Bash(npm install:*)"
     ]
   }
 }

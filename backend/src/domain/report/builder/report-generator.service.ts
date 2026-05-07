@@ -351,12 +351,14 @@ export class ReportGeneratorService {
    * 3. Common key patterns (q1, q2, question1, question2, etc.)
    * 4. Simple numeric key index match (for q1, q2, etc. NOT timestamp IDs)
    * 5. Position-based matching when answer count matches question count
+   * 6. Position-based matching using sorted question IDs order
    */
   private findResponseForQuestion(
     question: any,
     questionIndex: number,
     answers: Record<string, unknown>,
     totalQuestions?: number,
+    allQuestionIds?: string[],
   ): unknown {
     if (!answers || typeof answers !== 'object') return undefined;
 
@@ -423,7 +425,23 @@ export class ReportGeneratorService {
       }
     }
 
-    // Strategy 6: Match by numeric part for non-timestamp numeric IDs
+    // Strategy 6: Match by position using sorted question IDs
+    // Sort both question IDs and answer keys, then match by position
+    if (allQuestionIds && allQuestionIds.length > 0 && answerKeys.length > 0) {
+      const sortedQuestionIds = [...allQuestionIds].sort();
+      const sortedAnswerKeys = [...answerKeys].sort();
+
+      // Find the position of current question ID in sorted question IDs
+      const questionPosInSorted = sortedQuestionIds.indexOf(questionId || '');
+      if (questionPosInSorted !== -1 && questionPosInSorted < sortedAnswerKeys.length) {
+        const matchingAnswerKey = sortedAnswerKeys[questionPosInSorted];
+        if (answers[matchingAnswerKey] !== undefined) {
+          return answers[matchingAnswerKey];
+        }
+      }
+    }
+
+    // Strategy 7: Match by numeric part for non-timestamp numeric IDs
     // Only apply if the numeric part is small (< 1000) to avoid timestamp confusion
     const questionNumeric = this.extractNumericId(questionId || '');
     if (questionNumeric !== null && questionNumeric < 1000) {
@@ -432,6 +450,19 @@ export class ReportGeneratorService {
         if (keyNumeric === questionNumeric && keyNumeric < 1000) {
           return answers[key];
         }
+      }
+    }
+
+    // Strategy 8: If nothing matched and user didn't answer all questions,
+    // try to find by matching the Nth non-matched answer key to the Nth question
+    // This handles partial responses where users skip some questions
+    if (answerKeys.length > 0 && questionIndex < answerKeys.length) {
+      // Sort answer keys and try position-based matching as last resort
+      const sortedKeys = [...answerKeys].sort();
+      // Only use this if it looks like timestamp-based IDs (long numeric strings)
+      const looksLikeTimestampIds = sortedKeys.every(k => /^q?\d{10,}$/i.test(k));
+      if (looksLikeTimestampIds && questionIndex < sortedKeys.length) {
+        return answers[sortedKeys[questionIndex]];
       }
     }
 
@@ -2919,10 +2950,13 @@ export class ReportGeneratorService {
         institutionName: response.user?.Institution?.name ?? "N/A",
       };
 
+      // Extract all question IDs for position-based matching
+      const allQuestionIds = questions.map((q: any) => q?.id ? String(q.id) : '');
+
       // Iterate over form questions to ensure consistent column keys with question text
       questions.forEach((question: any, index: number) => {
         const key = this.buildQuestionKey(question, index);
-        const value = this.findResponseForQuestion(question, index, answers, questions.length);
+        const value = this.findResponseForQuestion(question, index, answers, questions.length, allQuestionIds);
         row[key] = this.formatResponseValue(value);
       });
 
@@ -2976,11 +3010,28 @@ export class ReportGeneratorService {
 
     this.warnOnLargeResultSet(responses.length, "TrainingPreTestResponsesReport");
 
-    return responses.map((response) => {
+    return responses.map((response, respIdx) => {
       const questions = Array.isArray(response.preTestForm?.questions)
         ? response.preTestForm.questions
         : [];
       const answers = (response.responses || {}) as Record<string, unknown>;
+
+      // Debug logging for first response only
+      if (respIdx === 0) {
+        const questionIds = questions.map((q: any) => q?.id);
+        const answerKeys = Object.keys(answers);
+        this.logger.warn(`[PreTest Debug] Training: ${response.training?.title}`);
+        this.logger.warn(`[PreTest Debug] Questions count: ${questions.length}, Answer keys count: ${answerKeys.length}`);
+        this.logger.warn(`[PreTest Debug] Question IDs: ${JSON.stringify(questionIds)}`);
+        this.logger.warn(`[PreTest Debug] Answer Keys: ${JSON.stringify(answerKeys)}`);
+
+        // Check each question match
+        questions.forEach((q: any, idx: number) => {
+          const qId = q?.id;
+          const hasDirectMatch = answers[qId] !== undefined;
+          this.logger.warn(`[PreTest Debug] Q${idx + 1} (id: ${qId}): directMatch=${hasDirectMatch}, answerValue=${hasDirectMatch ? 'exists' : 'N/A'}`);
+        });
+      }
 
       const row: Record<string, unknown> = {
         trainingId: response.training?.id ?? null,
@@ -3002,10 +3053,13 @@ export class ReportGeneratorService {
           : "N/A",
       };
 
+      // Extract all question IDs for position-based matching
+      const allQuestionIds = questions.map((q: any) => q?.id ? String(q.id) : '');
+
       // Iterate over form questions to ensure consistent column keys with question text
       questions.forEach((question: any, index: number) => {
         const key = this.buildQuestionKey(question, index);
-        const value = this.findResponseForQuestion(question, index, answers, questions.length);
+        const value = this.findResponseForQuestion(question, index, answers, questions.length, allQuestionIds);
         row[key] = this.formatResponseValue(value);
       });
 
@@ -3085,10 +3139,13 @@ export class ReportGeneratorService {
           : "N/A",
       };
 
+      // Extract all question IDs for position-based matching
+      const allQuestionIds = questions.map((q: any) => q?.id ? String(q.id) : '');
+
       // Iterate over form questions to ensure consistent column keys with question text
       questions.forEach((question: any, index: number) => {
         const key = this.buildQuestionKey(question, index);
-        const value = this.findResponseForQuestion(question, index, answers, questions.length);
+        const value = this.findResponseForQuestion(question, index, answers, questions.length, allQuestionIds);
         row[key] = this.formatResponseValue(value);
       });
 
