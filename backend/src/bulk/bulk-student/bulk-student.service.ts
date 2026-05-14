@@ -45,6 +45,7 @@ export class BulkStudentService {
         parentContact: this.cleanString(row['Parent Contact'] || row['parentContact'] || row['Parent Phone']),
         tenthPercentage: this.parseNumber(row['10th %'] || row['10th Percentage'] || row['tenthPercentage']),
         twelfthPercentage: this.parseNumber(row['12th %'] || row['12th Percentage'] || row['twelfthPercentage']),
+        admissionYear: this.parseNumber(row['Admission Year'] || row['admissionYear'] || row['Year of Admission']),
       }));
 
       return students;
@@ -201,6 +202,23 @@ export class BulkStudentService {
           field: 'currentSemester',
           value: String(student.currentSemester),
           error: 'Semester must be between 1 and 8',
+        });
+      }
+
+      // Admission year validation (required)
+      if (!student.admissionYear) {
+        errors.push({
+          row: rowNumber,
+          field: 'admissionYear',
+          value: String(student.admissionYear || ''),
+          error: 'Admission year is required',
+        });
+      } else if (student.admissionYear < 2000 || student.admissionYear > 2100) {
+        errors.push({
+          row: rowNumber,
+          field: 'admissionYear',
+          value: String(student.admissionYear),
+          error: 'Admission year must be between 2000 and 2100',
         });
       }
 
@@ -366,6 +384,11 @@ export class BulkStudentService {
       } else if (!this.isValidEmail(student.email)) {
         rowErrors.push('Invalid email format');
       }
+      if (!student.admissionYear) {
+        rowErrors.push('Admission year is required');
+      } else if (student.admissionYear < 2000 || student.admissionYear > 2100) {
+        rowErrors.push('Admission year must be between 2000 and 2100');
+      }
 
       // Optional: Validate batch if provided
       if (student.batchName?.trim() && !batchMap.has(student.batchName.trim().toLowerCase())) {
@@ -514,6 +537,7 @@ export class BulkStudentService {
       tenthPercentage: studentDto.tenthPercentage,
       twelfthPercentage: studentDto.twelfthPercentage,
       currentSemester: studentDto.currentSemester,
+      admissionYear: studentDto.admissionYear,
     };
 
     // Delegate to domain service (skip validation since bulk already validated)
@@ -534,6 +558,7 @@ export class BulkStudentService {
         'Roll Number': 'R2023001',
         'Date of Birth': '2005-01-15',
         'Gender': 'MALE',
+        'Admission Year': 2025,
       },
       {
         'Name': 'Jane Smith',
@@ -542,6 +567,7 @@ export class BulkStudentService {
         'Roll Number': 'R2023002',
         'Date of Birth': '2005-03-20',
         'Gender': 'FEMALE',
+        'Admission Year': 2025,
       },
     ];
 
@@ -552,6 +578,7 @@ export class BulkStudentService {
       { Field: 'Roll Number', Required: 'No', Description: 'Student roll number', Example: 'R2023001' },
       { Field: 'Date of Birth', Required: 'No', Description: 'Date of birth (YYYY-MM-DD)', Example: '2005-01-15' },
       { Field: 'Gender', Required: 'No', Description: 'Gender: MALE, FEMALE, or OTHER', Example: 'MALE' },
+      { Field: 'Admission Year', Required: 'Yes', Description: 'Year of admission (e.g., 2025). Used to calculate current year/semester.', Example: '2025' },
     ];
 
     return ExcelUtils.createFromJson([

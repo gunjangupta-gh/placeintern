@@ -289,6 +289,7 @@ export class StateStaffService {
     institutionId?: string;
     role?: string;
     phoneNo?: string;
+    branchId?: string;
     branchName?: string;
     designation?: string;
     designationEnum?: string;
@@ -332,11 +333,46 @@ export class StateStaffService {
     if (data.institutionId !== undefined) updateData.Institution = { connect: { id: data.institutionId } };
     if (data.role !== undefined) updateData.role = data.role as Role;
     if (data.phoneNo !== undefined) updateData.phoneNo = data.phoneNo;
-    if (data.branchName !== undefined) updateData.branchName = data.branchName;
     if (data.designation !== undefined) updateData.designation = data.designation;
     if (data.designationEnum !== undefined) updateData.designationEnum = data.designationEnum as Designation;
     if (data.isActive !== undefined) updateData.active = data.isActive;
     if (data.active !== undefined) updateData.active = data.active;
+
+    // Handle branch sync: keep branchId and branchName in sync
+    if (data.branchId !== undefined) {
+      // If branchId is provided, fetch the branch and update both fields
+      const branch = await this.prisma.branch.findUnique({
+        where: { id: data.branchId },
+        select: { id: true, name: true, shortName: true },
+      });
+
+      if (!branch) {
+        throw new NotFoundException(`Branch with ID ${data.branchId} not found`);
+      }
+
+      updateData.branch = { connect: { id: branch.id } };
+      updateData.branchName = branch.shortName || branch.name;
+    } else if (data.branchName !== undefined) {
+      // If only branchName is provided, resolve it to branchId and update both
+      const branch = await this.prisma.branch.findFirst({
+        where: {
+          OR: [
+            { name: data.branchName },
+            { shortName: data.branchName },
+          ],
+        },
+        select: { id: true, name: true, shortName: true },
+      });
+
+      if (branch) {
+        updateData.branch = { connect: { id: branch.id } };
+        updateData.branchName = branch.shortName || branch.name;
+      } else {
+        // If branch not found, just update branchName and disconnect branch relation
+        updateData.branchName = data.branchName;
+        updateData.branch = { disconnect: true };
+      }
+    }
 
     const staff = await this.prisma.user.update({
       where: { id },

@@ -29,6 +29,7 @@ export interface CreateStudentData {
   tenthPercentage?: number;
   twelfthPercentage?: number;
   currentSemester?: number;
+  admissionYear?: number;
 }
 
 export interface CreateStaffData {
@@ -240,6 +241,7 @@ export class UserService {
           tenthper: data.tenthPercentage,
           twelthper: data.twelfthPercentage,
           currentSemester: data.currentSemester,
+          admissionYear: data.admissionYear,
           batchId: data.batchId,
           branchId: data.branchId,
           institutionId,

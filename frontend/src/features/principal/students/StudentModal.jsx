@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Select, DatePicker, Button, Row, Col, Upload, Spin, Modal, Divider, theme } from 'antd';
+import { Form, Input, InputNumber, Select, DatePicker, Button, Row, Col, Upload, Spin, Modal, Divider, theme, Tooltip } from 'antd';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { createStudent, updateStudent, fetchStudents } from '../store/principalSlice';
-import { UploadOutlined, SaveOutlined, UserOutlined, PhoneOutlined, MailOutlined, HomeOutlined } from '@ant-design/icons';
+import { UploadOutlined, SaveOutlined, UserOutlined, PhoneOutlined, MailOutlined, HomeOutlined, CalendarOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useLookup } from '../../shared/hooks/useLookup';
 import { getImageUrl, getPresignedUrl } from '../../../utils/imageUtils';
@@ -108,6 +108,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
           scholarshipId: student.scholarshipId || student.scholarship?.id,
           currentYear: student.currentYear,
           currentSemester: student.currentSemester,
+          admissionYear: student.admissionYear,
           clearanceStatus: student.clearanceStatus,
           parentName: student.parentName,
           parentContact: student.parentContact,
@@ -302,6 +303,22 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
+              <Form.Item
+                name="admissionYear"
+                label="Admission Year"
+                rules={[{ required: !isEditMode, message: 'Please enter admission year' }]}
+                initialValue={new Date().getFullYear()}
+              >
+                <InputNumber
+                  style={{ width: '100%' }}
+                  min={2000}
+                  max={2100}
+                  placeholder="Enter admission year (e.g., 2025)"
+                  prefix={<CalendarOutlined style={{ color: '#bfbfbf' }} />}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
               <Form.Item name="batchId" label="Batch">
                 <Select placeholder="Select batch" allowClear>
                   {activeBatches?.map(batch => (
@@ -324,8 +341,18 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
               </Form.Item>
             </Col>
             <Col xs={24} sm={8}>
-              <Form.Item name="currentYear" label="Current Year">
-                <Select placeholder="Select year" allowClear>
+              <Form.Item
+                name="currentYear"
+                label={
+                  <span className="flex items-center gap-1">
+                    Current Year
+                    <Tooltip title="Auto-calculated based on Admission Year">
+                      <InfoCircleOutlined className="text-text-tertiary text-xs" />
+                    </Tooltip>
+                  </span>
+                }
+              >
+                <Select placeholder="Auto-calculated" disabled>
                   {[1, 2, 3, 4].map(year => (
                     <Select.Option key={year} value={year}>
                       Year {year}
@@ -335,8 +362,18 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
               </Form.Item>
             </Col>
             <Col xs={24} sm={8}>
-              <Form.Item name="currentSemester" label="Current Semester">
-                <Select placeholder="Select semester" allowClear>
+              <Form.Item
+                name="currentSemester"
+                label={
+                  <span className="flex items-center gap-1">
+                    Current Semester
+                    <Tooltip title="Auto-calculated based on Admission Year">
+                      <InfoCircleOutlined className="text-text-tertiary text-xs" />
+                    </Tooltip>
+                  </span>
+                }
+              >
+                <Select placeholder="Auto-calculated" disabled>
                   {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
                     <Select.Option key={sem} value={sem}>
                       Semester {sem}

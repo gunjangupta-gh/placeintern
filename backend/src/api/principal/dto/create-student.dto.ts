@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsEmail, IsNotEmpty, IsOptional, IsEnum, IsDateString, Matches } from 'class-validator';
+import { IsString, IsEmail, IsNotEmpty, IsOptional, IsEnum, IsDateString, Matches, IsInt, Min, Max } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateStudentDto {
   @ApiProperty({ description: 'Student full name' })
@@ -78,4 +79,12 @@ export class CreateStudentDto {
   @IsString()
   @IsOptional()
   address?: string;
+
+  @ApiProperty({ description: 'Year of admission (e.g., 2025)', required: true })
+  @Type(() => Number)
+  @IsInt()
+  @IsNotEmpty({ message: 'Admission year is required' })
+  @Min(2000, { message: 'Admission year must be 2000 or later' })
+  @Max(2100, { message: 'Admission year must be before 2100' })
+  admissionYear: number;
 }

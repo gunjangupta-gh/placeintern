@@ -234,8 +234,9 @@ model Student {
   gender String?
 
   // Academic
-  currentYear          Int?
-  currentSemester      Int?
+  admissionYear        Int?              // Year of admission (e.g., 2025). Used to calculate currentYear and currentSemester
+  currentYear          Int?              // 1, 2, or 3 - Updated by cron job based on admissionYear
+  currentSemester      Int?              // 1-6 - Updated by cron job based on admissionYear
   currentSemesterMarks Float?
   tenthper             Float?
   twelthper            Float?
@@ -278,6 +279,7 @@ model Student {
   @@index([institutionId, batchId])
   @@index([institutionId, branchId])
   @@index([clearanceStatus])
+  @@index([admissionYear])
 }
 
 enum ClearanceStatus {

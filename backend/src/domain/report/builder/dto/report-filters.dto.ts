@@ -297,6 +297,38 @@ export class TrainingResponseFilterDto extends BaseReportFilterDto {
   trainingId?: string;
 }
 
+/**
+ * Filters for Training-wise Summary Report
+ */
+export class TrainingWiseSummaryFilterDto extends BaseReportFilterDto {
+  @IsOptional()
+  @IsUUID('4', { message: 'Training ID must be a valid UUID' })
+  trainingId?: string;
+
+  @IsOptional()
+  @IsIn(['OFFLINE', 'ONLINE', 'HYBRID'], {
+    message: 'Delivery mode must be OFFLINE, ONLINE, or HYBRID',
+  })
+  deliveryMode?: string;
+}
+
+/**
+ * Filters for Training Non-Compliance Report
+ */
+export class TrainingNonComplianceFilterDto extends BaseReportFilterDto {
+  @IsOptional()
+  @IsUUID('4', { message: 'Training ID must be a valid UUID' })
+  trainingId?: string;
+
+  @IsOptional()
+  @IsArray({ message: 'Non-compliance type must be an array' })
+  @IsIn(['attendance', 'preTest', 'postTest', 'feedback', 'lessonPlan'], {
+    each: true,
+    message: 'Invalid non-compliance type',
+  })
+  nonComplianceType?: string[];
+}
+
 // ============================================
 // USER ACTIVITY REPORT FILTERS
 // ============================================
@@ -476,6 +508,8 @@ export const REPORT_FILTER_DTO_MAP: Record<string, new () => BaseReportFilterDto
   'training-feedback-responses': TrainingResponseFilterDto,
   'training-pre-test-responses': TrainingResponseFilterDto,
   'training-post-test-responses': TrainingResponseFilterDto,
+  'training-wise-summary': TrainingWiseSummaryFilterDto,
+  'training-non-compliance': TrainingNonComplianceFilterDto,
 };
 
 /**

@@ -18,6 +18,11 @@ import {
   Descriptions,
   Divider,
   Badge,
+  Tabs,
+  Progress,
+  Timeline,
+  Empty,
+  Spin,
 } from "antd";
 import {
   SearchOutlined,
@@ -35,6 +40,12 @@ import {
   CloseCircleOutlined,
   EyeOutlined,
   DownloadOutlined,
+  CalendarOutlined,
+  EnvironmentOutlined,
+  StarOutlined,
+  TrophyOutlined,
+  IdcardOutlined,
+  BarChartOutlined,
 } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { fetchAllStudents, fetchStudentsSummary } from "../store/stateSlice";
@@ -72,6 +83,7 @@ const StudentsList = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerTab, setDrawerTab] = useState("overview");
   const [exporting, setExporting] = useState(false);
 
   const loadStudents = useCallback(
@@ -135,6 +147,7 @@ const StudentsList = () => {
   const handleViewStudent = (student) => {
     setSelectedStudent(student);
     setDrawerOpen(true);
+    setDrawerTab("overview");
   };
 
   const handleExportToExcel = async () => {
@@ -336,6 +349,22 @@ const StudentsList = () => {
         </Tag>
       ),
     },
+    {
+      title: "Actions",
+      key: "actions",
+      width: 100,
+      fixed: "right",
+      render: (_, record) => (
+        <Button
+          type="primary"
+          size="small"
+          icon={<EyeOutlined />}
+          onClick={() => handleViewStudent(record)}
+        >
+          View
+        </Button>
+      ),
+    },
   ];
 
   const studentsList = Array.isArray(students) ? students : [];
@@ -510,169 +539,227 @@ const StudentsList = () => {
 
       {/* Student Details Drawer */}
       <Drawer
-        title="Student Details"
+        title={null}
         placement="right"
-        width={500}
+        width={480}
         onClose={() => setDrawerOpen(false)}
         open={drawerOpen}
+        styles={{ body: { padding: 0 } }}
       >
         {selectedStudent && (
-          <div>
-            <div className="text-center mb-6">
-              <Avatar size={80} icon={<UserOutlined />} />
-              <Title level={4} className="mt-3 mb-1">
-                {selectedStudent.name}
-              </Title>
-              <Text type="secondary">{selectedStudent.rollNumber}</Text>
-              <div className="mt-2">
-                <Tag color={getStatusColor(selectedStudent.active)}>
-                  {selectedStudent.active ? "Active" : "Inactive"}
-                </Tag>
+          <div className="h-full flex flex-col bg-background">
+            {/* Profile Header - Clean Design */}
+            <div className="border-b border-border bg-surface !p-4">
+              <div className="flex items-center !gap-3">
+                <Avatar size={56} icon={<UserOutlined />} className="bg-primary/10 text-primary border border-border" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Title level={5} className="!mb-0 truncate">
+                      {selectedStudent.name}
+                    </Title>
+                    <Tag color={getStatusColor(selectedStudent.active)} className="m-0 text-[10px]">
+                      {selectedStudent.active ? "Active" : "Inactive"}
+                    </Tag>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1 text-text-secondary text-xs">
+                    <span className="flex items-center gap-1">
+                      <IdcardOutlined /> {selectedStudent.rollNumber}
+                    </span>
+                    <span className="w-1 h-1 rounded-full bg-border" />
+                    <span className="truncate">{selectedStudent.branchName || "N/A"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Stats Row */}
+              <div className="grid grid-cols-3 gap-2 !mt-3">
+                <div className="bg-background rounded-lg p-2 text-center border border-border">
+                  <div className={`text-sm font-bold ${selectedStudent.mentor ? "text-success" : "text-warning"}`}>
+                    {selectedStudent.mentor ? "Assigned" : "None"}
+                  </div>
+                  <div className="text-[10px] text-text-tertiary">Mentor</div>
+                </div>
+                <div className="bg-background rounded-lg p-2 text-center border border-border">
+                  <div className={`text-sm font-bold ${selectedStudent.hasJoiningLetter ? "text-success" : "text-warning"}`}>
+                    {selectedStudent.hasJoiningLetter ? "Yes" : "No"}
+                  </div>
+                  <div className="text-[10px] text-text-tertiary">Joining Report</div>
+                </div>
+                <div className="bg-background rounded-lg p-2 text-center border border-border">
+                  <Tag color={getReportStatusColor(selectedStudent.reportStatus)} className="m-0 text-[10px]">
+                    {getReportStatusLabel(selectedStudent.reportStatus)}
+                  </Tag>
+                  <div className="text-[10px] text-text-tertiary mt-0.5">Monthly Report</div>
+                </div>
               </div>
             </div>
 
-            <Divider>Contact Information</Divider>
-            <Descriptions column={1} size="small">
-              <Descriptions.Item
-                label={
-                  <>
-                    <MailOutlined /> Email
-                  </>
-                }
-              >
-                {selectedStudent.email || "N/A"}
-              </Descriptions.Item>
-              <Descriptions.Item
-                label={
-                  <>
-                    <PhoneOutlined /> Phone
-                  </>
-                }
-              >
-                {selectedStudent.phoneNo || "N/A"}
-              </Descriptions.Item>
-            </Descriptions>
+            {/* Tabbed Content */}
+            <Tabs
+              activeKey={drawerTab}
+              onChange={setDrawerTab}
+              className="flex-1 overflow-auto"
+              tabBarStyle={{ padding: "0 16px", marginBottom: 0 }}
+              items={[
+                {
+                  key: "overview",
+                  label: <span className="text-xs flex items-center gap-1"><UserOutlined /> Overview</span>,
+                  children: (
+                    <div className="!space-y-3 p-4">
+                      {/* Contact Info */}
+                      <Card size="small" className="rounded-lg" bodyStyle={{ padding: "12px" }}>
+                        <div className="text-xs font-semibold text-text-secondary mb-2 flex items-center gap-1.5">
+                          <PhoneOutlined className="text-primary" /> Contact
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <div className="text-[10px] text-text-tertiary">Email</div>
+                            <div className="text-xs font-medium truncate">{selectedStudent.email || "N/A"}</div>
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-text-tertiary">Phone</div>
+                            <div className="text-xs font-medium">{selectedStudent.phoneNo || "N/A"}</div>
+                          </div>
+                        </div>
+                      </Card>
 
-            <Divider>Academic Information</Divider>
-            <Descriptions column={1} size="small">
-              <Descriptions.Item
-                label={
-                  <>
-                    <BankOutlined /> Institution
-                  </>
-                }
-              >
-                {selectedStudent.institution?.name || "N/A"}
-              </Descriptions.Item>
-              <Descriptions.Item label="Branch">
-                {selectedStudent.branchName || "N/A"}
-              </Descriptions.Item>
-            </Descriptions>
+                      {/* Academic Info */}
+                      <Card size="small" className="rounded-lg" bodyStyle={{ padding: "12px" }}>
+                        <div className="text-xs font-semibold text-text-secondary mb-2 flex items-center gap-1.5">
+                          <BankOutlined className="text-blue-500" /> Academic
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <div className="text-[10px] text-text-tertiary">Institution</div>
+                            <div className="text-xs font-medium truncate">{selectedStudent.institution?.name || "N/A"}</div>
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-text-tertiary">Branch</div>
+                            <div className="text-xs font-medium">{selectedStudent.branchName || "N/A"}</div>
+                          </div>
+                        </div>
+                      </Card>
 
-            {selectedStudent.mentor && (
-              <>
-                <Divider>Mentor</Divider>
-                <Descriptions column={1} size="small">
-                  <Descriptions.Item label="Name">
-                    {selectedStudent.mentor.name}
-                    {selectedStudent.mentor.isCrossInstitution && (
-                      <Tag color="purple" className="ml-2">
-                        External
-                      </Tag>
-                    )}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Email">
-                    {selectedStudent.mentor.email || "N/A"}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Phone">
-                    {selectedStudent.mentor.phoneNo || "N/A"}
-                  </Descriptions.Item>
-                  {selectedStudent.mentor.institution && (
-                    <Descriptions.Item label="Institution">
-                      {selectedStudent.mentor.institution.name}
-                    </Descriptions.Item>
-                  )}
-                </Descriptions>
-              </>
-            )}
+                      {/* Mentor Info */}
+                      <Card size="small" className="rounded-lg" bodyStyle={{ padding: "12px" }}>
+                        <div className="text-xs font-semibold text-text-secondary mb-2 flex items-center gap-1.5">
+                          <TeamOutlined className="text-purple-500" /> Mentor
+                        </div>
+                        {selectedStudent.mentor ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <div className="text-[10px] text-text-tertiary">Name</div>
+                              <div className="text-xs font-medium flex items-center gap-1">
+                                {selectedStudent.mentor.name}
+                                {selectedStudent.mentor.isCrossInstitution && (
+                                  <Tag color="purple" className="text-[9px] m-0 px-1 py-0">External</Tag>
+                                )}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] text-text-tertiary">Contact</div>
+                              <div className="text-xs font-medium">{selectedStudent.mentor.phoneNo || "N/A"}</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-warning flex items-center gap-1.5">
+                            <ClockCircleOutlined /> No mentor assigned
+                          </div>
+                        )}
+                      </Card>
 
-            {selectedStudent.internship && (
-              <>
-                <Divider>Internship</Divider>
-                <Descriptions column={1} size="small">
-                  <Descriptions.Item label="Company">
-                    {selectedStudent.internship.companyName || "N/A"}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Job Profile">
-                    {selectedStudent.internship.jobProfile || "N/A"}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Stipend">
-                    {selectedStudent.internship.stipend
-                      ? `${selectedStudent.internship.stipend}/month`
-                      : "N/A"}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Duration">
-                    {selectedStudent.internship.startDate &&
-                    selectedStudent.internship.endDate
-                      ? `${dayjs(selectedStudent.internship.startDate).format("DD MMM YYYY")} - ${dayjs(selectedStudent.internship.endDate).format("DD MMM YYYY")}`
-                      : "N/A"}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Status">
-                    <Tag
-                      color={getInternshipStatusColor(
-                        selectedStudent.internshipStatus,
+                      {/* Activity */}
+                      {selectedStudent.lastLoginAt && (
+                        <Card size="small" className="rounded-lg" bodyStyle={{ padding: "12px" }}>
+                          <div className="text-xs font-semibold text-text-secondary mb-2 flex items-center gap-1.5">
+                            <CalendarOutlined className="text-green-500" /> Activity
+                          </div>
+                          <div className="text-xs">
+                            <span className="text-text-tertiary">Last Login:</span>{" "}
+                            <span className="font-medium">{dayjs(selectedStudent.lastLoginAt).format("DD MMM YYYY HH:mm")}</span>
+                          </div>
+                        </Card>
                       )}
-                    >
-                      {getInternshipStatusLabel(
-                        selectedStudent.internshipStatus,
+                    </div>
+                  ),
+                },
+                {
+                  key: "internship",
+                  label: <span className="text-xs flex items-center gap-1"><BankOutlined /> Internship</span>,
+                  children: (
+                    <div className="p-4">
+                      {selectedStudent.internship ? (
+                        <div className="!space-y-3">
+                          {/* Internship Card */}
+                          <Card size="small" className="rounded-lg border-success/30 bg-success/5" bodyStyle={{ padding: "12px" }}>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="text-sm font-semibold text-success">
+                                {selectedStudent.internship.companyName}
+                              </div>
+                              <Tag color={getInternshipStatusColor(selectedStudent.internshipStatus)} className="m-0 text-[10px]">
+                                {getInternshipStatusLabel(selectedStudent.internshipStatus)}
+                              </Tag>
+                            </div>
+                            <div className="text-xs text-text-secondary mb-2">
+                              {selectedStudent.internship.jobProfile || "Job Profile N/A"}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <div className="text-text-tertiary text-[10px]">Stipend</div>
+                                <div className="font-medium">
+                                  {selectedStudent.internship.stipend
+                                    ? `₹${selectedStudent.internship.stipend}/month`
+                                    : "N/A"}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-text-tertiary text-[10px]">Duration</div>
+                                <div className="font-medium">
+                                  {selectedStudent.internship.startDate && selectedStudent.internship.endDate
+                                    ? `${dayjs(selectedStudent.internship.startDate).format("DD MMM")} - ${dayjs(selectedStudent.internship.endDate).format("DD MMM YYYY")}`
+                                    : "N/A"}
+                                </div>
+                              </div>
+                            </div>
+                          </Card>
+
+                          {/* Status Cards */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <Card size="small" className="rounded-lg" bodyStyle={{ padding: "10px" }}>
+                              <div className="text-[10px] text-text-tertiary mb-1">Joining Report</div>
+                              <div className="flex items-center gap-1">
+                                {selectedStudent.hasJoiningLetter ? (
+                                  <>
+                                    <CheckCircleOutlined className="text-success text-sm" />
+                                    <span className="text-success text-xs font-medium">Submitted</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <ClockCircleOutlined className="text-warning text-sm" />
+                                    <span className="text-warning text-xs font-medium">Pending</span>
+                                  </>
+                                )}
+                              </div>
+                            </Card>
+                            <Card size="small" className="rounded-lg" bodyStyle={{ padding: "10px" }}>
+                              <div className="text-[10px] text-text-tertiary mb-1">Monthly Report ({currentMonth}/{currentYear})</div>
+                              <Tag color={getReportStatusColor(selectedStudent.reportStatus)} className="m-0 text-[10px]">
+                                {getReportStatusLabel(selectedStudent.reportStatus)}
+                              </Tag>
+                            </Card>
+                          </div>
+                        </div>
+                      ) : (
+                        <Empty
+                          image={Empty.PRESENTED_IMAGE_SIMPLE}
+                          description={<span className="text-xs text-text-tertiary">No internship assigned</span>}
+                        />
                       )}
-                    </Tag>
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Joining Letter">
-                    <Tag
-                      color={
-                        selectedStudent.hasJoiningLetter ? "green" : "orange"
-                      }
-                    >
-                      {selectedStudent.hasJoiningLetter
-                        ? "Uploaded"
-                        : "Pending"}
-                    </Tag>
-                  </Descriptions.Item>
-                </Descriptions>
-              </>
-            )}
-
-            <Divider>Monthly Report</Divider>
-            <Descriptions column={1} size="small">
-              <Descriptions.Item
-                label={`Status (${currentMonth}/${currentYear})`}
-              >
-                <Tag color={getReportStatusColor(selectedStudent.reportStatus)}>
-                  {getReportStatusLabel(selectedStudent.reportStatus)}
-                </Tag>
-              </Descriptions.Item>
-              {selectedStudent.currentMonthReport?.submittedAt && (
-                <Descriptions.Item label="Submitted At">
-                  {dayjs(selectedStudent.currentMonthReport.submittedAt).format(
-                    "DD MMM YYYY HH:mm",
-                  )}
-                </Descriptions.Item>
-              )}
-            </Descriptions>
-
-            {selectedStudent.lastLoginAt && (
-              <>
-                <Divider>Activity</Divider>
-                <Descriptions column={1} size="small">
-                  <Descriptions.Item label="Last Login">
-                    {dayjs(selectedStudent.lastLoginAt).format(
-                      "DD MMM YYYY HH:mm",
-                    )}
-                  </Descriptions.Item>
-                </Descriptions>
-              </>
-            )}
+                    </div>
+                  ),
+                },
+              ]}
+            />
           </div>
         )}
       </Drawer>

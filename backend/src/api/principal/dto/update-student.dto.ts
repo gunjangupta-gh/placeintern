@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsEmail, IsOptional, IsEnum, IsDateString, IsBoolean, IsInt, Matches } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsEnum, IsDateString, IsBoolean, IsInt, Matches, Min, Max } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { AdmissionType, Category, ClearanceStatus } from '../../../generated/prisma/client';
 
@@ -160,4 +160,12 @@ export class UpdateStudentDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @ApiProperty({ description: 'Year of admission (e.g., 2025)', required: false })
+  @Type(() => Number)
+  @IsInt()
+  @IsOptional()
+  @Min(2000, { message: 'Admission year must be 2000 or later' })
+  @Max(2100, { message: 'Admission year must be before 2100' })
+  admissionYear?: number;
 }

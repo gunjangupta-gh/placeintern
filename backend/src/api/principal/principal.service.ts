@@ -1569,6 +1569,7 @@ export class PrincipalService {
       address: createStudentDto.address,
       parentName: createStudentDto.parentName,
       parentContact: createStudentDto.parentPhone,
+      admissionYear: createStudentDto.admissionYear,
     });
 
     // Optionally connect scholarship after student is created.

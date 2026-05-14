@@ -77,6 +77,13 @@ export class BulkStudentRowDto {
   @ApiProperty({ description: '12th percentage', required: false })
   @IsOptional()
   twelfthPercentage?: number;
+
+  @ApiProperty({ description: 'Year of admission (e.g., 2025)', required: true })
+  @IsInt()
+  @IsNotEmpty({ message: 'Admission year is required' })
+  @Min(2000, { message: 'Admission year must be 2000 or later' })
+  @Max(2100, { message: 'Admission year must be before 2100' })
+  admissionYear: number;
 }
 
 export class BulkStudentUploadDto {

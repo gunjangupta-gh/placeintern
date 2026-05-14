@@ -32,11 +32,12 @@ import { SystemConfigService, ConfigCategory } from './services/system-config.se
 import { HealthMonitorService } from './services/health-monitor.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { AlertService, CreateAlertDto, UpdateAlertDto } from './services/alert.service';
-import { AlertType, AlertPriority } from '../../generated/prisma/client';
+import { AlertType } from '../../generated/prisma/client';
 
 import {
   CreateBackupDto,
   RestoreBackupDto,
+  UpdateBackupStatusDto,
   CreateUserDto,
   UpdateUserDto,
   UserQueryDto,
@@ -162,12 +163,12 @@ export class SystemAdminController {
   async listBackups(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
-    @Query('status') status?: BackupStatus,
+    @Query('status') status?: string,
   ) {
     return this.backupService.listBackups(
       page ? Number(page) : 1,
       limit ? Number(limit) : 20,
-      status,
+      status as BackupStatus,
     );
   }
 
@@ -244,10 +245,10 @@ export class SystemAdminController {
   @Put('backup/:id/status')
   async updateBackupStatus(
     @Param('id') id: string,
-    @Body() body: { status: BackupStatus },
+    @Body() dto: UpdateBackupStatusDto,
     @CurrentUser() user: { userId: string; role: Role },
   ) {
-    return this.backupService.updateBackupStatus(id, body.status, user.userId, user.role);
+    return this.backupService.updateBackupStatus(id, dto.status, user.userId, user.role);
   }
 
   @Post('backup/cleanup-stale')
@@ -538,13 +539,13 @@ export class SystemAdminController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('isActive') isActive?: string,
-    @Query('type') type?: AlertType,
+    @Query('type') type?: string,
   ) {
     return this.alertService.getAllAlerts({
       page: page ? Number(page) : 1,
       limit: limit ? Number(limit) : 20,
       isActive: isActive !== undefined ? isActive === 'true' : undefined,
-      type,
+      type: type as AlertType,
     });
   }
 

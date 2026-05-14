@@ -1422,6 +1422,23 @@ export class StateInstitutionService {
       }).then(results => results.length),
     ]);
 
+    // Year-wise student breakdown (based on currentYear field)
+    const yearWiseData = await this.prisma.student.groupBy({
+      by: ['currentYear'],
+      where: {
+        institutionId: id,
+        user: { active: true },
+        currentYear: { not: null },
+      },
+      _count: { id: true },
+    });
+
+    const yearWiseStudents = {
+      firstYear: yearWiseData.find(y => y.currentYear === 1)?._count.id || 0,
+      secondYear: yearWiseData.find(y => y.currentYear === 2)?._count.id || 0,
+      thirdYear: yearWiseData.find(y => y.currentYear === 3)?._count.id || 0,
+    };
+
     // Calculate unassigned students (active students - students with mentors)
     const unassignedStudents = Math.max(0, activeStudents - assignedStudents);
 
@@ -1503,6 +1520,10 @@ export class StateInstitutionService {
       facultyCount,
       branchIntakeSummary,
       complianceScore,
+      // Year-wise student breakdown
+      yearWiseStudents,
+      // Students with approved internship (alias for frontend)
+      studentsWithInternship: selfIdentifiedApproved,
     };
   }
 

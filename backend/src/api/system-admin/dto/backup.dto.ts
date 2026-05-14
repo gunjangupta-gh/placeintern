@@ -1,4 +1,6 @@
 import { IsString, IsOptional, IsEnum, IsBoolean, Equals } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { BackupStatus } from '../../../generated/prisma/client';
 
 export enum StorageType {
   MINIO = 'minio',
@@ -45,4 +47,14 @@ export class BackupListResponseDto {
   total: number;
   page: number;
   limit: number;
+}
+
+export class UpdateBackupStatusDto {
+  @ApiProperty({
+    description: 'New backup status',
+    enum: ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED', 'CANCELLED'],
+    example: 'COMPLETED',
+  })
+  @IsEnum(BackupStatus, { message: 'Invalid backup status' })
+  status: BackupStatus;
 }

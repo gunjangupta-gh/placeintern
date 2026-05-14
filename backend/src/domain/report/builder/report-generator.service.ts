@@ -2850,13 +2850,17 @@ export class ReportGeneratorService {
       case "principal-visit-summary":
         return this.generatePrincipalVisitSummaryReport(filters, pagination);
 
-      // ==================== Training Reports (3) ====================
+      // ==================== Training Reports (5) ====================
       case "training-feedback-responses":
         return this.generateTrainingFeedbackResponsesReport(filters, pagination);
       case "training-pre-test-responses":
         return this.generateTrainingPreTestResponsesReport(filters, pagination);
       case "training-post-test-responses":
         return this.generateTrainingPostTestResponsesReport(filters, pagination);
+      case "training-wise-summary":
+        return this.generateTrainingWiseSummaryReport(filters, pagination);
+      case "training-non-compliance":
+        return this.generateTrainingNonComplianceReport(filters, pagination);
 
       // ==================== Legacy Support ====================
       // Support for legacy enum values
@@ -3151,6 +3155,383 @@ export class ReportGeneratorService {
 
       return row;
     });
+  }
+
+  /**
+   * Generate Training-wise Summary Report
+   * Shows training details with participant counts, attendance, pre-test, post-test, feedback, and lesson plan statistics
+   */
+  async generateTrainingWiseSummaryReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const { take, skip } = this.getPaginationParams(pagination);
+    const trainingWhere = this.buildTrainingDateWhere(filters);
+
+    // Build training filter
+    const where: Record<string, unknown> = {
+      isActive: true,
+      ...trainingWhere,
+    };
+
+    if (filters?.trainingId) {
+      where.id = filters.trainingId;
+    }
+
+    if (filters?.deliveryMode) {
+      where.deliveryMode = filters.deliveryMode;
+    }
+
+    // Fetch trainings with all related counts
+    const trainings = await this.prisma.training.findMany({
+      where,
+      include: {
+        targetBranches: { select: { name: true } },
+        applications: {
+          where: {
+            status: 'APPROVED',
+            isActive: true,
+            // Filter by institution/branch if specified
+            ...(filters?.institutionId && { user: { institutionId: filters.institutionId } }),
+            ...(filters?.branchId && { user: { branchId: filters.branchId } }),
+          },
+          select: {
+            userId: true,
+            user: {
+              select: {
+                id: true,
+                institutionId: true,
+                branchId: true,
+              },
+            },
+          },
+        },
+        attendances: {
+          where: {
+            ...(filters?.institutionId && { user: { institutionId: filters.institutionId } }),
+            ...(filters?.branchId && { user: { branchId: filters.branchId } }),
+          },
+          select: {
+            userId: true,
+          },
+          distinct: ['userId'],
+        },
+        preTestResponses: {
+          where: {
+            ...(filters?.institutionId && { user: { institutionId: filters.institutionId } }),
+            ...(filters?.branchId && { user: { branchId: filters.branchId } }),
+          },
+          select: {
+            userId: true,
+          },
+        },
+        postTestResponses: {
+          where: {
+            ...(filters?.institutionId && { user: { institutionId: filters.institutionId } }),
+            ...(filters?.branchId && { user: { branchId: filters.branchId } }),
+          },
+          select: {
+            userId: true,
+          },
+        },
+        feedbackResponses: {
+          where: {
+            ...(filters?.institutionId && { user: { institutionId: filters.institutionId } }),
+            ...(filters?.branchId && { user: { branchId: filters.branchId } }),
+          },
+          select: {
+            userId: true,
+          },
+        },
+        lessonPlans: {
+          where: {
+            status: { not: 'DRAFT' },
+            ...(filters?.institutionId && { user: { institutionId: filters.institutionId } }),
+            ...(filters?.branchId && { user: { branchId: filters.branchId } }),
+          },
+          select: {
+            userId: true,
+          },
+        },
+      },
+      orderBy: { startDate: 'desc' },
+      take,
+      skip,
+    });
+
+    this.warnOnLargeResultSet(trainings.length, "TrainingWiseSummaryReport");
+
+    return trainings.map((training) => {
+      const totalParticipants = training.applications.length;
+      const attendanceCount = training.attendances.length;
+      const preTestFilledCount = training.preTestResponses.length;
+      const postTestFilledCount = training.postTestResponses.length;
+      const feedbackFilledCount = training.feedbackResponses.length;
+      const lessonPlanFilledCount = training.lessonPlans.length;
+
+      // Calculate percentages (avoid division by zero)
+      const calcPercentage = (count: number): number => {
+        if (totalParticipants === 0) return 0;
+        return Math.round((count / totalParticipants) * 100 * 100) / 100;
+      };
+
+      return {
+        trainingId: training.id,
+        trainingName: training.title,
+        duration: training.duration ?? 0,
+        startDate: training.startDate
+          ? this.formatToISTDateOnly(training.startDate)
+          : "N/A",
+        endDate: training.endDate
+          ? this.formatToISTDateOnly(training.endDate)
+          : "N/A",
+        course: training.targetBranches.map((b) => b.name).join(', ') || 'All',
+        deliveryMode: training.deliveryMode,
+        totalParticipants,
+        attendanceCount,
+        attendancePercentage: calcPercentage(attendanceCount),
+        preTestFilledCount,
+        preTestPercentage: calcPercentage(preTestFilledCount),
+        postTestFilledCount,
+        postTestPercentage: calcPercentage(postTestFilledCount),
+        feedbackFilledCount,
+        feedbackPercentage: calcPercentage(feedbackFilledCount),
+        lessonPlanFilledCount,
+        lessonPlanPercentage: calcPercentage(lessonPlanFilledCount),
+      };
+    });
+  }
+
+  /**
+   * Generate Training Non-Compliance Report
+   * Shows faculty who have not filled attendance, pre-test, post-test, feedback, or lesson plan
+   * Optimized with bulk queries to avoid N+1 problem
+   */
+  async generateTrainingNonComplianceReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const { take, skip } = this.getPaginationParams(pagination);
+    const trainingWhere = this.buildTrainingDateWhere(filters);
+
+    // Build training filter
+    const trainingFilter: Record<string, unknown> = {
+      isActive: true,
+      ...trainingWhere,
+    };
+
+    if (filters?.trainingId) {
+      trainingFilter.id = filters.trainingId;
+    }
+
+    // Fetch approved applications (participants) with their compliance status
+    const applicationWhere: Record<string, unknown> = {
+      status: 'APPROVED',
+      isActive: true,
+      training: trainingFilter,
+    };
+
+    if (filters?.institutionId) {
+      applicationWhere.user = {
+        ...((applicationWhere.user as Record<string, unknown>) || {}),
+        institutionId: filters.institutionId,
+      };
+    }
+
+    if (filters?.branchId) {
+      applicationWhere.user = {
+        ...((applicationWhere.user as Record<string, unknown>) || {}),
+        branchId: filters.branchId,
+      };
+    }
+
+    // Fetch all applications first
+    const applications = await this.prisma.trainingApplication.findMany({
+      where: applicationWhere,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phoneNo: true,
+            branchName: true,
+            branch: { select: { name: true } },
+            Institution: { select: { name: true } },
+          },
+        },
+        training: {
+          select: {
+            id: true,
+            title: true,
+            startDate: true,
+            endDate: true,
+            feedbackFormId: true,
+            preTestFormId: true,
+            postTestFormId: true,
+          },
+        },
+      },
+      orderBy: [
+        { training: { startDate: 'desc' } },
+        { user: { Institution: { name: 'asc' } } },
+      ],
+    });
+
+    if (applications.length === 0) {
+      return [];
+    }
+
+    // Extract unique user-training pairs for bulk queries
+    const userTrainingPairs = applications.map((app) => ({
+      userId: app.userId,
+      trainingId: app.trainingId,
+    }));
+    const userIds = [...new Set(applications.map((app) => app.userId))];
+    const trainingIds = [...new Set(applications.map((app) => app.trainingId))];
+
+    // Bulk fetch all compliance data in parallel
+    const [attendances, preTestResponses, postTestResponses, feedbackResponses, lessonPlans] =
+      await Promise.all([
+        // Fetch all attendances for these user-training combinations
+        this.prisma.trainingAttendance.findMany({
+          where: {
+            userId: { in: userIds },
+            trainingId: { in: trainingIds },
+          },
+          select: { userId: true, trainingId: true },
+          distinct: ['userId', 'trainingId'],
+        }),
+        // Fetch all pre-test responses
+        this.prisma.preTestResponse.findMany({
+          where: {
+            userId: { in: userIds },
+            trainingId: { in: trainingIds },
+          },
+          select: { userId: true, trainingId: true },
+        }),
+        // Fetch all post-test responses
+        this.prisma.postTestResponse.findMany({
+          where: {
+            userId: { in: userIds },
+            trainingId: { in: trainingIds },
+          },
+          select: { userId: true, trainingId: true },
+        }),
+        // Fetch all feedback responses
+        this.prisma.feedbackResponse.findMany({
+          where: {
+            userId: { in: userIds },
+            trainingId: { in: trainingIds },
+          },
+          select: { userId: true, trainingId: true },
+        }),
+        // Fetch all submitted lesson plans (not DRAFT)
+        this.prisma.lessonPlan.findMany({
+          where: {
+            userId: { in: userIds },
+            trainingId: { in: trainingIds },
+            status: { not: 'DRAFT' },
+          },
+          select: { userId: true, trainingId: true },
+        }),
+      ]);
+
+    // Create lookup sets for O(1) access
+    const createLookupKey = (userId: string, trainingId: string) => `${userId}:${trainingId}`;
+
+    const attendanceSet = new Set(
+      attendances.map((a) => createLookupKey(a.userId, a.trainingId))
+    );
+    const preTestSet = new Set(
+      preTestResponses.map((p) => createLookupKey(p.userId, p.trainingId))
+    );
+    const postTestSet = new Set(
+      postTestResponses.map((p) => createLookupKey(p.userId, p.trainingId))
+    );
+    const feedbackSet = new Set(
+      feedbackResponses.map((f) => createLookupKey(f.userId, f.trainingId!))
+    );
+    const lessonPlanSet = new Set(
+      lessonPlans.map((l) => createLookupKey(l.userId, l.trainingId))
+    );
+
+    // Process applications and build results
+    const results: any[] = [];
+    const nonComplianceTypes = filters?.nonComplianceType as string[] | undefined;
+
+    for (const app of applications) {
+      const lookupKey = createLookupKey(app.userId, app.trainingId);
+
+      // Check compliance using lookup sets
+      const hasAttendance = attendanceSet.has(lookupKey);
+      const hasPreTest = !app.training.preTestFormId || preTestSet.has(lookupKey);
+      const hasPostTest = !app.training.postTestFormId || postTestSet.has(lookupKey);
+      const hasFeedback = !app.training.feedbackFormId || feedbackSet.has(lookupKey);
+      const hasLessonPlan = lessonPlanSet.has(lookupKey);
+
+      // Build missing items list
+      const missingItems: string[] = [];
+      if (!hasAttendance) missingItems.push('Attendance');
+      if (!hasPreTest) missingItems.push('Pre-Test');
+      if (!hasPostTest) missingItems.push('Post-Test');
+      if (!hasFeedback) missingItems.push('Feedback');
+      if (!hasLessonPlan) missingItems.push('Lesson Plan');
+
+      // Skip if compliant (no missing items)
+      if (missingItems.length === 0) continue;
+
+      // Apply non-compliance type filter if specified
+      if (nonComplianceTypes && nonComplianceTypes.length > 0) {
+        const matchesFilter = nonComplianceTypes.some((type) => {
+          switch (type) {
+            case 'attendance':
+              return !hasAttendance;
+            case 'preTest':
+              return !hasPreTest;
+            case 'postTest':
+              return !hasPostTest;
+            case 'feedback':
+              return !hasFeedback;
+            case 'lessonPlan':
+              return !hasLessonPlan;
+            default:
+              return false;
+          }
+        });
+        if (!matchesFilter) continue;
+      }
+
+      results.push({
+        facultyId: app.user.id,
+        facultyName: app.user.name ?? 'N/A',
+        facultyEmail: app.user.email ?? 'N/A',
+        facultyPhone: app.user.phoneNo ?? '',
+        institutionName: app.user.Institution?.name ?? 'N/A',
+        branchName: app.user.branch?.name ?? app.user.branchName ?? 'N/A',
+        trainingId: app.training.id,
+        trainingName: app.training.title,
+        trainingStartDate: app.training.startDate
+          ? this.formatToISTDateOnly(app.training.startDate)
+          : 'N/A',
+        trainingEndDate: app.training.endDate
+          ? this.formatToISTDateOnly(app.training.endDate)
+          : 'N/A',
+        attendanceFilled: hasAttendance,
+        preTestFilled: hasPreTest,
+        postTestFilled: hasPostTest,
+        feedbackFilled: hasFeedback,
+        lessonPlanFilled: hasLessonPlan,
+        missingItems: missingItems.join(', '),
+        missingCount: missingItems.length,
+      });
+    }
+
+    this.warnOnLargeResultSet(results.length, "TrainingNonComplianceReport");
+
+    // Apply pagination to results
+    const paginatedResults = results.slice(skip, skip + take);
+    return paginatedResults;
   }
 
   // ==================== Mentor Report Generators ====================

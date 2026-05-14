@@ -64,6 +64,7 @@ import {
   GlobalOutlined,
   SwapOutlined,
   FolderOpenOutlined,
+  BarChartOutlined,
 } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import {
@@ -109,6 +110,130 @@ const getStatusColor = (status) => STATUS_COLORS[status] || "default";
 // Memoized Mentor Overview Tab - Removed
 const MentorOverviewTab = memo(({ institutionId }) => {
   return null;
+});
+
+// General Overview Tab - Summary statistics (compact version)
+const GeneralOverviewTab = memo(({ data, loading, error }) => {
+  if (loading) return <div className="flex justify-center py-8"><Spin size="default" /></div>;
+  if (error) return <Alert type="error" message="Failed to load overview" description={error} showIcon />;
+  if (!data) return <Empty description="No data available" className="py-8" />;
+
+  const yearWiseStudents = data.yearWiseStudents || { firstYear: 0, secondYear: 0, thirdYear: 0 };
+  const totalStudents = data.activeStudents || 0;
+  const studentsWithInternship = data.studentsWithInternship || 0;
+  const totalFaculty = data.facultyCount || 0;
+  const assignedMentors = data.mentorAssignment?.assigned || 0;
+  const unassignedMentors = data.mentorAssignment?.unassigned || 0;
+  const internshipRate = totalStudents > 0 ? Math.round((studentsWithInternship / totalStudents) * 100) : 0;
+
+  return (
+    <div className="space-y-3">
+      {/* Top Stats Row - Compact */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="bg-surface rounded-lg border border-border p-2.5 text-center">
+          <div className="text-2xl font-bold text-text-primary">{totalStudents}</div>
+          <div className="text-[10px] text-text-tertiary mt-0.5">Active Students</div>
+        </div>
+        <div className="bg-surface rounded-lg border border-border p-2.5 text-center">
+          <div className="text-2xl font-bold text-success">{studentsWithInternship}</div>
+          <div className="text-[10px] text-text-tertiary mt-0.5">With Internship</div>
+        </div>
+        <div className="bg-surface rounded-lg border border-border p-2.5 text-center">
+          <div className="text-2xl font-bold text-blue-500">{totalFaculty}</div>
+          <div className="text-[10px] text-text-tertiary mt-0.5">Faculty</div>
+        </div>
+        <div className="bg-surface rounded-lg border border-border p-2.5 text-center">
+          <Progress type="circle" percent={data.complianceScore || 0} size={36} strokeWidth={6}
+            strokeColor={data.complianceScore >= 80 ? "rgb(var(--color-success))" : data.complianceScore >= 50 ? "rgb(var(--color-warning))" : "rgb(var(--color-error))"} />
+          <div className="text-[10px] text-text-tertiary mt-0.5">Compliance</div>
+        </div>
+      </div>
+
+      {/* Two Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+        {/* Year-wise Students */}
+        <Card size="small" title={<span className="text-xs font-semibold">Students by Year</span>}
+          className="rounded-lg" bodyStyle={{ padding: "8px" }}>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <div className="text-lg font-bold text-blue-600">{yearWiseStudents.firstYear || 0}</div>
+              <div className="text-[9px] text-text-tertiary">1st Year</div>
+              <Progress percent={totalStudents > 0 ? Math.round((yearWiseStudents.firstYear / totalStudents) * 100) : 0}
+                size="small" strokeColor="#3B82F6" showInfo={false} className="mt-1" />
+            </div>
+            <div className="text-center p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <div className="text-lg font-bold text-green-600">{yearWiseStudents.secondYear || 0}</div>
+              <div className="text-[9px] text-text-tertiary">2nd Year</div>
+              <Progress percent={totalStudents > 0 ? Math.round((yearWiseStudents.secondYear / totalStudents) * 100) : 0}
+                size="small" strokeColor="#22C55E" showInfo={false} className="mt-1" />
+            </div>
+            <div className="text-center p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+              <div className="text-lg font-bold text-purple-600">{yearWiseStudents.thirdYear || 0}</div>
+              <div className="text-[9px] text-text-tertiary">3rd Year</div>
+              <Progress percent={totalStudents > 0 ? Math.round((yearWiseStudents.thirdYear / totalStudents) * 100) : 0}
+                size="small" strokeColor="#A855F7" showInfo={false} className="mt-1" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Internship Overview */}
+        <Card size="small" title={<span className="text-xs font-semibold">Internship Coverage</span>}
+          extra={<Tag color={internshipRate >= 80 ? "green" : internshipRate >= 50 ? "orange" : "red"} className="text-[10px] m-0">{internshipRate}%</Tag>}
+          className="rounded-lg" bodyStyle={{ padding: "8px" }}>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="text-center p-2 bg-success/10 rounded-lg">
+              <div className="text-lg font-bold text-success">{studentsWithInternship}</div>
+              <div className="text-[9px] text-text-tertiary">With Internship</div>
+            </div>
+            <div className="text-center p-2 bg-warning/10 rounded-lg">
+              <div className="text-lg font-bold text-warning">{totalStudents - studentsWithInternship}</div>
+              <div className="text-[9px] text-text-tertiary">Without</div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Mentor Assignment */}
+        <Card size="small" title={<span className="text-xs font-semibold">Mentor Assignment</span>}
+          extra={<Tag color={data.mentorAssignment?.rate >= 80 ? "green" : "orange"} className="text-[10px] m-0">{Math.round(data.mentorAssignment?.rate || 0)}%</Tag>}
+          className="rounded-lg" bodyStyle={{ padding: "8px" }}>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="text-center">
+              <div className="text-lg font-bold text-success">{assignedMentors}</div>
+              <div className="text-[9px] text-text-tertiary">Assigned</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-error">{unassignedMentors}</div>
+              <div className="text-[9px] text-text-tertiary">Unassigned</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-purple-500">{data.mentorAssignment?.externalMentors || 0}</div>
+              <div className="text-[9px] text-text-tertiary">External</div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Joining Report Status */}
+        <Card size="small" title={<span className="text-xs font-semibold">Joining Reports</span>}
+          extra={<Tag color={data.joiningLetterStatus?.rate >= 80 ? "green" : "orange"} className="text-[10px] m-0">{data.joiningLetterStatus?.rate || 0}%</Tag>}
+          className="rounded-lg" bodyStyle={{ padding: "8px" }}>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="text-center">
+              <div className="text-lg font-bold text-text-primary">{data.joiningLetterStatus?.submitted || 0}</div>
+              <div className="text-[9px] text-text-tertiary">Submitted</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-warning">{data.joiningLetterStatus?.pending || 0}</div>
+              <div className="text-[9px] text-text-tertiary">Pending</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-success">{data.joiningLetterStatus?.approved || 0}</div>
+              <div className="text-[9px] text-text-tertiary">Verified</div>
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
 });
 
 const OverviewTab = memo(({ data, loading, error, staffCapacities, staffCapacitiesLoading }) => {
@@ -956,8 +1081,8 @@ const InstituteDetailView = ({ defaultTab = null }) => {
       setBranchFilter("all");
       setStatusFilter("all");
       setSelfIdentifiedFilter("all");
-      // Reset to overview tab
-      setActiveTab("overview");
+      // Reset to summary tab (new first tab)
+      setActiveTab("summary");
 
       // Fetch staff capacities
       setStaffCapacitiesLoading(true);
@@ -1778,10 +1903,27 @@ const InstituteDetailView = ({ defaultTab = null }) => {
           className="h-full flex flex-col custom-tabs"
           items={[
             {
+              key: "summary",
+              label: (
+                <span className="flex items-center gap-2">
+                  <BarChartOutlined /> Summary
+                </span>
+              ),
+              children: (
+                <div className="h-full overflow-y-auto p-4">
+                  <GeneralOverviewTab
+                    data={overview.data}
+                    loading={overview.loading}
+                    error={overview.error}
+                  />
+                </div>
+              ),
+            },
+            {
               key: "overview",
               label: (
                 <span className="flex items-center gap-2">
-                  <TeamOutlined /> Overview
+                  <TeamOutlined /> Details
                 </span>
               ),
               children: (

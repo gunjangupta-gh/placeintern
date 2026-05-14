@@ -796,15 +796,6 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
                             ),
                           },
                           {
-                            title: 'Active',
-                            width: 90,
-                            render: (_, __, index) => (
-                              <Form.Item name={[index, 'isActive']} className="mb-0" valuePropName="checked">
-                                <Checkbox />
-                              </Form.Item>
-                            ),
-                          },
-                          {
                             title: 'Actions',
                             width: 90,
                             render: (_, __, index) => (
@@ -949,15 +940,6 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
                                 className="mb-0"
                               >
                                 <InputNumber min={0} disabled className="w-full" />
-                              </Form.Item>
-                            ),
-                          },
-                          {
-                            title: 'Active',
-                            width: 70,
-                            render: (_, __, index) => (
-                              <Form.Item name={[index, 'isActive']} className="mb-0" valuePropName="checked">
-                                <Checkbox />
                               </Form.Item>
                             ),
                           },

@@ -1063,44 +1063,44 @@ export class TrainingService {
       };
 
       const resolveCourseForTraining = (userId: string, trainingId?: string | null) => {
-        const profileCourse = teacherCourseMap.get(userId) || 'Unassigned';
-        if (profileCourse !== 'Unassigned') {
+        const profileCourse = teacherCourseMap.get(userId);
+        // Only return valid courses (those mapped to existing branches)
+        if (profileCourse) {
           return profileCourse;
         }
 
+        // For teachers without branch assignment, try to infer from training
         if (!trainingId) {
-          return profileCourse;
+          return null; // No course can be resolved
         }
 
         const training = trainingById.get(trainingId);
         if (!training) {
-          return profileCourse;
+          return null;
         }
 
         const targetBranches = Array.isArray(training.targetBranches)
           ? training.targetBranches
           : [];
 
-        // If exactly one target branch exists, use it as an inferred course for unassigned faculty.
+        // If exactly one target branch exists, use it as an inferred course
         if (targetBranches.length === 1) {
           return (
-            targetBranches[0]?.shortName ||
             targetBranches[0]?.name ||
+            targetBranches[0]?.shortName ||
             targetBranches[0]?.code ||
-            profileCourse
+            null
           );
         }
 
-        return profileCourse;
+        return null;
       };
 
       // Seed all active branch buckets so the dashboard always shows full branch coverage
       // even when a branch currently has zero faculty mapped in user records.
+      // Use full branch name for display
       for (const branch of activeBranches) {
-        const courseName =
-          branch.shortName ||
-          branch.name ||
-          branch.code;
+        const courseName = branch.name || branch.shortName || branch.code;
 
         if (courseName) {
           ensureCourseBucket(courseName);
@@ -1108,11 +1108,18 @@ export class TrainingService {
       }
 
       for (const teacher of teachers) {
-        const courseName =
-          teacher.branch?.shortName ||
-          teacher.branch?.name ||
-          teacher.branchName ||
-          'Unassigned';
+        // Primary: Use branchId relationship (source of truth)
+        // Only count teachers with valid branch assignment
+        // Skip teachers without a proper branch link
+        if (!teacher.branch) {
+          continue; // Skip unassigned teachers - only show valid branches
+        }
+
+        const courseName = teacher.branch.name || teacher.branch.shortName || teacher.branch.code;
+        if (!courseName) {
+          continue; // Skip if branch has no name
+        }
+
         teacherCourseMap.set(teacher.id, courseName);
         const existing = courseWiseMap.get(courseName);
         if (existing) {
@@ -1174,8 +1181,8 @@ export class TrainingService {
           facultyWithCompletedTrainings.add(application.userId);
 
           const courseName = resolveCourseForTraining(application.userId, application.trainingId);
-          if (courseName) {
-            ensureCourseBucket(courseName);
+          // Only track if we have a valid course (existing branch)
+          if (courseName && courseWiseMap.has(courseName)) {
             courseWiseMap.get(courseName)?.completedFacultyIds.add(application.userId);
           }
         }
@@ -1196,8 +1203,8 @@ export class TrainingService {
 
       for (const response of feedbackResponses) {
         const courseName = resolveCourseForTraining(response.userId, response.trainingId);
-        if (courseName) {
-          ensureCourseBucket(courseName);
+        // Only track if we have a valid course (existing branch)
+        if (courseName && courseWiseMap.has(courseName)) {
           courseWiseMap.get(courseName)?.feedbackFacultyIds.add(response.userId);
         }
       }
@@ -1655,43 +1662,51 @@ export class TrainingService {
     };
 
     const resolveCourseForTraining = (userId: string, trainingId?: string | null) => {
-      const profileCourse = teacherCourseMap.get(userId) || 'Unassigned';
-      if (profileCourse !== 'Unassigned') {
+      const profileCourse = teacherCourseMap.get(userId);
+      // Only return valid courses (those mapped to existing branches)
+      if (profileCourse) {
         return profileCourse;
       }
 
+      // For teachers without branch assignment, try to infer from training
       if (!trainingId) {
-        return profileCourse;
+        return null;
       }
 
       const training = trainingById.get(trainingId);
       if (!training) {
-        return profileCourse;
+        return null;
       }
 
       const targetBranches = Array.isArray(training.targetBranches)
         ? training.targetBranches
         : [];
 
-      // If exactly one target branch exists, use it as an inferred course for unassigned faculty.
+      // If exactly one target branch exists, use it as an inferred course
       if (targetBranches.length === 1) {
         return (
-          targetBranches[0]?.shortName ||
           targetBranches[0]?.name ||
+          targetBranches[0]?.shortName ||
           targetBranches[0]?.code ||
-          profileCourse
+          null
         );
       }
 
-      return profileCourse;
+      return null;
     };
 
     for (const teacher of teachers) {
-      const courseName =
-        teacher.branch?.shortName ||
-        teacher.branch?.name ||
-        teacher.branchName ||
-        'Unassigned';
+      // Primary: Use branchId relationship (source of truth)
+      // Only count teachers with valid branch assignment
+      if (!teacher.branch) {
+        continue; // Skip unassigned teachers - only show valid branches
+      }
+
+      const courseName = teacher.branch.name || teacher.branch.shortName || teacher.branch.code;
+      if (!courseName) {
+        continue; // Skip if branch has no name
+      }
+
       teacherCourseMap.set(teacher.id, courseName);
       const existing = courseWiseMap.get(courseName);
       if (existing) {
@@ -1758,8 +1773,8 @@ export class TrainingService {
         facultyWithCompletedTrainings.add(application.userId);
 
         const courseName = resolveCourseForTraining(application.userId, application.trainingId);
-        if (courseName) {
-          ensureCourseBucket(courseName);
+        // Only track if we have a valid course (existing branch)
+        if (courseName && courseWiseMap.has(courseName)) {
           courseWiseMap.get(courseName)?.completedFacultyIds.add(application.userId);
         }
       }
@@ -1784,8 +1799,8 @@ export class TrainingService {
 
     for (const response of scopedFeedbackResponses) {
       const courseName = resolveCourseForTraining(response.userId, response.trainingId);
-      if (courseName) {
-        ensureCourseBucket(courseName);
+      // Only track if we have a valid course (existing branch)
+      if (courseName && courseWiseMap.has(courseName)) {
         courseWiseMap.get(courseName)?.feedbackFacultyIds.add(response.userId);
       }
     }
