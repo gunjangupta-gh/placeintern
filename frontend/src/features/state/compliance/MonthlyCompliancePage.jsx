@@ -158,6 +158,7 @@ const MonthlyCompliancePage = () => {
   const [filesError, setFilesError] = useState(null);
   const [currentFolder, setCurrentFolder] = useState(null);
   const [fileSearchTerm, setFileSearchTerm] = useState("");
+  const [folderPagination, setFolderPagination] = useState({});
   const [refreshingFile, setRefreshingFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [previewFileName, setPreviewFileName] = useState("");
@@ -187,6 +188,12 @@ const MonthlyCompliancePage = () => {
   useEffect(() => {
     if (selectedInstitutionId && activeTab === "files") fetchFileExplorer();
   }, [selectedInstitutionId, activeTab]);
+
+  useEffect(() => {
+    setCurrentFolder(null);
+    setFileSearchTerm("");
+    setFolderPagination({});
+  }, [selectedInstitutionId]);
 
   // Filters
   const filteredInstitutions = useMemo(() => {
@@ -1074,6 +1081,25 @@ const MonthlyCompliancePage = () => {
         </div>
       );
 
+    const pageSize = 15;
+    const currentPage = currentFolder ? (folderPagination[currentFolder] ?? 1) : 1;
+    const totalPages = Math.max(1, Math.ceil(filteredFiles.length / pageSize));
+    const safeCurrentPage = Math.min(currentPage, totalPages);
+    const paginationConfig =
+      filteredFiles.length > pageSize
+        ? {
+            current: safeCurrentPage,
+            pageSize,
+            size: "small",
+            showSizeChanger: false,
+            onChange: (page) =>
+              setFolderPagination((prev) => ({
+                ...prev,
+                [currentFolder]: page,
+              })),
+          }
+        : false;
+
     return (
       <div style={{ padding: 10 }}>
         <div
@@ -1251,11 +1277,7 @@ const MonthlyCompliancePage = () => {
               dataSource={filteredFiles}
               rowKey="id"
               size="small"
-              pagination={
-                filteredFiles.length > 15
-                  ? { pageSize: 15, size: "small" }
-                  : false
-              }
+              pagination={paginationConfig}
               scroll={{ y: "calc(100vh - 420px)" }}
               locale={{
                 emptyText: (

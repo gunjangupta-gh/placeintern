@@ -88,6 +88,7 @@ const ComplianceFileExplorer = ({ institutionId, institutionName }) => {
   const [refreshingFile, setRefreshingFile] = useState(null); // Track which file URL is being refreshed
   const [previewUrl, setPreviewUrl] = useState(null);
   const [previewFileName, setPreviewFileName] = useState('');
+  const [folderPagination, setFolderPagination] = useState({});
 
   // Fetch file explorer data
   const fetchFileExplorer = useCallback(async (showMessage = false) => {
@@ -118,6 +119,7 @@ const ComplianceFileExplorer = ({ institutionId, institutionName }) => {
       fetchFileExplorer();
       setCurrentFolder(null);
       setSearchTerm('');
+      setFolderPagination({});
     }
   }, [institutionId, fetchFileExplorer]);
 
@@ -447,6 +449,23 @@ const ComplianceFileExplorer = ({ institutionId, institutionName }) => {
   const renderFileList = () => {
     if (!currentFolderData) return null;
     const config = FILE_TYPE_CONFIG[currentFolder] || FILE_TYPE_CONFIG.documents;
+    const pageSize = 20;
+    const currentPage = folderPagination[currentFolder] || 1;
+    const totalPages = Math.max(1, Math.ceil(filteredFiles.length / pageSize));
+    const safeCurrentPage = Math.min(currentPage, totalPages);
+    const paginationConfig =
+      filteredFiles.length > pageSize
+        ? {
+            current: safeCurrentPage,
+            pageSize,
+            showSizeChanger: false,
+            onChange: (page) =>
+              setFolderPagination((prev) => ({
+                ...prev,
+                [currentFolder]: page,
+              })),
+          }
+        : false;
 
     return (
       <div className="h-full flex flex-col">
@@ -481,7 +500,7 @@ const ComplianceFileExplorer = ({ institutionId, institutionName }) => {
             dataSource={filteredFiles}
             rowKey="id"
             size="small"
-            pagination={filteredFiles.length > 20 ? { pageSize: 20, showSizeChanger: false } : false}
+            pagination={paginationConfig}
             scroll={{ y: 'calc(100vh - 480px)' }}
             locale={{
               emptyText: (
