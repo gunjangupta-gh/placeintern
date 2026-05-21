@@ -109,7 +109,7 @@ const VisitLogList = React.memo(() => {
           await dispatch(deleteVisitLog(id)).unwrap();
         } catch (error) {
           dispatch(rollbackVisitLogOperation({ list: previousList, total: previousTotal }));
-          toast.error(error?.message || 'Failed to delete visit log');
+          toast.error(error || 'Failed to delete visit log');
         }
       },
     });

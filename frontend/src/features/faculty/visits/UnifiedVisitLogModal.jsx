@@ -317,7 +317,7 @@ const UnifiedVisitLogModal = ({
         }
       } catch (error) {
         console.error('Photo upload error:', error);
-        toast.error(error?.message || 'Failed to upload photo. Please try again.');
+        toast.error(error || 'Failed to upload photo. Please try again.');
         throw error;
       } finally {
         setUploadingPhotos(false);
@@ -330,7 +330,7 @@ const UnifiedVisitLogModal = ({
         signedDocUrl = result.url;
       } catch (error) {
         console.error('Signed doc upload error:', error);
-        toast.error(error?.message || 'Failed to upload signed document. Please try again.');
+        toast.error(error || 'Failed to upload signed document. Please try again.');
         throw error;
       } finally {
         setUploadingSignedDoc(false);
@@ -403,7 +403,7 @@ const UnifiedVisitLogModal = ({
       onSuccess?.();
       onClose();
     } catch (error) {
-      toast.error(error?.message || 'Failed to save');
+      toast.error(error || 'Failed to save');
     } finally { setSubmitting(false); }
   };
 

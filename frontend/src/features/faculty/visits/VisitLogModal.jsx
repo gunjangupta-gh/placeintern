@@ -270,7 +270,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
       handleClose();
       onSuccess?.();
     } catch (error) {
-      toast.error(error?.message || `Failed to ${isEdit ? 'update' : 'create'} visit log`);
+      toast.error(error || `Failed to ${isEdit ? 'update' : 'create'} visit log`);
     } finally {
       setLoading(false);
     }
