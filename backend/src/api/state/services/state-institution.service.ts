@@ -1422,35 +1422,32 @@ export class StateInstitutionService {
       }).then(results => results.length),
     ]);
 
-    // Faculty training statistics
-    const now = new Date();
+    // Faculty training statistics - use existing 'now' variable from line ~964
+    const completedTrainingDate = new Date();
     const [facultyWithTraining, totalCompletedTrainings] = await Promise.all([
       // Get unique faculty from this institution who have attended at least 1 day of a completed training
       this.prisma.trainingAttendance.findMany({
         where: {
-          isPresent: true,
-          application: {
-            user: {
-              institutionId: id,
-              active: true,
-              role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
-            },
-            training: {
-              isPublished: true,
-              endDate: { lt: now },
-            },
+          user: {
+            institutionId: id,
+            active: true,
+            role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
+          },
+          training: {
+            isPublished: true,
+            endDate: { lt: completedTrainingDate },
           },
         },
-        select: { application: { select: { userId: true } } },
+        select: { userId: true },
       }).then(results => {
-        const uniqueUserIds = new Set(results.map(r => r.application.userId));
+        const uniqueUserIds = new Set(results.map(r => r.userId));
         return uniqueUserIds.size;
       }),
       // Total completed trainings (published and ended)
       this.prisma.training.count({
         where: {
           isPublished: true,
-          endDate: { lt: now },
+          endDate: { lt: completedTrainingDate },
         },
       }),
     ]);
