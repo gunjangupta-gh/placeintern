@@ -119,10 +119,13 @@ const TrainingManagementPage = () => {
       forceRefresh: true, // Bypass cache to always fetch fresh data
     };
 
-    // Only add pagination for LIST view, fetch all for CALENDAR view
+    // Only add pagination for LIST view with ALL filter, fetch all for CALENDAR view or filtered views
     if (viewMode === "LIST" && timelineFilter === "ALL") {
       params.page = pagination.current;
       params.limit = pagination.pageSize;
+    } else {
+      // For CALENDAR view or filtered timeline (UPCOMING/COMPLETED), fetch all trainings
+      params.limit = 1000;
     }
 
     // Add filters if present

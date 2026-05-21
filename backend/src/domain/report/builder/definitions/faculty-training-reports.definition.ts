@@ -97,7 +97,8 @@ export const trainingReportDefinitions: Record<string, ReportDefinition> = {
 		availableFor: ['STATE_DIRECTORATE', 'PRINCIPAL', 'SYSTEM_ADMIN'],
 		columns: [
 			{ id: 'trainingName', label: 'Training Name', type: 'string', default: true, sortable: true },
-			{ id: 'duration', label: 'Duration (Hours)', type: 'number', default: true, sortable: true },
+			{ id: 'totalDays', label: 'Total Days', type: 'number', default: true, sortable: true },
+			{ id: 'totalHours', label: 'Total Hours', type: 'number', default: true, sortable: true },
 			{ id: 'startDate', label: 'Start Date', type: 'date', default: true, sortable: true },
 			{ id: 'endDate', label: 'End Date', type: 'date', default: true, sortable: true },
 			{ id: 'course', label: 'Course/Target Branches', type: 'string', default: true, sortable: false },

@@ -274,6 +274,26 @@ const GeneralOverviewTab = memo(({ data, loading, error, staffCapacities }) => {
           )}
         </Card>
       </div>
+
+      {/* Faculty Training Status Card */}
+      <Card size="small" title={<span className="text-xs font-semibold">Faculty Training Status</span>}
+        extra={<Tag color={data.facultyTraining?.trainingRate >= 80 ? "green" : data.facultyTraining?.trainingRate >= 50 ? "orange" : "red"} className="text-[10px] m-0">{data.facultyTraining?.trainingRate || 0}%</Tag>}
+        className="rounded-lg" bodyStyle={{ padding: "8px" }}>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <div className="text-lg font-bold text-blue-600">{data.facultyTraining?.totalFaculty || 0}</div>
+            <div className="text-[9px] text-text-tertiary">Total Faculty</div>
+          </div>
+          <div className="text-center p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <div className="text-lg font-bold text-green-600">{data.facultyTraining?.trainedFaculty || 0}</div>
+            <div className="text-[9px] text-text-tertiary">Trained</div>
+          </div>
+          <div className="text-center p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+            <div className="text-lg font-bold text-purple-600">{data.facultyTraining?.completedTrainings || 0}</div>
+            <div className="text-[9px] text-text-tertiary">Trainings Done</div>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 });

@@ -1422,6 +1422,39 @@ export class StateInstitutionService {
       }).then(results => results.length),
     ]);
 
+    // Faculty training statistics
+    const now = new Date();
+    const [facultyWithTraining, totalCompletedTrainings] = await Promise.all([
+      // Get unique faculty from this institution who have attended at least 1 day of a completed training
+      this.prisma.trainingAttendance.findMany({
+        where: {
+          isPresent: true,
+          application: {
+            user: {
+              institutionId: id,
+              active: true,
+              role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
+            },
+            training: {
+              isPublished: true,
+              endDate: { lt: now },
+            },
+          },
+        },
+        select: { application: { select: { userId: true } } },
+      }).then(results => {
+        const uniqueUserIds = new Set(results.map(r => r.application.userId));
+        return uniqueUserIds.size;
+      }),
+      // Total completed trainings (published and ended)
+      this.prisma.training.count({
+        where: {
+          isPublished: true,
+          endDate: { lt: now },
+        },
+      }),
+    ]);
+
     // Year-wise student breakdown (based on currentYear field)
     const yearWiseData = await this.prisma.student.groupBy({
       by: ['currentYear'],
@@ -1524,6 +1557,13 @@ export class StateInstitutionService {
       yearWiseStudents,
       // Students with approved internship (alias for frontend)
       studentsWithInternship: selfIdentifiedApproved,
+      // Faculty training statistics
+      facultyTraining: {
+        totalFaculty: facultyCount,
+        trainedFaculty: facultyWithTraining,
+        completedTrainings: totalCompletedTrainings,
+        trainingRate: facultyCount > 0 ? Math.round((facultyWithTraining / facultyCount) * 100) : 0,
+      },
     };
   }
 
