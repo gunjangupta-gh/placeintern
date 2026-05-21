@@ -129,7 +129,7 @@ const GeneralOverviewTab = memo(({ data, loading, error, staffCapacities }) => {
   return (
     <div className="space-y-3">
       {/* Top Stats Row - Compact */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <div className="bg-surface rounded-lg border border-border p-2.5 text-center">
           <div className="text-2xl font-bold text-text-primary">{totalStudents}</div>
           <div className="text-[10px] text-text-tertiary mt-0.5">Active Students</div>
@@ -141,11 +141,6 @@ const GeneralOverviewTab = memo(({ data, loading, error, staffCapacities }) => {
         <div className="bg-surface rounded-lg border border-border p-2.5 text-center">
           <div className="text-2xl font-bold text-blue-500">{totalFaculty}</div>
           <div className="text-[10px] text-text-tertiary mt-0.5">Faculty</div>
-        </div>
-        <div className="bg-surface rounded-lg border border-border p-2.5 text-center">
-          <Progress type="circle" percent={data.complianceScore || 0} size={36} strokeWidth={6}
-            strokeColor={data.complianceScore >= 80 ? "rgb(var(--color-success))" : data.complianceScore >= 50 ? "rgb(var(--color-warning))" : "rgb(var(--color-error))"} />
-          <div className="text-[10px] text-text-tertiary mt-0.5">Compliance</div>
         </div>
       </div>
 
@@ -1982,7 +1977,25 @@ const InstituteDetailView = ({ defaultTab = null }) => {
                 </div>
               ),
             },
-            
+            {
+              key: "details",
+              label: (
+                <span className="flex items-center gap-2">
+                  <FileTextOutlined /> Details
+                </span>
+              ),
+              children: (
+                <div className="h-full overflow-y-auto p-4">
+                  <OverviewTab
+                    data={overview.data}
+                    loading={overview.loading}
+                    error={overview.error}
+                    staffCapacities={staffCapacities}
+                    staffCapacitiesLoading={staffCapacitiesLoading}
+                  />
+                </div>
+              ),
+            },
             {
               key: "students",
               label: (
