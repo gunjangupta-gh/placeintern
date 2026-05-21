@@ -346,6 +346,8 @@ export class ReportProcessor extends WorkerHost {
       'training_feedback_responses': 'Training Feedback Responses Report',
       'training_pre_test_responses': 'Training Pre-Test Responses Report',
       'training_post_test_responses': 'Training Post-Test Responses Report',
+      'training_wise_summary': 'Training-wise Summary Report',
+      'training_non_compliance': 'Training Non-Compliance Report',
     };
 
     // Column mapping - matches actual data fields from generator
@@ -768,7 +770,44 @@ export class ReportProcessor extends WorkerHost {
         { field: 'score', header: 'Score', type: 'number' as const, width: 10 },
         { field: 'passed', header: 'Passed', type: 'boolean' as const, width: 10 },
         { field: 'submittedAt', header: 'Submitted At', type: 'date' as const, width: 18 },
+      ],      'training_wise_summary': [
+        { field: 'trainingName', header: 'Training Name', type: 'string' as const, width: 30 },
+        { field: 'totalDays', header: 'Total Days', type: 'number' as const, width: 12 },
+        { field: 'totalHours', header: 'Total Hours', type: 'number' as const, width: 12 },
+        { field: 'startDate', header: 'Start Date', type: 'date' as const, width: 14 },
+        { field: 'endDate', header: 'End Date', type: 'date' as const, width: 14 },
+        { field: 'course', header: 'Course/Target Branches', type: 'string' as const, width: 25 },
+        { field: 'deliveryMode', header: 'Delivery Mode', type: 'string' as const, width: 14 },
+        { field: 'totalParticipants', header: 'Total Participants', type: 'number' as const, width: 16 },
+        { field: 'attendanceCount', header: 'Attendance Filled', type: 'number' as const, width: 16 },
+        { field: 'attendancePercentage', header: 'Attendance %', type: 'number' as const, width: 14 },
+        { field: 'preTestFilledCount', header: 'Pre-Test Filled', type: 'number' as const, width: 14 },
+        { field: 'preTestPercentage', header: 'Pre-Test %', type: 'number' as const, width: 12 },
+        { field: 'postTestFilledCount', header: 'Post-Test Filled', type: 'number' as const, width: 14 },
+        { field: 'postTestPercentage', header: 'Post-Test %', type: 'number' as const, width: 12 },
+        { field: 'feedbackFilledCount', header: 'Feedback Filled', type: 'number' as const, width: 14 },
+        { field: 'feedbackPercentage', header: 'Feedback %', type: 'number' as const, width: 12 },
+        { field: 'lessonPlanFilledCount', header: 'Lesson Plan Filled', type: 'number' as const, width: 16 },
+        { field: 'lessonPlanPercentage', header: 'Lesson Plan %', type: 'number' as const, width: 14 },
       ],
+      'training_non_compliance': [
+        { field: 'facultyName', header: 'Faculty Name', type: 'string' as const, width: 20 },
+        { field: 'facultyEmail', header: 'Email', type: 'string' as const, width: 25 },
+        { field: 'facultyPhone', header: 'Phone', type: 'string' as const, width: 15 },
+        { field: 'institutionName', header: 'Institution/College', type: 'string' as const, width: 25 },
+        { field: 'branchName', header: 'Branch/Course', type: 'string' as const, width: 18 },
+        { field: 'trainingName', header: 'Training Name', type: 'string' as const, width: 28 },
+        { field: 'trainingStartDate', header: 'Training Start Date', type: 'date' as const, width: 16 },
+        { field: 'trainingEndDate', header: 'Training End Date', type: 'date' as const, width: 16 },
+        { field: 'attendanceFilled', header: 'Attendance', type: 'boolean' as const, width: 12 },
+        { field: 'preTestFilled', header: 'Pre-Test', type: 'boolean' as const, width: 10 },
+        { field: 'postTestFilled', header: 'Post-Test', type: 'boolean' as const, width: 10 },
+        { field: 'feedbackFilled', header: 'Feedback', type: 'boolean' as const, width: 10 },
+        { field: 'lessonPlanFilled', header: 'Lesson Plan', type: 'boolean' as const, width: 12 },
+        { field: 'missingItems', header: 'Missing Items', type: 'string' as const, width: 30 },
+        { field: 'missingCount', header: 'Missing Count', type: 'number' as const, width: 14 },
+      ],
+
       // Compliance reports - matches generateStudentComplianceReport output
       'student_compliance': [
         { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },

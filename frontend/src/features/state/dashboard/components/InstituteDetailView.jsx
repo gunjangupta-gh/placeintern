@@ -232,6 +232,48 @@ const GeneralOverviewTab = memo(({ data, loading, error, staffCapacities }) => {
           </div>
         </Card>
       </div>
+
+      {/* Student & Staff Branch Distribution Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+        {/* Student Branch Distribution */}
+        <Card size="small" title={<span className="text-xs font-semibold">Students by Branch</span>}
+          extra={<Tag color="blue" className="text-[10px] m-0">{data.activeStudents || 0} total</Tag>}
+          className="rounded-lg" bodyStyle={{ padding: "8px" }}>
+          {data.branchWiseData?.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {data.branchWiseData.map((branch, index) => (
+                <div key={index} className="px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-900/20 flex items-center gap-1.5">
+                  <span className="text-sm font-bold text-blue-600">{branch.count}</span>
+                  <span className="text-[10px] text-text-secondary">{branch.branch}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs text-text-tertiary text-center py-2">No branch data available</div>
+          )}
+        </Card>
+
+        {/* Staff Branch Distribution */}
+        <Card size="small" title={<span className="text-xs font-semibold">Staff by Branch</span>}
+          extra={<Tag color="green" className="text-[10px] m-0">{data.facultyCount || 0} total</Tag>}
+          className="rounded-lg" bodyStyle={{ padding: "8px" }}>
+          {staffCapacities?.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {staffCapacities.map((capacity, index) => {
+                const totalStaff = (capacity.filledPosts || 0) + (capacity.guestFaculty || 0);
+                return (
+                  <div key={capacity.id || index} className="px-2 py-1 rounded-md bg-green-50 dark:bg-green-900/20 flex items-center gap-1.5">
+                    <span className="text-sm font-bold text-green-600">{totalStaff}</span>
+                    <span className="text-[10px] text-text-secondary">{capacity.branch?.shortName || capacity.branch?.name || '-'}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-xs text-text-tertiary text-center py-2">No staff capacity data available</div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 });
@@ -1920,25 +1962,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
                 </div>
               ),
             },
-            {
-              key: "overview",
-              label: (
-                <span className="flex items-center gap-2">
-                  <TeamOutlined /> Details
-                </span>
-              ),
-              children: (
-                <div className="h-full overflow-y-auto p-4">
-                  <OverviewTab
-                    data={overview.data}
-                    loading={overview.loading}
-                    error={overview.error}
-                    staffCapacities={staffCapacities}
-                    staffCapacitiesLoading={staffCapacitiesLoading}
-                  />
-                </div>
-              ),
-            },
+            
             {
               key: "students",
               label: (

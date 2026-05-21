@@ -1177,7 +1177,7 @@ export class TrainingService {
 
         facultyHoursMap.set(application.userId, (facultyHoursMap.get(application.userId) || 0) + attendedHours);
 
-        if (training.endDate < now && attendedDays >= safeTrainingDays) {
+        if (training.endDate < now && attendedDays > 0) {
           facultyWithCompletedTrainings.add(application.userId);
 
           const courseName = resolveCourseForTraining(application.userId, application.trainingId);
@@ -1769,7 +1769,7 @@ export class TrainingService {
         (facultyHoursMap.get(application.userId) || 0) + attendedHours,
       );
 
-      if (training.endDate < now && attendedDays >= safeTrainingDays) {
+      if (training.endDate < now && attendedDays > 0) {
         facultyWithCompletedTrainings.add(application.userId);
 
         const courseName = resolveCourseForTraining(application.userId, application.trainingId);
