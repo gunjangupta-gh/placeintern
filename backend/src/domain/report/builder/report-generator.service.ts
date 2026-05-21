@@ -3275,10 +3275,16 @@ export class ReportGeneratorService {
         return Math.round((count / totalParticipants) * 100 * 100) / 100;
       };
 
+      // Calculate total days from startDate and endDate
+      const totalDays = training.startDate && training.endDate
+        ? Math.ceil((training.endDate.getTime() - training.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+        : 0;
+
       return {
         trainingId: training.id,
         trainingName: training.title,
-        duration: training.duration ?? 0,
+        totalDays,
+        totalHours: training.duration ?? 0,
         startDate: training.startDate
           ? this.formatToISTDateOnly(training.startDate)
           : "N/A",
@@ -3314,9 +3320,11 @@ export class ReportGeneratorService {
     const { take, skip } = this.getPaginationParams(pagination);
     const trainingWhere = this.buildTrainingDateWhere(filters);
 
-    // Build training filter
+    // Build training filter - exclude upcoming trainings (only include completed ones)
+    const now = new Date();
     const trainingFilter: Record<string, unknown> = {
       isActive: true,
+      endDate: { lte: now }, // Only include trainings that have already ended
       ...trainingWhere,
     };
 

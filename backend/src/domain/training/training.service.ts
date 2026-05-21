@@ -652,7 +652,7 @@ export class TrainingService {
   /**
    * Get upcoming trainings
    */
-  async getUpcoming(limit = 5, branchIds?: string[], userId?: string, institutionId?: string) {
+  async getUpcoming(limit = 50, branchIds?: string[], userId?: string, institutionId?: string) {
     try {
       const now = new Date();
       const todayStart = new Date(now);

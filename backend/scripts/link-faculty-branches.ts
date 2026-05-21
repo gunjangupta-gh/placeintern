@@ -27,6 +27,24 @@ const overwrite = args.includes('--overwrite');
 const verbose = args.includes('--verbose');
 const facultyOnly = args.includes('--faculty-only');
 
+// Mapping for non-standard branchName values to standard branch codes/shortNames
+const BRANCH_NAME_ALIASES: Record<string, string> = {
+  'aa department': 'aa',
+  'architectural assistantship department': 'aa',
+  'arch department': 'aa',
+  'architecture department': 'aa',
+  'cse department': 'cse',
+  'ece department': 'ece',
+  'ee department': 'ee',
+  'me department': 'me',
+  'ce department': 'ce',
+  'it department': 'it',
+};
+
+function resolveAlias(normalizedValue: string): string {
+  return BRANCH_NAME_ALIASES[normalizedValue] || normalizedValue;
+}
+
 function normalize(value: string): string {
   return value
     .trim()
@@ -136,8 +154,12 @@ async function main() {
       }
 
       const key = normalize(source);
+      const aliasKey = resolveAlias(key);
       const instKey = faculty.institutionId ?? '__no_institution__';
-      const localCandidates = byInstitution.get(instKey)?.get(key) ?? [];
+      let localCandidates = byInstitution.get(instKey)?.get(key) ?? [];
+      if (localCandidates.length === 0 && aliasKey !== key) {
+        localCandidates = byInstitution.get(instKey)?.get(aliasKey) ?? [];
+      }
       const localUnique = uniqueById(localCandidates);
 
       let selected: BranchLite | null = null;
@@ -148,7 +170,10 @@ async function main() {
       } else if (localUnique.length > 1) {
         isAmbiguous = true;
       } else {
-        const globalCandidates = uniqueById(global.get(key) ?? []);
+        let globalCandidates = uniqueById(global.get(key) ?? []);
+        if (globalCandidates.length === 0 && aliasKey !== key) {
+          globalCandidates = uniqueById(global.get(aliasKey) ?? []);
+        }
         if (globalCandidates.length === 1) {
           selected = globalCandidates[0];
         } else if (globalCandidates.length > 1) {

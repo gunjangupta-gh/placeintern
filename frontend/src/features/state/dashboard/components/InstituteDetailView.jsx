@@ -113,7 +113,7 @@ const MentorOverviewTab = memo(({ institutionId }) => {
 });
 
 // General Overview Tab - Summary statistics (compact version)
-const GeneralOverviewTab = memo(({ data, loading, error }) => {
+const GeneralOverviewTab = memo(({ data, loading, error, staffCapacities }) => {
   if (loading) return <div className="flex justify-center py-8"><Spin size="default" /></div>;
   if (error) return <Alert type="error" message="Failed to load overview" description={error} showIcon />;
   if (!data) return <Empty description="No data available" className="py-8" />;
@@ -1915,6 +1915,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
                     data={overview.data}
                     loading={overview.loading}
                     error={overview.error}
+                    staffCapacities={staffCapacities}
                   />
                 </div>
               ),
