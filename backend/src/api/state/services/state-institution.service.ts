@@ -1450,7 +1450,25 @@ export class StateInstitutionService {
           endDate: { lt: completedTrainingDate },
         },
       }),
-    ]);
+    ]);    // Faculty branch-wise distribution (similar to branchWiseData for students)
+    const facultyBranchWise = await this.prisma.user.findMany({
+      where: {
+        institutionId: id,
+        role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
+        active: true,
+      },
+      select: { branchName: true },
+    }).then(results => {
+      const branchCounts = new Map<string, number>();
+      for (const r of results) {
+        const branch = r.branchName || 'Unknown';
+        branchCounts.set(branch, (branchCounts.get(branch) || 0) + 1);
+      }
+      return Array.from(branchCounts.entries()).map(([branchName, count]) => ({
+        branch: branchName,
+        count,
+      }));
+    });
 
     // Year-wise student breakdown (based on currentYear field)
     const yearWiseData = await this.prisma.student.groupBy({
@@ -1546,6 +1564,7 @@ export class StateInstitutionService {
         branch: b.branchName || 'Unknown',
         count: b._count.id,
       })),
+      facultyBranchWiseData: facultyBranchWise,
       companiesCount,
       facultyCount,
       branchIntakeSummary,

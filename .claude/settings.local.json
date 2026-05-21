@@ -35,7 +35,8 @@
       "Bash(docker exec:*)",
       "Bash(docker cp:*)",
       "Bash(npm install:*)",
-      "Bash(ls -la \"D:\\\\placeintern\\\\backend\\\\src\\\\domain\\\\report\\\\builder\\\\definitions\"\" | grep -v \"^d \")"
+      "Bash(ls -la \"D:\\\\placeintern\\\\backend\\\\src\\\\domain\\\\report\\\\builder\\\\definitions\"\" | grep -v \"^d \")",
+      "Bash(powershell -Command:*)"
     ]
   }
 }

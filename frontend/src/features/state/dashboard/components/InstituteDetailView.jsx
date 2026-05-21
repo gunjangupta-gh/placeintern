@@ -252,20 +252,17 @@ const GeneralOverviewTab = memo(({ data, loading, error, staffCapacities }) => {
         <Card size="small" title={<span className="text-xs font-semibold">Staff by Branch</span>}
           extra={<Tag color="green" className="text-[10px] m-0">{data.facultyCount || 0} total</Tag>}
           className="rounded-lg" bodyStyle={{ padding: "8px" }}>
-          {staffCapacities?.length > 0 ? (
+          {data.facultyBranchWiseData?.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
-              {staffCapacities.map((capacity, index) => {
-                const totalStaff = (capacity.filledPosts || 0) + (capacity.guestFaculty || 0);
-                return (
-                  <div key={capacity.id || index} className="px-2 py-1 rounded-md bg-green-50 dark:bg-green-900/20 flex items-center gap-1.5">
-                    <span className="text-sm font-bold text-green-600">{totalStaff}</span>
-                    <span className="text-[10px] text-text-secondary">{capacity.branch?.shortName || capacity.branch?.name || '-'}</span>
-                  </div>
-                );
-              })}
+              {data.facultyBranchWiseData.map((item, index) => (
+                <div key={index} className="px-2 py-1 rounded-md bg-green-50 dark:bg-green-900/20 flex items-center gap-1.5">
+                  <span className="text-sm font-bold text-green-600">{item.count}</span>
+                  <span className="text-[10px] text-text-secondary">{item.branch}</span>
+                </div>
+              ))}
             </div>
           ) : (
-            <div className="text-xs text-text-tertiary text-center py-2">No staff capacity data available</div>
+            <div className="text-xs text-text-tertiary text-center py-2">No staff data available</div>
           )}
         </Card>
       </div>

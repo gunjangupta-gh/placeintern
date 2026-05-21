@@ -71,6 +71,7 @@ interface ExportRow {
 }
 
 const COURSE_TO_BRANCH_CODE: Record<string, string> = {
+  // Computer Science
   'computer science': 'CSE',
   'computer science and engineering': 'CSE',
   'computer science engineering': 'CSE',
@@ -78,10 +79,12 @@ const COURSE_TO_BRANCH_CODE: Record<string, string> = {
   cse: 'CSE',
   cs: 'CSE',
 
+  // Information Technology
   'information technology': 'IT',
   it: 'IT',
   infotech: 'IT',
 
+  // Electronics & Communication
   electronics: 'ECE',
   'electronics and communication': 'ECE',
   'electronics and communication engineering': 'ECE',
@@ -92,34 +95,92 @@ const COURSE_TO_BRANCH_CODE: Record<string, string> = {
   ece: 'ECE',
   ec: 'ECE',
 
+  // Electrical Engineering
   electrical: 'EE',
   'electrical engineering': 'EE',
   ee: 'EE',
   elect: 'EE',
 
+  // Mechanical Engineering
   mechanical: 'ME',
   'mechanical engineering': 'ME',
+  'mechanical engineering production': 'ME',
+  'mechanical engineering rac': 'ME',
   me: 'ME',
   mech: 'ME',
 
+  // Civil Engineering
   civil: 'CE',
   'civil engineering': 'CE',
   ce: 'CE',
 
+  // Architectural Assistantship
   'architectural assistantship': 'AA',
+  'architecture assistanceship': 'AA',
   architecture: 'AA',
   architectural: 'AA',
   aa: 'AA',
   arch: 'AA',
 
+  // Applied Science
   'applied science': 'AS',
   'applied sciences': 'AS',
   as: 'AS',
   science: 'AS',
 
+  // Leather Technology
   leather: 'LT',
   'leather technology': 'LT',
+  'leather technology footwear': 'LT',
   lt: 'LT',
+
+  // Chemical Engineering
+  'chemical engineering': 'CHEM',
+  'chem engg': 'CHEM',
+  chemical: 'CHEM',
+  chem: 'CHEM',
+  'plastic technology': 'CHEM',
+  'plastic and polymer': 'CHEM',
+
+  // Fashion & Garment Technology
+  'fashion design': 'FGT',
+  'fashion design and garment technology': 'FGT',
+  'fashion design & garment technology': 'FGT',
+  'garment technology': 'FGT',
+  fashion: 'FGT',
+  fgt: 'FGT',
+  fd: 'FGT',
+
+  // Textile Technology
+  'textile technology': 'TT',
+  'textile processing': 'TT',
+  'textile technology knitting': 'TT',
+  textile: 'TT',
+  tt: 'TT',
+
+  // Textile Design
+  'textile design': 'TD',
+  td: 'TD',
+
+  // Medical Lab Technology
+  'medical lab technology': 'MLT',
+  'medical laboratory technology': 'MLT',
+  mlt: 'MLT',
+
+  // Modern Office Practice
+  'modern office practice': 'MOP',
+  mop: 'MOP',
+
+  // Pharmacy
+  pharmacy: 'PH',
+  ph: 'PH',
+  pharma: 'PH',
+
+  // Library & Information Science
+  'library and information science': 'LIS',
+  'library & information science': 'LIS',
+  library: 'LIS',
+  lis: 'LIS',
 };
 
 function cleanString(value: unknown): string {
@@ -155,7 +216,7 @@ function normalizeBranchName(name: string): string {
   return name
     .toLowerCase()
     .replace(/&/g, 'and')
-    .replace(/[.,\-_]/g, ' ')
+    .replace(/[.,\-_()\[\]\/]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
