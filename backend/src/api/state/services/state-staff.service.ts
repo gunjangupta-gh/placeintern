@@ -50,8 +50,8 @@ export class StateStaffService {
     } = params;
     const skip = (page - 1) * limit;
 
-    // Staff roles - TEACHER (excluding PRINCIPAL, STUDENT, STATE_DIRECTORATE, SYSTEM_ADMIN)
-    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF];
+    // Staff roles - TEACHER, FACULTY_COORDINATOR, ADMIN_STAFF, PRINCIPAL (excluding STUDENT, STATE_DIRECTORATE, SYSTEM_ADMIN)
+    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF, Role.PRINCIPAL];
 
     let roleFilter: Prisma.UserWhereInput['role'] = { in: staffRoles };
 
@@ -199,7 +199,7 @@ export class StateStaffService {
           where: {
             institutionId: data.institutionId,
             branchId: branchId,
-            role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF] },
+            role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF, Role.PRINCIPAL] },
             active: true,
             guestTeacher: { not: true },
           },
@@ -249,7 +249,7 @@ export class StateStaffService {
    * Get staff member by ID
    */
   async getStaffById(id: string) {
-    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF];
+    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF, Role.PRINCIPAL];
 
     const staff = await this.prisma.user.findUnique({
       where: { id, role: { in: staffRoles } },
@@ -296,7 +296,7 @@ export class StateStaffService {
     isActive?: boolean;
     active?: boolean;
   }) {
-    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF];
+    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF, Role.PRINCIPAL];
 
     const existingStaff = await this.prisma.user.findUnique({
       where: { id, role: { in: staffRoles } },
@@ -391,7 +391,7 @@ export class StateStaffService {
    * Delete staff member by ID
    */
   async deleteStaff(id: string) {
-    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF];
+    const staffRoles: Role[] = [Role.TEACHER, Role.FACULTY_COORDINATOR, Role.ADMIN_STAFF, Role.PRINCIPAL];
 
     const existingStaff = await this.prisma.user.findUnique({
       where: { id, role: { in: staffRoles } },

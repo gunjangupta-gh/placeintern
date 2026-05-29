@@ -12,8 +12,8 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Designation } from '../../../generated/prisma/client';
 
 // Valid staff roles (must match Prisma Role enum values used in service)
-// These are: TEACHER, FACULTY_COORDINATOR, ADMIN_STAFF
-const STAFF_ROLES = ['TEACHER', 'FACULTY_COORDINATOR', 'ADMIN_STAFF'] as const;
+// These are: TEACHER, FACULTY_COORDINATOR, ADMIN_STAFF, PRINCIPAL
+const STAFF_ROLES = ['TEACHER', 'FACULTY_COORDINATOR', 'ADMIN_STAFF', 'PRINCIPAL'] as const;
 
 export class UpdateStaffDto {
   @ApiPropertyOptional({ description: 'Full name of the staff member' })
@@ -33,7 +33,7 @@ export class UpdateStaffDto {
 
   @ApiPropertyOptional({ description: 'Role of the staff member', enum: STAFF_ROLES })
   @IsOptional()
-  @IsIn(STAFF_ROLES, { message: 'Invalid staff role. Must be one of: TEACHER, FACULTY_COORDINATOR, ADMIN_STAFF' })
+  @IsIn(STAFF_ROLES, { message: 'Invalid staff role. Must be one of: TEACHER, FACULTY_COORDINATOR, ADMIN_STAFF, PRINCIPAL' })
   role?: string;
 
   @ApiPropertyOptional({ description: 'Phone number' })
