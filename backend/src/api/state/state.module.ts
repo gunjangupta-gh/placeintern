@@ -28,6 +28,9 @@ import { SharedModule } from '../shared/shared.module';
 // Training module
 import { StateTrainingModule } from './training/state-training.module';
 
+// AI Bot module
+import { BotModule } from './bot/bot.module';
+
 @Module({
   imports: [
     // Domain modules with business logic services
@@ -42,6 +45,8 @@ import { StateTrainingModule } from './training/state-training.module';
     SharedModule, // For LookupService
     // Training sub-module
     StateTrainingModule,
+    // AI Bot sub-module
+    BotModule,
   ],
   controllers: [StateController],
   providers: [

@@ -36,7 +36,13 @@
       "Bash(docker cp:*)",
       "Bash(npm install:*)",
       "Bash(ls -la \"D:\\\\placeintern\\\\backend\\\\src\\\\domain\\\\report\\\\builder\\\\definitions\"\" | grep -v \"^d \")",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(ls -la \"D:\\\\placeintern\\\\backend\\\\src\\\\api\\\\state\\\\bot\"\" 2>/dev/null || echo \"Directory does not exist yet \")",
+      "Bash(mkdir:*)",
+      "Bash(echo.:*)",
+      "Bash(test:*)",
+      "Bash(cat:*)",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }
