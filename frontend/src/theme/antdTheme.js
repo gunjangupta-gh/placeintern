@@ -82,11 +82,13 @@ export const lightTheme = {
       controlHeight: 32,
     },
     Modal: {
-      paddingContentHorizontal: 20,
-      paddingMD: 16,
+      paddingContentHorizontal: 16,
+      paddingMD: 12,
+      titleFontSize: 15,
     },
     Form: {
-      itemMarginBottom: 16,
+      itemMarginBottom: 14,
+      labelFontSize: 13,
     },
     Tabs: {
       horizontalItemPadding: '10px 0',
@@ -255,14 +257,16 @@ export const darkTheme = {
     Modal: {
       contentBg: '#0f172a',
       headerBg: '#0f172a',
-      paddingContentHorizontal: 20,
-      paddingMD: 16,
+      paddingContentHorizontal: 16,
+      paddingMD: 12,
+      titleFontSize: 15,
     },
     Drawer: {
       colorBgElevated: '#0f172a',
     },
     Form: {
-      itemMarginBottom: 16,
+      itemMarginBottom: 14,
+      labelFontSize: 13,
     },
     Tabs: {
       horizontalItemPadding: '10px 0',

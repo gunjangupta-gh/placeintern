@@ -824,19 +824,169 @@ body {
 }
 
 .ant-modal-header {
-  padding: 16px 20px !important;
+  padding: 12px 16px !important;
   border-bottom: 1px solid rgb(var(--color-border)) !important;
   margin-bottom: 0 !important;
 }
 
 .ant-modal-body {
-  padding: 16px 20px !important;
+  padding: 12px 16px !important;
+  max-height: 70vh !important;
+  overflow-y: auto !important;
 }
 
 .ant-modal-footer {
-  padding: 12px 20px !important;
+  padding: 10px 16px !important;
   border-top: 1px solid rgb(var(--color-border)) !important;
   margin-top: 0 !important;
+}
+
+/* Mobile modal adjustments */
+@media (max-width: 576px) {
+  .ant-modal {
+    max-width: calc(100vw - 16px) !important;
+    margin: 8px auto !important;
+    top: 20px !important;
+  }
+
+  .ant-modal-content {
+    border-radius: 8px;
+  }
+
+  .ant-modal-header {
+    padding: 10px 12px !important;
+  }
+
+  .ant-modal-body {
+    padding: 10px 12px !important;
+    max-height: 65vh !important;
+  }
+
+  .ant-modal-footer {
+    padding: 8px 12px !important;
+  }
+
+  .ant-modal-title {
+    font-size: 14px !important;
+  }
+
+  /* Forms inside modals on mobile */
+  .ant-modal-body .ant-form-item {
+    margin-bottom: 12px !important;
+  }
+
+  .ant-modal-body .ant-form-item-label {
+    padding-bottom: 4px !important;
+  }
+
+  .ant-modal-body .ant-form-item-label > label {
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Radio/Checkbox groups in modals - ensure they show properly */
+  .ant-modal-body .ant-radio-group .ant-space,
+  .ant-modal-body .ant-checkbox-group .ant-space {
+    gap: 6px !important;
+  }
+
+  .ant-modal-body .ant-radio-wrapper,
+  .ant-modal-body .ant-checkbox-wrapper {
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+    margin-right: 0 !important;
+    display: flex !important;
+    align-items: flex-start !important;
+  }
+
+  .ant-modal-body .ant-space-vertical {
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  .ant-modal-body .ant-space-vertical > .ant-space-item {
+    width: 100% !important;
+  }
+
+  /* Alert inside modals */
+  .ant-modal-body .ant-alert {
+    padding: 8px 10px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .ant-modal-body .ant-alert-message {
+    font-size: 12px !important;
+  }
+
+  .ant-modal-body .ant-alert-description {
+    font-size: 11px !important;
+  }
+
+  /* Textarea in modals */
+  .ant-modal-body .ant-input-textarea textarea {
+    font-size: 13px !important;
+  }
+
+  /* Rate component in modals */
+  .ant-modal-body .ant-rate {
+    font-size: 18px !important;
+  }
+}
+
+/* ============================================
+   Form Controls - Ensure proper display
+   ============================================ */
+
+/* Radio and Checkbox - full width on mobile */
+.ant-radio-group,
+.ant-checkbox-group {
+  width: 100%;
+}
+
+.ant-radio-group .ant-space,
+.ant-checkbox-group .ant-space {
+  width: 100%;
+}
+
+/* Ensure Space items don't overflow */
+.ant-space-item {
+  max-width: 100%;
+}
+
+/* Form item labels should wrap properly */
+.ant-form-item-label > label {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  line-height: 1.4 !important;
+}
+
+/* Radio/Checkbox text wrapping */
+.ant-radio-wrapper,
+.ant-checkbox-wrapper {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+}
+
+.ant-radio-wrapper > span:last-child,
+.ant-checkbox-wrapper > span:last-child {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  line-height: 1.4 !important;
+}
+
+@media (max-width: 576px) {
+  /* Force vertical layout for radio/checkbox on mobile */
+  .ant-radio-group .ant-space-horizontal,
+  .ant-checkbox-group .ant-space-horizontal {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .ant-radio-group .ant-space-horizontal .ant-space-item,
+  .ant-checkbox-group .ant-space-horizontal .ant-space-item {
+    margin-right: 0 !important;
+    margin-bottom: 6px !important;
+  }
 }
 
 .ant-drawer-content {
@@ -845,13 +995,24 @@ body {
 }
 
 .ant-drawer-header {
-  padding: 16px 20px !important;
+  padding: 12px 16px !important;
   background-color: rgb(var(--color-background)) !important;
   border-bottom: 1px solid rgb(var(--color-border)) !important;
 }
 
 .ant-drawer-body {
-  padding: 16px 20px !important;
+  padding: 12px 16px !important;
+}
+
+/* Mobile drawer adjustments */
+@media (max-width: 576px) {
+  .ant-drawer-header {
+    padding: 10px 12px !important;
+  }
+
+  .ant-drawer-body {
+    padding: 10px 12px !important;
+  }
 }
 
 .dark .ant-drawer-content,
