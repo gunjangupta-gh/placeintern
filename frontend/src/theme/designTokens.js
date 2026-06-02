@@ -1,42 +1,43 @@
 /**
  * Design System Tokens
  * Centralized design values for consistent UI
+ * Professional compact design system
  */
 
 export const spacing = {
   xs: '0.25rem',    // 4px
-  sm: '0.5rem',     // 8px
-  md: '0.75rem',    // 12px
-  lg: '1rem',       // 16px
-  xl: '1.5rem',     // 24px
-  '2xl': '2rem',    // 32px
-  '3xl': '3rem',    // 48px
+  sm: '0.375rem',   // 6px (was 8px)
+  md: '0.5rem',     // 8px (was 12px)
+  lg: '0.75rem',    // 12px (was 16px)
+  xl: '1rem',       // 16px (was 24px)
+  '2xl': '1.5rem',  // 24px (was 32px)
+  '3xl': '2rem',    // 32px (was 48px)
 };
 
 export const borderRadius = {
   sm: '0.25rem',    // 4px
-  md: '0.5rem',     // 8px
-  lg: '0.75rem',    // 12px
-  xl: '1rem',       // 16px
-  '2xl': '1.5rem',  // 24px
+  md: '0.375rem',   // 6px (was 8px)
+  lg: '0.5rem',     // 8px (was 12px)
+  xl: '0.75rem',    // 12px (was 16px)
+  '2xl': '1rem',    // 16px (was 24px)
   full: '9999px',
 };
 
 export const typography = {
-  xs: '0.75rem',    // 12px
-  sm: '0.875rem',   // 14px
-  base: '1rem',     // 16px
-  lg: '1.125rem',   // 18px
-  xl: '1.25rem',    // 20px
-  '2xl': '1.5rem',  // 24px
-  '3xl': '1.875rem', // 30px
+  xs: '0.6875rem',  // 11px (was 12px)
+  sm: '0.8125rem',  // 13px (was 14px)
+  base: '0.875rem', // 14px (was 16px)
+  lg: '1rem',       // 16px (was 18px)
+  xl: '1.125rem',   // 18px (was 20px)
+  '2xl': '1.375rem',// 22px (was 24px)
+  '3xl': '1.75rem', // 28px (was 30px)
 };
 
 export const shadows = {
-  sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-  md: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-  lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-  xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+  sm: '0 1px 2px 0 rgba(0, 0, 0, 0.03)',
+  md: '0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.03)',
+  lg: '0 4px 8px -2px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04)',
+  xl: '0 8px 16px -4px rgba(0, 0, 0, 0.1), 0 4px 8px -4px rgba(0, 0, 0, 0.06)',
 };
 
 // Semantic color helpers for status

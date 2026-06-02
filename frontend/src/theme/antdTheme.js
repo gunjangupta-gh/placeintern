@@ -8,38 +8,162 @@ const PRIMARY_DARK = '#60a5fa';
 
 export const lightTheme = {
   token: {
+    // Colors
     colorPrimary: PRIMARY_LIGHT,
     colorInfo: PRIMARY_LIGHT,
-    colorSuccess: '#22c55e', // green-500
-    colorWarning: '#f59e0b', // amber-500
-    colorError: '#ef4444',   // red-500
-    colorBgLayout: '#f1f5f9', // slate-100 (matches Layout.jsx)
+    colorSuccess: '#22c55e',
+    colorWarning: '#f59e0b',
+    colorError: '#ef4444',
+    colorBgLayout: '#f1f5f9',
     colorBgContainer: '#ffffff',
-    colorTextBase: '#0f172a', // slate-900
-    colorTextSecondary: '#334155', // slate-700
-    colorBorder: '#e2e8f0', // slate-200
-    fontFamily: "'Inter', system-ui, sans-serif",
-    borderRadius: 10,
-    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02)',
+    colorTextBase: '#0f172a',
+    colorTextSecondary: '#475569',
+    colorBorder: '#e2e8f0',
+
+    // Typography - Professional compact
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontSize: 13,
+    fontSizeSM: 11,
+    fontSizeLG: 15,
+    fontSizeHeading1: 28,
+    fontSizeHeading2: 22,
+    fontSizeHeading3: 18,
+    fontSizeHeading4: 15,
+    fontSizeHeading5: 13,
+    lineHeight: 1.5,
+    fontWeightStrong: 600,
+
+    // Compact sizing
+    controlHeight: 32,
+    controlHeightSM: 24,
+    controlHeightLG: 36,
+
+    // Sharp professional corners
+    borderRadius: 6,
+    borderRadiusLG: 8,
+    borderRadiusSM: 4,
+    borderRadiusXS: 2,
+
+    // Tighter spacing
+    padding: 12,
+    paddingLG: 16,
+    paddingXS: 6,
+    paddingSM: 8,
+    marginXS: 6,
+    marginSM: 8,
+
+    // Subtle shadows
+    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03)',
+    boxShadowSecondary: '0 2px 8px -2px rgba(0, 0, 0, 0.08)',
   },
   algorithm: defaultAlgorithm,
   components: {
     Card: {
       colorBorderSecondary: '#f1f5f9',
+      paddingLG: 16,
     },
     Table: {
       headerBg: '#f8fafc',
-      headerColor: '#475569',
+      headerColor: '#64748b',
+      cellPaddingBlock: 10,
+      cellPaddingInline: 12,
+      headerSplitColor: 'transparent',
     },
     Button: {
       fontWeight: 500,
-      controlHeight: 38,
+      controlHeight: 32,
+      paddingInline: 14,
     },
     Input: {
-      controlHeight: 38,
+      controlHeight: 32,
+      paddingInline: 10,
     },
     Select: {
-      controlHeight: 38,
+      controlHeight: 32,
+    },
+    Modal: {
+      paddingContentHorizontal: 20,
+      paddingMD: 16,
+    },
+    Form: {
+      itemMarginBottom: 16,
+    },
+    Tabs: {
+      horizontalItemPadding: '10px 0',
+      horizontalMargin: '0 24px 0 0',
+    },
+    Menu: {
+      itemMarginInline: 8,
+      itemPaddingInline: 12,
+      itemHeight: 36,
+    },
+    // Micro-elements - compact professional
+    Tag: {
+      borderRadiusSM: 4,
+      defaultBg: '#f1f5f9',
+      defaultColor: '#475569',
+    },
+    Badge: {
+      dotSize: 6,
+      textFontSize: 10,
+      textFontSizeSM: 10,
+    },
+    Avatar: {
+      containerSize: 32,
+      containerSizeSM: 24,
+      containerSizeLG: 40,
+      textFontSize: 13,
+      textFontSizeSM: 11,
+      textFontSizeLG: 15,
+    },
+    Tooltip: {
+      colorBgSpotlight: '#1e293b',
+      colorTextLightSolid: '#f8fafc',
+      borderRadius: 6,
+      controlHeight: 28,
+    },
+    Alert: {
+      borderRadiusLG: 8,
+      withDescriptionPadding: '12px 16px',
+      defaultPadding: '8px 12px',
+    },
+    Message: {
+      contentPadding: '8px 12px',
+    },
+    Notification: {
+      width: 340,
+      paddingContentHorizontal: 16,
+    },
+    Progress: {
+      lineBorderRadius: 100,
+      defaultColor: PRIMARY_LIGHT,
+    },
+    Breadcrumb: {
+      itemColor: '#64748b',
+      separatorColor: '#cbd5e1',
+      fontSize: 12,
+    },
+    Collapse: {
+      headerPadding: '10px 12px',
+      contentPadding: '12px 16px',
+    },
+    Steps: {
+      iconSize: 28,
+      iconSizeSM: 20,
+      dotSize: 6,
+    },
+    Descriptions: {
+      itemPaddingBottom: 12,
+      titleMarginBottom: 12,
+    },
+    Popover: {
+      titleMinWidth: 160,
+    },
+    Popconfirm: {
+      borderRadiusOuter: 8,
+    },
+    Divider: {
+      colorSplit: '#e2e8f0',
     },
   },
 };
@@ -53,36 +177,96 @@ const SIDEBAR_TEXT_SELECTED = '#ffffff';
 
 export const darkTheme = {
   token: {
+    // Colors
     colorPrimary: PRIMARY_DARK,
     colorInfo: PRIMARY_DARK,
-    colorSuccess: '#4ade80', // green-400
-    colorWarning: '#fbbf24', // amber-400
-    colorError: '#f87171',   // red-400
-    colorBgLayout: '#020617', // slate-950
-    colorBgContainer: '#0f172a', // slate-900
-    colorBgElevated: '#1e293b', // slate-800
-    colorBorder: '#1e293b', // slate-800
-    colorBorderSecondary: '#334155', // slate-700
-    colorTextBase: '#f8fafc', // slate-50
-    colorTextSecondary: '#94a3b8', // slate-400
-    fontFamily: "'Inter', system-ui, sans-serif",
-    borderRadius: 10,
+    colorSuccess: '#4ade80',
+    colorWarning: '#fbbf24',
+    colorError: '#f87171',
+    colorBgLayout: '#020617',
+    colorBgContainer: '#0f172a',
+    colorBgElevated: '#1e293b',
+    colorBorder: '#1e293b',
+    colorBorderSecondary: '#334155',
+    colorTextBase: '#f8fafc',
+    colorTextSecondary: '#94a3b8',
+
+    // Typography - Professional compact
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontSize: 13,
+    fontSizeSM: 11,
+    fontSizeLG: 15,
+    fontSizeHeading1: 28,
+    fontSizeHeading2: 22,
+    fontSizeHeading3: 18,
+    fontSizeHeading4: 15,
+    fontSizeHeading5: 13,
+    lineHeight: 1.5,
+    fontWeightStrong: 600,
+
+    // Compact sizing
+    controlHeight: 32,
+    controlHeightSM: 24,
+    controlHeightLG: 36,
+
+    // Sharp professional corners
+    borderRadius: 6,
+    borderRadiusLG: 8,
+    borderRadiusSM: 4,
+    borderRadiusXS: 2,
+
+    // Tighter spacing
+    padding: 12,
+    paddingLG: 16,
+    paddingXS: 6,
+    paddingSM: 8,
+    marginXS: 6,
+    marginSM: 8,
+
+    // Subtle shadows for dark mode
+    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.2)',
+    boxShadowSecondary: '0 2px 8px -2px rgba(0, 0, 0, 0.4)',
   },
   algorithm: darkAlgorithm,
   components: {
     Card: {
       colorBgContainer: '#0f172a',
+      paddingLG: 16,
     },
     Table: {
       colorBgContainer: '#0f172a',
       headerBg: '#1e293b',
+      cellPaddingBlock: 10,
+      cellPaddingInline: 12,
+      headerSplitColor: 'transparent',
+    },
+    Button: {
+      fontWeight: 500,
+      controlHeight: 32,
+      paddingInline: 14,
+    },
+    Input: {
+      controlHeight: 32,
+      paddingInline: 10,
+    },
+    Select: {
+      controlHeight: 32,
     },
     Modal: {
       contentBg: '#0f172a',
       headerBg: '#0f172a',
+      paddingContentHorizontal: 20,
+      paddingMD: 16,
     },
     Drawer: {
       colorBgElevated: '#0f172a',
+    },
+    Form: {
+      itemMarginBottom: 16,
+    },
+    Tabs: {
+      horizontalItemPadding: '10px 0',
+      horizontalMargin: '0 24px 0 0',
     },
     Menu: {
       // Dark sidebar menu styling
@@ -101,6 +285,75 @@ export const darkTheme = {
       iconMarginInlineEnd: 10,
       collapsedIconSize: 18,
       collapsedWidth: 72,
+      itemHeight: 36,
+    },
+    // Micro-elements - compact professional (dark)
+    Tag: {
+      borderRadiusSM: 4,
+      defaultBg: '#334155',
+      defaultColor: '#e2e8f0',
+    },
+    Badge: {
+      dotSize: 6,
+      textFontSize: 10,
+      textFontSizeSM: 10,
+    },
+    Avatar: {
+      containerSize: 32,
+      containerSizeSM: 24,
+      containerSizeLG: 40,
+      textFontSize: 13,
+      textFontSizeSM: 11,
+      textFontSizeLG: 15,
+    },
+    Tooltip: {
+      colorBgSpotlight: '#f8fafc',
+      colorTextLightSolid: '#0f172a',
+      borderRadius: 6,
+      controlHeight: 28,
+    },
+    Alert: {
+      borderRadiusLG: 8,
+      withDescriptionPadding: '12px 16px',
+      defaultPadding: '8px 12px',
+    },
+    Message: {
+      contentPadding: '8px 12px',
+    },
+    Notification: {
+      width: 340,
+      paddingContentHorizontal: 16,
+    },
+    Progress: {
+      lineBorderRadius: 100,
+      defaultColor: PRIMARY_DARK,
+    },
+    Breadcrumb: {
+      itemColor: '#94a3b8',
+      separatorColor: '#475569',
+      fontSize: 12,
+    },
+    Collapse: {
+      headerPadding: '10px 12px',
+      contentPadding: '12px 16px',
+    },
+    Steps: {
+      iconSize: 28,
+      iconSizeSM: 20,
+      dotSize: 6,
+    },
+    Descriptions: {
+      itemPaddingBottom: 12,
+      titleMarginBottom: 12,
+    },
+    Popover: {
+      titleMinWidth: 160,
+    },
+    Popconfirm: {
+      borderRadiusOuter: 8,
+    },
+    Divider: {
+      colorSplit: '#334155',
     },
   },
 };
