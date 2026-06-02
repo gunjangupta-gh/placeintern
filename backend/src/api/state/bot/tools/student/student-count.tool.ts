@@ -133,11 +133,9 @@ export class StudentCountTool extends BaseTool {
       // Execute count query
       const count = await this.prisma.student.count({ where });
 
-      return this.successResponse({
-        count,
-        formattedCount: this.formatNumber(count),
-        filtersApplied: this.buildFilterDescription(appliedFilters),
-      });
+      // Strategy 5: Use compact response to reduce output tokens
+      const filtersDesc = this.buildFilterDescription(appliedFilters);
+      return this.countResponse(count, filtersDesc);
     } catch (error) {
       return this.errorResponse(
         'Failed to count students',

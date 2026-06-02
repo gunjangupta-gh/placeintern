@@ -18,6 +18,8 @@ import { Role } from '../../../generated/prisma/client';
 import { BotService } from './bot.service';
 import { BotQueryDto } from './dto/bot-query.dto';
 import { BotResponseDto, QueryHistoryResponseDto } from './dto/bot-response.dto';
+import { BatchQueryDto, BatchQueryResponseDto } from './dto/batch-query.dto';
+import { BotThrottleGuard } from './guards/bot-throttle.guard';
 
 /**
  * BotController - REST API endpoints for the AI Bot functionality
@@ -46,11 +48,13 @@ export class BotController {
    */
   @Post('query')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(BotThrottleGuard) // Strategy 6: Rate limiting
   @ApiOperation({
     summary: 'Process a natural language query',
     description:
       'Submit a natural language query to get insights about students, institutions, compliance, and more. ' +
-      'Optionally include a sessionId to maintain conversation context across multiple queries.',
+      'Optionally include a sessionId to maintain conversation context across multiple queries. ' +
+      'Rate limited to 30 requests per minute per user.',
   })
   @ApiResponse({
     status: 200,
@@ -69,11 +73,49 @@ export class BotController {
     status: 403,
     description: 'Forbidden - User does not have STATE_DIRECTORATE role',
   })
+  @ApiResponse({
+    status: 429,
+    description: 'Too many requests - Rate limit exceeded',
+  })
   async processQuery(
     @Body() dto: BotQueryDto,
     @CurrentUser() user: { userId: string; role: Role; institutionId?: string },
   ): Promise<BotResponseDto> {
     return this.botService.processQuery(dto, user);
+  }
+
+  /**
+   * Strategy 7: Batch Processing
+   * Process multiple queries in a single request
+   */
+  @Post('batch')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(BotThrottleGuard)
+  @ApiOperation({
+    summary: 'Process multiple queries in batch',
+    description:
+      'Submit multiple queries in a single request for efficient batch processing. ' +
+      'Useful for dashboard initialization or generating reports. ' +
+      'Maximum 10 queries per batch. Rate limited.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Batch queries processed successfully',
+    type: BatchQueryResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid batch query format',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Too many requests - Rate limit exceeded',
+  })
+  async processBatchQuery(
+    @Body() dto: BatchQueryDto,
+    @CurrentUser() user: { userId: string; role: Role; institutionId?: string },
+  ): Promise<BatchQueryResponseDto> {
+    return this.botService.processBatchQuery(dto, user);
   }
 
   /**
@@ -220,6 +262,104 @@ export class BotController {
           ],
         },
       ],
+    };
+  }
+
+  /**
+   * Get bot statistics including cache performance and token usage
+   */
+  @Get('stats')
+  @ApiOperation({
+    summary: 'Get bot statistics',
+    description:
+      'Get performance statistics including cache hit rate, token usage, and cost metrics. ' +
+      'Useful for monitoring and cost optimization.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Statistics retrieved successfully',
+  })
+  getStats(): {
+    success: boolean;
+    cache: { hits: number; misses: number; hitRate: number; estimatedSavings: number };
+    tokens: {
+      totalInputTokens: number;
+      totalOutputTokens: number;
+      totalCost: number;
+      queryCount: number;
+      avgCostPerQuery: number;
+    };
+    sessions: { activeSessions: number; agentSessions: number };
+    costReport: {
+      period: string;
+      totalCost: number;
+      projection: { monthly: number };
+    };
+  } {
+    const cacheStats = this.botService.getCacheStats();
+    const tokenMetrics = this.botService.getTokenMetrics();
+    const sessionStats = this.botService.getSessionStats();
+    const costReport = this.botService.getCostReport();
+
+    return {
+      success: true,
+      cache: {
+        hits: cacheStats.hits,
+        misses: cacheStats.misses,
+        hitRate: Number(cacheStats.hitRate.toFixed(2)),
+        estimatedSavings: Number(cacheStats.estimatedSavings.toFixed(6)),
+      },
+      tokens: {
+        totalInputTokens: tokenMetrics.totalInputTokens,
+        totalOutputTokens: tokenMetrics.totalOutputTokens,
+        totalCost: Number(tokenMetrics.totalCost.toFixed(6)),
+        queryCount: tokenMetrics.queryCount,
+        avgCostPerQuery: Number(tokenMetrics.avgCostPerQuery.toFixed(6)),
+      },
+      sessions: sessionStats,
+      costReport: {
+        period: costReport.period,
+        totalCost: costReport.totalCost,
+        projection: costReport.projection,
+      },
+    };
+  }
+
+  /**
+   * Get user's token budget status
+   */
+  @Get('budget')
+  @ApiOperation({
+    summary: 'Get token budget status',
+    description: 'Get current token budget usage and limits for the authenticated user.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Budget status retrieved successfully',
+  })
+  getBudget(@CurrentUser() user: { userId: string }): {
+    success: boolean;
+    budget: {
+      dailyLimit: number;
+      dailyUsed: number;
+      dailyRemaining: number;
+      monthlyLimit: number;
+      monthlyUsed: number;
+      monthlyRemaining: number;
+    };
+  } {
+    const budget = this.botService.getUserBudget(user.userId);
+
+    return {
+      success: true,
+      budget: {
+        dailyLimit: budget.dailyLimit,
+        dailyUsed: budget.dailyUsed,
+        dailyRemaining: Math.max(0, budget.dailyLimit - budget.dailyUsed),
+        monthlyLimit: budget.monthlyLimit,
+        monthlyUsed: budget.monthlyUsed,
+        monthlyRemaining: Math.max(0, budget.monthlyLimit - budget.monthlyUsed),
+      },
     };
   }
 }

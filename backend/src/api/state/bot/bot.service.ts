@@ -8,12 +8,19 @@ import {
   QueryHistoryResponseDto,
 } from './dto/bot-response.dto';
 import {
+  BatchQueryDto,
+  BatchQueryResponseDto,
+  BatchQueryResultDto,
+} from './dto/batch-query.dto';
+import {
   QueryContext,
   AgentResponse,
   QueryLogEntry,
   SessionData,
 } from './interfaces/bot.interfaces';
 import { Role } from '../../../generated/prisma/client';
+import { BotCacheService, CachedQueryResponse } from './services/cache.service';
+import { BotTokenService, TokenUsage } from './services/token.service';
 
 /**
  * BotService - Main orchestrator for the AI Bot functionality
@@ -38,6 +45,8 @@ export class BotService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly supervisorAgent: SupervisorAgent,
+    private readonly cacheService: BotCacheService,
+    private readonly tokenService: BotTokenService,
   ) {}
 
   /**
@@ -57,6 +66,17 @@ export class BotService {
     this.logger.log(`Processing query for user ${user.userId}: "${dto.query.substring(0, 50)}..."`);
 
     try {
+      // Check user's token budget
+      const budgetCheck = this.tokenService.checkBudget(user.userId);
+      if (!budgetCheck.allowed) {
+        return {
+          success: false,
+          answer: budgetCheck.reason || 'Token budget exceeded. Please try again later.',
+          metadata: { sessionId, processingTimeMs: Date.now() - startTime },
+          error: 'BUDGET_EXCEEDED',
+        };
+      }
+
       // Build the query context for logging
       const context: QueryContext = {
         userId: user.userId,
@@ -70,11 +90,61 @@ export class BotService {
         },
       };
 
-      // Process the query through the supervisor agent using the query() method
-      const agentResult: SupervisorQueryResult = await this.supervisorAgent.query(
-        dto.query,
-        sessionId,
-      );
+      // Strategy 1: Check cache first
+      let agentResult: SupervisorQueryResult;
+      let fromCache = false;
+
+      if (this.cacheService.shouldCache(dto.query)) {
+        const cached = await this.cacheService.get(dto.query);
+        if (cached) {
+          fromCache = true;
+          agentResult = {
+            answer: cached.answer,
+            toolsUsed: cached.toolsUsed,
+            processingTimeMs: cached.processingTimeMs,
+            inputTokens: cached.tokensUsed?.input,
+            outputTokens: cached.tokensUsed?.output,
+          };
+          this.logger.debug(`Cache hit for query: "${dto.query.substring(0, 50)}..."`);
+        }
+      }
+
+      // If not cached, process through supervisor agent
+      if (!fromCache) {
+        agentResult = await this.supervisorAgent.query(dto.query, sessionId);
+
+        // Cache the result
+        if (this.cacheService.shouldCache(dto.query)) {
+          const ttl = this.cacheService.getTTLForQuery(dto.query);
+          await this.cacheService.set(
+            dto.query,
+            {
+              answer: agentResult.answer,
+              toolsUsed: agentResult.toolsUsed,
+              processingTimeMs: agentResult.processingTimeMs,
+              cachedAt: Date.now(),
+              tokensUsed: {
+                input: agentResult.inputTokens || 0,
+                output: agentResult.outputTokens || 0,
+                cost: this.tokenService.calculateCost(
+                  agentResult.inputTokens || 0,
+                  agentResult.outputTokens || 0,
+                ),
+              },
+            },
+            ttl,
+          );
+        }
+
+        // Track token usage (only for non-cached queries)
+        if (agentResult.inputTokens || agentResult.outputTokens) {
+          this.tokenService.trackUsage(
+            agentResult.inputTokens || 0,
+            agentResult.outputTokens || 0,
+            user.userId,
+          );
+        }
+      }
 
       // Convert SupervisorQueryResult to AgentResponse format for logging
       const agentResponse: AgentResponse = {
@@ -106,12 +176,20 @@ export class BotService {
         suggestions,
         metadata: {
           sessionId,
-          processingTimeMs: agentResult.processingTimeMs,
+          processingTimeMs: fromCache ? 0 : agentResult.processingTimeMs,
           toolsUsed: agentResult.toolsUsed,
+          tokensUsed: (agentResult.inputTokens || 0) + (agentResult.outputTokens || 0),
         },
       };
 
-      this.logger.log(`Query processed successfully in ${agentResult.processingTimeMs}ms`);
+      // Add cache info to metadata
+      if (fromCache) {
+        (response.metadata as any).cached = true;
+      }
+
+      this.logger.log(
+        `Query processed successfully in ${agentResult.processingTimeMs}ms${fromCache ? ' (cached)' : ''}`,
+      );
       return response;
     } catch (error) {
       const processingTimeMs = Date.now() - startTime;
@@ -443,5 +521,169 @@ export class BotService {
       activeSessions: this.sessions.size,
       agentSessions: this.supervisorAgent.getActiveSessionCount(),
     };
+  }
+
+  /**
+   * Strategy 7: Batch Processing
+   * Process multiple queries in a single request
+   *
+   * Benefits:
+   * - Reduced per-request overhead
+   * - Better for dashboard initialization
+   * - Single API call for multiple data points
+   */
+  async processBatchQuery(
+    dto: BatchQueryDto,
+    user: { userId: string; role: Role; institutionId?: string },
+  ): Promise<BatchQueryResponseDto> {
+    const startTime = Date.now();
+    const results: BatchQueryResultDto[] = [];
+    let cacheHits = 0;
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+
+    this.logger.log(`Processing batch query with ${dto.queries.length} queries for user ${user.userId}`);
+
+    // Process each query
+    for (const query of dto.queries) {
+      try {
+        // Check cache first
+        let fromCache = false;
+        let answer: string;
+        let toolsUsed: string[] = [];
+
+        if (this.cacheService.shouldCache(query)) {
+          const cached = await this.cacheService.get(query);
+          if (cached) {
+            fromCache = true;
+            cacheHits++;
+            answer = cached.answer;
+            toolsUsed = cached.toolsUsed;
+
+            if (cached.tokensUsed) {
+              totalInputTokens += cached.tokensUsed.input;
+              totalOutputTokens += cached.tokensUsed.output;
+            }
+          }
+        }
+
+        // If not cached, process through agent
+        if (!fromCache) {
+          const agentResult = await this.supervisorAgent.query(query, dto.sessionId);
+          answer = agentResult.answer;
+          toolsUsed = agentResult.toolsUsed;
+
+          // Track tokens
+          totalInputTokens += agentResult.inputTokens || 0;
+          totalOutputTokens += agentResult.outputTokens || 0;
+
+          // Cache the result
+          if (this.cacheService.shouldCache(query)) {
+            const ttl = this.cacheService.getTTLForQuery(query);
+            await this.cacheService.set(
+              query,
+              {
+                answer,
+                toolsUsed,
+                processingTimeMs: agentResult.processingTimeMs,
+                cachedAt: Date.now(),
+                tokensUsed: {
+                  input: agentResult.inputTokens || 0,
+                  output: agentResult.outputTokens || 0,
+                  cost: this.tokenService.calculateCost(
+                    agentResult.inputTokens || 0,
+                    agentResult.outputTokens || 0,
+                  ),
+                },
+              },
+              ttl,
+            );
+          }
+        }
+
+        results.push({
+          query,
+          success: true,
+          answer,
+          toolsUsed,
+          cached: fromCache,
+        });
+      } catch (error) {
+        results.push({
+          query,
+          success: false,
+          answer: 'Failed to process this query',
+          error: error.message,
+        });
+      }
+    }
+
+    const totalProcessingTimeMs = Date.now() - startTime;
+    const estimatedCost = this.tokenService.calculateCost(totalInputTokens, totalOutputTokens);
+
+    // Track total token usage
+    if (totalInputTokens > 0 || totalOutputTokens > 0) {
+      this.tokenService.trackUsage(totalInputTokens, totalOutputTokens, user.userId);
+    }
+
+    this.logger.log(
+      `Batch query completed: ${results.length} queries in ${totalProcessingTimeMs}ms (${cacheHits} cached)`,
+    );
+
+    return {
+      success: true,
+      results,
+      totalProcessingTimeMs,
+      queriesProcessed: results.length,
+      cacheHits,
+      tokenUsage: {
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+        estimatedCost,
+      },
+    };
+  }
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStats() {
+    return this.cacheService.getStats();
+  }
+
+  /**
+   * Get token usage metrics
+   */
+  getTokenMetrics() {
+    return this.tokenService.getMetrics();
+  }
+
+  /**
+   * Get cost report
+   */
+  getCostReport() {
+    return this.tokenService.getCostReport();
+  }
+
+  /**
+   * Clear query cache
+   */
+  async clearCache(): Promise<number> {
+    return this.cacheService.clearAll();
+  }
+
+  /**
+   * Get user's token budget status
+   */
+  getUserBudget(userId: string) {
+    return this.tokenService.getUserBudget(userId);
+  }
+
+  /**
+   * Reset token metrics (admin function)
+   */
+  resetMetrics(): void {
+    this.tokenService.resetMetrics();
+    this.cacheService.resetStats();
   }
 }

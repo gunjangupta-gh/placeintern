@@ -150,6 +150,47 @@ export abstract class BaseTool extends StructuredTool {
   }
 
   /**
+   * Strategy 5: Tool Response Optimization
+   * Create a compact response with only essential data
+   * This reduces output tokens by removing redundant fields
+   */
+  protected compactResponse(data: Record<string, unknown>): string {
+    // Remove null/undefined values and empty strings
+    const cleaned: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== null && value !== undefined && value !== '') {
+        cleaned[key] = value;
+      }
+    }
+    return JSON.stringify(cleaned);
+  }
+
+  /**
+   * Create a minimal count response (Strategy 5)
+   * Only returns the count and essential metadata
+   */
+  protected countResponse(count: number, filters?: string): string {
+    return JSON.stringify({
+      count,
+      ...(filters && filters !== 'none' && { filters }),
+    });
+  }
+
+  /**
+   * Create a minimal breakdown response (Strategy 5)
+   * Optimizes array output for token efficiency
+   */
+  protected breakdownResponse(
+    breakdown: Array<{ name: string; count: number }>,
+    total?: number,
+  ): string {
+    return JSON.stringify({
+      total: total ?? breakdown.reduce((sum, item) => sum + item.count, 0),
+      breakdown: breakdown.map((item) => ({ n: item.name, c: item.count })),
+    });
+  }
+
+  /**
    * Get institution filter for Prisma queries
    * Supports partial name matching (case-insensitive)
    */

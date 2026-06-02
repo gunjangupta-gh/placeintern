@@ -3,7 +3,7 @@ import { ChatOpenAI } from '@langchain/openai';
 import { HumanMessage, AIMessage, BaseMessage, SystemMessage } from '@langchain/core/messages';
 import { StructuredTool } from '@langchain/core/tools';
 import { PrismaService } from '../../../../core/database/prisma.service';
-import { SYSTEM_PROMPT } from '../prompts/system.prompt';
+import { getSystemPrompt } from '../prompts/system-optimized.prompt';
 import { getAllTools } from '../tools';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -28,6 +28,10 @@ export interface SupervisorQueryResult {
   toolsUsed: string[];
   /** Total time taken to process the query in milliseconds */
   processingTimeMs: number;
+  /** Estimated input tokens used */
+  inputTokens?: number;
+  /** Estimated output tokens used */
+  outputTokens?: number;
 }
 
 /**
@@ -64,8 +68,10 @@ export class SupervisorAgent implements OnModuleInit {
 
   /**
    * Maximum messages to keep in history per session
+   * Strategy 3: Reduced from 20 to 6 for token optimization
+   * (3 user messages + 3 assistant responses)
    */
-  private readonly maxHistoryLength = 20;
+  private readonly maxHistoryLength = 6;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -99,18 +105,11 @@ export class SupervisorAgent implements OnModuleInit {
       const tools = getAllTools(this.prisma);
       this.logger.log(`Loaded ${tools.length} tools for the agent`);
 
-      // Get current date for system prompt placeholders
-      const currentDate = new Date();
-      const currentMonth = currentDate.toLocaleString('default', {
-        month: 'long',
+      // Get optimized system prompt (Strategy 2: Prompt Compression)
+      // Uses ~200 tokens instead of ~700 tokens = 71% reduction
+      const formattedSystemPrompt = getSystemPrompt({
+        useOptimized: true, // Use compressed prompt by default
       });
-      const currentYear = currentDate.getFullYear().toString();
-
-      // Prepare the system prompt with current date context
-      const formattedSystemPrompt = SYSTEM_PROMPT.replace(
-        /{currentMonth}/g,
-        currentMonth,
-      ).replace(/{currentYear}/g, currentYear);
 
       // Create the React agent using LangGraph
       this.agent = createReactAgent({
@@ -188,7 +187,7 @@ export class SupervisorAgent implements OnModuleInit {
         sessionMemory.messages.push(new AIMessage(answer));
         sessionMemory.lastActiveAt = new Date();
 
-        // Trim history if too long
+        // Trim history if too long (Strategy 3: Smart Memory Management)
         if (sessionMemory.messages.length > this.maxHistoryLength) {
           sessionMemory.messages = sessionMemory.messages.slice(-this.maxHistoryLength);
         }
@@ -196,14 +195,22 @@ export class SupervisorAgent implements OnModuleInit {
 
       const processingTimeMs = Date.now() - startTime;
 
+      // Estimate tokens used (approximate: 1 token ≈ 4 characters)
+      const inputTokens = this.estimateTokens(
+        messages.map((m) => (typeof m.content === 'string' ? m.content : '')).join(''),
+      );
+      const outputTokens = this.estimateTokens(answer);
+
       this.logger.debug(
-        `Query completed in ${processingTimeMs}ms. Tools used: ${toolsUsed.join(', ') || 'none'}`,
+        `Query completed in ${processingTimeMs}ms. Tools: ${toolsUsed.join(', ') || 'none'}. Tokens: ~${inputTokens}in/~${outputTokens}out`,
       );
 
       return {
         answer,
         toolsUsed,
         processingTimeMs,
+        inputTokens,
+        outputTokens,
       };
     } catch (error) {
       const processingTimeMs = Date.now() - startTime;
@@ -216,6 +223,14 @@ export class SupervisorAgent implements OnModuleInit {
         processingTimeMs,
       };
     }
+  }
+
+  /**
+   * Estimate token count from text (approximate: 1 token ≈ 4 characters)
+   */
+  private estimateTokens(text: string): number {
+    if (!text) return 0;
+    return Math.ceil(text.length / 4);
   }
 
   /**

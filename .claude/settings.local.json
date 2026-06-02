@@ -42,7 +42,14 @@
       "Bash(echo.:*)",
       "Bash(test:*)",
       "Bash(cat:*)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "WebSearch",
+      "Bash(__NEW_LINE__ **Document Maintained By:** Technical Team)",
+      "Bash(**Last)",
+      "Bash(Updated:**)",
+      "Bash(June 2026)",
+      "Bash('@ \")",
+      "Bash(del \"D:\\\\placeintern\\\\docs\\\\future-platform-vision.md\" \"D:\\\\placeintern\\\\docs\\\\scalability-analysis.md\" \"D:\\\\placeintern\\\\docs\\\\staffing-plan.md\" \"D:\\\\placeintern\\\\docs\\\\revenue-model.md\")"
     ]
   }
 }
