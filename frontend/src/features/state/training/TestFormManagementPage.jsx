@@ -255,6 +255,64 @@ const TestFormManagementPage = () => {
     }
   };
 
+  const validateMultipleChoiceQuestions = (questionsToValidate) => {
+    const errors = [];
+
+    questionsToValidate.forEach((q, index) => {
+      const qNum = index + 1;
+
+      // Skip validation for questions without text
+      if (!q.question.trim()) return;
+
+      // Validate multiChoice and checkbox questions
+      if (q.type === "multiChoice" || q.type === "checkbox") {
+        // Check if options exist and have at least 2 non-empty choices
+        const validOptions = q.options?.choices?.filter(opt => opt.trim()) || [];
+
+        if (validOptions.length < 2) {
+          errors.push({
+            questionNum: qNum,
+            message: `Question ${qNum}: Please add at least 2 options`,
+          });
+          return; // Skip correct answer validation if options are invalid
+        }
+
+        // Check if correct answer is selected
+        if (q.type === "multiChoice") {
+          if (!q.correctAnswer || (typeof q.correctAnswer === "string" && !q.correctAnswer.trim())) {
+            errors.push({
+              questionNum: qNum,
+              message: `Question ${qNum}: Please select the correct answer`,
+            });
+          } else if (!validOptions.includes(q.correctAnswer)) {
+            errors.push({
+              questionNum: qNum,
+              message: `Question ${qNum}: Selected correct answer is not a valid option`,
+            });
+          }
+        } else if (q.type === "checkbox") {
+          if (!Array.isArray(q.correctAnswer) || q.correctAnswer.length === 0) {
+            errors.push({
+              questionNum: qNum,
+              message: `Question ${qNum}: Please select at least one correct answer`,
+            });
+          } else {
+            // Check if all correct answers are in valid options
+            const hasInvalidAnswer = q.correctAnswer.some(ans => !validOptions.includes(ans));
+            if (hasInvalidAnswer) {
+              errors.push({
+                questionNum: qNum,
+                message: `Question ${qNum}: Some correct answers are not valid options`,
+              });
+            }
+          }
+        }
+      }
+    });
+
+    return errors;
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -303,6 +361,17 @@ const TestFormManagementPage = () => {
       const validQuestions = questions.filter(q => q.question.trim());
       if (validQuestions.length === 0) {
         message.error("Please add at least one question");
+        return;
+      }
+
+      // Validate multiple choice questions have options and correct answers
+      const validationErrors = validateMultipleChoiceQuestions(validQuestions);
+      if (validationErrors.length > 0) {
+        // Show first 3 errors to avoid flooding
+        validationErrors.slice(0, 3).forEach(err => message.error(err.message));
+        if (validationErrors.length > 3) {
+          message.warning(`And ${validationErrors.length - 3} more validation error(s)`);
+        }
         return;
       }
 
