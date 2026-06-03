@@ -831,8 +831,7 @@ body {
 
 .ant-modal-body {
   padding: 12px 16px !important;
-  max-height: 70vh !important;
-  overflow-y: auto !important;
+  /* Natural height - no fixed max-height on desktop */
 }
 
 .ant-modal-footer {
@@ -860,6 +859,7 @@ body {
   .ant-modal-body {
     padding: 10px 12px !important;
     max-height: 65vh !important;
+    overflow-y: auto !important;
   }
 
   .ant-modal-footer {
