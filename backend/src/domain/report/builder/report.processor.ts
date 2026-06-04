@@ -91,6 +91,7 @@ export class ReportProcessor extends WorkerHost {
       const trainingSheetReports = new Set([
         'training-pre-test-responses',
         'training-post-test-responses',
+        'training-wise-compliance',
       ]);
 
       switch (format) {
@@ -1001,6 +1002,22 @@ export class ReportProcessor extends WorkerHost {
         'score',
         'passed',
         'submittedAt',
+      ],
+      'Training-wise Compliance Report': [
+        'facultyName',
+        'email',
+        'phone',
+        'department',
+        'institutionName',
+        'attendanceStatus',
+        'preTestStatus',
+        'postTestStatus',
+        'feedbackStatus',
+        'lessonPlanStatus',
+        'completedItems',
+        'totalItems',
+        'compliancePercentage',
+        'complianceStatus',
       ],
     };
 

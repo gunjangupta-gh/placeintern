@@ -49,7 +49,12 @@
       "Bash(Updated:**)",
       "Bash(June 2026)",
       "Bash('@ \")",
-      "Bash(del \"D:\\\\placeintern\\\\docs\\\\future-platform-vision.md\" \"D:\\\\placeintern\\\\docs\\\\scalability-analysis.md\" \"D:\\\\placeintern\\\\docs\\\\staffing-plan.md\" \"D:\\\\placeintern\\\\docs\\\\revenue-model.md\")"
+      "Bash(del \"D:\\\\placeintern\\\\docs\\\\future-platform-vision.md\" \"D:\\\\placeintern\\\\docs\\\\scalability-analysis.md\" \"D:\\\\placeintern\\\\docs\\\\staffing-plan.md\" \"D:\\\\placeintern\\\\docs\\\\revenue-model.md\")",
+      "Bash(find:*)",
+      "Bash(git checkout:*)",
+      "Bash(node insert-methods.js)",
+      "Bash(node update-processor.js:*)",
+      "Bash(node fix-generators.js:*)"
     ]
   }
 }

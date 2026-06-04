@@ -2861,6 +2861,12 @@ export class ReportGeneratorService {
         return this.generateTrainingWiseSummaryReport(filters, pagination);
       case "training-non-compliance":
         return this.generateTrainingNonComplianceReport(filters, pagination);
+      case "training-test-comparison":
+        return this.generateTrainingTestComparisonReport(filters, pagination);
+      case "training-wise-compliance":
+        return this.generateTrainingWiseComplianceReport(filters, pagination);
+      case "training-feedback-analysis":
+        return this.generateTrainingFeedbackAnalysisReport(filters, pagination);
 
       // ==================== Legacy Support ====================
       // Support for legacy enum values
@@ -3538,6 +3544,551 @@ export class ReportGeneratorService {
     this.warnOnLargeResultSet(results.length, "TrainingNonComplianceReport");
 
     // Apply pagination to results
+    const paginatedResults = results.slice(skip, skip + take);
+    return paginatedResults;
+  }
+
+      /**
+   * Generate Training Test Comparison Report
+   * Compares pre-test and post-test scores for faculty who completed both
+   * @param filters - Filter criteria (trainingId, institutionId, dateRange)
+   * @param pagination - Optional pagination options
+   */
+  async generateTrainingTestComparisonReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    // Build training filter
+    const trainingWhere: Record<string, unknown> = {};
+    if (filters?.trainingId) {
+      trainingWhere.id = filters.trainingId;
+    }
+    if (filters?.startDate && filters?.endDate) {
+      trainingWhere.startDate = {
+        gte: new Date(filters.startDate),
+        lte: new Date(filters.endDate),
+      };
+    }
+
+    // Build user filter for institution
+    const userWhere: Record<string, unknown> = {};
+    if (filters?.institutionId) {
+      userWhere.institutionId = filters.institutionId;
+    }
+
+    // Build application where clause
+    const applicationWhere: Record<string, unknown> = {
+      status: 'APPROVED',
+    };
+    if (Object.keys(trainingWhere).length > 0) {
+      applicationWhere.training = trainingWhere;
+    }
+    if (Object.keys(userWhere).length > 0) {
+      applicationWhere.user = userWhere;
+    }
+
+    // Get all approved applications
+    const applications = await this.prisma.trainingApplication.findMany({
+      where: applicationWhere,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phoneNo: true,
+            branchName: true,
+            branch: { select: { name: true } },
+            Institution: { select: { name: true } },
+          },
+        },
+        training: {
+          select: {
+            id: true,
+            title: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
+      },
+    });
+
+    // Get user-training pairs
+    const userIds = [...new Set(applications.map((app) => app.userId))];
+    const trainingIds = [...new Set(applications.map((app) => app.trainingId))];
+
+    // Fetch pre and post test responses
+    const [preTestResponses, postTestResponses] = await Promise.all([
+      this.prisma.preTestResponse.findMany({
+        where: {
+          userId: { in: userIds },
+          trainingId: { in: trainingIds },
+        },
+        select: {
+          userId: true,
+          trainingId: true,
+          score: true,
+          submittedAt: true,
+        },
+      }),
+      this.prisma.postTestResponse.findMany({
+        where: {
+          userId: { in: userIds },
+          trainingId: { in: trainingIds },
+        },
+        select: {
+          userId: true,
+          trainingId: true,
+          score: true,
+          submittedAt: true,
+        },
+      }),
+    ]);
+
+    // Create lookup maps
+    const createKey = (userId: string, trainingId: string) => `${userId}:${trainingId}`;
+    const preTestMap = new Map(preTestResponses.map((p) => [createKey(p.userId, p.trainingId), p]));
+    const postTestMap = new Map(postTestResponses.map((p) => [createKey(p.userId, p.trainingId), p]));
+
+    const results: any[] = [];
+
+    for (const app of applications) {
+      const key = createKey(app.userId, app.trainingId);
+      const preTest = preTestMap.get(key);
+      const postTest = postTestMap.get(key);
+
+      // Only include if both tests are completed
+      if (!preTest || !postTest) {
+        continue;
+      }
+
+      // Score is already a percentage (0-100)
+      const prePercentage = preTest.score ?? 0;
+      const postPercentage = postTest.score ?? 0;
+      const improvement = postPercentage - prePercentage;
+
+      // Categorize performance
+      let performanceCategory: string;
+      if (improvement > 20) {
+        performanceCategory = 'Significant Improvement';
+      } else if (improvement >= 5) {
+        performanceCategory = 'Moderate Improvement';
+      } else if (improvement >= -5) {
+        performanceCategory = 'No Change';
+      } else {
+        performanceCategory = 'Declined';
+      }
+
+      results.push({
+        facultyName: app.user?.name || 'N/A',
+        email: app.user?.email || 'N/A',
+        phone: app.user?.phoneNo || 'N/A',
+        department: app.user?.branch?.name || app.user?.branchName || 'N/A',
+        institutionName: app.user?.Institution?.name || 'N/A',
+        trainingTitle: app.training?.title || 'N/A',
+        preTestScore: Number(prePercentage.toFixed(2)),
+        postTestScore: Number(postPercentage.toFixed(2)),
+        improvement: Number(improvement.toFixed(2)),
+        performanceCategory,
+        preTestDate: preTest.submittedAt
+          ? this.formatToISTDateOnly(preTest.submittedAt)
+          : 'N/A',
+        postTestDate: postTest.submittedAt
+          ? this.formatToISTDateOnly(postTest.submittedAt)
+          : 'N/A',
+      });
+    }
+
+    // Sort by improvement descending
+    results.sort((a, b) => b.improvement - a.improvement);
+
+    this.warnOnLargeResultSet(results.length, "TrainingTestComparisonReport");
+
+    const paginatedResults = results.slice(skip, skip + take);
+    return paginatedResults;
+  }
+
+  /**
+   * Generate Training-wise Compliance Report
+   * Returns all participants for each training with their compliance status
+   * This report is designed for multi-sheet Excel export (one sheet per training)
+   * @param filters - Filter criteria (trainingId, institutionId, dateRange)
+   * @param pagination - Optional pagination options
+   */
+  async generateTrainingWiseComplianceReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    // Build training filter
+    const trainingWhere: Record<string, unknown> = {};
+    if (filters?.trainingId) {
+      trainingWhere.id = filters.trainingId;
+    }
+    if (filters?.startDate && filters?.endDate) {
+      trainingWhere.startDate = {
+        gte: new Date(filters.startDate),
+        lte: new Date(filters.endDate),
+      };
+    }
+
+    // Build user filter for institution
+    const userWhere: Record<string, unknown> = {};
+    if (filters?.institutionId) {
+      userWhere.institutionId = filters.institutionId;
+    }
+
+    // Build application where clause
+    const applicationWhere: Record<string, unknown> = {
+      status: 'APPROVED',
+    };
+    if (Object.keys(trainingWhere).length > 0) {
+      applicationWhere.training = trainingWhere;
+    }
+    if (Object.keys(userWhere).length > 0) {
+      applicationWhere.user = userWhere;
+    }
+
+    // Get all approved applications
+    const applications = await this.prisma.trainingApplication.findMany({
+      where: applicationWhere,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phoneNo: true,
+            branchName: true,
+            branch: { select: { name: true } },
+            Institution: { select: { name: true } },
+          },
+        },
+        training: {
+          select: {
+            id: true,
+            title: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
+      },
+    });
+
+    // Get user-training pairs for bulk queries
+    const userIds = [...new Set(applications.map((app) => app.userId))];
+    const trainingIds = [...new Set(applications.map((app) => app.trainingId))];
+
+    // Fetch all compliance data in parallel
+    const [attendances, preTests, postTests, feedbacks, lessonPlans] = await Promise.all([
+      this.prisma.trainingAttendance.findMany({
+        where: {
+          userId: { in: userIds },
+          trainingId: { in: trainingIds },
+        },
+        select: { userId: true, trainingId: true },
+        distinct: ['userId', 'trainingId'],
+      }),
+      this.prisma.preTestResponse.findMany({
+        where: {
+          userId: { in: userIds },
+          trainingId: { in: trainingIds },
+        },
+        select: { userId: true, trainingId: true },
+      }),
+      this.prisma.postTestResponse.findMany({
+        where: {
+          userId: { in: userIds },
+          trainingId: { in: trainingIds },
+        },
+        select: { userId: true, trainingId: true },
+      }),
+      this.prisma.feedbackResponse.findMany({
+        where: {
+          userId: { in: userIds },
+          trainingId: { in: trainingIds },
+        },
+        select: { userId: true, trainingId: true },
+      }),
+      this.prisma.lessonPlan.findMany({
+        where: {
+          userId: { in: userIds },
+          trainingId: { in: trainingIds },
+          status: { not: 'DRAFT' },
+        },
+        select: { userId: true, trainingId: true },
+      }),
+    ]);
+
+    // Create lookup sets
+    const createKey = (userId: string, trainingId: string) => `${userId}:${trainingId}`;
+    const attendanceSet = new Set(attendances.map((a) => createKey(a.userId, a.trainingId)));
+    const preTestSet = new Set(preTests.map((p) => createKey(p.userId, p.trainingId)));
+    const postTestSet = new Set(postTests.map((p) => createKey(p.userId, p.trainingId)));
+    const feedbackSet = new Set(feedbacks.map((f) => createKey(f.userId, f.trainingId)));
+    const lessonPlanSet = new Set(lessonPlans.map((l) => createKey(l.userId, l.trainingId)));
+
+    const results: any[] = [];
+
+    for (const app of applications) {
+      const key = createKey(app.userId, app.trainingId);
+      const hasAttendance = attendanceSet.has(key);
+      const hasPreTest = preTestSet.has(key);
+      const hasPostTest = postTestSet.has(key);
+      const hasFeedback = feedbackSet.has(key);
+      const hasLessonPlan = lessonPlanSet.has(key);
+
+      // Calculate compliance percentage
+      const completedItems = [hasAttendance, hasPreTest, hasPostTest, hasFeedback, hasLessonPlan]
+        .filter(Boolean).length;
+      const compliancePercentage = (completedItems / 5) * 100;
+
+      let complianceStatus: string;
+      if (compliancePercentage === 100) {
+        complianceStatus = 'Fully Compliant';
+      } else if (compliancePercentage >= 60) {
+        complianceStatus = 'Partially Compliant';
+      } else {
+        complianceStatus = 'Non-Compliant';
+      }
+
+      results.push({
+        trainingId: app.training?.id,
+        trainingTitle: app.training?.title || 'N/A',
+        trainingStartDate: app.training?.startDate
+          ? this.formatToISTDateOnly(app.training.startDate)
+          : 'N/A',
+        trainingEndDate: app.training?.endDate
+          ? this.formatToISTDateOnly(app.training.endDate)
+          : 'N/A',
+        facultyName: app.user?.name || 'N/A',
+        email: app.user?.email || 'N/A',
+        phone: app.user?.phoneNo || 'N/A',
+        department: app.user?.branch?.name || app.user?.branchName || 'N/A',
+        institutionName: app.user?.Institution?.name || 'N/A',
+        attendanceStatus: hasAttendance ? 'Completed' : 'Pending',
+        preTestStatus: hasPreTest ? 'Completed' : 'Pending',
+        postTestStatus: hasPostTest ? 'Completed' : 'Pending',
+        feedbackStatus: hasFeedback ? 'Completed' : 'Pending',
+        lessonPlanStatus: hasLessonPlan ? 'Completed' : 'Pending',
+        completedItems,
+        totalItems: 5,
+        compliancePercentage: Number(compliancePercentage.toFixed(0)),
+        complianceStatus,
+      });
+    }
+
+    // Sort by training title, then by compliance percentage descending
+    results.sort((a, b) => {
+      const titleCompare = a.trainingTitle.localeCompare(b.trainingTitle);
+      if (titleCompare !== 0) return titleCompare;
+      return b.compliancePercentage - a.compliancePercentage;
+    });
+
+    this.warnOnLargeResultSet(results.length, "TrainingWiseComplianceReport");
+
+    const paginatedResults = results.slice(skip, skip + take);
+    return paginatedResults;
+  }
+
+  /**
+   * Generate Training Feedback Analysis Report
+   * Aggregates feedback responses by training with averages and distributions
+   * @param filters - Filter criteria (trainingId, institutionId, dateRange)
+   * @param pagination - Optional pagination options
+   */
+  async generateTrainingFeedbackAnalysisReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    // Build training filter
+    const trainingWhere: Record<string, unknown> = {};
+    if (filters?.trainingId) {
+      trainingWhere.id = filters.trainingId;
+    }
+    if (filters?.startDate && filters?.endDate) {
+      trainingWhere.startDate = {
+        gte: new Date(filters.startDate),
+        lte: new Date(filters.endDate),
+      };
+    }
+
+    // Get all trainings
+    const trainings = await this.prisma.training.findMany({
+      where: Object.keys(trainingWhere).length > 0 ? trainingWhere : undefined,
+      select: {
+        id: true,
+        title: true,
+        startDate: true,
+        endDate: true,
+      },
+    });
+
+    // Build user filter for institution
+    const userWhere: Record<string, unknown> = {};
+    if (filters?.institutionId) {
+      userWhere.institutionId = filters.institutionId;
+    }
+
+    // Get training IDs
+    const trainingIds = trainings.map((t) => t.id);
+
+    // Get approved applications count per training
+    const applicationQuery: Record<string, unknown> = {
+      status: 'APPROVED',
+      trainingId: { in: trainingIds },
+    };
+    if (Object.keys(userWhere).length > 0) {
+      applicationQuery.user = userWhere;
+    }
+
+    const applications = await this.prisma.trainingApplication.groupBy({
+      by: ['trainingId'],
+      where: applicationQuery,
+      _count: { id: true },
+    });
+    const applicationCountMap = new Map(applications.map((a) => [a.trainingId, a._count.id]));
+
+    // Get all feedback responses
+    const feedbackQuery: Record<string, unknown> = {
+      trainingId: { in: trainingIds },
+    };
+    if (Object.keys(userWhere).length > 0) {
+      feedbackQuery.user = userWhere;
+    }
+
+    const feedbackResponses = await this.prisma.feedbackResponse.findMany({
+      where: feedbackQuery,
+      select: {
+        trainingId: true,
+        responses: true,
+      },
+    });
+
+    // Group feedback by training
+    const feedbackByTraining = new Map<string, any[]>();
+    for (const fb of feedbackResponses) {
+      if (!feedbackByTraining.has(fb.trainingId)) {
+        feedbackByTraining.set(fb.trainingId, []);
+      }
+      feedbackByTraining.get(fb.trainingId)!.push(fb.responses);
+    }
+
+    const results: any[] = [];
+
+    for (const training of trainings) {
+      const feedbacks = feedbackByTraining.get(training.id) || [];
+
+      if (feedbacks.length === 0) {
+        continue;
+      }
+
+      // Initialize aggregators for rating questions (1-5 scale)
+      const ratingQuestions = {
+        overallSatisfaction: [] as number[],
+        contentQuality: [] as number[],
+        trainerKnowledge: [] as number[],
+        trainerCommunication: [] as number[],
+        materialsQuality: [] as number[],
+        practicalRelevance: [] as number[],
+        timeManagement: [] as number[],
+        recommendTraining: [] as number[],
+      };
+
+      // Expectation met distribution
+      const expectationDistribution = {
+        'Fully Met': 0,
+        'Partially Met': 0,
+        'Not Really': 0,
+      };
+
+      for (const responses of feedbacks) {
+        const resp = (responses || {}) as Record<string, unknown>;
+
+        // Aggregate rating questions
+        if (resp.overallSatisfaction) ratingQuestions.overallSatisfaction.push(Number(resp.overallSatisfaction));
+        if (resp.contentQuality) ratingQuestions.contentQuality.push(Number(resp.contentQuality));
+        if (resp.trainerKnowledge) ratingQuestions.trainerKnowledge.push(Number(resp.trainerKnowledge));
+        if (resp.trainerCommunication) ratingQuestions.trainerCommunication.push(Number(resp.trainerCommunication));
+        if (resp.materialsQuality) ratingQuestions.materialsQuality.push(Number(resp.materialsQuality));
+        if (resp.practicalRelevance) ratingQuestions.practicalRelevance.push(Number(resp.practicalRelevance));
+        if (resp.timeManagement) ratingQuestions.timeManagement.push(Number(resp.timeManagement));
+        if (resp.recommendTraining) ratingQuestions.recommendTraining.push(Number(resp.recommendTraining));
+
+        // Track expectation distribution
+        if (resp.expectationMet) {
+          const value = String(resp.expectationMet);
+          if (value === 'Fully Met' || value === 'fully_met') {
+            expectationDistribution['Fully Met']++;
+          } else if (value === 'Partially Met' || value === 'partially_met') {
+            expectationDistribution['Partially Met']++;
+          } else if (value === 'Not Really' || value === 'not_really') {
+            expectationDistribution['Not Really']++;
+          }
+        }
+      }
+
+      // Calculate averages
+      const calcAvg = (arr: number[]) => arr.length > 0
+        ? Number((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2))
+        : 0;
+
+      const totalResponses = feedbacks.length;
+      const totalApproved = applicationCountMap.get(training.id) || 0;
+      const responseRate = totalApproved > 0 ? (totalResponses / totalApproved) * 100 : 0;
+
+      // Calculate NPS-like score based on recommendTraining (5 = promoter, 4 = passive, 1-3 = detractor)
+      const promoters = ratingQuestions.recommendTraining.filter(r => r === 5).length;
+      const detractors = ratingQuestions.recommendTraining.filter(r => r <= 3).length;
+      const npsScore = totalResponses > 0
+        ? Math.round(((promoters - detractors) / totalResponses) * 100)
+        : 0;
+
+      results.push({
+        trainingTitle: training.title,
+        trainingStartDate: training.startDate
+          ? this.formatToISTDateOnly(training.startDate)
+          : 'N/A',
+        trainingEndDate: training.endDate
+          ? this.formatToISTDateOnly(training.endDate)
+          : 'N/A',
+        totalParticipants: totalApproved,
+        totalFeedbackResponses: totalResponses,
+        responseRate: Number(responseRate.toFixed(1)),
+        avgOverallSatisfaction: calcAvg(ratingQuestions.overallSatisfaction),
+        avgContentQuality: calcAvg(ratingQuestions.contentQuality),
+        avgTrainerKnowledge: calcAvg(ratingQuestions.trainerKnowledge),
+        avgTrainerCommunication: calcAvg(ratingQuestions.trainerCommunication),
+        avgMaterialsQuality: calcAvg(ratingQuestions.materialsQuality),
+        avgPracticalRelevance: calcAvg(ratingQuestions.practicalRelevance),
+        avgTimeManagement: calcAvg(ratingQuestions.timeManagement),
+        avgRecommendTraining: calcAvg(ratingQuestions.recommendTraining),
+        expectationFullyMet: expectationDistribution['Fully Met'],
+        expectationPartiallyMet: expectationDistribution['Partially Met'],
+        expectationNotMet: expectationDistribution['Not Really'],
+        npsScore,
+        overallAvgRating: calcAvg([
+          calcAvg(ratingQuestions.overallSatisfaction),
+          calcAvg(ratingQuestions.contentQuality),
+          calcAvg(ratingQuestions.trainerKnowledge),
+          calcAvg(ratingQuestions.trainerCommunication),
+          calcAvg(ratingQuestions.materialsQuality),
+          calcAvg(ratingQuestions.practicalRelevance),
+          calcAvg(ratingQuestions.timeManagement),
+        ].filter(v => v > 0)),
+      });
+    }
+
+    // Sort by overall average rating descending
+    results.sort((a, b) => b.overallAvgRating - a.overallAvgRating);
+
+    this.warnOnLargeResultSet(results.length, "TrainingFeedbackAnalysisReport");
+
     const paginatedResults = results.slice(skip, skip + take);
     return paginatedResults;
   }
