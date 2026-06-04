@@ -255,18 +255,12 @@ export const trainingReportDefinitions: Record<string, ReportDefinition> = {
 			{ id: 'totalParticipants', label: 'Total Participants', type: 'number', default: true, sortable: true },
 			{ id: 'totalFeedbackResponses', label: 'Feedback Responses', type: 'number', default: true, sortable: true },
 			{ id: 'responseRate', label: 'Response Rate %', type: 'number', default: true, sortable: true },
-			// Rating Distribution
-			{ id: 'totalRatings', label: 'Total Ratings', type: 'number', default: true, sortable: true },
+			// Rating Distribution (counts only)
 			{ id: 'rating5Count', label: 'Rating 5 (Count)', type: 'number', default: true, sortable: true },
-			{ id: 'rating5Pct', label: 'Rating 5 (%)', type: 'number', default: true, sortable: true },
 			{ id: 'rating4Count', label: 'Rating 4 (Count)', type: 'number', default: true, sortable: true },
-			{ id: 'rating4Pct', label: 'Rating 4 (%)', type: 'number', default: true, sortable: true },
 			{ id: 'rating3Count', label: 'Rating 3 (Count)', type: 'number', default: true, sortable: true },
-			{ id: 'rating3Pct', label: 'Rating 3 (%)', type: 'number', default: true, sortable: true },
 			{ id: 'rating2Count', label: 'Rating 2 (Count)', type: 'number', default: false, sortable: true },
-			{ id: 'rating2Pct', label: 'Rating 2 (%)', type: 'number', default: false, sortable: true },
 			{ id: 'rating1Count', label: 'Rating 1 (Count)', type: 'number', default: false, sortable: true },
-			{ id: 'rating1Pct', label: 'Rating 1 (%)', type: 'number', default: false, sortable: true },
 			// Question-level Insights
 			{ id: 'highestRatedQuestion', label: 'Highest Rated Question', type: 'string', default: true, sortable: false },
 			{ id: 'highestRatedAvg', label: 'Highest Rating Avg', type: 'number', default: true, sortable: true },
@@ -295,7 +289,7 @@ export const trainingReportDefinitions: Record<string, ReportDefinition> = {
 			{ id: 'dateRange', label: 'Training Date Range', type: 'dateRange', required: false },
 		],
 		groupBy: ['trainingTitle'],
-		sortableColumns: ['trainingTitle', 'totalParticipants', 'responseRate', 'totalRatings', 'rating5Pct', 'highestRatedAvg', 'lowestRatedAvg', 'npsScore', 'overallAvgRating'],
+		sortableColumns: ['trainingTitle', 'totalParticipants', 'responseRate', 'rating5Count', 'highestRatedAvg', 'lowestRatedAvg', 'npsScore', 'overallAvgRating'],
 		exportFormats: ['excel', 'csv', 'pdf', 'json'],
 	},
 };

@@ -4116,13 +4116,6 @@ export class ReportGeneratorService {
       const responseRate = totalApproved > 0 ? (totalResponses / totalApproved) * 100 : 0;
       const totalRatings = allRatingValues.length;
 
-      // Calculate rating distribution percentages
-      const rating1Pct = totalRatings > 0 ? Number(((ratingDistribution[1] / totalRatings) * 100).toFixed(1)) : 0;
-      const rating2Pct = totalRatings > 0 ? Number(((ratingDistribution[2] / totalRatings) * 100).toFixed(1)) : 0;
-      const rating3Pct = totalRatings > 0 ? Number(((ratingDistribution[3] / totalRatings) * 100).toFixed(1)) : 0;
-      const rating4Pct = totalRatings > 0 ? Number(((ratingDistribution[4] / totalRatings) * 100).toFixed(1)) : 0;
-      const rating5Pct = totalRatings > 0 ? Number(((ratingDistribution[5] / totalRatings) * 100).toFixed(1)) : 0;
-
       // Calculate NPS score
       const promoters = allRatingValues.filter(r => r === 5).length;
       const detractors = allRatingValues.filter(r => r <= 3).length;
@@ -4173,18 +4166,12 @@ export class ReportGeneratorService {
         totalParticipants: totalApproved,
         totalFeedbackResponses: totalResponses,
         responseRate: Number(responseRate.toFixed(1)),
-        // Rating distribution
-        totalRatings,
-        rating1Count: ratingDistribution[1],
-        rating1Pct,
-        rating2Count: ratingDistribution[2],
-        rating2Pct,
-        rating3Count: ratingDistribution[3],
-        rating3Pct,
-        rating4Count: ratingDistribution[4],
-        rating4Pct,
+        // Rating distribution (counts only)
         rating5Count: ratingDistribution[5],
-        rating5Pct,
+        rating4Count: ratingDistribution[4],
+        rating3Count: ratingDistribution[3],
+        rating2Count: ratingDistribution[2],
+        rating1Count: ratingDistribution[1],
         // Question-level insights
         highestRatedQuestion,
         highestRatedAvg,
