@@ -3918,7 +3918,7 @@ export class ReportGeneratorService {
       };
     }
 
-    // Get all trainings
+    // Get all trainings with their feedback forms
     const trainings = await this.prisma.training.findMany({
       where: Object.keys(trainingWhere).length > 0 ? trainingWhere : undefined,
       select: {
@@ -3926,6 +3926,12 @@ export class ReportGeneratorService {
         title: true,
         startDate: true,
         endDate: true,
+        feedbackForm: {
+          select: {
+            id: true,
+            questions: true,
+          },
+        },
       },
     });
 
@@ -3954,7 +3960,7 @@ export class ReportGeneratorService {
     });
     const applicationCountMap = new Map(applications.map((a) => [a.trainingId, a._count.id]));
 
-    // Get all feedback responses
+    // Get all feedback responses with feedbackForm info
     const feedbackQuery: Record<string, unknown> = {
       trainingId: { in: trainingIds },
     };
@@ -3967,19 +3973,33 @@ export class ReportGeneratorService {
       select: {
         trainingId: true,
         responses: true,
+        feedbackForm: {
+          select: {
+            id: true,
+            questions: true,
+          },
+        },
       },
     });
 
     // Group feedback by training
-    const feedbackByTraining = new Map<string, any[]>();
+    const feedbackByTraining = new Map<string, { responses: Record<string, unknown>; questions: any[] }[]>();
     for (const fb of feedbackResponses) {
       if (!feedbackByTraining.has(fb.trainingId)) {
         feedbackByTraining.set(fb.trainingId, []);
       }
-      feedbackByTraining.get(fb.trainingId)!.push(fb.responses);
+      feedbackByTraining.get(fb.trainingId)!.push({
+        responses: fb.responses as Record<string, unknown>,
+        questions: (fb.feedbackForm?.questions as any[]) || [],
+      });
     }
 
     const results: any[] = [];
+
+    // Helper to calculate average
+    const calcAvg = (arr: number[]) => arr.length > 0
+      ? Number((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2))
+      : 0;
 
     for (const training of trainings) {
       const feedbacks = feedbackByTraining.get(training.id) || [];
@@ -3988,66 +4008,95 @@ export class ReportGeneratorService {
         continue;
       }
 
-      // Initialize aggregators for rating questions (1-5 scale)
-      const ratingQuestions = {
-        overallSatisfaction: [] as number[],
-        contentQuality: [] as number[],
-        trainerKnowledge: [] as number[],
-        trainerCommunication: [] as number[],
-        materialsQuality: [] as number[],
-        practicalRelevance: [] as number[],
-        timeManagement: [] as number[],
-        recommendTraining: [] as number[],
-      };
+      // Get the feedback form questions (use from training or first response)
+      const questions: any[] = (training.feedbackForm?.questions as any[]) || feedbacks[0]?.questions || [];
 
-      // Expectation met distribution
+      // Build a map of questionId -> questionType
+      const questionTypeMap = new Map<string, string>();
+      const questionTextMap = new Map<string, string>();
+      for (const q of questions) {
+        if (q.id) {
+          questionTypeMap.set(q.id, q.type || 'text');
+          questionTextMap.set(q.id, q.question || q.id);
+        }
+      }
+
+      // Collect all rating values across all responses
+      const allRatingValues: number[] = [];
+      const ratingQuestionAverages: number[] = [];
+
+      // Aggregate rating questions dynamically
+      const ratingAggregates: Record<string, number[]> = {};
+
+      // Expectation met distribution (look for multiChoice/checkbox questions about expectations)
       const expectationDistribution = {
         'Fully Met': 0,
         'Partially Met': 0,
         'Not Really': 0,
       };
 
-      for (const responses of feedbacks) {
-        const resp = (responses || {}) as Record<string, unknown>;
+      // Process all responses
+      for (const feedback of feedbacks) {
+        const resp = feedback.responses || {};
 
-        // Aggregate rating questions
-        if (resp.overallSatisfaction) ratingQuestions.overallSatisfaction.push(Number(resp.overallSatisfaction));
-        if (resp.contentQuality) ratingQuestions.contentQuality.push(Number(resp.contentQuality));
-        if (resp.trainerKnowledge) ratingQuestions.trainerKnowledge.push(Number(resp.trainerKnowledge));
-        if (resp.trainerCommunication) ratingQuestions.trainerCommunication.push(Number(resp.trainerCommunication));
-        if (resp.materialsQuality) ratingQuestions.materialsQuality.push(Number(resp.materialsQuality));
-        if (resp.practicalRelevance) ratingQuestions.practicalRelevance.push(Number(resp.practicalRelevance));
-        if (resp.timeManagement) ratingQuestions.timeManagement.push(Number(resp.timeManagement));
-        if (resp.recommendTraining) ratingQuestions.recommendTraining.push(Number(resp.recommendTraining));
+        // Iterate through all response keys
+        for (const [key, value] of Object.entries(resp)) {
+          const qType = questionTypeMap.get(key);
 
-        // Track expectation distribution
-        if (resp.expectationMet) {
-          const value = String(resp.expectationMet);
-          if (value === 'Fully Met' || value === 'fully_met') {
-            expectationDistribution['Fully Met']++;
-          } else if (value === 'Partially Met' || value === 'partially_met') {
-            expectationDistribution['Partially Met']++;
-          } else if (value === 'Not Really' || value === 'not_really') {
-            expectationDistribution['Not Really']++;
+          if (qType === 'rating' && value !== null && value !== undefined && value !== '') {
+            const numVal = Number(value);
+            if (!isNaN(numVal) && numVal >= 1 && numVal <= 5) {
+              allRatingValues.push(numVal);
+              if (!ratingAggregates[key]) {
+                ratingAggregates[key] = [];
+              }
+              ratingAggregates[key].push(numVal);
+            }
+          }
+
+          // Check for expectation-related questions (multiChoice or specific patterns)
+          if (qType === 'multiChoice' || qType === 'checkbox') {
+            const questionText = questionTextMap.get(key)?.toLowerCase() || '';
+            if (questionText.includes('expectation') || questionText.includes('met')) {
+              const strVal = String(value).toLowerCase();
+              if (strVal.includes('fully') || strVal === 'fully met' || strVal === 'fully_met') {
+                expectationDistribution['Fully Met']++;
+              } else if (strVal.includes('partially') || strVal === 'partially met' || strVal === 'partially_met') {
+                expectationDistribution['Partially Met']++;
+              } else if (strVal.includes('not') || strVal === 'not really' || strVal === 'not_really') {
+                expectationDistribution['Not Really']++;
+              }
+            }
           }
         }
       }
 
-      // Calculate averages
-      const calcAvg = (arr: number[]) => arr.length > 0
-        ? Number((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2))
-        : 0;
+      // Calculate per-question averages for rating questions
+      for (const values of Object.values(ratingAggregates)) {
+        const avg = calcAvg(values);
+        if (avg > 0) {
+          ratingQuestionAverages.push(avg);
+        }
+      }
 
       const totalResponses = feedbacks.length;
       const totalApproved = applicationCountMap.get(training.id) || 0;
       const responseRate = totalApproved > 0 ? (totalResponses / totalApproved) * 100 : 0;
 
-      // Calculate NPS-like score based on recommendTraining (5 = promoter, 4 = passive, 1-3 = detractor)
-      const promoters = ratingQuestions.recommendTraining.filter(r => r === 5).length;
-      const detractors = ratingQuestions.recommendTraining.filter(r => r <= 3).length;
-      const npsScore = totalResponses > 0
-        ? Math.round(((promoters - detractors) / totalResponses) * 100)
+      // Calculate NPS-like score based on highest rating values (5 = promoter, 4 = passive, 1-3 = detractor)
+      // Use all rating values for NPS calculation
+      const promoters = allRatingValues.filter(r => r === 5).length;
+      const detractors = allRatingValues.filter(r => r <= 3).length;
+      const totalRatings = allRatingValues.length;
+      const npsScore = totalRatings > 0
+        ? Math.round(((promoters - detractors) / totalRatings) * 100)
         : 0;
+
+      // Overall average rating - average of all rating values
+      const overallAvgRating = calcAvg(allRatingValues);
+
+      // Get individual rating question averages (up to 8 for the column structure)
+      const sortedRatingKeys = Object.keys(ratingAggregates).sort();
 
       results.push({
         trainingTitle: training.title,
@@ -4060,27 +4109,20 @@ export class ReportGeneratorService {
         totalParticipants: totalApproved,
         totalFeedbackResponses: totalResponses,
         responseRate: Number(responseRate.toFixed(1)),
-        avgOverallSatisfaction: calcAvg(ratingQuestions.overallSatisfaction),
-        avgContentQuality: calcAvg(ratingQuestions.contentQuality),
-        avgTrainerKnowledge: calcAvg(ratingQuestions.trainerKnowledge),
-        avgTrainerCommunication: calcAvg(ratingQuestions.trainerCommunication),
-        avgMaterialsQuality: calcAvg(ratingQuestions.materialsQuality),
-        avgPracticalRelevance: calcAvg(ratingQuestions.practicalRelevance),
-        avgTimeManagement: calcAvg(ratingQuestions.timeManagement),
-        avgRecommendTraining: calcAvg(ratingQuestions.recommendTraining),
+        // Dynamic rating averages - map to generic column names for consistency
+        avgOverallSatisfaction: calcAvg(ratingAggregates[sortedRatingKeys[0]] || []),
+        avgContentQuality: calcAvg(ratingAggregates[sortedRatingKeys[1]] || []),
+        avgTrainerKnowledge: calcAvg(ratingAggregates[sortedRatingKeys[2]] || []),
+        avgTrainerCommunication: calcAvg(ratingAggregates[sortedRatingKeys[3]] || []),
+        avgMaterialsQuality: calcAvg(ratingAggregates[sortedRatingKeys[4]] || []),
+        avgPracticalRelevance: calcAvg(ratingAggregates[sortedRatingKeys[5]] || []),
+        avgTimeManagement: calcAvg(ratingAggregates[sortedRatingKeys[6]] || []),
+        avgRecommendTraining: calcAvg(ratingAggregates[sortedRatingKeys[7]] || []),
         expectationFullyMet: expectationDistribution['Fully Met'],
         expectationPartiallyMet: expectationDistribution['Partially Met'],
         expectationNotMet: expectationDistribution['Not Really'],
         npsScore,
-        overallAvgRating: calcAvg([
-          calcAvg(ratingQuestions.overallSatisfaction),
-          calcAvg(ratingQuestions.contentQuality),
-          calcAvg(ratingQuestions.trainerKnowledge),
-          calcAvg(ratingQuestions.trainerCommunication),
-          calcAvg(ratingQuestions.materialsQuality),
-          calcAvg(ratingQuestions.practicalRelevance),
-          calcAvg(ratingQuestions.timeManagement),
-        ].filter(v => v > 0)),
+        overallAvgRating,
       });
     }
 

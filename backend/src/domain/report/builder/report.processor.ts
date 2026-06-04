@@ -1029,8 +1029,8 @@ export class ReportProcessor extends WorkerHost {
     const grouped = new Map<string, { label: string; rows: any[] }>();
 
     data.forEach((row) => {
-      const trainingId = row.trainingId || 'unknown-training';
-      const trainingName = row.trainingName || 'Training';
+      const trainingId = row.trainingId || row.trainingTitle || 'unknown-training';
+      const trainingName = row.trainingName || row.trainingTitle || 'Training';
       const label = String(trainingName);
       if (!grouped.has(trainingId)) {
         grouped.set(trainingId, { label, rows: [] });
@@ -1039,6 +1039,7 @@ export class ReportProcessor extends WorkerHost {
     });
 
     const sheets: { name: string; config: ExportConfig }[] = [];
+    const usedSheetNames = new Set<string>();
 
     grouped.forEach((group, trainingId) => {
       const dynamicFields = new Set<string>();
@@ -1046,7 +1047,7 @@ export class ReportProcessor extends WorkerHost {
 
       group.rows.forEach((row) => {
         Object.keys(row).forEach((key) => {
-          if (!baseFieldSet.has(key) && key !== 'trainingId') {
+          if (!baseFieldSet.has(key) && key !== 'trainingId' && key !== 'trainingTitle') {
             dynamicFields.add(key);
           }
         });
@@ -1072,7 +1073,7 @@ export class ReportProcessor extends WorkerHost {
       });
 
       const sheetColumns = [...baseColumns, ...dynamicColumns];
-      const sheetName = this.toWorksheetName(group.label || trainingId);
+      const sheetName = this.toUniqueWorksheetName(group.label || trainingId, usedSheetNames);
 
       sheets.push({
         name: sheetName,
@@ -1095,6 +1096,34 @@ export class ReportProcessor extends WorkerHost {
     const cleaned = label.replace(/[\\/?*\[\]:]/g, ' ').trim();
     if (!cleaned) return 'Training';
     return cleaned.slice(0, 31);
+  }
+
+  /**
+   * Generate a unique worksheet name by appending a counter if the name already exists.
+   * Excel worksheet names are limited to 31 chars and cannot include certain symbols.
+   */
+  private toUniqueWorksheetName(label: string, usedNames: Set<string>): string {
+    const baseName = this.toWorksheetName(label);
+
+    if (!usedNames.has(baseName)) {
+      usedNames.add(baseName);
+      return baseName;
+    }
+
+    // Name already exists, append a counter
+    let counter = 2;
+    let uniqueName: string;
+
+    do {
+      const suffix = ` (${counter})`;
+      // Ensure we don't exceed 31 chars when adding suffix
+      const maxBaseLength = 31 - suffix.length;
+      uniqueName = baseName.slice(0, maxBaseLength) + suffix;
+      counter++;
+    } while (usedNames.has(uniqueName) && counter < 100);
+
+    usedNames.add(uniqueName);
+    return uniqueName;
   }
 
   /**
