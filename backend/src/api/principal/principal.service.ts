@@ -259,7 +259,7 @@ export class PrincipalService {
               student: { institutionId, user: { active: true } },
               isSelfIdentified: true,
               isActive: true,
-              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED] },
+              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED, ApplicationStatus.COMPLETED] },
               companyName: { not: null, notIn: [''] },
             },
             select: { companyName: true },
@@ -267,7 +267,7 @@ export class PrincipalService {
           }),
           // Count students with self-identified internships (approved or active) but no active mentor assignment
           // Uses MentorAssignment table (source of truth) instead of InternshipApplication.mentorId
-          // Includes APPROVED/SELECTED/JOINED status and NOT_STARTED/ACTIVE phase
+          // Includes APPROVED/SELECTED/JOINED/COMPLETED status and NOT_STARTED/ACTIVE phase
           this.prisma.student.count({
             where: {
               institutionId,
@@ -275,7 +275,7 @@ export class PrincipalService {
               internshipApplications: {
                 some: {
                   isSelfIdentified: true,
-                  status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED] },
+                  status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED, ApplicationStatus.COMPLETED] },
                   internshipPhase: { in: [InternshipPhase.NOT_STARTED, InternshipPhase.ACTIVE] },
                 },
               },
@@ -1058,10 +1058,10 @@ export class PrincipalService {
       if (joiningLetterStatus === 'uploaded') {
         filteredData = filteredData.filter((s) => s.application?.hasJoiningLetter);
       } else if (joiningLetterStatus === 'pending') {
-        // Show students with APPROVED or JOINED status who haven't uploaded joining letter
+        // Show students with APPROVED/SELECTED/JOINED/COMPLETED status who haven't uploaded joining letter
         filteredData = filteredData.filter(
           (s) => s.application && !s.application.hasJoiningLetter &&
-                 (s.application.status === 'APPROVED' || s.application.status === 'JOINED')
+                 (s.application.status === 'APPROVED' || s.application.status === 'SELECTED' || s.application.status === 'JOINED' || s.application.status === 'COMPLETED')
         );
       }
     }
@@ -2910,7 +2910,7 @@ export class PrincipalService {
         internshipApplications: {
           some: {
             isSelfIdentified: true,
-            status: { in: ['JOINED', 'SELECTED', 'APPROVED'] },
+            status: { in: ['JOINED', 'SELECTED', 'APPROVED', 'COMPLETED'] },
           },
         },
       },
@@ -2922,7 +2922,7 @@ export class PrincipalService {
         internshipApplications: {
           where: {
             isSelfIdentified: true,
-            status: { in: ['JOINED', 'SELECTED', 'APPROVED'] },
+            status: { in: ['JOINED', 'SELECTED', 'APPROVED', 'COMPLETED'] },
           },
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -5233,14 +5233,14 @@ export class PrincipalService {
     };
 
     // Students with self-identified internships (approved or active) but no active mentor assignment
-    // Includes APPROVED/SELECTED/JOINED status and NOT_STARTED/ACTIVE phase
+    // Includes APPROVED/SELECTED/JOINED/COMPLETED status and NOT_STARTED/ACTIVE phase
     const unassignedStudentsWhere: Prisma.StudentWhereInput = {
       institutionId,
       user: { active: true },
       internshipApplications: {
         some: {
           isSelfIdentified: true,
-          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED] },
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED, ApplicationStatus.COMPLETED] },
           internshipPhase: { in: [InternshipPhase.NOT_STARTED, InternshipPhase.ACTIVE] },
         },
       },

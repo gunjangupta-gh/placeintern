@@ -537,7 +537,7 @@ export class FacultyService {
               student: { user: { active: true } },
               isActive: true,
               isSelfIdentified: true,
-              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
+              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
             },
           }),
           // Count pending monthly reports for assigned students
@@ -610,7 +610,7 @@ export class FacultyService {
               student: { user: { active: true } },
               isActive: true,
               isSelfIdentified: true,
-              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
+              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
               joiningLetterUrl: null,
             },
           }),
@@ -621,7 +621,7 @@ export class FacultyService {
               student: { user: { active: true } },
               isActive: true,
               isSelfIdentified: true,
-              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
+              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
             },
           }),
         ]);
@@ -714,7 +714,7 @@ export class FacultyService {
                   where: {
                     isActive: true,
                     isSelfIdentified: true,
-                    status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
+                    status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                   },
                   select: {
                     id: true,
@@ -877,7 +877,7 @@ export class FacultyService {
                   isActive: true,
                   isSelfIdentified: true,
                   // Only show active/approved internships for assigned students
-                  status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
+                  status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                 },
                 include: {
                   monthlyReports: {
@@ -971,7 +971,7 @@ export class FacultyService {
 
     // Calculate overall progress (self-identified internships only)
     const currentApplication = student.internshipApplications.find(
-      app => app.isSelfIdentified && (app.status === ApplicationStatus.JOINED || app.status === ApplicationStatus.APPROVED)
+      app => app.isSelfIdentified && (app.status === ApplicationStatus.JOINED || app.status === ApplicationStatus.APPROVED || app.status === ApplicationStatus.SELECTED || app.status === ApplicationStatus.COMPLETED)
     );
 
     let overallProgress = 0;
@@ -1158,7 +1158,7 @@ export class FacultyService {
         where: {
           id: applicationId,
           isActive: true,
-          status: { in: ['JOINED', 'APPROVED'] },
+          status: { in: ['JOINED', 'APPROVED', 'SELECTED', 'COMPLETED'] },
         },
       });
 
@@ -1172,7 +1172,7 @@ export class FacultyService {
         where: {
           studentId,
           isActive: true,
-          status: { in: ['JOINED', 'APPROVED'] },
+          status: { in: ['JOINED', 'APPROVED', 'SELECTED', 'COMPLETED'] },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -2775,7 +2775,7 @@ export class FacultyService {
         application = await this.prisma.internshipApplication.findFirst({
           where: {
             studentId: studentId,
-            status: { in: ['APPROVED', 'JOINED'] },
+            status: { in: ['APPROVED', 'JOINED', 'SELECTED', 'COMPLETED'] },
           },
           include: {
             student: {
