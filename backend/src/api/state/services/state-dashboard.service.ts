@@ -212,7 +212,7 @@ export class StateDashboardService {
             where: {
               isSelfIdentified: true,
               isActive: true,
-              status: ApplicationStatus.APPROVED,
+              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
               student: {
                 user: { active: true },
                 Institution: { isActive: true },
@@ -234,7 +234,7 @@ export class StateDashboardService {
             where: {
               isSelfIdentified: true,
               isActive: true,
-              status: ApplicationStatus.APPROVED,
+              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
               student: {
                 user: { active: true },
                 Institution: { isActive: true },
@@ -267,7 +267,7 @@ export class StateDashboardService {
                   some: {
                     isSelfIdentified: true,
                     isActive: true,
-                    status: ApplicationStatus.APPROVED,
+                    status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                   },
                 },
               },
@@ -426,7 +426,7 @@ export class StateDashboardService {
             where: {
               isSelfIdentified: true,
               isActive: true,
-              status: ApplicationStatus.APPROVED,
+              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
               startDate: { not: null, lte: endOfTargetMonth },
               student: {
                 user: { active: true },
@@ -660,7 +660,7 @@ export class StateDashboardService {
                 where: {
                   isSelfIdentified: true,
                   isActive: true,
-                  status: ApplicationStatus.APPROVED,
+                  status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                 },
                 orderBy: { createdAt: "desc" },
                 take: 1,
@@ -682,7 +682,7 @@ export class StateDashboardService {
                 some: {
                   isSelfIdentified: true,
                   isActive: true,
-                  status: ApplicationStatus.APPROVED,
+                  status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                   startDate: { lte: fiveDaysAgo },
                 },
               },
@@ -866,7 +866,7 @@ export class StateDashboardService {
                 some: {
                   isSelfIdentified: true,
                   isActive: true,
-                  status: ApplicationStatus.APPROVED,
+                  status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                   createdAt: { lte: fifteenDaysAgo },
                 },
               },
@@ -998,7 +998,7 @@ export class StateDashboardService {
             where: {
               isSelfIdentified: true,
               isActive: true,
-              status: ApplicationStatus.APPROVED,
+              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
               student: {
                 user: { active: true },
                 Institution: { isActive: true },
@@ -1024,7 +1024,7 @@ export class StateDashboardService {
             where: {
               isSelfIdentified: true,
               isActive: true,
-              status: ApplicationStatus.APPROVED,
+              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
               joiningLetterUrl: { not: null },
               student: {
                 user: { active: true },
@@ -1390,7 +1390,7 @@ export class StateDashboardService {
                 where: {
                   isSelfIdentified: true,
                   isActive: true,
-                  status: ApplicationStatus.APPROVED,
+                  status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                   student: {
                     user: { active: true },
                     Institution: { isActive: true },
@@ -1458,7 +1458,7 @@ export class StateDashboardService {
                 where: {
                   isSelfIdentified: true,
                   isActive: true,
-                  status: ApplicationStatus.APPROVED,
+                  status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                   startDate: { not: null, lte: endOfMonth },
                   student: {
                     user: { active: true },
@@ -1685,7 +1685,7 @@ export class StateDashboardService {
                 where: {
                   isSelfIdentified: true,
                   isActive: true,
-                  status: ApplicationStatus.APPROVED,
+                  status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                   startDate: { not: null, lte: endOfMonth },
                   student: {
                     user: { active: true },

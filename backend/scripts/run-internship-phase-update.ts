@@ -234,12 +234,69 @@ async function main() {
   }
 
   console.log('');
+
+  // ============================================================
+  // Step 4: Fix inconsistent states - COMPLETED phase but wrong status
+  // ============================================================
+  console.log('Step 4: Fixing inconsistent states (COMPLETED phase but status not COMPLETED)...');
+  console.log('-'.repeat(70));
+
+  const inconsistentCompleted = await prisma.internshipApplication.findMany({
+    where: {
+      isActive: true,
+      internshipPhase: InternshipPhase.COMPLETED,
+      status: {
+        notIn: [ApplicationStatus.COMPLETED, ApplicationStatus.WITHDRAWN],
+      },
+    },
+    select: {
+      id: true,
+      companyName: true,
+      status: true,
+      internshipPhase: true,
+      endDate: true,
+      student: {
+        select: {
+          user: { select: { name: true, rollNumber: true } },
+        },
+      },
+    },
+  });
+
+  console.log(`Found ${inconsistentCompleted.length} internships with inconsistent state`);
+  console.log('  - status: * -> COMPLETED (phase already COMPLETED)');
+
+  if (inconsistentCompleted.length > 0) {
+    console.log('\nSample of inconsistent internships:');
+    inconsistentCompleted.slice(0, 10).forEach((i, idx) => {
+      console.log(
+        `  ${idx + 1}. ${i.student?.user?.name || 'Unknown'} (${i.student?.user?.rollNumber || 'N/A'}) - ${i.companyName || 'Unknown Company'}`
+      );
+      console.log(`      Status: ${i.status} -> COMPLETED | Phase: ${i.internshipPhase} (unchanged) | End: ${i.endDate?.toLocaleDateString() || 'N/A'}`);
+    });
+    if (inconsistentCompleted.length > 10) {
+      console.log(`  ... and ${inconsistentCompleted.length - 10} more`);
+    }
+
+    const fixCompletedResult = await prisma.internshipApplication.updateMany({
+      where: { id: { in: inconsistentCompleted.map((i) => i.id) } },
+      data: {
+        status: ApplicationStatus.COMPLETED,
+        updatedAt: now,
+      },
+    });
+
+    console.log(`\n✓ Fixed ${fixCompletedResult.count} internships (status: COMPLETED)`);
+  }
+
+  console.log('');
   console.log('='.repeat(70));
   console.log('Summary:');
   console.log(`  - Activated (NOT_STARTED -> ACTIVE, status -> JOINED): ${internshipsToActivate.length}`);
   console.log(`  - Completed (ACTIVE -> COMPLETED, status -> COMPLETED): ${internshipsToComplete.length}`);
-  console.log(`  - Fixed inconsistent states (status -> JOINED): ${inconsistentActive.length}`);
-  console.log(`  - Total updated: ${internshipsToActivate.length + internshipsToComplete.length + inconsistentActive.length}`);
+  console.log(`  - Fixed ACTIVE phase (status -> JOINED): ${inconsistentActive.length}`);
+  console.log(`  - Fixed COMPLETED phase (status -> COMPLETED): ${inconsistentCompleted.length}`);
+  console.log(`  - Total updated: ${internshipsToActivate.length + internshipsToComplete.length + inconsistentActive.length + inconsistentCompleted.length}`);
   console.log(`Finished at: ${new Date().toISOString()}`);
   console.log('='.repeat(70));
 }

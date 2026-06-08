@@ -1786,7 +1786,8 @@ export class ReportGeneratorService {
         (app) =>
           app.status === "APPROVED" ||
           app.status === "SELECTED" ||
-          app.status === "JOINED",
+          app.status === "JOINED" ||
+          app.status === "COMPLETED",
       );
 
       const allReports = activeApplications.flatMap(

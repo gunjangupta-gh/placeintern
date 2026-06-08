@@ -90,7 +90,7 @@ export class StateStudentService {
         some: {
           isSelfIdentified: true,
           isActive: true,
-          status: ApplicationStatus.APPROVED,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         },
       };
     } else if (internshipStatus === 'without_internship') {
@@ -98,7 +98,7 @@ export class StateStudentService {
         none: {
           isSelfIdentified: true,
           isActive: true,
-          status: ApplicationStatus.APPROVED,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         },
       };
     }
@@ -201,7 +201,7 @@ export class StateStudentService {
             where: {
               isSelfIdentified: true,
               isActive: true,
-              status: ApplicationStatus.APPROVED,
+              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
             },
             orderBy: { createdAt: 'desc' },
             take: 1,
@@ -421,7 +421,7 @@ export class StateStudentService {
         some: {
           isSelfIdentified: true,
           isActive: true,
-          status: ApplicationStatus.APPROVED,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         },
       };
     } else if (internshipStatus === 'without_internship') {
@@ -429,7 +429,7 @@ export class StateStudentService {
         none: {
           isSelfIdentified: true,
           isActive: true,
-          status: ApplicationStatus.APPROVED,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         },
       };
     }
@@ -488,7 +488,7 @@ export class StateStudentService {
           where: {
             isSelfIdentified: true,
             isActive: true,
-            status: ApplicationStatus.APPROVED,
+            status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           },
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -567,7 +567,7 @@ export class StateStudentService {
             some: {
               isSelfIdentified: true,
               isActive: true,
-              status: ApplicationStatus.APPROVED,
+              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
             },
           },
         },
@@ -595,7 +595,7 @@ export class StateStudentService {
         where: {
           isSelfIdentified: true,
           isActive: true,
-          status: ApplicationStatus.APPROVED,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           joiningLetterUrl: { not: null },
           student: { user: { active: true } },
         },

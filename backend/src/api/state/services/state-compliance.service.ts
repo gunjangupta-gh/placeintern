@@ -207,7 +207,7 @@ export class StateComplianceService {
       where: {
         isSelfIdentified: true,
         isActive: true,
-        status: ApplicationStatus.APPROVED,
+        status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         startDate: { not: null, lte: endOfMonth },
         student: {
           user: { active: true },
@@ -331,7 +331,7 @@ export class StateComplianceService {
           where: {
             isSelfIdentified: true,
             isActive: true,
-            status: ApplicationStatus.APPROVED,
+            status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
             startDate: { not: null, lte: endOfMonth },
             student: {
               user: { active: true },
@@ -552,7 +552,7 @@ export class StateComplianceService {
           where: {
             isSelfIdentified: true,
             isActive: true,
-            status: ApplicationStatus.APPROVED,
+            status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
             startDate: { not: null },
             student: { user: { active: true }, Institution: { isActive: true } },
           },
@@ -782,7 +782,7 @@ export class StateComplianceService {
             },
             isSelfIdentified: true,
             isActive: true,
-            status: ApplicationStatus.APPROVED,
+            status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
             joiningLetterUrl: { not: null },
           },
           select: {

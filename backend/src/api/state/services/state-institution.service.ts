@@ -236,7 +236,7 @@ export class StateInstitutionService {
           student: { institutionId: { in: institutionIds }, user: { active: true } },
           isSelfIdentified: true,
           isActive: true,
-          status: ApplicationStatus.APPROVED,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         },
         _count: true,
       }).then(async (results) => {
@@ -262,7 +262,7 @@ export class StateInstitutionService {
           student: { institutionId: { in: institutionIds }, user: { active: true } },
           isSelfIdentified: true,
           isActive: true,
-          status: ApplicationStatus.APPROVED,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         },
         select: {
           student: { select: { institutionId: true } },
@@ -282,7 +282,7 @@ export class StateInstitutionService {
           student: { institutionId: { in: institutionIds }, user: { active: true } },
           isSelfIdentified: true,
           isActive: true,
-          status: ApplicationStatus.APPROVED,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           joiningLetterUrl: { not: null },
         },
         select: {
@@ -387,7 +387,7 @@ export class StateInstitutionService {
           student: { institutionId: { in: institutionIds }, user: { active: true } },
           isSelfIdentified: true,
           isActive: true,
-          status: ApplicationStatus.APPROVED,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           startDate: { not: null, lte: effectiveDate },
           OR: [
             { endDate: { gte: startOfMonth } },
@@ -1048,7 +1048,7 @@ export class StateInstitutionService {
           student: { institutionId: id, user: { active: true } },
           isSelfIdentified: true,
           isActive: true,
-          status: ApplicationStatus.APPROVED,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         },
       }),
 
@@ -1079,7 +1079,7 @@ export class StateInstitutionService {
           student: { institutionId: id, user: { active: true } },
           isSelfIdentified: true,
           isActive: true,
-          status: ApplicationStatus.APPROVED,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           OR: [
             // No startDate set - treat as active (legacy data)
             { startDate: null },
@@ -1101,7 +1101,7 @@ export class StateInstitutionService {
           student: { institutionId: id, user: { active: true } },
           isSelfIdentified: true,
           isActive: true,
-          status: ApplicationStatus.APPROVED,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           joiningLetterUrl: { not: null },
         },
       }),
@@ -1112,7 +1112,7 @@ export class StateInstitutionService {
           student: { institutionId: id, user: { active: true } },
           isSelfIdentified: true,
           isActive: true,
-          status: ApplicationStatus.APPROVED,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           joiningLetterUrl: null,
         },
       }),
@@ -1123,7 +1123,7 @@ export class StateInstitutionService {
           student: { institutionId: id, user: { active: true } },
           isSelfIdentified: true,
           isActive: true,
-          status: ApplicationStatus.APPROVED,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           joiningLetterUrl: { not: null },
           joiningDate: { not: null },
         },
@@ -1135,7 +1135,7 @@ export class StateInstitutionService {
           student: { institutionId: id, user: { active: true } },
           isSelfIdentified: true,
           isActive: true,
-          status: ApplicationStatus.APPROVED,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           joiningLetterUrl: { not: null },
           joiningDate: null,
           reviewedAt: { not: null },
@@ -1154,7 +1154,7 @@ export class StateInstitutionService {
               some: {
                 isSelfIdentified: true,
                 isActive: true,
-                status: ApplicationStatus.APPROVED,
+                status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                 OR: [
                   { startDate: null },
                   {
@@ -1183,7 +1183,7 @@ export class StateInstitutionService {
               some: {
                 isSelfIdentified: true,
                 isActive: true,
-                status: ApplicationStatus.APPROVED,
+                status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                 OR: [
                   { startDate: null },
                   {
@@ -1212,7 +1212,7 @@ export class StateInstitutionService {
               some: {
                 isSelfIdentified: true,
                 isActive: true,
-                status: ApplicationStatus.APPROVED,
+                status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                 OR: [
                   { startDate: null },
                   {
@@ -1241,7 +1241,7 @@ export class StateInstitutionService {
               some: {
                 isSelfIdentified: true,
                 isActive: true,
-                status: ApplicationStatus.APPROVED,
+                status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                 OR: [
                   { startDate: null },
                   {
@@ -1272,7 +1272,7 @@ export class StateInstitutionService {
           },
           internshipApplications: {
             some: {
-              status: ApplicationStatus.APPROVED,
+              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
               isSelfIdentified: true,
               isActive: true,
               OR: [
@@ -1379,7 +1379,7 @@ export class StateInstitutionService {
           student: { institutionId: id, user: { active: true } },
           isSelfIdentified: true,
           isActive: true,
-          status: ApplicationStatus.APPROVED,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           companyName: { not: null },
         },
         select: { companyName: true },
@@ -1754,7 +1754,7 @@ export class StateInstitutionService {
           where: {
             isActive: true,
             OR: [
-              { status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED] } },
+              { status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED, ApplicationStatus.COMPLETED] } },
               { isSelfIdentified: true },
             ],
           },
@@ -1936,7 +1936,7 @@ export class StateInstitutionService {
     const selfIdWhere: Prisma.InternshipApplicationWhereInput = {
       isSelfIdentified: true,
       isActive: true,
-      status: ApplicationStatus.APPROVED,
+      status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
       student: { institutionId: id, user: { active: true } },
     };
     if (search) {

@@ -48,7 +48,7 @@ export class StateIndustryService {
     const applications = await this.prisma.internshipApplication.findMany({
       where: {
         isSelfIdentified: true,
-        status: ApplicationStatus.APPROVED,
+        status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         companyName: { not: '' },
         student: { user: { active: true } },
         ...dateFilter,

@@ -60,7 +60,7 @@ export class StateReportsService {
     const [totalStudents, totalApplications, approvedApplications, completedApplications, facultyVisits, monthlyReports] = await Promise.all([
       this.prisma.student.count({ where: { institutionId, user: { active: true } } }),
       this.prisma.internshipApplication.count({ where: dateFilter }),
-      this.prisma.internshipApplication.count({ where: { ...dateFilter, status: ApplicationStatus.APPROVED } }),
+      this.prisma.internshipApplication.count({ where: { ...dateFilter, status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] } } }),
       this.prisma.internshipApplication.count({ where: { ...dateFilter, status: ApplicationStatus.COMPLETED } }),
       this.prisma.facultyVisitLog.count({
         where: { isDeleted: false, status: 'COMPLETED', application: { student: { institutionId, user: { active: true } } } },
@@ -377,7 +377,7 @@ export class StateReportsService {
               student: { institutionId: { in: institutionIds }, user: { active: true } },
               isSelfIdentified: true,
               isActive: true,
-              status: ApplicationStatus.APPROVED,
+              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
               startDate: { not: null, lte: effectiveDate },
               OR: [
                 { endDate: { gte: startOfMonth } },
@@ -583,7 +583,7 @@ export class StateReportsService {
           }),
           this.prisma.internshipApplication.count({ where: applicationBaseWhere }),
           this.prisma.internshipApplication.count({
-            where: { ...applicationBaseWhere, status: ApplicationStatus.APPROVED },
+            where: { ...applicationBaseWhere, status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] } },
           }),
           this.prisma.facultyVisitLog.count({
             where: {
@@ -618,7 +618,7 @@ export class StateReportsService {
           const [applications, approved] = await Promise.all([
             this.prisma.internshipApplication.count({ where: trendWhere }),
             this.prisma.internshipApplication.count({
-              where: { ...trendWhere, status: ApplicationStatus.APPROVED },
+              where: { ...trendWhere, status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] } },
             }),
           ]);
 
