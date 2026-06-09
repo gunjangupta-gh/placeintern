@@ -4752,7 +4752,7 @@ export class ReportGeneratorService {
     const internshipAppWhere: Record<string, unknown> = {
       isActive: true,
       isSelfIdentified: true,
-      status: "APPROVED",
+      status: { in: ["APPROVED", "JOINED", "SELECTED", "COMPLETED"] },
       startDate: { not: null },
     };
     if (filters?.internshipStartDate) {
@@ -4989,7 +4989,7 @@ export class ReportGeneratorService {
     const internshipWhere: Record<string, unknown> = {
       isActive: true,
       isSelfIdentified: true,
-      status: "APPROVED",
+      status: { in: ["APPROVED", "JOINED", "SELECTED", "COMPLETED"] },
       startDate: { not: null },
     };
     if (selectedMonthStartDate && selectedMonthEndDate) {
