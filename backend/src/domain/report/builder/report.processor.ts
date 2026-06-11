@@ -349,6 +349,10 @@ export class ReportProcessor extends WorkerHost {
       'training_post_test_responses': 'Training Post-Test Responses Report',
       'training_wise_summary': 'Training-wise Summary Report',
       'training_non_compliance': 'Training Non-Compliance Report',
+      'training_test_comparison': 'Pre & Post Test Comparison Report',
+      'training_wise_compliance': 'Training-wise Compliance Report',
+      'training_feedback_analysis': 'Training Feedback Analysis Report',
+      'overall_training_analysis': 'Overall Training Analysis Report',
     };
 
     // Column mapping - matches actual data fields from generator
@@ -837,6 +841,25 @@ export class ReportProcessor extends WorkerHost {
         { field: 'expectationNotMet', header: 'Expectations Not Met', type: 'number' as const, width: 16 },
         { field: 'npsScore', header: 'NPS Score', type: 'number' as const, width: 12 },
         { field: 'overallAvgRating', header: 'Overall Rating (1-5)', type: 'number' as const, width: 16 },
+      ],
+      'overall_training_analysis': [
+        { field: 'trainingName', header: 'Training Name', type: 'string' as const, width: 35 },
+        { field: 'durationInDays', header: 'Duration of Training (in days)', type: 'number' as const, width: 20 },
+        { field: 'startingDate', header: 'Starting Date', type: 'date' as const, width: 14 },
+        { field: 'courseName', header: 'Course Name', type: 'string' as const, width: 25 },
+        { field: 'nominatedParticipantsNo', header: 'Nominated Participants No.', type: 'number' as const, width: 20 },
+        { field: 'attendanceMarked', header: 'Attendance Marked', type: 'number' as const, width: 16 },
+        { field: 'totalPreTestFilledPercent', header: 'Total Pre test filled %', type: 'number' as const, width: 18 },
+        { field: 'totalPostTestFilledPercent', header: 'Total Post test filled %', type: 'number' as const, width: 18 },
+        { field: 'feedbackFilledPercent', header: 'Feedback Filled %', type: 'number' as const, width: 16 },
+        { field: 'improvementInPrePostScore', header: 'Improvement in Pre post score', type: 'number' as const, width: 22 },
+        { field: 'feedbackQ1AvgRating', header: 'Q1: Relevance (Avg Rating)', type: 'number' as const, width: 22 },
+        { field: 'feedbackQ2AvgRating', header: 'Q2: Materials Quality (Avg Rating)', type: 'number' as const, width: 28 },
+        { field: 'feedbackQ3AvgRating', header: 'Q3: Trainer Expertise (Avg Rating)', type: 'number' as const, width: 28 },
+        { field: 'feedbackQ5AvgRating', header: 'Q5: Theory/Practical Balance (Avg Rating)', type: 'number' as const, width: 32 },
+        { field: 'feedbackQ8AvgRating', header: 'Q8: Hands-on Exercises (Avg Rating)', type: 'number' as const, width: 30 },
+        { field: 'expectationMetPercent', header: 'Expectation Met (>70%)', type: 'string' as const, width: 20 },
+        { field: 'questionWithMost5Ratings', header: 'Question with Most 5 Ratings', type: 'string' as const, width: 45 },
       ],
 
       // Compliance reports - matches generateStudentComplianceReport output

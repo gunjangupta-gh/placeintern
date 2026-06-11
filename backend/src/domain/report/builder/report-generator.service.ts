@@ -2851,7 +2851,7 @@ export class ReportGeneratorService {
       case "principal-visit-summary":
         return this.generatePrincipalVisitSummaryReport(filters, pagination);
 
-      // ==================== Training Reports (5) ====================
+      // ==================== Training Reports (9) ====================
       case "training-feedback-responses":
         return this.generateTrainingFeedbackResponsesReport(filters, pagination);
       case "training-pre-test-responses":
@@ -2868,6 +2868,8 @@ export class ReportGeneratorService {
         return this.generateTrainingWiseComplianceReport(filters, pagination);
       case "training-feedback-analysis":
         return this.generateTrainingFeedbackAnalysisReport(filters, pagination);
+      case "overall-training-analysis":
+        return this.generateOverallTrainingAnalysisReport(filters, pagination);
 
       // ==================== Legacy Support ====================
       // Support for legacy enum values
@@ -4203,6 +4205,283 @@ export class ReportGeneratorService {
 
     const paginatedResults = results.slice(skip, skip + take);
     return paginatedResults;
+  }
+
+  /**
+   * Generate Overall Training Analysis Report
+   * Comprehensive training analysis with participant metrics, test scores, feedback analysis, and expectation fulfillment
+   */
+  async generateOverallTrainingAnalysisReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const { take, skip } = this.getPaginationParams(pagination);
+    const trainingWhere = this.buildTrainingDateWhere(filters);
+
+    // Build training filter
+    const where: Record<string, unknown> = {
+      isActive: true,
+      ...trainingWhere,
+    };
+
+    if (filters?.trainingId) {
+      where.id = filters.trainingId;
+    }
+
+    if (filters?.deliveryMode) {
+      where.deliveryMode = filters.deliveryMode;
+    }
+
+    // Fetch trainings with all related data
+    const trainings = await this.prisma.training.findMany({
+      where,
+      include: {
+        targetBranches: { select: { name: true } },
+        applications: {
+          where: {
+            status: 'APPROVED',
+            isActive: true,
+            ...(filters?.institutionId && { user: { institutionId: filters.institutionId } }),
+            ...(filters?.branchId && { user: { branchId: filters.branchId } }),
+          },
+          select: {
+            userId: true,
+            user: {
+              select: {
+                id: true,
+                institutionId: true,
+                branchId: true,
+              },
+            },
+          },
+        },
+        attendances: {
+          where: {
+            ...(filters?.institutionId && { user: { institutionId: filters.institutionId } }),
+            ...(filters?.branchId && { user: { branchId: filters.branchId } }),
+          },
+          select: {
+            userId: true,
+          },
+          distinct: ['userId'],
+        },
+        preTestResponses: {
+          where: {
+            ...(filters?.institutionId && { user: { institutionId: filters.institutionId } }),
+            ...(filters?.branchId && { user: { branchId: filters.branchId } }),
+          },
+          select: {
+            userId: true,
+            score: true,
+          },
+        },
+        postTestResponses: {
+          where: {
+            ...(filters?.institutionId && { user: { institutionId: filters.institutionId } }),
+            ...(filters?.branchId && { user: { branchId: filters.branchId } }),
+          },
+          select: {
+            userId: true,
+            score: true,
+          },
+        },
+        feedbackResponses: {
+          where: {
+            ...(filters?.institutionId && { user: { institutionId: filters.institutionId } }),
+            ...(filters?.branchId && { user: { branchId: filters.branchId } }),
+          },
+          select: {
+            userId: true,
+            responses: true,
+          },
+        },
+        feedbackForm: {
+          select: {
+            id: true,
+            questions: true,
+          },
+        },
+      },
+      orderBy: { startDate: 'desc' },
+      take,
+      skip,
+    });
+
+    this.warnOnLargeResultSet(trainings.length, "OverallTrainingAnalysisReport");
+
+    // Helper to calculate average
+    const calcAvg = (arr: number[]) => arr.length > 0
+      ? Number((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2))
+      : 0;
+
+    // Helper to find question by text pattern
+    const findQuestionByPattern = (questions: any[], patterns: string[]) => {
+      for (const q of questions) {
+        const questionText = (q.question || '').toLowerCase();
+        if (patterns.some(pattern => questionText.includes(pattern.toLowerCase()))) {
+          return q.id;
+        }
+      }
+      return null;
+    };
+
+    return trainings.map((training) => {
+      const totalParticipants = training.applications.length;
+      const attendanceCount = training.attendances.length;
+      const preTestFilledCount = training.preTestResponses.length;
+      const postTestFilledCount = training.postTestResponses.length;
+      const feedbackFilledCount = training.feedbackResponses.length;
+
+      // Calculate percentages
+      const calcPercentage = (count: number): number => {
+        if (totalParticipants === 0) return 0;
+        return Math.round((count / totalParticipants) * 100 * 100) / 100;
+      };
+
+      // Calculate duration in days
+      const durationInDays = training.startDate && training.endDate
+        ? Math.ceil((training.endDate.getTime() - training.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+        : 0;
+
+      // Calculate average improvement in pre/post scores
+      const userScoreMap = new Map<string, { pre?: number; post?: number }>();
+
+      training.preTestResponses.forEach(preTest => {
+        if (!userScoreMap.has(preTest.userId)) {
+          userScoreMap.set(preTest.userId, {});
+        }
+        userScoreMap.get(preTest.userId)!.pre = preTest.score ?? 0;
+      });
+
+      training.postTestResponses.forEach(postTest => {
+        if (!userScoreMap.has(postTest.userId)) {
+          userScoreMap.set(postTest.userId, {});
+        }
+        userScoreMap.get(postTest.userId)!.post = postTest.score ?? 0;
+      });
+
+      const improvements: number[] = [];
+      userScoreMap.forEach((scores) => {
+        if (scores.pre !== undefined && scores.post !== undefined) {
+          improvements.push(scores.post - scores.pre);
+        }
+      });
+
+      const avgImprovement = calcAvg(improvements);
+
+      // Analyze feedback responses
+      const questions: any[] = (training.feedbackForm?.questions as any[]) || [];
+
+      // Map question IDs for specific questions
+      const q1Id = findQuestionByPattern(questions, ['relevance', 'teaching needs']);
+      const q2Id = findQuestionByPattern(questions, ['quality', 'materials']);
+      const q3Id = findQuestionByPattern(questions, ['knowledge', 'expertise', 'trainer']);
+      const q5Id = findQuestionByPattern(questions, ['balance', 'theory', 'practical']);
+      const q8Id = findQuestionByPattern(questions, ['hands-on', 'practical exercises', 'usefulness']);
+
+      // Collect ratings for each question
+      const q1Ratings: number[] = [];
+      const q2Ratings: number[] = [];
+      const q3Ratings: number[] = [];
+      const q5Ratings: number[] = [];
+      const q8Ratings: number[] = [];
+
+      // Count expectations met
+      let expectationsYesCount = 0;
+      let expectationsTotalCount = 0;
+
+      // Track 5-star ratings per question
+      const fiveStarCounts = new Map<string, number>();
+      const questionTextMap = new Map<string, string>();
+
+      // Initialize question text map
+      questions.forEach(q => {
+        if (q.id && q.question) {
+          questionTextMap.set(q.id, q.question);
+          fiveStarCounts.set(q.id, 0);
+        }
+      });
+
+      // Process feedback responses
+      training.feedbackResponses.forEach(feedback => {
+        const responses = feedback.responses as Record<string, any> || {};
+
+        Object.entries(responses).forEach(([questionId, value]) => {
+          const numVal = Number(value);
+
+          // Collect specific question ratings
+          if (!isNaN(numVal) && numVal >= 1 && numVal <= 5) {
+            if (questionId === q1Id) q1Ratings.push(numVal);
+            if (questionId === q2Id) q2Ratings.push(numVal);
+            if (questionId === q3Id) q3Ratings.push(numVal);
+            if (questionId === q5Id) q5Ratings.push(numVal);
+            if (questionId === q8Id) q8Ratings.push(numVal);
+
+            // Count 5-star ratings
+            if (numVal === 5) {
+              const currentCount = fiveStarCounts.get(questionId) || 0;
+              fiveStarCounts.set(questionId, currentCount + 1);
+            }
+          }
+
+          // Check for expectation question
+          const strVal = String(value).toLowerCase().trim();
+          const question = questions.find(q => q.id === questionId);
+          const questionText = question?.question?.toLowerCase() || '';
+
+          if (questionText.includes('expectation') || questionText.includes('met')) {
+            expectationsTotalCount++;
+            if (strVal.includes('yes') || strVal.includes('fully') || strVal === 'excellent') {
+              expectationsYesCount++;
+            }
+          }
+        });
+      });
+
+      // Find question with most 5 ratings
+      let questionWithMost5Ratings = 'N/A';
+      let maxFiveStars = 0;
+
+      fiveStarCounts.forEach((count, questionId) => {
+        if (count > maxFiveStars) {
+          maxFiveStars = count;
+          questionWithMost5Ratings = questionTextMap.get(questionId) || 'N/A';
+        }
+      });
+
+      // Calculate expectation met percentage and status
+      const expectationPercentage = expectationsTotalCount > 0
+        ? Math.round((expectationsYesCount / expectationsTotalCount) * 100)
+        : 0;
+
+      const expectationMetStatus = expectationPercentage >= 70
+        ? `Yes (${expectationPercentage}%)`
+        : `No (${expectationPercentage}%)`;
+
+      return {
+        trainingName: training.title,
+        durationInDays,
+        startingDate: training.startDate
+          ? this.formatToISTDateOnly(training.startDate)
+          : 'N/A',
+        courseName: training.targetBranches.map(b => b.name).join(', ') || 'All',
+        nominatedParticipantsNo: totalParticipants,
+        attendanceMarked: attendanceCount,
+        totalPreTestFilledPercent: calcPercentage(preTestFilledCount),
+        totalPostTestFilledPercent: calcPercentage(postTestFilledCount),
+        feedbackFilledPercent: calcPercentage(feedbackFilledCount),
+        improvementInPrePostScore: avgImprovement,
+        feedbackQ1AvgRating: calcAvg(q1Ratings),
+        feedbackQ2AvgRating: calcAvg(q2Ratings),
+        feedbackQ3AvgRating: calcAvg(q3Ratings),
+        feedbackQ5AvgRating: calcAvg(q5Ratings),
+        feedbackQ8AvgRating: calcAvg(q8Ratings),
+        expectationMetPercent: expectationMetStatus,
+        questionWithMost5Ratings: maxFiveStars > 0
+          ? `${questionWithMost5Ratings} (${maxFiveStars} ratings)`
+          : 'N/A',
+      };
+    });
   }
 
   // ==================== Mentor Report Generators ====================
