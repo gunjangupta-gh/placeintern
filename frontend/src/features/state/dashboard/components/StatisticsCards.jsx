@@ -10,6 +10,7 @@ import {
   PlusOutlined,
   SettingOutlined,
   BookOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
 import stateService from '../../../../services/state.service';
 
@@ -327,6 +328,10 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
   const facultyMetrics = dashboard.facultyMetrics || {};
   const completionMetrics = dashboard.completionMetrics || {};
   const hoursDistribution = dashboard.hoursDistribution || {};
+  const feedback = dashboard.feedback || {};
+  const preTestResponses = dashboard.preTestResponses || {};
+  const postTestResponses = dashboard.postTestResponses || {};
+  const attendance = dashboard.attendance || {};
 
   const trainingCards = [
     {
@@ -355,6 +360,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
     {
       title: 'Lesson Plan',
       icon: BookOutlined,
+  CheckCircleOutlined,
       variant: 'purple',
       lines: [
         {
@@ -371,6 +377,17 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
         { label: 'Completed ≥ 40 Hours', value: completionMetrics.facultyCompleted40Hours || 0 },
         { label: 'Completed < 40 Hours', value: completionMetrics.facultyCompletedUnder40Hours || 0 },
         { label: 'Avg. Hours per Faculty', value: hoursDistribution.averageHoursPerFaculty || 0 },
+      ],
+    },
+    {
+      title: 'Engagement',
+      icon: CheckCircleOutlined,
+      variant: 'warning',
+      lines: [
+        { label: 'Pre-Test Filled', value: preTestResponses.total || 0 },
+        { label: 'Post-Test Filled', value: postTestResponses.total || 0 },
+        { label: 'Feedback Submitted', value: feedback.total || 0 },
+        { label: 'Attendance Records', value: attendance.total || 0 },
       ],
     },
   ];
@@ -452,7 +469,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
         </Text>
         <Row gutter={[16, 16]}>
           {trainingLoading
-            ? Array.from({ length: 4 }).map((_, idx) => (
+            ? Array.from({ length: 5 }).map((_, idx) => (
                 <Col key={`training-loading-${idx}`} xs={24} sm={12} lg={6}>
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 h-full">
                     <Spin size="small" />

@@ -962,7 +962,7 @@ export class TrainingService {
     try {
       const now = new Date();
 
-      const [trainings, applications, attendanceAgg, teachers, feedbackResponses, totalLessonPlans, approvedLessonPlans, totalCertificates, activeBranches] =
+      const [trainings, applications, attendanceAgg, teachers, feedbackResponses, totalLessonPlans, approvedLessonPlans, totalCertificates, activeBranches, totalPreTestResponses, totalPostTestResponses] =
         await Promise.all([
           this.prisma.training.findMany({
             select: {
@@ -1015,6 +1015,8 @@ export class TrainingService {
               code: true,
             },
           }),
+          this.prisma.preTestResponse.count({ where: { trainingId: { not: null } } }),
+          this.prisma.postTestResponse.count({ where: { trainingId: { not: null } } }),
         ]);
 
       const trainingById = new Map(trainings.map((training) => [training.id, training]));
@@ -1270,6 +1272,12 @@ export class TrainingService {
         },
         feedback: {
           total: totalFeedback,
+        },
+        preTestResponses: {
+          total: totalPreTestResponses,
+        },
+        postTestResponses: {
+          total: totalPostTestResponses,
         },
         lessonPlans: {
           total: totalLessonPlans,

@@ -846,6 +846,7 @@ export class ReportProcessor extends WorkerHost {
         { field: 'trainingName', header: 'Training Name', type: 'string' as const, width: 35 },
         { field: 'durationInDays', header: 'Duration of Training (in days)', type: 'number' as const, width: 20 },
         { field: 'startingDate', header: 'Starting Date', type: 'date' as const, width: 14 },
+        { field: 'trainingStatus', header: 'Training Status', type: 'string' as const, width: 14 },
         { field: 'courseName', header: 'Course Name', type: 'string' as const, width: 25 },
         { field: 'nominatedParticipantsNo', header: 'Nominated Participants No.', type: 'number' as const, width: 20 },
         { field: 'attendanceMarked', header: 'Attendance Marked', type: 'number' as const, width: 16 },

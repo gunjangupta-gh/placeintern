@@ -304,6 +304,7 @@ export const trainingReportDefinitions: Record<string, ReportDefinition> = {
 			{ id: 'trainingName', label: 'Training Name', type: 'string', default: true, sortable: true },
 			{ id: 'durationInDays', label: 'Duration of Training (in days)', type: 'number', default: true, sortable: true },
 			{ id: 'startingDate', label: 'Starting Date', type: 'date', default: true, sortable: true },
+			{ id: 'trainingStatus', label: 'Training Status', type: 'string', default: true, sortable: true },
 			{ id: 'courseName', label: 'Course Name', type: 'string', default: true, sortable: false },
 			{ id: 'nominatedParticipantsNo', label: 'Nominated Participants No.', type: 'number', default: true, sortable: true },
 			{ id: 'attendanceMarked', label: 'Attendance Marked', type: 'number', default: true, sortable: true },
@@ -331,7 +332,7 @@ export const trainingReportDefinitions: Record<string, ReportDefinition> = {
 			]},
 		],
 		groupBy: ['trainingName', 'courseName'],
-		sortableColumns: ['trainingName', 'startingDate', 'durationInDays', 'nominatedParticipantsNo', 'attendanceMarked', 'improvementInPrePostScore'],
+		sortableColumns: ['trainingName', 'startingDate', 'trainingStatus', 'durationInDays', 'nominatedParticipantsNo', 'attendanceMarked', 'improvementInPrePostScore'],
 		exportFormats: ['excel', 'csv', 'pdf', 'json'],
 	},
 };

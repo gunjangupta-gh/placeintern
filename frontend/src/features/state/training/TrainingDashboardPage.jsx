@@ -15,6 +15,7 @@ import {
   PlusOutlined,
   SettingOutlined,
   BookOutlined,
+  CheckCircleOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import {
@@ -137,6 +138,10 @@ const TrainingDashboardPage = () => {
   const facultyMetrics = dashboard.facultyMetrics || {};
   const completionMetrics = dashboard.completionMetrics || {};
   const hoursDistribution = dashboard.hoursDistribution || {};
+  const feedback = dashboard.feedback || {};
+  const preTestResponses = dashboard.preTestResponses || {};
+  const postTestResponses = dashboard.postTestResponses || {};
+  const attendance = dashboard.attendance || {};
   const courseWiseFaculty = dashboard.courseWiseFaculty || [];
   const normalizedCourseWiseFaculty = useMemo(
     () =>
@@ -192,6 +197,7 @@ const TrainingDashboardPage = () => {
       {
         title: "Lesson Plan",
         icon: BookOutlined,
+  CheckCircleOutlined,
         lines: [
           // { label: "Faculty Completed Training", value: summary.peopleCompletedTraining || 0 },
           { label: "Lesson Plans Created", value: summary.lessonPlanCreated || lessonPlans.created || lessonPlans.total || 0 },
@@ -210,6 +216,18 @@ const TrainingDashboardPage = () => {
         variant: "primary",
         onClick: () => navigate("/app/training/manage"),
       },
+      {
+        title: "Engagement",
+        icon: CheckCircleOutlined,
+        lines: [
+          { label: "Pre-Test Filled", value: preTestResponses.total || 0 },
+          { label: "Post-Test Filled", value: postTestResponses.total || 0 },
+          { label: "Feedback Submitted", value: feedback.total || 0 },
+          { label: "Attendance Records", value: attendance.total || 0 },
+        ],
+        variant: "warning",
+        onClick: () => navigate("/app/training/manage"),
+      },
     ],
     [
       trainings,
@@ -220,6 +238,10 @@ const TrainingDashboardPage = () => {
       trainingMetrics,
       facultyMetrics,
       hoursDistribution,
+      feedback,
+      preTestResponses,
+      postTestResponses,
+      attendance,
       navigate,
     ],
   );
@@ -285,7 +307,7 @@ const TrainingDashboardPage = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-3">
         {stats.map((stat) => (
           <div key={stat.title}>
             <StatCard {...stat} />

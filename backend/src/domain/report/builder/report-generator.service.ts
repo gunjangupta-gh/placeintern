@@ -4458,12 +4458,26 @@ export class ReportGeneratorService {
         ? `Yes (${expectationPercentage}%)`
         : `No (${expectationPercentage}%)`;
 
+      // Determine training status based on dates
+      const now = new Date();
+      let trainingStatus = 'Upcoming';
+      if (training.startDate && training.endDate) {
+        if (now > training.endDate) {
+          trainingStatus = 'Completed';
+        } else if (now >= training.startDate && now <= training.endDate) {
+          trainingStatus = 'In Progress';
+        }
+      } else if (training.startDate && now >= training.startDate) {
+        trainingStatus = 'In Progress';
+      }
+
       return {
         trainingName: training.title,
         durationInDays,
         startingDate: training.startDate
           ? this.formatToISTDateOnly(training.startDate)
           : 'N/A',
+        trainingStatus,
         courseName: training.targetBranches.map(b => b.name).join(', ') || 'All',
         nominatedParticipantsNo: totalParticipants,
         attendanceMarked: attendanceCount,
