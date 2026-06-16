@@ -360,7 +360,6 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
     {
       title: 'Lesson Plan',
       icon: BookOutlined,
-  CheckCircleOutlined,
       variant: 'purple',
       lines: [
         {
@@ -467,21 +466,17 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
         <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">
           Training Statistics
         </Text>
-        <Row gutter={[16, 16]}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {trainingLoading
             ? Array.from({ length: 5 }).map((_, idx) => (
-                <Col key={`training-loading-${idx}`} xs={24} sm={12} lg={6}>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 h-full">
-                    <Spin size="small" />
-                  </div>
-                </Col>
+                <div key={`training-loading-${idx}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3 h-full">
+                  <Spin size="small" />
+                </div>
               ))
             : trainingCards.map((card) => (
-                <Col key={card.title} xs={24} sm={12} lg={6}>
-                  <StatCard {...card} />
-                </Col>
+                <StatCard key={card.title} {...card} />
               ))}
-        </Row>
+        </div>
       </div>
 
       <CollegeBreakdownModal

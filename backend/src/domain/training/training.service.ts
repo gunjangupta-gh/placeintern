@@ -1015,8 +1015,8 @@ export class TrainingService {
               code: true,
             },
           }),
-          this.prisma.preTestResponse.count({ where: { trainingId: { not: null } } }),
-          this.prisma.postTestResponse.count({ where: { trainingId: { not: null } } }),
+          this.prisma.preTestResponse.count({ where: { NOT: { trainingId: null } } }),
+          this.prisma.postTestResponse.count({ where: { NOT: { trainingId: null } } }),
         ]);
 
       const trainingById = new Map(trainings.map((training) => [training.id, training]));
