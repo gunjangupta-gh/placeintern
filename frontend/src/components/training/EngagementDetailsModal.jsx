@@ -25,25 +25,27 @@ const EngagementDetailsModal = ({
 
     if (isTrainingWise) {
       // Training-wise format: each row is a training with engagement metrics
-      return engagementData.map((item, idx) => ({
-        key: item?.trainingId || `training-${idx}`,
-        trainingTitle: item?.trainingTitle || item?.title || `Training ${idx + 1}`,
-        lessonPlanRequired: item?.lessonPlan?.required ?? item?.lessonPlanRequired ?? 0,
-        lessonPlanDone: item?.lessonPlan?.done ?? item?.lessonPlanDone ?? 0,
-        preTestRequired: item?.preTest?.required ?? item?.preTestRequired ?? 0,
-        preTestDone: item?.preTest?.done ?? item?.preTestDone ?? 0,
-        postTestRequired: item?.postTest?.required ?? item?.postTestRequired ?? 0,
-        postTestDone: item?.postTest?.done ?? item?.postTestDone ?? 0,
-        feedbackRequired: item?.feedback?.required ?? item?.feedbackRequired ?? 0,
-        feedbackDone: item?.feedback?.done ?? item?.feedbackDone ?? 0,
-      }));
+      return engagementData.map((item, idx) => {
+        const trainingId = item?.trainingId || `training-${idx}`;
+        return {
+          trainingId,
+          trainingTitle: item?.trainingTitle || item?.title || `Training ${idx + 1}`,
+          lessonPlanRequired: Number(item?.lessonPlan?.required ?? item?.lessonPlanRequired ?? 0),
+          lessonPlanDone: Number(item?.lessonPlan?.done ?? item?.lessonPlanDone ?? 0),
+          preTestRequired: Number(item?.preTest?.required ?? item?.preTestRequired ?? 0),
+          preTestDone: Number(item?.preTest?.done ?? item?.preTestDone ?? 0),
+          postTestRequired: Number(item?.postTest?.required ?? item?.postTestRequired ?? 0),
+          postTestDone: Number(item?.postTest?.done ?? item?.postTestDone ?? 0),
+          feedbackRequired: Number(item?.feedback?.required ?? item?.feedbackRequired ?? 0),
+          feedbackDone: Number(item?.feedback?.done ?? item?.feedbackDone ?? 0),
+        };
+      });
     } else {
       // Item-wise format: each row is an engagement type with required/done counts
       return engagementData.map((item, idx) => ({
-        key: item?.item ? `${item.item}-${idx}` : `item-${idx}`,
-        item: item?.item || `Engagement Item ${idx + 1}`,
-        required: item?.required ?? 0,
-        done: item?.done ?? 0,
+        itemName: item?.item || `Engagement Item ${idx + 1}`,
+        required: Number(item?.required ?? 0),
+        done: Number(item?.done ?? 0),
       }));
     }
   }, [engagementData, isTrainingWise]);
@@ -60,7 +62,7 @@ const EngagementDetailsModal = ({
           title: 'Training',
           dataIndex: 'trainingTitle',
           key: 'trainingTitle',
-          render: (value) => <Text className="text-sm">{value}</Text>,
+          render: (value) => <Text className="text-sm">{String(value || '')}</Text>,
         },
         {
           title: 'Lesson Plan',
@@ -69,7 +71,7 @@ const EngagementDetailsModal = ({
           align: 'center',
           render: (_, record) => (
             <Text className="text-sm font-semibold">
-              {record.lessonPlanDone}/{record.lessonPlanRequired}
+              {Number(record?.lessonPlanDone || 0)}/{Number(record?.lessonPlanRequired || 0)}
             </Text>
           ),
         },
@@ -80,7 +82,7 @@ const EngagementDetailsModal = ({
           align: 'center',
           render: (_, record) => (
             <Text className="text-sm font-semibold">
-              {record.preTestDone}/{record.preTestRequired}
+              {Number(record?.preTestDone || 0)}/{Number(record?.preTestRequired || 0)}
             </Text>
           ),
         },
@@ -91,7 +93,7 @@ const EngagementDetailsModal = ({
           align: 'center',
           render: (_, record) => (
             <Text className="text-sm font-semibold">
-              {record.postTestDone}/{record.postTestRequired}
+              {Number(record?.postTestDone || 0)}/{Number(record?.postTestRequired || 0)}
             </Text>
           ),
         },
@@ -102,7 +104,7 @@ const EngagementDetailsModal = ({
           align: 'center',
           render: (_, record) => (
             <Text className="text-sm font-semibold">
-              {record.feedbackDone}/{record.feedbackRequired}
+              {Number(record?.feedbackDone || 0)}/{Number(record?.feedbackRequired || 0)}
             </Text>
           ),
         },
@@ -111,9 +113,9 @@ const EngagementDetailsModal = ({
       return [
         {
           title: 'Engagement Type',
-          dataIndex: 'item',
-          key: 'item',
-          render: (value) => <Text className="text-sm font-semibold">{value}</Text>,
+          dataIndex: 'itemName',
+          key: 'itemName',
+          render: (value) => <Text className="text-sm font-semibold">{String(value || '')}</Text>,
         },
         {
           title: 'Required',
@@ -121,7 +123,7 @@ const EngagementDetailsModal = ({
           key: 'required',
           align: 'right',
           width: 100,
-          render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
+          render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text>,
         },
         {
           title: 'Completed',
@@ -129,7 +131,7 @@ const EngagementDetailsModal = ({
           key: 'done',
           align: 'right',
           width: 100,
-          render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
+          render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text>,
         },
         {
           title: 'Completion %',
@@ -137,7 +139,7 @@ const EngagementDetailsModal = ({
           align: 'right',
           width: 120,
           render: (_, record) => {
-            const percent = getCompletionPercent(record.required, record.done);
+            const percent = getCompletionPercent(record?.required || 0, record?.done || 0);
             const color =
               percent === 100
                 ? 'text-green-700'
@@ -205,6 +207,7 @@ const EngagementDetailsModal = ({
             <Table
               columns={columns}
               dataSource={tableData}
+              rowKey={(record) => isTrainingWise ? record?.trainingId : record?.itemName}
               pagination={false}
               size="small"
               bordered
