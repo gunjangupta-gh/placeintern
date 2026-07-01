@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { Row, Col, Modal, Table, Spin, Typography } from 'antd';
+import React, { useState, useMemo } from 'react';
+import { Row, Col, Modal, Table, Spin, Typography, Tooltip } from 'antd';
 import {
   UserOutlined,
   FileTextOutlined,
   TeamOutlined,
   EyeOutlined,
+  InfoCircleOutlined,
   UserSwitchOutlined,
   CalendarOutlined,
   PlusOutlined,
@@ -64,7 +65,7 @@ const CollegeBreakdownModal = ({ visible, onClose, title, loading, data, columns
   </Modal>
 );
 
-const StatCard = ({ icon: Icon, title, lines = [], onClick, variant = 'primary' }) => {
+const StatCard = ({ icon: Icon, title, lines = [], onClick, onView, infoTooltip, variant = 'primary' }) => {
   const styles = STAT_VARIANTS[variant] || STAT_VARIANTS.primary;
 
   return (
@@ -88,8 +89,25 @@ const StatCard = ({ icon: Icon, title, lines = [], onClick, variant = 'primary' 
           <Text className="text-[11px] text-slate-600 font-medium leading-tight line-clamp-1">
             {title}
           </Text>
+          {infoTooltip ? (
+            <Tooltip title={infoTooltip}>
+              <InfoCircleOutlined className="text-[11px] text-slate-400" />
+            </Tooltip>
+          ) : null}
         </div>
-        {onClick ? (
+        {onView ? (
+          <button
+            type="button"
+            aria-label={`View ${title}`}
+            className="inline-flex items-center justify-center w-6 h-6 rounded-full text-slate-400 hover:bg-slate-200/70 transition-colors"
+            onClick={(event) => {
+              event.stopPropagation();
+              onView();
+            }}
+          >
+            <EyeOutlined className="text-xs" />
+          </button>
+        ) : onClick ? (
           <button
             type="button"
             aria-label={`View ${title}`}
@@ -118,6 +136,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
   const [modalType, setModalType] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [collegeData, setCollegeData] = useState([]);
+  const [trainingModalType, setTrainingModalType] = useState(null);
 
   const filterMonth = selectedMonth ? selectedMonth.month() + 1 : null;
   const filterYear = selectedMonth ? selectedMonth.year() : null;
@@ -332,6 +351,83 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
   const preTestResponses = dashboard.preTestResponses || {};
   const postTestResponses = dashboard.postTestResponses || {};
   const attendance = dashboard.attendance || {};
+  const facultyTrainingDetails = dashboard?.facultyTrainingDetails || {};
+  const engagementDetails = dashboard?.engagementDetails || {};
+  const approvedApplicationsCount = summary?.nominations || applications?.total || 0;
+
+  const trainingModalRows = useMemo(() => {
+    if (trainingModalType === 'faculty') {
+      return [
+        { metric: 'Total Trainings', count: facultyTrainingDetails.totalTrainings ?? trainings.total ?? 0 },
+        { metric: 'Total Nominations', count: facultyTrainingDetails.totalNominations ?? approvedApplicationsCount },
+        {
+          metric: 'Faculty with Full Attendance Marked',
+          count:
+            facultyTrainingDetails.facultyWithFullAttendanceMarked ??
+            facultyMetrics.facultyWithCompletedTrainings ??
+            0,
+        },
+        { metric: 'Faculty with Not Full Attendance', count: facultyTrainingDetails.facultyWithNotFullAttendance ?? 0 },
+        { metric: 'Completed Faculty', count: facultyTrainingDetails.completedFaculty ?? 0 },
+      ];
+    }
+
+    if (trainingModalType === 'engagement') {
+      return [
+        {
+          item: 'Lesson Plan',
+          required: engagementDetails.lessonPlan?.required ?? approvedApplicationsCount,
+          done: engagementDetails.lessonPlan?.done ?? lessonPlans.approved ?? 0,
+        },
+        {
+          item: 'Pre-Test',
+          required: engagementDetails.preTest?.required ?? preTestResponses.total ?? 0,
+          done: engagementDetails.preTest?.done ?? preTestResponses.total ?? 0,
+        },
+        {
+          item: 'Post-Test',
+          required: engagementDetails.postTest?.required ?? postTestResponses.total ?? 0,
+          done: engagementDetails.postTest?.done ?? postTestResponses.total ?? 0,
+        },
+        {
+          item: 'Feedback',
+          required: engagementDetails.feedback?.required ?? feedback.total ?? 0,
+          done: engagementDetails.feedback?.done ?? feedback.total ?? 0,
+        },
+      ];
+    }
+
+    return [];
+  }, [trainingModalType, facultyTrainingDetails, facultyMetrics.facultyWithCompletedTrainings, trainings.total, approvedApplicationsCount, engagementDetails, lessonPlans.approved, preTestResponses.total, postTestResponses.total, feedback.total]);
+
+  const trainingModalConfig = useMemo(() => {
+    if (trainingModalType === 'faculty') {
+      return {
+        title: 'Faculty Trainings Details',
+        width: 800,
+        columns: [
+          { title: 'Metric', dataIndex: 'metric', key: 'metric', render: (value) => <Text className="text-sm">{value}</Text> },
+          { title: 'Count', dataIndex: 'count', key: 'count', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text> },
+        ],
+      };
+    }
+
+    if (trainingModalType === 'engagement') {
+      return {
+        title: 'Engagement Details',
+        width: 720,
+        columns: [
+          { title: 'Item', dataIndex: 'item', key: 'item', render: (value) => <Text className="text-sm">{value}</Text> },
+          { title: 'Required', dataIndex: 'required', key: 'required', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text> },
+          { title: 'Done', dataIndex: 'done', key: 'done', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold text-emerald-600">{value ?? 0}</Text> },
+        ],
+      };
+    }
+
+    return null;
+  }, [trainingModalType]);
+
+  const closeTrainingModal = () => setTrainingModalType(null);
 
   const trainingCards = [
     {
@@ -350,12 +446,20 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
       variant: 'warning',
       lines: [
         {
-          label: 'Applications',
+          label: 'Total Nominations',
           value: summary.nominations || applications.nominations || applications.total || 0,
         },
-        { label: 'Completed', value: facultyMetrics.facultyWithCompletedTrainings || 0 },
+        {
+          label: 'Completed',
+          value:
+            facultyTrainingDetails.facultyWithFullAttendanceMarked ??
+            facultyMetrics.facultyWithCompletedTrainings ??
+            0,
+        },
         { label: 'Ongoing', value: facultyMetrics.facultyWithOngoingTrainings || 0 },
       ],
+      onView: () => setTrainingModalType('faculty'),
+      infoTooltip: 'Unique faculty counts based on approved nominations. Full attendance means all scheduled training days were marked. Completed faculty reflects faculty who received at least one certificate.',
     },
     {
       title: 'Lesson Plan',
@@ -377,6 +481,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
         { label: 'Completed < 40 Hours', value: completionMetrics.facultyCompletedUnder40Hours || 0 },
         { label: 'Avg. Hours per Faculty', value: hoursDistribution.averageHoursPerFaculty || 0 },
       ],
+      infoTooltip: 'Completed ≥ 40 Hours counts faculty whose total attended hours across approved trainings are at least 40. Completed < 40 Hours is the remaining faculty total after subtracting the 40+ hour group.',
     },
     {
       title: 'Engagement',
@@ -388,6 +493,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
         { label: 'Feedback Submitted', value: feedback.total || 0 },
         { label: 'Attendance Records', value: attendance.total || 0 },
       ],
+      onView: () => setTrainingModalType('engagement'),
     },
   ];
 
@@ -478,6 +584,23 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
               ))}
         </div>
       </div>
+
+      <Modal
+        title={trainingModalConfig?.title || 'Training Details'}
+        open={trainingModalType !== null}
+        onCancel={closeTrainingModal}
+        footer={null}
+        width={trainingModalConfig?.width || 720}
+        destroyOnClose
+      >
+        <Table
+          rowKey={(record) => record.metric || record.item}
+          columns={trainingModalConfig?.columns || []}
+          dataSource={trainingModalRows}
+          size="small"
+          pagination={false}
+        />
+      </Modal>
 
       <CollegeBreakdownModal
         visible={modalType !== null}

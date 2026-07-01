@@ -961,6 +961,8 @@ export class TrainingService {
   async getDashboardStats() {
     try {
       const now = new Date();
+      const toDateOnly = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const today = toDateOnly(now);
 
       const [trainings, applications, attendanceAgg, teachers, feedbackResponses, totalLessonPlans, approvedLessonPlans, totalCertificates, activeBranches, totalPreTestResponses, totalPostTestResponses] =
         await Promise.all([
@@ -972,6 +974,9 @@ export class TrainingService {
               startDate: true,
               endDate: true,
               duration: true,
+              preTestFormId: true,
+              postTestFormId: true,
+              feedbackFormId: true,
               targetBranches: { select: { id: true, name: true, shortName: true, code: true } },
             },
           }),
@@ -1019,6 +1024,14 @@ export class TrainingService {
           this.prisma.postTestResponse.count(),
         ]);
 
+      const certificateFacultyUsers = (await this.prisma.trainingCertificate.findMany({
+        distinct: ['userId'],
+        select: {
+          userId: true,
+        },
+      })) as Array<{ userId: string }>;
+
+      const approvedApplicationsByTraining = new Map<string, number>();
       const trainingById = new Map(trainings.map((training) => [training.id, training]));
       const attendanceMap = new Map(
         attendanceAgg.map((attendance) => [
@@ -1029,11 +1042,11 @@ export class TrainingService {
 
       const totalTrainings = trainings.length;
       const publishedTrainings = trainings.filter((training) => training.isPublished).length;
-      const upcomingTrainings = trainings.filter((training) => training.isPublished && training.startDate > now).length;
+      const upcomingTrainings = trainings.filter((training) => training.isPublished && toDateOnly(training.startDate) > today).length;
       const ongoingTrainings = trainings.filter(
-        (training) => training.isPublished && training.startDate <= now && training.endDate >= now
+        (training) => training.isPublished && toDateOnly(training.startDate) <= today && toDateOnly(training.endDate) >= today
       ).length;
-      const completedTrainings = trainings.filter((training) => training.isPublished && training.endDate < now).length;
+      const completedTrainings = trainings.filter((training) => training.isPublished && toDateOnly(training.endDate) < today).length;
 
       const totalApplications = applications.length;
       const approvedApplications = applications.filter((application) => application.status === 'APPROVED').length;
@@ -1043,6 +1056,7 @@ export class TrainingService {
       const teacherIds = new Set(teachers.map((teacher) => teacher.id));
 
       const teacherCourseMap = new Map<string, string>();
+      const courseTrainingIds = new Map<string, Set<string>>();
       const courseWiseMap = new Map<
         string,
         {
@@ -1061,6 +1075,10 @@ export class TrainingService {
             completedFacultyIds: new Set<string>(),
             feedbackFacultyIds: new Set<string>(),
           });
+        }
+
+        if (!courseTrainingIds.has(courseName)) {
+          courseTrainingIds.set(courseName, new Set<string>());
         }
       };
 
@@ -1134,20 +1152,48 @@ export class TrainingService {
             feedbackFacultyIds: new Set<string>(),
           });
         }
+
+        if (!courseTrainingIds.has(courseName)) {
+          courseTrainingIds.set(courseName, new Set<string>());
+        }
+      }
+
+      for (const training of trainings) {
+        const targetBranches = Array.isArray(training.targetBranches) ? training.targetBranches : [];
+
+        for (const branch of targetBranches) {
+          const courseName = branch.name || branch.shortName || branch.code;
+
+          if (!courseName) {
+            continue;
+          }
+
+          ensureCourseBucket(courseName);
+          courseTrainingIds.get(courseName)?.add(training.id);
+        }
       }
 
       const facultyHoursMap = new Map<string, number>();
       for (const teacher of teachers) {
         facultyHoursMap.set(teacher.id, 0);
       }
-
-      const facultyWithCompletedTrainings = new Set<string>();
       const facultyWithOngoingTrainings = new Set<string>();
+      const facultyWithCompletedTrainings = new Set<string>();
+      const facultyWithNotFullAttendance = new Set<string>();
+      const completedFacultyIds = new Set<string>();
+      for (const record of certificateFacultyUsers) {
+        completedFacultyIds.add(record.userId);
+      }
 
       for (const application of applications) {
         if (application.status !== 'APPROVED') {
           continue;
         }
+
+        approvedApplicationsByTraining.set(
+          application.trainingId,
+          (approvedApplicationsByTraining.get(application.trainingId) || 0) + 1,
+        );
 
         if (!teacherIds.has(application.userId)) {
           continue;
@@ -1179,7 +1225,12 @@ export class TrainingService {
 
         facultyHoursMap.set(application.userId, (facultyHoursMap.get(application.userId) || 0) + attendedHours);
 
-        if (training.endDate < now && attendedDays > 0) {
+        const trainingStart = toDateOnly(training.startDate);
+        const trainingEnd = toDateOnly(training.endDate);
+        const isCompletedTraining = trainingEnd < today;
+        const hasFullAttendance = attendedDays >= safeTrainingDays;
+
+        if (isCompletedTraining && hasFullAttendance) {
           facultyWithCompletedTrainings.add(application.userId);
 
           const courseName = resolveCourseForTraining(application.userId, application.trainingId);
@@ -1187,9 +1238,11 @@ export class TrainingService {
           if (courseName && courseWiseMap.has(courseName)) {
             courseWiseMap.get(courseName)?.completedFacultyIds.add(application.userId);
           }
+        } else if (isCompletedTraining && attendedDays > 0) {
+          facultyWithNotFullAttendance.add(application.userId);
         }
 
-        if (training.startDate <= now && training.endDate >= now) {
+        if (trainingStart <= today && trainingEnd >= today) {
           facultyWithOngoingTrainings.add(application.userId);
         }
       }
@@ -1215,12 +1268,25 @@ export class TrainingService {
         .map((item) => ({
           course: item.course,
           facultyCount: item.facultyCount,
+          totalCourseTrainings: courseTrainingIds.get(item.course)?.size || 0,
           completedTrainingsCount: item.completedFacultyIds.size,
           feedbackSubmittedCount: item.feedbackFacultyIds.size,
         }))
         .sort((a, b) => b.facultyCount - a.facultyCount);
 
       const totalFeedback = feedbackResponses.length;
+      const preTestRequired = trainings.reduce(
+        (sum, training) => sum + (training.preTestFormId ? (approvedApplicationsByTraining.get(training.id) || 0) : 0),
+        0,
+      );
+      const postTestRequired = trainings.reduce(
+        (sum, training) => sum + (training.postTestFormId ? (approvedApplicationsByTraining.get(training.id) || 0) : 0),
+        0,
+      );
+      const feedbackRequired = trainings.reduce(
+        (sum, training) => sum + (training.feedbackFormId ? (approvedApplicationsByTraining.get(training.id) || 0) : 0),
+        0,
+      );
 
       const totalFacultyRegistered = new Set(applications.map((application) => application.userId)).size;
       const applicantFacultyCount = new Set(
@@ -1287,6 +1353,31 @@ export class TrainingService {
         },
         certificates: {
           total: totalCertificates,
+        },
+        facultyTrainingDetails: {
+          totalTrainings: totalTrainings,
+          totalNominations: totalApplications,
+          facultyWithFullAttendanceMarked: facultyWithCompletedTrainings.size,
+          facultyWithNotFullAttendance: facultyWithNotFullAttendance.size,
+          completedFaculty: completedFacultyIds.size,
+        },
+        engagementDetails: {
+          lessonPlan: {
+            required: approvedApplications,
+            done: approvedLessonPlans,
+          },
+          preTest: {
+            required: preTestRequired,
+            done: totalPreTestResponses,
+          },
+          postTest: {
+            required: postTestRequired,
+            done: totalPostTestResponses,
+          },
+          feedback: {
+            required: feedbackRequired,
+            done: totalFeedback,
+          },
         },
         summary: {
           totalTrainingsPublished: publishedTrainings,
@@ -1653,6 +1744,7 @@ export class TrainingService {
       {
         course: string;
         facultyCount: number;
+        trainingIds: Set<string>;
         completedFacultyIds: Set<string>;
         feedbackFacultyIds: Set<string>;
       }
@@ -1663,6 +1755,7 @@ export class TrainingService {
         courseWiseMap.set(courseName, {
           course: courseName,
           facultyCount: 0,
+          trainingIds: new Set<string>(),
           completedFacultyIds: new Set<string>(),
           feedbackFacultyIds: new Set<string>(),
         });
@@ -1723,9 +1816,25 @@ export class TrainingService {
         courseWiseMap.set(courseName, {
           course: courseName,
           facultyCount: 1,
+          trainingIds: new Set<string>(),
           completedFacultyIds: new Set<string>(),
           feedbackFacultyIds: new Set<string>(),
         });
+      }
+    }
+
+    for (const training of scopedTrainings) {
+      const targetBranches = Array.isArray(training.targetBranches) ? training.targetBranches : [];
+
+      for (const branch of targetBranches) {
+        const courseName = branch.name || branch.shortName || branch.code;
+
+        if (!courseName) {
+          continue;
+        }
+
+        ensureCourseBucket(courseName);
+        courseWiseMap.get(courseName)?.trainingIds.add(training.id);
       }
     }
 
@@ -1817,6 +1926,7 @@ export class TrainingService {
       .map((item) => ({
         course: item.course,
         facultyCount: item.facultyCount,
+        totalCourseTrainings: item.trainingIds.size,
         completedTrainingsCount: item.completedFacultyIds.size,
         feedbackSubmittedCount: item.feedbackFacultyIds.size,
       }))

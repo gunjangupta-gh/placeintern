@@ -15,6 +15,13 @@ const CourseWiseFacultyTable = ({ rows = [], loading = false }) => {
         ...item,
         course: item?.course || item?.courseName || `Course ${index + 1}`,
         facultyCount: asNumber(item?.facultyCount ?? item?.faculty_count),
+        totalCourseTrainings: asNumber(
+          item?.totalCourseTrainings ??
+            item?.totalCourseTrainingCount ??
+            item?.total_course_trainings ??
+            item?.trainingCount ??
+            item?.training_count
+        ),
         completedTrainingsCount: asNumber(
           item?.completedTrainingsCount ??
             item?.completedTrainingCount ??
@@ -44,6 +51,13 @@ const CourseWiseFacultyTable = ({ rows = [], loading = false }) => {
       key: 'facultyCount',
       width: 140,
       render: (value) => <Text className="text-xs font-semibold">{value}</Text>,
+    },
+    {
+      title: 'Total Course Trainings',
+      dataIndex: 'totalCourseTrainings',
+      key: 'totalCourseTrainings',
+      width: 170,
+      render: (value) => <Text className="text-xs font-semibold">{value ?? 0}</Text>,
     },
     {
       title: 'Completed Trainings',

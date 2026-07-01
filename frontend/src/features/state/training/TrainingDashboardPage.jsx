@@ -8,6 +8,7 @@ import {
   Space,
   Table,
   Typography,
+  Tooltip,
   message,
 } from "antd";
 import {
@@ -16,6 +17,8 @@ import {
   SettingOutlined,
   BookOutlined,
   CheckCircleOutlined,
+  EyeOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import {
@@ -50,7 +53,7 @@ const STAT_VARIANTS = {
   },
 };
 
-const StatCard = ({ icon: Icon, title, lines = [], onClick, variant = "primary" }) => {
+const StatCard = ({ icon: Icon, title, lines = [], onClick, onView, infoTooltip, variant = "primary" }) => {
   const styles = STAT_VARIANTS[variant] || STAT_VARIANTS.primary;
 
   return (
@@ -59,13 +62,33 @@ const StatCard = ({ icon: Icon, title, lines = [], onClick, variant = "primary" 
       onClick={onClick}
     >
       {/* Icon + Title */}
-      <div className="flex items-center gap-2 mb-2">
-        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md ${styles.iconWrap}`}>
-          <Icon className={`text-xs ${styles.iconColor}`} />
-        </span>
-        <Text className="text-[11px] text-slate-600 font-medium leading-tight line-clamp-1">
-          {title}
-        </Text>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md ${styles.iconWrap}`}>
+            <Icon className={`text-xs ${styles.iconColor}`} />
+          </span>
+          <Text className="text-[11px] text-slate-600 font-medium leading-tight line-clamp-1">
+            {title}
+          </Text>
+          {infoTooltip ? (
+            <Tooltip title={infoTooltip}>
+              <InfoCircleOutlined className="text-[11px] text-slate-400" />
+            </Tooltip>
+          ) : null}
+        </div>
+        {onView ? (
+          <button
+            type="button"
+            aria-label={`View ${title}`}
+            className="inline-flex items-center justify-center w-6 h-6 rounded-full text-slate-400 hover:bg-slate-200/70 transition-colors"
+            onClick={(event) => {
+              event.stopPropagation();
+              onView();
+            }}
+          >
+            <EyeOutlined className="text-xs" />
+          </button>
+        ) : null}
       </div>
       <div className="space-y-1 mt-1">
         {lines.map((line) => (
@@ -87,6 +110,7 @@ const TrainingDashboardPage = () => {
   const [createModalOpen, setCreateModalOpen] = React.useState(false);
   const [formStep, setFormStep] = React.useState(0);
   const [formLoading, setFormLoading] = React.useState(false);
+  const [detailModalType, setDetailModalType] = React.useState(null);
 
   useEffect(() => {
     dispatch(fetchStateTrainingDashboard());
@@ -134,6 +158,8 @@ const TrainingDashboardPage = () => {
   const applications = dashboard.applications || {};
   const summary = dashboard.summary || {};
   const lessonPlans = dashboard.lessonPlans || {};
+  const facultyTrainingDetails = dashboard.facultyTrainingDetails || {};
+  const engagementDetails = dashboard.engagementDetails || {};
   const trainingMetrics = dashboard.trainingMetrics || {};
   const facultyMetrics = dashboard.facultyMetrics || {};
   const completionMetrics = dashboard.completionMetrics || {};
@@ -150,6 +176,13 @@ const TrainingDashboardPage = () => {
         // Support current and legacy key names from different dashboard responses.
         course: item?.course || item?.courseName || `Course ${index + 1}`,
         facultyCount: asNumber(item?.facultyCount ?? item?.faculty_count),
+        totalCourseTrainings: asNumber(
+          item?.totalCourseTrainings ??
+            item?.totalCourseTrainingCount ??
+            item?.total_course_trainings ??
+            item?.trainingCount ??
+            item?.training_count,
+        ),
         completedTrainingsCount: asNumber(
           item?.completedTrainingsCount ??
             item?.completedTrainingCount ??
@@ -165,6 +198,138 @@ const TrainingDashboardPage = () => {
       })),
     [courseWiseFaculty],
   );
+
+  const approvedApplicationsCountFallback = summary.nominations || applications.total || 0;
+
+  const detailModalRows = useMemo(() => {
+    if (detailModalType === "faculty") {
+      return [
+        {
+          metric: "Total Trainings",
+          count: facultyTrainingDetails.totalTrainings ?? trainings.total ?? 0,
+        },
+        {
+          metric: "Total Nominations",
+          count: facultyTrainingDetails.totalNominations ?? summary.nominations ?? applications.total ?? 0,
+        },
+        {
+          metric: "Faculty with Full Attendance Marked",
+          count:
+            facultyTrainingDetails.facultyWithFullAttendanceMarked ??
+            facultyMetrics.facultyWithCompletedTrainings ??
+            0,
+        },
+        {
+          metric: "Faculty with Not Full Attendance",
+          count: facultyTrainingDetails.facultyWithNotFullAttendance ?? 0,
+        },
+        {
+          metric: "Completed Faculty",
+          count: facultyTrainingDetails.completedFaculty ?? 0,
+        },
+      ];
+    }
+
+    if (detailModalType === "engagement") {
+      return [
+        {
+          item: "Lesson Plan",
+          required: engagementDetails.lessonPlan?.required ?? approvedApplicationsCountFallback,
+          done: engagementDetails.lessonPlan?.done ?? lessonPlans.approved ?? 0,
+        },
+        {
+          item: "Pre-Test",
+          required: engagementDetails.preTest?.required ?? preTestResponses.total ?? 0,
+          done: engagementDetails.preTest?.done ?? preTestResponses.total ?? 0,
+        },
+        {
+          item: "Post-Test",
+          required: engagementDetails.postTest?.required ?? postTestResponses.total ?? 0,
+          done: engagementDetails.postTest?.done ?? postTestResponses.total ?? 0,
+        },
+        {
+          item: "Feedback",
+          required: engagementDetails.feedback?.required ?? feedback.total ?? 0,
+          done: engagementDetails.feedback?.done ?? feedback.total ?? 0,
+        },
+      ];
+    }
+
+    return [];
+  }, [detailModalType, facultyTrainingDetails, engagementDetails, trainings.total, summary.nominations, applications.total, facultyMetrics.facultyWithCompletedTrainings, lessonPlans.approved, preTestResponses.total, postTestResponses.total, feedback.total]);
+
+  const detailModalConfig = useMemo(() => {
+    if (detailModalType === "faculty") {
+      return {
+        title: "Faculty Trainings Details",
+        width: 800,
+        columns: [
+          {
+            title: "Metric",
+            dataIndex: "metric",
+            key: "metric",
+            render: (value) => <Text className="text-sm">{value}</Text>,
+          },
+          {
+            title: "Count",
+            dataIndex: "count",
+            key: "count",
+            align: "right",
+            width: 120,
+            render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
+          },
+        ],
+        dataSource: detailModalRows,
+      };
+    }
+
+    if (detailModalType === "engagement") {
+      return {
+        title: "Engagement Details",
+        width: 720,
+        columns: [
+          {
+            title: "Item",
+            dataIndex: "item",
+            key: "item",
+            render: (value) => <Text className="text-sm">{value}</Text>,
+          },
+          {
+            title: "Required",
+            dataIndex: "required",
+            key: "required",
+            align: "right",
+            width: 120,
+            render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
+          },
+          {
+            title: "Done",
+            dataIndex: "done",
+            key: "done",
+            align: "right",
+            width: 120,
+            render: (value) => <Text className="text-sm font-semibold text-emerald-600">{value ?? 0}</Text>,
+          },
+        ],
+        dataSource: detailModalRows,
+      };
+    }
+
+    return null;
+  }, [detailModalRows, detailModalType]);
+
+  const closeDetailModal = () => setDetailModalType(null);
+
+  const facultyTrainingTooltip = "This shows unique faculty counts based on approved nominations. Full attendance means all scheduled training days were marked. Completed faculty reflects faculty who received at least one certificate.";
+
+  const completionTooltip = "Completed ≥ 40 Hours counts faculty whose total attended hours across approved trainings are at least 40. Completed < 40 Hours is the remaining faculty total after subtracting the 40+ hour group.";
+
+  const viewableCards = {
+    faculty: () => setDetailModalType("faculty"),
+    engagement: () => setDetailModalType("engagement"),
+  };
+
+  const approvedApplicationsCount = summary.nominations || applications.total || 0;
 
   const stats = useMemo(
     () => [
@@ -184,21 +349,30 @@ const TrainingDashboardPage = () => {
         icon: PlusOutlined,
         lines: [
           {
-            label: "Applications",
+            label: "Total Nominations",
             value: summary.nominations || applications.nominations || applications.total || 0,
           },
-          { label: "Completed", value: facultyMetrics.facultyWithCompletedTrainings || 0 },
-          { label: "Ongoing", value: facultyMetrics.facultyWithOngoingTrainings || 0 },
-          // { label: "Yet to Start", value: facultyMetrics.facultyYetToStart || 0 },
+          {
+            label: "Completed",
+            value:
+              facultyTrainingDetails.facultyWithFullAttendanceMarked ??
+              facultyMetrics.facultyWithCompletedTrainings ??
+              0,
+          },
+          {
+            label: "Ongoing",
+            value: facultyMetrics.facultyWithOngoingTrainings || 0,
+          },
         ],
         variant: "warning",
         onClick: () => navigate("/app/training/manage"),
+        onView: viewableCards.faculty,
+        infoTooltip: facultyTrainingTooltip,
       },
       {
         title: "Lesson Plan",
         icon: BookOutlined,
         lines: [
-          // { label: "Faculty Completed Training", value: summary.peopleCompletedTraining || 0 },
           { label: "Lesson Plans Created", value: summary.lessonPlanCreated || lessonPlans.created || lessonPlans.total || 0 },
         ],
         variant: "purple",
@@ -214,6 +388,7 @@ const TrainingDashboardPage = () => {
         ],
         variant: "primary",
         onClick: () => navigate("/app/training/manage"),
+        infoTooltip: completionTooltip,
       },
       {
         title: "Engagement",
@@ -226,22 +401,24 @@ const TrainingDashboardPage = () => {
         ],
         variant: "warning",
         onClick: () => navigate("/app/training/manage"),
+        onView: viewableCards.engagement,
       },
     ],
     [
-      trainings,
-      applications,
       summary,
-      completionMetrics,
-      lessonPlans,
+      trainings,
       trainingMetrics,
+      navigate,
+      applications,
+      facultyTrainingDetails,
       facultyMetrics,
+      lessonPlans,
+      completionMetrics,
       hoursDistribution,
-      feedback,
       preTestResponses,
       postTestResponses,
+      feedback,
       attendance,
-      navigate,
     ],
   );
 
@@ -258,6 +435,13 @@ const TrainingDashboardPage = () => {
       key: "facultyCount",
       width: 140,
       render: (value) => <Text className="text-xs font-semibold">{value}</Text>,
+    },
+    {
+      title: "Total Course Trainings",
+      dataIndex: "totalCourseTrainings",
+      key: "totalCourseTrainings",
+      width: 170,
+      render: (value) => <Text className="text-xs font-semibold">{value ?? 0}</Text>,
     },
     {
       title: "Completed Trainings",
@@ -331,6 +515,23 @@ const TrainingDashboardPage = () => {
           pagination={false}
         />
       </Card>
+
+      <Modal
+        title={detailModalConfig?.title || "Training Details"}
+        open={detailModalType !== null}
+        onCancel={closeDetailModal}
+        footer={null}
+        width={detailModalConfig?.width || 720}
+        destroyOnClose
+      >
+        <Table
+          rowKey={(record) => record.metric || record.item}
+          columns={detailModalConfig?.columns || []}
+          dataSource={detailModalConfig?.dataSource || []}
+          size="small"
+          pagination={false}
+        />
+      </Modal>
 
       <Modal
         title={`Create Training - Step ${formStep + 1} of ${TRAINING_FORM_STEP_TITLES.length}: ${TRAINING_FORM_STEP_TITLES[formStep]}`}
