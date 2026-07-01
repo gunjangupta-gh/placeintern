@@ -526,23 +526,11 @@ const TrainingDashboardPage = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-        {stats.map((stat) => {
-          if (stat.title === "Engagement") {
-            return (
-              <EngagementCard
-                key={stat.title}
-                title={stat.title}
-                engagementItems={stat.lines}
-                onView={stat.onView}
-              />
-            );
-          }
-          return (
-            <div key={stat.title}>
-              <StatCard {...stat} />
-            </div>
-          );
-        })}
+        {stats.map((stat) => (
+          <div key={stat.title}>
+            <StatCard {...stat} />
+          </div>
+        ))}
       </div>
 
       <Card
@@ -571,11 +559,12 @@ const TrainingDashboardPage = () => {
         />
       ) : (
         <Modal
-          title={detailModalConfig?.title || "Training Details"}
+          title={<span className="font-semibold text-base">{detailModalConfig?.title || "Training Details"}</span>}
           open={detailModalType !== null}
           onCancel={closeDetailModal}
           footer={null}
           width={detailModalConfig?.width || 720}
+          className="[&_.ant-modal-content]:rounded-2xl"
           destroyOnClose
         >
           <Table
@@ -584,6 +573,7 @@ const TrainingDashboardPage = () => {
             dataSource={detailModalConfig?.dataSource || []}
             size="small"
             pagination={false}
+            className="mt-4 [&_.ant-table-thead_th]:bg-gray-50 [&_.ant-table-thead_th]:text-[10px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:text-slate-500"
           />
         </Modal>
       )}

@@ -593,19 +593,9 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
                   <Spin size="small" />
                 </div>
               ))
-            : trainingCards.map((card) => {
-                if (card.title === 'Engagement') {
-                  return (
-                    <EngagementCard
-                      key={card.title}
-                      title={card.title}
-                      engagementItems={card.lines}
-                      onView={card.onView}
-                    />
-                  );
-                }
-                return <StatCard key={card.title} {...card} />;
-              })}
+            : trainingCards.map((card) => (
+                <StatCard key={card.title} {...card} />
+              ))}
         </div>
       </div>
 
@@ -617,11 +607,12 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
         />
       ) : (
         <Modal
-          title={trainingModalConfig?.title || 'Training Details'}
+          title={<span className="font-semibold text-base">{trainingModalConfig?.title || 'Training Details'}</span>}
           open={trainingModalType !== null}
           onCancel={closeTrainingModal}
           footer={null}
           width={trainingModalConfig?.width || 720}
+          className="[&_.ant-modal-content]:rounded-2xl"
           destroyOnClose
         >
           <Table
@@ -630,6 +621,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
             dataSource={trainingModalRows}
             size="small"
             pagination={false}
+            className="mt-4 [&_.ant-table-thead_th]:bg-gray-50 [&_.ant-table-thead_th]:text-[10px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:text-slate-500"
           />
         </Modal>
       )}
