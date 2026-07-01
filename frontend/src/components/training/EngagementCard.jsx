@@ -5,7 +5,8 @@ import {
   EyeOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
-import { Text } from 'antd/lib/typography';
+import { Typography } from 'antd';
+const { Text } = Typography;
 
 const STAT_VARIANTS = {
   primary: {
