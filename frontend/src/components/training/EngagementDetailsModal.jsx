@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { Modal, Button, Row, Col, Typography, Progress } from 'antd';
-import { CheckCircleOutlined, FileTextOutlined } from '@ant-design/icons';
+import { Modal, Button, Table, Typography, Empty } from 'antd';
+import { CheckCircleOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -9,52 +9,158 @@ const EngagementDetailsModal = ({
   onCancel,
   engagementData = [],
 }) => {
-  const stats = useMemo(() => {
-    if (!Array.isArray(engagementData) || !engagementData.length) {
-      return {
-        totalRequired: 0,
-        totalDone: 0,
-        completionPercent: 0,
-        items: [],
-      };
-    }
-
-    const totalRequired = engagementData.reduce((sum, item) => sum + (item.required || 0), 0);
-    const totalDone = engagementData.reduce((sum, item) => sum + (item.done || 0), 0);
-    const completionPercent = totalRequired > 0 ? Math.round((totalDone / totalRequired) * 100) : 0;
-
-    return {
-      totalRequired,
-      totalDone,
-      completionPercent,
-      items: engagementData,
-    };
+  // Determine if data is training-wise (has trainingTitle) or item-wise (has item)
+  const isTrainingWise = useMemo(() => {
+    return (
+      Array.isArray(engagementData) &&
+      engagementData.length > 0 &&
+      engagementData[0]?.trainingTitle !== undefined
+    );
   }, [engagementData]);
 
-  const getItemColor = (required, done) => {
-    if (required === 0) return 'bg-slate-50';
-    const percent = (done / required) * 100;
-    if (percent === 100) return 'bg-green-50';
-    if (percent >= 75) return 'bg-blue-50';
-    if (percent >= 50) return 'bg-amber-50';
-    return 'bg-red-50';
+  const tableData = useMemo(() => {
+    if (!Array.isArray(engagementData) || !engagementData.length) {
+      return [];
+    }
+
+    if (isTrainingWise) {
+      // Training-wise format: each row is a training with engagement metrics
+      return engagementData.map((item, idx) => ({
+        key: item?.trainingId || `training-${idx}`,
+        trainingTitle: item?.trainingTitle || item?.title || `Training ${idx + 1}`,
+        lessonPlanRequired: item?.lessonPlan?.required ?? item?.lessonPlanRequired ?? 0,
+        lessonPlanDone: item?.lessonPlan?.done ?? item?.lessonPlanDone ?? 0,
+        preTestRequired: item?.preTest?.required ?? item?.preTestRequired ?? 0,
+        preTestDone: item?.preTest?.done ?? item?.preTestDone ?? 0,
+        postTestRequired: item?.postTest?.required ?? item?.postTestRequired ?? 0,
+        postTestDone: item?.postTest?.done ?? item?.postTestDone ?? 0,
+        feedbackRequired: item?.feedback?.required ?? item?.feedbackRequired ?? 0,
+        feedbackDone: item?.feedback?.done ?? item?.feedbackDone ?? 0,
+      }));
+    } else {
+      // Item-wise format: each row is an engagement type with required/done counts
+      return engagementData.map((item, idx) => ({
+        key: item?.item ? `${item.item}-${idx}` : `item-${idx}`,
+        item: item?.item || `Engagement Item ${idx + 1}`,
+        required: item?.required ?? 0,
+        done: item?.done ?? 0,
+      }));
+    }
+  }, [engagementData, isTrainingWise]);
+
+  const getCompletionPercent = (required, done) => {
+    if (required === 0) return 0;
+    return Math.round((done / required) * 100);
   };
 
-  const getProgressColor = (required, done) => {
-    if (required === 0) return '#cbd5e1';
-    const percent = (done / required) * 100;
-    if (percent === 100) return '#10b981';
-    if (percent >= 75) return '#3b82f6';
-    if (percent >= 50) return '#f59e0b';
-    return '#ef4444';
-  };
+  const columns = useMemo(() => {
+    if (isTrainingWise) {
+      return [
+        {
+          title: 'Training',
+          dataIndex: 'trainingTitle',
+          key: 'trainingTitle',
+          render: (value) => <Text className="text-sm">{value}</Text>,
+        },
+        {
+          title: 'Lesson Plan',
+          key: 'lessonPlan',
+          width: 110,
+          align: 'center',
+          render: (_, record) => (
+            <Text className="text-sm font-semibold">
+              {record.lessonPlanDone}/{record.lessonPlanRequired}
+            </Text>
+          ),
+        },
+        {
+          title: 'Pre-Test',
+          key: 'preTest',
+          width: 110,
+          align: 'center',
+          render: (_, record) => (
+            <Text className="text-sm font-semibold">
+              {record.preTestDone}/{record.preTestRequired}
+            </Text>
+          ),
+        },
+        {
+          title: 'Post-Test',
+          key: 'postTest',
+          width: 110,
+          align: 'center',
+          render: (_, record) => (
+            <Text className="text-sm font-semibold">
+              {record.postTestDone}/{record.postTestRequired}
+            </Text>
+          ),
+        },
+        {
+          title: 'Feedback',
+          key: 'feedback',
+          width: 110,
+          align: 'center',
+          render: (_, record) => (
+            <Text className="text-sm font-semibold">
+              {record.feedbackDone}/{record.feedbackRequired}
+            </Text>
+          ),
+        },
+      ];
+    } else {
+      return [
+        {
+          title: 'Engagement Type',
+          dataIndex: 'item',
+          key: 'item',
+          render: (value) => <Text className="text-sm font-semibold">{value}</Text>,
+        },
+        {
+          title: 'Required',
+          dataIndex: 'required',
+          key: 'required',
+          align: 'right',
+          width: 100,
+          render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
+        },
+        {
+          title: 'Completed',
+          dataIndex: 'done',
+          key: 'done',
+          align: 'right',
+          width: 100,
+          render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
+        },
+        {
+          title: 'Completion %',
+          key: 'completionPercent',
+          align: 'right',
+          width: 120,
+          render: (_, record) => {
+            const percent = getCompletionPercent(record.required, record.done);
+            const color =
+              percent === 100
+                ? 'text-green-700'
+                : percent >= 75
+                  ? 'text-blue-700'
+                  : percent >= 50
+                    ? 'text-amber-700'
+                    : 'text-red-700';
+            return (
+              <Text className={`text-sm font-semibold ${color}`}>{percent}%</Text>
+            );
+          },
+        },
+      ];
+    }
+  }, [isTrainingWise]);
 
   return (
     <Modal
       open={open}
       onCancel={onCancel}
       footer={null}
-      width={700}
+      width={isTrainingWise ? 900 : 700}
       centered
       closable={false}
       styles={{
@@ -72,10 +178,14 @@ const EngagementDetailsModal = ({
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-base font-bold text-slate-800 mb-0.5 truncate">
-                  Engagement Details
+                  {isTrainingWise ? 'Training-wise Engagement' : 'Engagement Details'}
                 </h3>
                 <div className="flex items-center gap-2 text-xs text-slate-600">
-                  <span>Training engagement completion tracking</span>
+                  <span>
+                    {isTrainingWise
+                      ? 'Training-wise engagement completion tracking'
+                      : 'Training engagement completion tracking'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -91,81 +201,23 @@ const EngagementDetailsModal = ({
 
         {/* Content */}
         <div className="p-5">
-          {/* Overall Stats */}
-          <div className="mb-6">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-              <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-                <Text className="text-xs text-slate-500 block mb-1">Total Required</Text>
-                <div className="text-2xl font-bold text-slate-800">{stats.totalRequired}</div>
-              </div>
-              <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
-                <Text className="text-xs text-emerald-600 block mb-1">Completed</Text>
-                <div className="text-2xl font-bold text-emerald-700">{stats.totalDone}</div>
-              </div>
-              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                <Text className="text-xs text-blue-600 block mb-1">Completion %</Text>
-                <div className="text-2xl font-bold text-blue-700">{stats.completionPercent}%</div>
-              </div>
-            </div>
-
-            {/* Overall Progress */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Text className="text-xs font-semibold text-slate-700">Overall Progress</Text>
-                <Text className="text-xs text-slate-600">
-                  {stats.totalDone} of {stats.totalRequired}
-                </Text>
-              </div>
-              <Progress
-                percent={stats.completionPercent}
-                strokeColor={{
-                  '0%': '#ef4444',
-                  '50%': '#f59e0b',
-                  '100%': '#10b981',
-                }}
-                size="large"
-                format={(percent) => `${percent}%`}
-              />
-            </div>
-          </div>
-
-          {/* Engagement Items */}
-          <div>
-            <Text className="text-xs font-semibold text-slate-700 block mb-3">
-              Item-wise Breakdown
-            </Text>
-            <div className="space-y-2">
-              {stats.items.map((item, idx) => {
-                const itemPercent = item.required > 0 ? Math.round((item.done / item.required) * 100) : 0;
-                return (
-                  <div
-                    key={item.item || idx}
-                    className={`${getItemColor(item.required, item.done)} border border-slate-200 rounded-lg p-3`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <Text className="text-sm font-semibold text-slate-800">{item.item}</Text>
-                      <Text className="text-xs text-slate-600">
-                        {item.done}/{item.required}
-                      </Text>
-                    </div>
-                    <Progress
-                      percent={itemPercent}
-                      strokeColor={getProgressColor(item.required, item.done)}
-                      size="small"
-                      format={(percent) => `${percent}%`}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Empty State */}
-          {!stats.items.length && (
-            <div className="text-center py-8">
-              <FileTextOutlined className="text-4xl text-slate-300 block mb-2" />
-              <Text className="text-sm text-slate-500">No engagement data available</Text>
-            </div>
+          {tableData.length > 0 ? (
+            <Table
+              columns={columns}
+              dataSource={tableData}
+              pagination={false}
+              size="small"
+              bordered
+              className="rounded-lg overflow-hidden"
+              style={{
+                fontSize: '13px',
+              }}
+            />
+          ) : (
+            <Empty
+              description="No engagement data available"
+              style={{ paddingTop: '40px', paddingBottom: '40px' }}
+            />
           )}
         </div>
       </div>
