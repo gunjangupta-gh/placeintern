@@ -28,6 +28,8 @@ import {
   createStateTraining,
 } from "../store/stateTrainingSlice";
 import TrainingForm from "./components/training/TrainingForm";
+import EngagementDetailsModal from "../../../components/training/EngagementDetailsModal";
+import EngagementCard from "../../../components/training/EngagementCard";
 
 const { Title, Text } = Typography;
 const TRAINING_FORM_STEP_TITLES = ["Basic Info", "Schedule", "Capacity", "Settings"];
@@ -524,11 +526,23 @@ const TrainingDashboardPage = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-        {stats.map((stat) => (
-          <div key={stat.title}>
-            <StatCard {...stat} />
-          </div>
-        ))}
+        {stats.map((stat) => {
+          if (stat.title === "Engagement") {
+            return (
+              <EngagementCard
+                key={stat.title}
+                title={stat.title}
+                engagementItems={stat.lines}
+                onView={stat.onView}
+              />
+            );
+          }
+          return (
+            <div key={stat.title}>
+              <StatCard {...stat} />
+            </div>
+          );
+        })}
       </div>
 
       <Card
@@ -549,22 +563,30 @@ const TrainingDashboardPage = () => {
         />
       </Card>
 
-      <Modal
-        title={detailModalConfig?.title || "Training Details"}
-        open={detailModalType !== null}
-        onCancel={closeDetailModal}
-        footer={null}
-        width={detailModalConfig?.width || 720}
-        destroyOnClose
-      >
-        <Table
-          rowKey={(record) => record.trainingId || record.metric || record.item}
-          columns={detailModalConfig?.columns || []}
-          dataSource={detailModalConfig?.dataSource || []}
-          size="small"
-          pagination={false}
+      {detailModalType === "engagement" ? (
+        <EngagementDetailsModal
+          open={detailModalType === "engagement"}
+          onCancel={closeDetailModal}
+          engagementData={detailModalRows}
         />
-      </Modal>
+      ) : (
+        <Modal
+          title={detailModalConfig?.title || "Training Details"}
+          open={detailModalType !== null}
+          onCancel={closeDetailModal}
+          footer={null}
+          width={detailModalConfig?.width || 720}
+          destroyOnClose
+        >
+          <Table
+            rowKey={(record) => record.trainingId || record.metric || record.item}
+            columns={detailModalConfig?.columns || []}
+            dataSource={detailModalConfig?.dataSource || []}
+            size="small"
+            pagination={false}
+          />
+        </Modal>
+      )}
 
       <Modal
         title={`Create Training - Step ${formStep + 1} of ${TRAINING_FORM_STEP_TITLES.length}: ${TRAINING_FORM_STEP_TITLES[formStep]}`}

@@ -13,6 +13,8 @@ import {
   CheckCircleOutlined,
 } from '@ant-design/icons';
 import stateService from '../../../../services/state.service';
+import EngagementDetailsModal from '../../../../components/training/EngagementDetailsModal';
+import EngagementCard from '../../../../components/training/EngagementCard';
 
 const { Text } = Typography;
 
@@ -587,28 +589,46 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
                   <Spin size="small" />
                 </div>
               ))
-            : trainingCards.map((card) => (
-                <StatCard key={card.title} {...card} />
-              ))}
+            : trainingCards.map((card) => {
+                if (card.title === 'Engagement') {
+                  return (
+                    <EngagementCard
+                      key={card.title}
+                      title={card.title}
+                      engagementItems={card.lines}
+                      onView={card.onView}
+                    />
+                  );
+                }
+                return <StatCard key={card.title} {...card} />;
+              })}
         </div>
       </div>
 
-      <Modal
-        title={trainingModalConfig?.title || 'Training Details'}
-        open={trainingModalType !== null}
-        onCancel={closeTrainingModal}
-        footer={null}
-        width={trainingModalConfig?.width || 720}
-        destroyOnClose
-      >
-        <Table
-          rowKey={(record) => record.trainingId || record.metric || record.item}
-          columns={trainingModalConfig?.columns || []}
-          dataSource={trainingModalRows}
-          size="small"
-          pagination={false}
+      {trainingModalType === 'engagement' ? (
+        <EngagementDetailsModal
+          open={trainingModalType === 'engagement'}
+          onCancel={closeTrainingModal}
+          engagementData={trainingModalRows}
         />
-      </Modal>
+      ) : (
+        <Modal
+          title={trainingModalConfig?.title || 'Training Details'}
+          open={trainingModalType !== null}
+          onCancel={closeTrainingModal}
+          footer={null}
+          width={trainingModalConfig?.width || 720}
+          destroyOnClose
+        >
+          <Table
+            rowKey={(record) => record.trainingId || record.metric || record.item}
+            columns={trainingModalConfig?.columns || []}
+            dataSource={trainingModalRows}
+            size="small"
+            pagination={false}
+          />
+        </Modal>
+      )}
 
       <CollegeBreakdownModal
         visible={modalType !== null}
