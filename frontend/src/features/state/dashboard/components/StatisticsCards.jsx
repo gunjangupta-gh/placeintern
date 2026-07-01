@@ -10,7 +10,6 @@ import {
   CalendarOutlined,
   PlusOutlined,
   SettingOutlined,
-  BookOutlined,
   CheckCircleOutlined,
 } from '@ant-design/icons';
 import stateService from '../../../../services/state.service';
@@ -350,7 +349,6 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
   const feedback = dashboard.feedback || {};
   const preTestResponses = dashboard.preTestResponses || {};
   const postTestResponses = dashboard.postTestResponses || {};
-  const attendance = dashboard.attendance || {};
   const facultyTrainingDetails = dashboard?.facultyTrainingDetails || {};
   const engagementDetails = dashboard?.engagementDetails || {};
   const approvedApplicationsCount = summary?.nominations || applications?.total || 0;
@@ -368,7 +366,6 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
             0,
         },
         { metric: 'Faculty with Not Full Attendance', count: facultyTrainingDetails.facultyWithNotFullAttendance ?? 0 },
-        { metric: 'Completed Faculty', count: facultyTrainingDetails.completedFaculty ?? 0 },
       ];
     }
 
@@ -403,7 +400,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
   const trainingModalConfig = useMemo(() => {
     if (trainingModalType === 'faculty') {
       return {
-        title: 'Faculty Trainings Details',
+        title: 'Training Wise Summary',
         width: 800,
         columns: [
           { title: 'Metric', dataIndex: 'metric', key: 'metric', render: (value) => <Text className="text-sm">{value}</Text> },
@@ -456,21 +453,10 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
             facultyMetrics.facultyWithCompletedTrainings ??
             0,
         },
-        { label: 'Ongoing', value: facultyMetrics.facultyWithOngoingTrainings || 0 },
+        { label: 'Ongoing', value: trainings.ongoing || 0 },
       ],
       onView: () => setTrainingModalType('faculty'),
-      infoTooltip: 'Unique faculty counts based on approved nominations. Full attendance means all scheduled training days were marked. Completed faculty reflects faculty who received at least one certificate.',
-    },
-    {
-      title: 'Lesson Plan',
-      icon: BookOutlined,
-      variant: 'purple',
-      lines: [
-        {
-          label: 'Lesson Plans Created',
-          value: summary.lessonPlanCreated || lessonPlans.created || lessonPlans.total || 0,
-        },
-      ],
+      infoTooltip: 'Unique faculty counts based on approved nominations. Full attendance means all scheduled training days were marked.',
     },
     {
       title: 'Completion & Hours',
@@ -491,7 +477,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
         { label: 'Pre-Test Filled', value: preTestResponses.total || 0 },
         { label: 'Post-Test Filled', value: postTestResponses.total || 0 },
         { label: 'Feedback Submitted', value: feedback.total || 0 },
-        { label: 'Attendance Records', value: attendance.total || 0 },
+        { label: 'Lesson Plans', value: summary.lessonPlanCreated || lessonPlans.created || lessonPlans.total || 0 },
       ],
       onView: () => setTrainingModalType('engagement'),
     },
@@ -572,7 +558,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
         <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">
           Training Statistics
         </Text>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {trainingLoading
             ? Array.from({ length: 5 }).map((_, idx) => (
                 <div key={`training-loading-${idx}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3 h-full">

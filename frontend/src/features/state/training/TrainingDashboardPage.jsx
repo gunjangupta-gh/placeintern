@@ -15,7 +15,6 @@ import {
   CalendarOutlined,
   PlusOutlined,
   SettingOutlined,
-  BookOutlined,
   CheckCircleOutlined,
   EyeOutlined,
   InfoCircleOutlined,
@@ -167,7 +166,6 @@ const TrainingDashboardPage = () => {
   const feedback = dashboard.feedback || {};
   const preTestResponses = dashboard.preTestResponses || {};
   const postTestResponses = dashboard.postTestResponses || {};
-  const attendance = dashboard.attendance || {};
   const courseWiseFaculty = dashboard.courseWiseFaculty || [];
   const normalizedCourseWiseFaculty = useMemo(
     () =>
@@ -223,10 +221,6 @@ const TrainingDashboardPage = () => {
           metric: "Faculty with Not Full Attendance",
           count: facultyTrainingDetails.facultyWithNotFullAttendance ?? 0,
         },
-        {
-          metric: "Completed Faculty",
-          count: facultyTrainingDetails.completedFaculty ?? 0,
-        },
       ];
     }
 
@@ -261,7 +255,7 @@ const TrainingDashboardPage = () => {
   const detailModalConfig = useMemo(() => {
     if (detailModalType === "faculty") {
       return {
-        title: "Faculty Trainings Details",
+        title: "Training Wise Summary",
         width: 800,
         columns: [
           {
@@ -320,8 +314,6 @@ const TrainingDashboardPage = () => {
 
   const closeDetailModal = () => setDetailModalType(null);
 
-  const facultyTrainingTooltip = "This shows unique faculty counts based on approved nominations. Full attendance means all scheduled training days were marked. Completed faculty reflects faculty who received at least one certificate.";
-
   const completionTooltip = "Completed ≥ 40 Hours counts faculty whose total attended hours across approved trainings are at least 40. Completed < 40 Hours is the remaining faculty total after subtracting the 40+ hour group.";
 
   const viewableCards = {
@@ -359,24 +351,12 @@ const TrainingDashboardPage = () => {
               facultyMetrics.facultyWithCompletedTrainings ??
               0,
           },
-          {
-            label: "Ongoing",
-            value: facultyMetrics.facultyWithOngoingTrainings || 0,
-          },
+          { label: "Ongoing", value: trainings.ongoing || 0 },
         ],
         variant: "warning",
         onClick: () => navigate("/app/training/manage"),
         onView: viewableCards.faculty,
-        infoTooltip: facultyTrainingTooltip,
-      },
-      {
-        title: "Lesson Plan",
-        icon: BookOutlined,
-        lines: [
-          { label: "Lesson Plans Created", value: summary.lessonPlanCreated || lessonPlans.created || lessonPlans.total || 0 },
-        ],
-        variant: "purple",
-        onClick: () => navigate("/app/training/lesson-plans"),
+        infoTooltip: "Unique faculty counts based on approved nominations. Full attendance means all scheduled training days were marked.",
       },
       {
         title: "Completion & Hours",
@@ -397,7 +377,7 @@ const TrainingDashboardPage = () => {
           { label: "Pre-Test Filled", value: preTestResponses.total || 0 },
           { label: "Post-Test Filled", value: postTestResponses.total || 0 },
           { label: "Feedback Submitted", value: feedback.total || 0 },
-          { label: "Attendance Records", value: attendance.total || 0 },
+          { label: "Lesson Plans", value: summary.lessonPlanCreated || lessonPlans.created || lessonPlans.total || 0 },
         ],
         variant: "warning",
         onClick: () => navigate("/app/training/manage"),
@@ -418,7 +398,6 @@ const TrainingDashboardPage = () => {
       preTestResponses,
       postTestResponses,
       feedback,
-      attendance,
     ],
   );
 
@@ -490,7 +469,7 @@ const TrainingDashboardPage = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
         {stats.map((stat) => (
           <div key={stat.title}>
             <StatCard {...stat} />
