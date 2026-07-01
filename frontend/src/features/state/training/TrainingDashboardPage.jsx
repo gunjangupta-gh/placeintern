@@ -278,7 +278,22 @@ const TrainingDashboardPage = () => {
                 title: "Training",
                 dataIndex: "trainingTitle",
                 key: "trainingTitle",
-                render: (value) => <Text className="text-sm">{String(value || '')}</Text>,
+                render: (value) => (
+                  <Tooltip title={String(value || '')}>
+                    <div
+                      className="text-sm"
+                      style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {String(value || '')}
+                    </div>
+                  </Tooltip>
+                ),
               },
               {
                 title: "Total Trainings",
@@ -572,7 +587,7 @@ const TrainingDashboardPage = () => {
             columns={detailModalConfig?.columns || []}
             dataSource={detailModalConfig?.dataSource || []}
             size="small"
-            pagination={false}
+            pagination={{ pageSize: 5, size: 'small', showSizeChanger: false }}
             className="mt-4 [&_.ant-table-thead_th]:bg-gray-50 [&_.ant-table-thead_th]:text-[10px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:text-slate-500"
           />
         </Modal>

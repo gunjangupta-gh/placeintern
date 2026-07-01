@@ -423,7 +423,22 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
         width: 800,
         columns: hasTrainingRows
           ? [
-              { title: 'Training', dataIndex: 'trainingTitle', key: 'trainingTitle', render: (value) => <Text className="text-sm">{String(value || '')}</Text> },
+              { title: 'Training', dataIndex: 'trainingTitle', key: 'trainingTitle', render: (value) => (
+                  <Tooltip title={String(value || '')}>
+                    <div
+                      className="text-sm"
+                      style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {String(value || '')}
+                    </div>
+                  </Tooltip>
+                ) },
               { title: 'Total Trainings', dataIndex: 'totalTrainings', key: 'totalTrainings', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
               { title: 'Total Nominations', dataIndex: 'totalNominations', key: 'totalNominations', align: 'right', width: 140, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
               { title: 'Faculty with Full Attendance Marked', dataIndex: 'facultyWithFullAttendanceMarked', key: 'facultyWithFullAttendanceMarked', align: 'right', width: 180, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
