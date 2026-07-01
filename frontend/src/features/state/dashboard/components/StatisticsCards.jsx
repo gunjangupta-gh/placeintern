@@ -124,8 +124,8 @@ const StatCard = ({ icon: Icon, title, lines = [], onClick, onView, infoTooltip,
       </div>
       <div className="space-y-1 mt-1">
         {lines.map((line) => (
-          <Text key={line.label} className="block text-[12px] leading-snug text-slate-600">
-            {line.label}: <span className="font-semibold text-slate-800">{line.value}</span>
+          <Text key={String(line.label || '')} className="block text-[12px] leading-snug text-slate-600">
+            {String(line.label || '')}: <span className="font-semibold text-slate-800">{String(line.value ?? '-')}</span>
           </Text>
         ))}
       </div>
@@ -286,41 +286,45 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
       title: 'Institution',
       dataIndex: 'institutionName',
       key: 'institutionName',
-      render: (text, record) => <Text className="text-sm font-medium">{text || record.name || 'Unknown'}</Text>,
+      render: (text, record) => <Text className="text-sm font-medium">{String(text || record.name || 'Unknown')}</Text>,
     }];
+    const safeLocaleString = (val) => {
+      const num = Number(val || 0);
+      return num.toLocaleString();
+    };
     switch (type) {
       case 'students':
         return [...baseColumns,
-          { title: 'Total', dataIndex: 'totalStudents', align: 'center', render: (val) => <Text className="font-semibold">{val?.toLocaleString() || 0}</Text> },
-          { title: 'Active', dataIndex: 'activeStudents', align: 'center', render: (val) => <Text className="font-semibold text-green-600">{val?.toLocaleString() || 0}</Text> },
+          { title: 'Total', dataIndex: 'totalStudents', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
+          { title: 'Active', dataIndex: 'activeStudents', align: 'center', render: (val) => <Text className="font-semibold text-green-600">{safeLocaleString(val)}</Text> },
         ];
       case 'mentors':
         return [...baseColumns,
-          { title: 'Mentors', dataIndex: 'totalMentors', align: 'center', render: (val) => <Text className="font-semibold">{val?.toLocaleString() || 0}</Text> },
-          { title: 'Students Assigned', dataIndex: 'assignedStudents', align: 'center', render: (val) => <Text className="font-semibold text-blue-600">{val?.toLocaleString() || 0}</Text> },
+          { title: 'Mentors', dataIndex: 'totalMentors', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
+          { title: 'Students Assigned', dataIndex: 'assignedStudents', align: 'center', render: (val) => <Text className="font-semibold text-blue-600">{safeLocaleString(val)}</Text> },
         ];
       case 'teachingStaff':
         return [...baseColumns,
-          { title: 'Mentors/Coordinators', dataIndex: 'mentorsAndCoordinators', align: 'center', render: (val) => <Text className="font-semibold text-blue-600">{val?.toLocaleString() || 0}</Text> },
-          { title: 'Teachers', dataIndex: 'teachers', align: 'center', render: (val) => <Text className="font-semibold">{val?.toLocaleString() || 0}</Text> },
-          { title: 'Coordinators', dataIndex: 'coordinators', align: 'center', render: (val) => <Text className="font-semibold">{val?.toLocaleString() || 0}</Text> },
+          { title: 'Mentors/Coordinators', dataIndex: 'mentorsAndCoordinators', align: 'center', render: (val) => <Text className="font-semibold text-blue-600">{safeLocaleString(val)}</Text> },
+          { title: 'Teachers', dataIndex: 'teachers', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
+          { title: 'Coordinators', dataIndex: 'coordinators', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
         ];
       case 'adminStaff':
         return [...baseColumns,
-          { title: 'Mentors/Coordinators', dataIndex: 'mentorsAndCoordinators', align: 'center', render: (val) => <Text className="font-semibold text-blue-600">{val?.toLocaleString() || 0}</Text> },
-          { title: 'Teachers (No Assignment)', dataIndex: 'teachers', align: 'center', render: (val) => <Text className="font-semibold">{val?.toLocaleString() || 0}</Text> },
-          { title: 'Coordinators', dataIndex: 'coordinators', align: 'center', render: (val) => <Text className="font-semibold">{val?.toLocaleString() || 0}</Text> },
-          { title: 'Admin Staff', dataIndex: 'adminStaff', align: 'center', render: (val) => <Text className="font-semibold">{val?.toLocaleString() || 0}</Text> },
+          { title: 'Mentors/Coordinators', dataIndex: 'mentorsAndCoordinators', align: 'center', render: (val) => <Text className="font-semibold text-blue-600">{safeLocaleString(val)}</Text> },
+          { title: 'Teachers (No Assignment)', dataIndex: 'teachers', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
+          { title: 'Coordinators', dataIndex: 'coordinators', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
+          { title: 'Admin Staff', dataIndex: 'adminStaff', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
         ];
       case 'reports':
         return [...baseColumns,
-          { title: 'Submitted', dataIndex: 'submitted', align: 'center', render: (val) => <Text className="font-semibold text-green-600">{val?.toLocaleString() || 0}</Text> },
-          { title: 'Expected', dataIndex: 'expected', align: 'center', render: (val) => <Text className="font-semibold">{val?.toLocaleString() || 0}</Text> },
+          { title: 'Submitted', dataIndex: 'submitted', align: 'center', render: (val) => <Text className="font-semibold text-green-600">{safeLocaleString(val)}</Text> },
+          { title: 'Expected', dataIndex: 'expected', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
         ];
       case 'visits':
         return [...baseColumns,
-          { title: 'Completed', dataIndex: 'completed', align: 'center', render: (val) => <Text className="font-semibold text-green-600">{val?.toLocaleString() || 0}</Text> },
-          { title: 'Expected', dataIndex: 'expected', align: 'center', render: (val) => <Text className="font-semibold">{val?.toLocaleString() || 0}</Text> },
+          { title: 'Completed', dataIndex: 'completed', align: 'center', render: (val) => <Text className="font-semibold text-green-600">{safeLocaleString(val)}</Text> },
+          { title: 'Expected', dataIndex: 'expected', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
         ];
       default:
         return baseColumns;
@@ -419,15 +423,15 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
         width: 800,
         columns: hasTrainingRows
           ? [
-              { title: 'Training', dataIndex: 'trainingTitle', key: 'trainingTitle', render: (value) => <Text className="text-sm">{value}</Text> },
-              { title: 'Total Trainings', dataIndex: 'totalTrainings', key: 'totalTrainings', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text> },
-              { title: 'Total Nominations', dataIndex: 'totalNominations', key: 'totalNominations', align: 'right', width: 140, render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text> },
-              { title: 'Faculty with Full Attendance Marked', dataIndex: 'facultyWithFullAttendanceMarked', key: 'facultyWithFullAttendanceMarked', align: 'right', width: 180, render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text> },
-              { title: 'Faculty with Not Full Attendance', dataIndex: 'facultyWithNotFullAttendance', key: 'facultyWithNotFullAttendance', align: 'right', width: 180, render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text> },
+              { title: 'Training', dataIndex: 'trainingTitle', key: 'trainingTitle', render: (value) => <Text className="text-sm">{String(value || '')}</Text> },
+              { title: 'Total Trainings', dataIndex: 'totalTrainings', key: 'totalTrainings', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
+              { title: 'Total Nominations', dataIndex: 'totalNominations', key: 'totalNominations', align: 'right', width: 140, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
+              { title: 'Faculty with Full Attendance Marked', dataIndex: 'facultyWithFullAttendanceMarked', key: 'facultyWithFullAttendanceMarked', align: 'right', width: 180, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
+              { title: 'Faculty with Not Full Attendance', dataIndex: 'facultyWithNotFullAttendance', key: 'facultyWithNotFullAttendance', align: 'right', width: 180, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
             ]
           : [
-              { title: 'Metric', dataIndex: 'metric', key: 'metric', render: (value) => <Text className="text-sm">{value}</Text> },
-              { title: 'Count', dataIndex: 'count', key: 'count', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text> },
+              { title: 'Metric', dataIndex: 'metric', key: 'metric', render: (value) => <Text className="text-sm">{String(value || '')}</Text> },
+              { title: 'Count', dataIndex: 'count', key: 'count', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
             ],
         dataSource: trainingModalRows,
       };
@@ -438,9 +442,9 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
         title: 'Engagement Details',
         width: 720,
         columns: [
-          { title: 'Item', dataIndex: 'item', key: 'item', render: (value) => <Text className="text-sm">{value}</Text> },
-          { title: 'Required', dataIndex: 'required', key: 'required', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text> },
-          { title: 'Done', dataIndex: 'done', key: 'done', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold text-emerald-600">{value ?? 0}</Text> },
+          { title: 'Item', dataIndex: 'item', key: 'item', render: (value) => <Text className="text-sm">{String(value || '')}</Text> },
+          { title: 'Required', dataIndex: 'required', key: 'required', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
+          { title: 'Done', dataIndex: 'done', key: 'done', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold text-emerald-600">{Number(value || 0)}</Text> },
         ],
       };
     }

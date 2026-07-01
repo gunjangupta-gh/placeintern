@@ -93,8 +93,8 @@ const StatCard = ({ icon: Icon, title, lines = [], onClick, onView, infoTooltip,
       </div>
       <div className="space-y-1 mt-1">
         {lines.map((line) => (
-          <Text key={line.label} className="block text-[12px] leading-snug text-slate-600">
-            {line.label}: <span className="font-semibold text-slate-800">{line.value}</span>
+          <Text key={String(line.label || '')} className="block text-[12px] leading-snug text-slate-600">
+            {String(line.label || '')}: <span className="font-semibold text-slate-800">{String(line.value ?? '-')}</span>
           </Text>
         ))}
       </div>
@@ -278,7 +278,7 @@ const TrainingDashboardPage = () => {
                 title: "Training",
                 dataIndex: "trainingTitle",
                 key: "trainingTitle",
-                render: (value) => <Text className="text-sm">{value}</Text>,
+                render: (value) => <Text className="text-sm">{String(value || '')}</Text>,
               },
               {
                 title: "Total Trainings",
@@ -286,7 +286,7 @@ const TrainingDashboardPage = () => {
                 key: "totalTrainings",
                 align: "right",
                 width: 120,
-                render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
+                render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text>,
               },
               {
                 title: "Total Nominations",
@@ -294,7 +294,7 @@ const TrainingDashboardPage = () => {
                 key: "totalNominations",
                 align: "right",
                 width: 140,
-                render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
+                render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text>,
               },
               {
                 title: "Faculty with Full Attendance Marked",
@@ -302,7 +302,7 @@ const TrainingDashboardPage = () => {
                 key: "facultyWithFullAttendanceMarked",
                 align: "right",
                 width: 180,
-                render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
+                render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text>,
               },
               {
                 title: "Faculty with Not Full Attendance",
@@ -310,7 +310,7 @@ const TrainingDashboardPage = () => {
                 key: "facultyWithNotFullAttendance",
                 align: "right",
                 width: 180,
-                render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
+                render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text>,
               },
             ]
           : [
@@ -318,7 +318,7 @@ const TrainingDashboardPage = () => {
                 title: "Metric",
                 dataIndex: "metric",
                 key: "metric",
-                render: (value) => <Text className="text-sm">{value}</Text>,
+                render: (value) => <Text className="text-sm">{String(value || '')}</Text>,
               },
               {
                 title: "Count",
@@ -326,7 +326,7 @@ const TrainingDashboardPage = () => {
                 key: "count",
                 align: "right",
                 width: 120,
-                render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
+                render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text>,
               },
             ],
         dataSource: detailModalRows,
@@ -342,7 +342,7 @@ const TrainingDashboardPage = () => {
             title: "Item",
             dataIndex: "item",
             key: "item",
-            render: (value) => <Text className="text-sm">{value}</Text>,
+            render: (value) => <Text className="text-sm">{String(value || '')}</Text>,
           },
           {
             title: "Required",
@@ -350,7 +350,7 @@ const TrainingDashboardPage = () => {
             key: "required",
             align: "right",
             width: 120,
-            render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
+            render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text>,
           },
           {
             title: "Done",
@@ -358,7 +358,7 @@ const TrainingDashboardPage = () => {
             key: "done",
             align: "right",
             width: 120,
-            render: (value) => <Text className="text-sm font-semibold text-emerald-600">{value ?? 0}</Text>,
+            render: (value) => <Text className="text-sm font-semibold text-emerald-600">{Number(value || 0)}</Text>,
           },
         ],
         dataSource: detailModalRows,
@@ -462,35 +462,35 @@ const TrainingDashboardPage = () => {
       title: "Course",
       dataIndex: "course",
       key: "course",
-      render: (value) => <Text className="text-xs">{value}</Text>,
+      render: (value) => <Text className="text-xs">{String(value || '')}</Text>,
     },
     {
       title: "No. of Faculty",
       dataIndex: "facultyCount",
       key: "facultyCount",
       width: 140,
-      render: (value) => <Text className="text-xs font-semibold">{value}</Text>,
+      render: (value) => <Text className="text-xs font-semibold">{Number(value || 0)}</Text>,
     },
     {
       title: "Total Course Trainings",
       dataIndex: "totalCourseTrainings",
       key: "totalCourseTrainings",
       width: 170,
-      render: (value) => <Text className="text-xs font-semibold">{value ?? 0}</Text>,
+      render: (value) => <Text className="text-xs font-semibold">{Number(value || 0)}</Text>,
     },
     {
       title: "Completed Trainings",
       dataIndex: "completedTrainingsCount",
       key: "completedTrainingsCount",
       width: 170,
-      render: (value) => <Text className="text-xs font-semibold">{value ?? 0}</Text>,
+      render: (value) => <Text className="text-xs font-semibold">{Number(value || 0)}</Text>,
     },
     {
       title: "Feedback Submitted",
       dataIndex: "feedbackSubmittedCount",
       key: "feedbackSubmittedCount",
       width: 160,
-      render: (value) => <Text className="text-xs font-semibold">{value ?? 0}</Text>,
+      render: (value) => <Text className="text-xs font-semibold">{Number(value || 0)}</Text>,
     },
   ];
 
