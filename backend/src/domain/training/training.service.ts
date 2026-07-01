@@ -1056,10 +1056,13 @@ export class TrainingService {
       const teacherIds = new Set(teachers.map((teacher) => teacher.id));
 
       const teacherCourseMap = new Map<string, string>();
+      const branchLabelById = new Map<string, string>();
+      const branchLookupByLabel = new Map<string, string>();
       const courseTrainingIds = new Map<string, Set<string>>();
       const courseWiseMap = new Map<
         string,
         {
+          courseId: string;
           course: string;
           facultyCount: number;
           completedFacultyIds: Set<string>;
@@ -1067,18 +1070,24 @@ export class TrainingService {
         }
       >();
 
-      const ensureCourseBucket = (courseName: string) => {
-        if (!courseWiseMap.has(courseName)) {
-          courseWiseMap.set(courseName, {
-            course: courseName,
+      const normalizeBranchLabel = (value?: string | null) => value?.trim().toLowerCase() || '';
+
+      const getBranchLabel = (branch: { name: string | null; shortName: string | null; code: string | null }) =>
+        branch.name || branch.shortName || branch.code || '';
+
+      const ensureCourseBucket = (courseId: string, courseLabel: string) => {
+        if (!courseWiseMap.has(courseId)) {
+          courseWiseMap.set(courseId, {
+            courseId,
+            course: courseLabel,
             facultyCount: 0,
             completedFacultyIds: new Set<string>(),
             feedbackFacultyIds: new Set<string>(),
           });
         }
 
-        if (!courseTrainingIds.has(courseName)) {
-          courseTrainingIds.set(courseName, new Set<string>());
+        if (!courseTrainingIds.has(courseId)) {
+          courseTrainingIds.set(courseId, new Set<string>());
         }
       };
 
@@ -1105,12 +1114,7 @@ export class TrainingService {
 
         // If exactly one target branch exists, use it as an inferred course
         if (targetBranches.length === 1) {
-          return (
-            targetBranches[0]?.name ||
-            targetBranches[0]?.shortName ||
-            targetBranches[0]?.code ||
-            null
-          );
+          return targetBranches[0]?.id || null;
         }
 
         return null;
@@ -1120,10 +1124,15 @@ export class TrainingService {
       // even when a branch currently has zero faculty mapped in user records.
       // Use full branch name for display
       for (const branch of activeBranches) {
-        const courseName = branch.name || branch.shortName || branch.code;
+        const courseId = branch.id;
+        const courseName = getBranchLabel(branch);
 
-        if (courseName) {
-          ensureCourseBucket(courseName);
+        if (courseId && courseName) {
+          branchLabelById.set(courseId, courseName);
+          branchLookupByLabel.set(normalizeBranchLabel(courseName), courseId);
+          branchLookupByLabel.set(normalizeBranchLabel(branch.shortName), courseId);
+          branchLookupByLabel.set(normalizeBranchLabel(branch.code), courseId);
+          ensureCourseBucket(courseId, courseName);
         }
       }
 
@@ -1135,17 +1144,23 @@ export class TrainingService {
           continue; // Skip unassigned teachers - only show valid branches
         }
 
-        const courseName = teacher.branch.name || teacher.branch.shortName || teacher.branch.code;
-        if (!courseName) {
+        const courseId = teacher.branch.id;
+        const courseName = getBranchLabel(teacher.branch);
+        if (!courseId || !courseName) {
           continue; // Skip if branch has no name
         }
 
-        teacherCourseMap.set(teacher.id, courseName);
-        const existing = courseWiseMap.get(courseName);
+        branchLabelById.set(courseId, courseName);
+        branchLookupByLabel.set(normalizeBranchLabel(courseName), courseId);
+        branchLookupByLabel.set(normalizeBranchLabel(teacher.branch.shortName), courseId);
+        branchLookupByLabel.set(normalizeBranchLabel(teacher.branch.code), courseId);
+        teacherCourseMap.set(teacher.id, courseId);
+        const existing = courseWiseMap.get(courseId);
         if (existing) {
           existing.facultyCount += 1;
         } else {
-          courseWiseMap.set(courseName, {
+          courseWiseMap.set(courseId, {
+            courseId,
             course: courseName,
             facultyCount: 1,
             completedFacultyIds: new Set<string>(),
@@ -1153,8 +1168,8 @@ export class TrainingService {
           });
         }
 
-        if (!courseTrainingIds.has(courseName)) {
-          courseTrainingIds.set(courseName, new Set<string>());
+        if (!courseTrainingIds.has(courseId)) {
+          courseTrainingIds.set(courseId, new Set<string>());
         }
       }
 
@@ -1162,14 +1177,19 @@ export class TrainingService {
         const targetBranches = Array.isArray(training.targetBranches) ? training.targetBranches : [];
 
         for (const branch of targetBranches) {
-          const courseName = branch.name || branch.shortName || branch.code;
+          const courseId = branch.id;
+          const courseName = getBranchLabel(branch);
 
-          if (!courseName) {
+          if (!courseId || !courseName) {
             continue;
           }
 
-          ensureCourseBucket(courseName);
-          courseTrainingIds.get(courseName)?.add(training.id);
+          branchLabelById.set(courseId, courseName);
+          branchLookupByLabel.set(normalizeBranchLabel(courseName), courseId);
+          branchLookupByLabel.set(normalizeBranchLabel(branch.shortName), courseId);
+          branchLookupByLabel.set(normalizeBranchLabel(branch.code), courseId);
+          ensureCourseBucket(courseId, courseName);
+          courseTrainingIds.get(courseId)?.add(training.id);
         }
       }
 
@@ -1233,10 +1253,10 @@ export class TrainingService {
         if (isCompletedTraining && hasFullAttendance) {
           facultyWithCompletedTrainings.add(application.userId);
 
-          const courseName = resolveCourseForTraining(application.userId, application.trainingId);
+          const courseId = resolveCourseForTraining(application.userId, application.trainingId);
           // Only track if we have a valid course (existing branch)
-          if (courseName && courseWiseMap.has(courseName)) {
-            courseWiseMap.get(courseName)?.completedFacultyIds.add(application.userId);
+          if (courseId && courseWiseMap.has(courseId)) {
+            courseWiseMap.get(courseId)?.completedFacultyIds.add(application.userId);
           }
         } else if (isCompletedTraining && attendedDays > 0) {
           facultyWithNotFullAttendance.add(application.userId);
@@ -1257,22 +1277,62 @@ export class TrainingService {
       const facultyCompletedUnder40Hours = Math.max(totalFaculty - facultyCompleted40Hours, 0);
 
       for (const response of feedbackResponses) {
-        const courseName = resolveCourseForTraining(response.userId, response.trainingId);
+        const courseId = resolveCourseForTraining(response.userId, response.trainingId);
         // Only track if we have a valid course (existing branch)
-        if (courseName && courseWiseMap.has(courseName)) {
-          courseWiseMap.get(courseName)?.feedbackFacultyIds.add(response.userId);
+        if (courseId && courseWiseMap.has(courseId)) {
+          courseWiseMap.get(courseId)?.feedbackFacultyIds.add(response.userId);
         }
       }
 
       const courseWiseFaculty = Array.from(courseWiseMap.values())
         .map((item) => ({
+          courseId: item.courseId,
           course: item.course,
           facultyCount: item.facultyCount,
-          totalCourseTrainings: courseTrainingIds.get(item.course)?.size || 0,
+          totalCourseTrainings: courseTrainingIds.get(item.courseId)?.size || 0,
           completedTrainingsCount: item.completedFacultyIds.size,
           feedbackSubmittedCount: item.feedbackFacultyIds.size,
         }))
         .sort((a, b) => b.facultyCount - a.facultyCount);
+
+      const trainingWiseSummary = trainings
+        .map((training) => {
+          const trainingDays =
+            Math.ceil(
+              (training.endDate.getTime() - training.startDate.getTime()) /
+                (1000 * 60 * 60 * 24),
+            ) + 1;
+          const safeTrainingDays = Math.max(trainingDays, 1);
+          const approvedTeacherApplications = applications.filter(
+            (application) =>
+              application.status === 'APPROVED' &&
+              application.trainingId === training.id &&
+              teacherIds.has(application.userId),
+          );
+
+          let facultyWithFullAttendanceMarked = 0;
+          let facultyWithNotFullAttendance = 0;
+
+          for (const application of approvedTeacherApplications) {
+            const attendedDays = attendanceMap.get(`${application.userId}:${application.trainingId}`) || 0;
+
+            if (attendedDays >= safeTrainingDays) {
+              facultyWithFullAttendanceMarked += 1;
+            } else if (attendedDays > 0) {
+              facultyWithNotFullAttendance += 1;
+            }
+          }
+
+          return {
+            trainingId: training.id,
+            trainingTitle: training.title,
+            totalTrainings: 1,
+            totalNominations: approvedTeacherApplications.length,
+            facultyWithFullAttendanceMarked,
+            facultyWithNotFullAttendance,
+          };
+        })
+        .sort((a, b) => b.totalNominations - a.totalNominations);
 
       const totalFeedback = feedbackResponses.length;
       const preTestRequired = trainings.reduce(
@@ -1361,6 +1421,7 @@ export class TrainingService {
           facultyWithNotFullAttendance: facultyWithNotFullAttendance.size,
           completedFaculty: completedFacultyIds.size,
         },
+        trainingWiseSummary,
         engagementDetails: {
           lessonPlan: {
             required: approvedApplications,
@@ -1742,6 +1803,7 @@ export class TrainingService {
     const courseWiseMap = new Map<
       string,
       {
+        courseId: string;
         course: string;
         facultyCount: number;
         trainingIds: Set<string>;
@@ -1750,10 +1812,11 @@ export class TrainingService {
       }
     >();
 
-    const ensureCourseBucket = (courseName: string) => {
-      if (!courseWiseMap.has(courseName)) {
-        courseWiseMap.set(courseName, {
-          course: courseName,
+    const ensureCourseBucket = (courseId: string, courseLabel: string) => {
+      if (!courseWiseMap.has(courseId)) {
+        courseWiseMap.set(courseId, {
+          courseId,
+          course: courseLabel,
           facultyCount: 0,
           trainingIds: new Set<string>(),
           completedFacultyIds: new Set<string>(),
@@ -1785,12 +1848,7 @@ export class TrainingService {
 
       // If exactly one target branch exists, use it as an inferred course
       if (targetBranches.length === 1) {
-        return (
-          targetBranches[0]?.name ||
-          targetBranches[0]?.shortName ||
-          targetBranches[0]?.code ||
-          null
-        );
+        return targetBranches[0]?.id || null;
       }
 
       return null;
@@ -1803,17 +1861,19 @@ export class TrainingService {
         continue; // Skip unassigned teachers - only show valid branches
       }
 
+      const courseId = teacher.branch.id;
       const courseName = teacher.branch.name || teacher.branch.shortName || teacher.branch.code;
-      if (!courseName) {
+      if (!courseId || !courseName) {
         continue; // Skip if branch has no name
       }
 
-      teacherCourseMap.set(teacher.id, courseName);
-      const existing = courseWiseMap.get(courseName);
+      teacherCourseMap.set(teacher.id, courseId);
+      const existing = courseWiseMap.get(courseId);
       if (existing) {
         existing.facultyCount += 1;
       } else {
-        courseWiseMap.set(courseName, {
+        courseWiseMap.set(courseId, {
+          courseId,
           course: courseName,
           facultyCount: 1,
           trainingIds: new Set<string>(),
@@ -1827,14 +1887,15 @@ export class TrainingService {
       const targetBranches = Array.isArray(training.targetBranches) ? training.targetBranches : [];
 
       for (const branch of targetBranches) {
+        const courseId = branch.id;
         const courseName = branch.name || branch.shortName || branch.code;
 
-        if (!courseName) {
+        if (!courseId || !courseName) {
           continue;
         }
 
-        ensureCourseBucket(courseName);
-        courseWiseMap.get(courseName)?.trainingIds.add(training.id);
+        ensureCourseBucket(courseId, courseName);
+        courseWiseMap.get(courseId)?.trainingIds.add(training.id);
       }
     }
 
@@ -1889,10 +1950,10 @@ export class TrainingService {
       if (training.endDate < now && attendedDays > 0) {
         facultyWithCompletedTrainings.add(application.userId);
 
-        const courseName = resolveCourseForTraining(application.userId, application.trainingId);
+        const courseId = resolveCourseForTraining(application.userId, application.trainingId);
         // Only track if we have a valid course (existing branch)
-        if (courseName && courseWiseMap.has(courseName)) {
-          courseWiseMap.get(courseName)?.completedFacultyIds.add(application.userId);
+        if (courseId && courseWiseMap.has(courseId)) {
+          courseWiseMap.get(courseId)?.completedFacultyIds.add(application.userId);
         }
       }
 
@@ -1915,22 +1976,62 @@ export class TrainingService {
     );
 
     for (const response of scopedFeedbackResponses) {
-      const courseName = resolveCourseForTraining(response.userId, response.trainingId);
+        const courseId = resolveCourseForTraining(response.userId, response.trainingId);
       // Only track if we have a valid course (existing branch)
-      if (courseName && courseWiseMap.has(courseName)) {
-        courseWiseMap.get(courseName)?.feedbackFacultyIds.add(response.userId);
+        if (courseId && courseWiseMap.has(courseId)) {
+          courseWiseMap.get(courseId)?.feedbackFacultyIds.add(response.userId);
       }
     }
 
     const courseWiseFaculty = Array.from(courseWiseMap.values())
       .map((item) => ({
+          courseId: item.courseId,
         course: item.course,
         facultyCount: item.facultyCount,
-        totalCourseTrainings: item.trainingIds.size,
+          totalCourseTrainings: item.trainingIds.size,
         completedTrainingsCount: item.completedFacultyIds.size,
         feedbackSubmittedCount: item.feedbackFacultyIds.size,
       }))
       .sort((a, b) => b.facultyCount - a.facultyCount);
+
+    const trainingWiseSummary = scopedTrainings
+      .map((training) => {
+        const trainingDays =
+          Math.ceil(
+            (training.endDate.getTime() - training.startDate.getTime()) /
+              (1000 * 60 * 60 * 24),
+          ) + 1;
+        const safeTrainingDays = Math.max(trainingDays, 1);
+        const approvedTeacherApplications = scopedApplications.filter(
+          (application) =>
+            application.status === 'APPROVED' &&
+            application.trainingId === training.id &&
+            allFacultyIds.has(application.userId),
+        );
+
+        let facultyWithFullAttendanceMarked = 0;
+        let facultyWithNotFullAttendance = 0;
+
+        for (const application of approvedTeacherApplications) {
+          const attendedDays = attendanceMap.get(`${application.userId}:${application.trainingId}`) || 0;
+
+          if (attendedDays >= safeTrainingDays) {
+            facultyWithFullAttendanceMarked += 1;
+          } else if (attendedDays > 0) {
+            facultyWithNotFullAttendance += 1;
+          }
+        }
+
+        return {
+          trainingId: training.id,
+          trainingTitle: training.title,
+          totalTrainings: 1,
+          totalNominations: approvedTeacherApplications.length,
+          facultyWithFullAttendanceMarked,
+          facultyWithNotFullAttendance,
+        };
+      })
+      .sort((a, b) => b.totalNominations - a.totalNominations);
 
     const totalFeedback = scopedFeedbackResponses.length;
 

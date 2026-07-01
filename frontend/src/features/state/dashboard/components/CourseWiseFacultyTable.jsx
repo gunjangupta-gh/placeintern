@@ -13,6 +13,7 @@ const CourseWiseFacultyTable = ({ rows = [], loading = false }) => {
     () =>
       (Array.isArray(rows) ? rows : []).map((item, index) => ({
         ...item,
+        courseId: item?.courseId || item?.course_id || item?.branchId || item?.branch_id || `course-${index + 1}`,
         course: item?.course || item?.courseName || `Course ${index + 1}`,
         facultyCount: asNumber(item?.facultyCount ?? item?.faculty_count),
         totalCourseTrainings: asNumber(
@@ -88,7 +89,7 @@ const CourseWiseFacultyTable = ({ rows = [], loading = false }) => {
     >
       {normalizedRows.length > 0 ? (
         <Table
-          rowKey="course"
+          rowKey={(record) => record.courseId || record.course}
           columns={columns}
           dataSource={normalizedRows}
           size="small"

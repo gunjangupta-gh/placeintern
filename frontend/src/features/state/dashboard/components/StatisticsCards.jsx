@@ -350,11 +350,23 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
   const preTestResponses = dashboard.preTestResponses || {};
   const postTestResponses = dashboard.postTestResponses || {};
   const facultyTrainingDetails = dashboard?.facultyTrainingDetails || {};
+  const trainingWiseSummary = dashboard?.trainingWiseSummary || [];
   const engagementDetails = dashboard?.engagementDetails || {};
   const approvedApplicationsCount = summary?.nominations || applications?.total || 0;
 
   const trainingModalRows = useMemo(() => {
     if (trainingModalType === 'faculty') {
+      if (Array.isArray(trainingWiseSummary) && trainingWiseSummary.length > 0) {
+        return trainingWiseSummary.map((item, index) => ({
+          trainingId: item?.trainingId || `training-${index + 1}`,
+          trainingTitle: item?.trainingTitle || item?.title || `Training ${index + 1}`,
+          totalTrainings: item?.totalTrainings ?? 1,
+          totalNominations: item?.totalNominations ?? 0,
+          facultyWithFullAttendanceMarked: item?.facultyWithFullAttendanceMarked ?? 0,
+          facultyWithNotFullAttendance: item?.facultyWithNotFullAttendance ?? 0,
+        }));
+      }
+
       return [
         { metric: 'Total Trainings', count: facultyTrainingDetails.totalTrainings ?? trainings.total ?? 0 },
         { metric: 'Total Nominations', count: facultyTrainingDetails.totalNominations ?? approvedApplicationsCount },
@@ -395,17 +407,27 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
     }
 
     return [];
-  }, [trainingModalType, facultyTrainingDetails, facultyMetrics.facultyWithCompletedTrainings, trainings.total, approvedApplicationsCount, engagementDetails, lessonPlans.approved, preTestResponses.total, postTestResponses.total, feedback.total]);
+  }, [trainingModalType, trainingWiseSummary, facultyTrainingDetails, facultyMetrics.facultyWithCompletedTrainings, trainings.total, approvedApplicationsCount, engagementDetails, lessonPlans.approved, preTestResponses.total, postTestResponses.total, feedback.total]);
 
   const trainingModalConfig = useMemo(() => {
     if (trainingModalType === 'faculty') {
+      const hasTrainingRows = Array.isArray(trainingWiseSummary) && trainingWiseSummary.length > 0;
       return {
         title: 'Training Wise Summary',
         width: 800,
-        columns: [
-          { title: 'Metric', dataIndex: 'metric', key: 'metric', render: (value) => <Text className="text-sm">{value}</Text> },
-          { title: 'Count', dataIndex: 'count', key: 'count', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text> },
-        ],
+        columns: hasTrainingRows
+          ? [
+              { title: 'Training', dataIndex: 'trainingTitle', key: 'trainingTitle', render: (value) => <Text className="text-sm">{value}</Text> },
+              { title: 'Total Trainings', dataIndex: 'totalTrainings', key: 'totalTrainings', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text> },
+              { title: 'Total Nominations', dataIndex: 'totalNominations', key: 'totalNominations', align: 'right', width: 140, render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text> },
+              { title: 'Faculty with Full Attendance Marked', dataIndex: 'facultyWithFullAttendanceMarked', key: 'facultyWithFullAttendanceMarked', align: 'right', width: 180, render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text> },
+              { title: 'Faculty with Not Full Attendance', dataIndex: 'facultyWithNotFullAttendance', key: 'facultyWithNotFullAttendance', align: 'right', width: 180, render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text> },
+            ]
+          : [
+              { title: 'Metric', dataIndex: 'metric', key: 'metric', render: (value) => <Text className="text-sm">{value}</Text> },
+              { title: 'Count', dataIndex: 'count', key: 'count', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text> },
+            ],
+        dataSource: trainingModalRows,
       };
     }
 
@@ -422,7 +444,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
     }
 
     return null;
-  }, [trainingModalType]);
+  }, [trainingModalType, trainingWiseSummary]);
 
   const closeTrainingModal = () => setTrainingModalType(null);
 
@@ -580,7 +602,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
         destroyOnClose
       >
         <Table
-          rowKey={(record) => record.metric || record.item}
+          rowKey={(record) => record.trainingId || record.metric || record.item}
           columns={trainingModalConfig?.columns || []}
           dataSource={trainingModalRows}
           size="small"

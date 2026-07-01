@@ -158,6 +158,7 @@ const TrainingDashboardPage = () => {
   const summary = dashboard.summary || {};
   const lessonPlans = dashboard.lessonPlans || {};
   const facultyTrainingDetails = dashboard.facultyTrainingDetails || {};
+  const trainingWiseSummary = dashboard.trainingWiseSummary || [];
   const engagementDetails = dashboard.engagementDetails || {};
   const trainingMetrics = dashboard.trainingMetrics || {};
   const facultyMetrics = dashboard.facultyMetrics || {};
@@ -201,6 +202,17 @@ const TrainingDashboardPage = () => {
 
   const detailModalRows = useMemo(() => {
     if (detailModalType === "faculty") {
+      if (Array.isArray(trainingWiseSummary) && trainingWiseSummary.length > 0) {
+        return trainingWiseSummary.map((item, index) => ({
+          trainingId: item?.trainingId || `training-${index + 1}`,
+          trainingTitle: item?.trainingTitle || item?.title || `Training ${index + 1}`,
+          totalTrainings: item?.totalTrainings ?? 1,
+          totalNominations: item?.totalNominations ?? 0,
+          facultyWithFullAttendanceMarked: item?.facultyWithFullAttendanceMarked ?? 0,
+          facultyWithNotFullAttendance: item?.facultyWithNotFullAttendance ?? 0,
+        }));
+      }
+
       return [
         {
           metric: "Total Trainings",
@@ -250,29 +262,71 @@ const TrainingDashboardPage = () => {
     }
 
     return [];
-  }, [detailModalType, facultyTrainingDetails, engagementDetails, trainings.total, summary.nominations, applications.total, facultyMetrics.facultyWithCompletedTrainings, lessonPlans.approved, preTestResponses.total, postTestResponses.total, feedback.total]);
+  }, [detailModalType, trainingWiseSummary, facultyTrainingDetails, engagementDetails, trainings.total, summary.nominations, applications.total, facultyMetrics.facultyWithCompletedTrainings, lessonPlans.approved, preTestResponses.total, postTestResponses.total, feedback.total]);
 
   const detailModalConfig = useMemo(() => {
     if (detailModalType === "faculty") {
+      const hasTrainingRows = Array.isArray(trainingWiseSummary) && trainingWiseSummary.length > 0;
       return {
         title: "Training Wise Summary",
         width: 800,
-        columns: [
-          {
-            title: "Metric",
-            dataIndex: "metric",
-            key: "metric",
-            render: (value) => <Text className="text-sm">{value}</Text>,
-          },
-          {
-            title: "Count",
-            dataIndex: "count",
-            key: "count",
-            align: "right",
-            width: 120,
-            render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
-          },
-        ],
+        columns: hasTrainingRows
+          ? [
+              {
+                title: "Training",
+                dataIndex: "trainingTitle",
+                key: "trainingTitle",
+                render: (value) => <Text className="text-sm">{value}</Text>,
+              },
+              {
+                title: "Total Trainings",
+                dataIndex: "totalTrainings",
+                key: "totalTrainings",
+                align: "right",
+                width: 120,
+                render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
+              },
+              {
+                title: "Total Nominations",
+                dataIndex: "totalNominations",
+                key: "totalNominations",
+                align: "right",
+                width: 140,
+                render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
+              },
+              {
+                title: "Faculty with Full Attendance Marked",
+                dataIndex: "facultyWithFullAttendanceMarked",
+                key: "facultyWithFullAttendanceMarked",
+                align: "right",
+                width: 180,
+                render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
+              },
+              {
+                title: "Faculty with Not Full Attendance",
+                dataIndex: "facultyWithNotFullAttendance",
+                key: "facultyWithNotFullAttendance",
+                align: "right",
+                width: 180,
+                render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
+              },
+            ]
+          : [
+              {
+                title: "Metric",
+                dataIndex: "metric",
+                key: "metric",
+                render: (value) => <Text className="text-sm">{value}</Text>,
+              },
+              {
+                title: "Count",
+                dataIndex: "count",
+                key: "count",
+                align: "right",
+                width: 120,
+                render: (value) => <Text className="text-sm font-semibold">{value ?? 0}</Text>,
+              },
+            ],
         dataSource: detailModalRows,
       };
     }
@@ -504,7 +558,7 @@ const TrainingDashboardPage = () => {
         destroyOnClose
       >
         <Table
-          rowKey={(record) => record.metric || record.item}
+          rowKey={(record) => record.trainingId || record.metric || record.item}
           columns={detailModalConfig?.columns || []}
           dataSource={detailModalConfig?.dataSource || []}
           size="small"
