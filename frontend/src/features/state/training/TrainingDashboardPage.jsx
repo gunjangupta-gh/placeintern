@@ -296,14 +296,6 @@ const TrainingDashboardPage = () => {
                 ),
               },
               {
-                title: "Total Trainings",
-                dataIndex: "totalTrainings",
-                key: "totalTrainings",
-                align: "right",
-                width: 120,
-                render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text>,
-              },
-              {
                 title: "Total Nominations",
                 dataIndex: "totalNominations",
                 key: "totalNominations",
@@ -587,7 +579,7 @@ const TrainingDashboardPage = () => {
             columns={detailModalConfig?.columns || []}
             dataSource={detailModalConfig?.dataSource || []}
             size="small"
-            pagination={{ pageSize: 5, size: 'small', showSizeChanger: false }}
+            pagination={{ pageSize: 10, size: 'small', showSizeChanger: false }}
             className="mt-4 [&_.ant-table-thead_th]:bg-gray-50 [&_.ant-table-thead_th]:text-[10px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:text-slate-500"
           />
         </Modal>

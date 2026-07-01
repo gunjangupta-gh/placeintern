@@ -439,7 +439,6 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
                     </div>
                   </Tooltip>
                 ) },
-              { title: 'Total Trainings', dataIndex: 'totalTrainings', key: 'totalTrainings', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
               { title: 'Total Nominations', dataIndex: 'totalNominations', key: 'totalNominations', align: 'right', width: 140, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
               { title: 'Faculty with Full Attendance Marked', dataIndex: 'facultyWithFullAttendanceMarked', key: 'facultyWithFullAttendanceMarked', align: 'right', width: 180, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
               { title: 'Faculty with Not Full Attendance', dataIndex: 'facultyWithNotFullAttendance', key: 'facultyWithNotFullAttendance', align: 'right', width: 180, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
@@ -635,7 +634,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
             columns={trainingModalConfig?.columns || []}
             dataSource={trainingModalRows}
             size="small"
-            pagination={false}
+            pagination={{ pageSize: 10, size: 'small', showSizeChanger: false }}
             className="mt-4 [&_.ant-table-thead_th]:bg-gray-50 [&_.ant-table-thead_th]:text-[10px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:text-slate-500"
           />
         </Modal>
