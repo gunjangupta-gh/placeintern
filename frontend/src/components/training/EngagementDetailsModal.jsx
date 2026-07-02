@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Modal, Button, Table, Typography, Empty } from 'antd';
+import { Modal, Button, Table, Typography, Empty, Tooltip } from 'antd';
 import { CheckCircleOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -50,9 +50,45 @@ const EngagementDetailsModal = ({
     }
   }, [engagementData, isTrainingWise]);
 
+  // Compute summary totals for training-wise view
+  const summaryTotals = useMemo(() => {
+    if (!isTrainingWise || !tableData.length) return null;
+    return {
+      lessonPlanRequired: tableData.reduce((sum, r) => sum + r.lessonPlanRequired, 0),
+      lessonPlanDone: tableData.reduce((sum, r) => sum + r.lessonPlanDone, 0),
+      preTestRequired: tableData.reduce((sum, r) => sum + r.preTestRequired, 0),
+      preTestDone: tableData.reduce((sum, r) => sum + r.preTestDone, 0),
+      postTestRequired: tableData.reduce((sum, r) => sum + r.postTestRequired, 0),
+      postTestDone: tableData.reduce((sum, r) => sum + r.postTestDone, 0),
+      feedbackRequired: tableData.reduce((sum, r) => sum + r.feedbackRequired, 0),
+      feedbackDone: tableData.reduce((sum, r) => sum + r.feedbackDone, 0),
+    };
+  }, [isTrainingWise, tableData]);
+
   const getCompletionPercent = (required, done) => {
     if (required === 0) return 0;
     return Math.round((done / required) * 100);
+  };
+
+  const getPercentColor = (percent) =>
+    percent === 100
+      ? 'text-green-700'
+      : percent >= 75
+        ? 'text-blue-700'
+        : percent >= 50
+          ? 'text-amber-700'
+          : 'text-red-700';
+
+  const renderDoneFraction = (done, required) => {
+    const percent = getCompletionPercent(required, done);
+    const color = getPercentColor(percent);
+    return (
+      <Tooltip title={`${percent}% complete`}>
+        <Text className={`text-sm font-semibold ${color}`}>
+          {done}<span className="text-slate-400 font-normal">/{required}</span>
+        </Text>
+      </Tooltip>
+    );
   };
 
   const columns = useMemo(() => {
@@ -62,51 +98,50 @@ const EngagementDetailsModal = ({
           title: 'Training',
           dataIndex: 'trainingTitle',
           key: 'trainingTitle',
-          render: (value) => <Text className="text-sm">{String(value || '')}</Text>,
+          render: (value) => (
+            <Tooltip title={String(value || '')}>
+              <div
+                className="text-sm"
+                style={{
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {String(value || '')}
+              </div>
+            </Tooltip>
+          ),
         },
         {
           title: 'Lesson Plan',
           key: 'lessonPlan',
           width: 110,
           align: 'center',
-          render: (_, record) => (
-            <Text className="text-sm font-semibold">
-              {Number(record?.lessonPlanDone || 0)}/{Number(record?.lessonPlanRequired || 0)}
-            </Text>
-          ),
+          render: (_, record) => renderDoneFraction(record.lessonPlanDone, record.lessonPlanRequired),
         },
         {
           title: 'Pre-Test',
           key: 'preTest',
           width: 110,
           align: 'center',
-          render: (_, record) => (
-            <Text className="text-sm font-semibold">
-              {Number(record?.preTestDone || 0)}/{Number(record?.preTestRequired || 0)}
-            </Text>
-          ),
+          render: (_, record) => renderDoneFraction(record.preTestDone, record.preTestRequired),
         },
         {
           title: 'Post-Test',
           key: 'postTest',
           width: 110,
           align: 'center',
-          render: (_, record) => (
-            <Text className="text-sm font-semibold">
-              {Number(record?.postTestDone || 0)}/{Number(record?.postTestRequired || 0)}
-            </Text>
-          ),
+          render: (_, record) => renderDoneFraction(record.postTestDone, record.postTestRequired),
         },
         {
           title: 'Feedback',
           key: 'feedback',
           width: 110,
           align: 'center',
-          render: (_, record) => (
-            <Text className="text-sm font-semibold">
-              {Number(record?.feedbackDone || 0)}/{Number(record?.feedbackRequired || 0)}
-            </Text>
-          ),
+          render: (_, record) => renderDoneFraction(record.feedbackDone, record.feedbackRequired),
         },
       ];
     } else {
@@ -140,14 +175,7 @@ const EngagementDetailsModal = ({
           width: 120,
           render: (_, record) => {
             const percent = getCompletionPercent(record?.required || 0, record?.done || 0);
-            const color =
-              percent === 100
-                ? 'text-green-700'
-                : percent >= 75
-                  ? 'text-blue-700'
-                  : percent >= 50
-                    ? 'text-amber-700'
-                    : 'text-red-700';
+            const color = getPercentColor(percent);
             return (
               <Text className={`text-sm font-semibold ${color}`}>{percent}%</Text>
             );
@@ -201,6 +229,36 @@ const EngagementDetailsModal = ({
           </div>
         </div>
 
+        {/* Summary row for training-wise view */}
+        {isTrainingWise && summaryTotals && (
+          <div className="px-5 py-3 bg-slate-50 border-b border-slate-200">
+            <div className="grid grid-cols-4 gap-4">
+              {[
+                { label: 'Lesson Plans', done: summaryTotals.lessonPlanDone, required: summaryTotals.lessonPlanRequired },
+                { label: 'Pre-Test', done: summaryTotals.preTestDone, required: summaryTotals.preTestRequired },
+                { label: 'Post-Test', done: summaryTotals.postTestDone, required: summaryTotals.postTestRequired },
+                { label: 'Feedback', done: summaryTotals.feedbackDone, required: summaryTotals.feedbackRequired },
+              ].map((metric) => {
+                const percent = getCompletionPercent(metric.required, metric.done);
+                const color = getPercentColor(percent);
+                return (
+                  <div key={metric.label} className="text-center">
+                    <Text className="text-[10px] uppercase font-semibold text-slate-500 block mb-0.5">
+                      {metric.label}
+                    </Text>
+                    <Text className={`text-lg font-bold ${color}`}>
+                      {metric.done}
+                    </Text>
+                    <Text className="text-xs text-slate-400">
+                      {' '}/ {metric.required}
+                    </Text>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Content */}
         <div className="p-5">
           {tableData.length > 0 ? (
@@ -208,10 +266,10 @@ const EngagementDetailsModal = ({
               columns={columns}
               dataSource={tableData}
               rowKey={(record) => isTrainingWise ? record?.trainingId : record?.itemName}
-              pagination={false}
+              pagination={isTrainingWise ? { pageSize: 10, size: 'small', showSizeChanger: false } : false}
               size="small"
               bordered
-              className="rounded-lg overflow-hidden"
+              className="rounded-lg overflow-hidden [&_.ant-table-thead_th]:bg-gray-50 [&_.ant-table-thead_th]:text-[10px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:text-slate-500"
               style={{
                 fontSize: '13px',
               }}

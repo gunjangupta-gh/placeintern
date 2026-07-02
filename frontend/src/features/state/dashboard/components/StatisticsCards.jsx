@@ -388,11 +388,28 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
     }
 
     if (trainingModalType === 'engagement') {
+      // Use training-wise data if available (each item has per-training engagement breakdown)
+      if (Array.isArray(trainingWiseSummary) && trainingWiseSummary.length > 0) {
+        return trainingWiseSummary.map((item, index) => ({
+          trainingId: item?.trainingId || `training-${index + 1}`,
+          trainingTitle: item?.trainingTitle || item?.title || `Training ${index + 1}`,
+          lessonPlanRequired: item?.lessonPlanRequired ?? 0,
+          lessonPlanDone: item?.lessonPlanDone ?? 0,
+          preTestRequired: item?.preTestRequired ?? 0,
+          preTestDone: item?.preTestDone ?? 0,
+          postTestRequired: item?.postTestRequired ?? 0,
+          postTestDone: item?.postTestDone ?? 0,
+          feedbackRequired: item?.feedbackRequired ?? 0,
+          feedbackDone: item?.feedbackDone ?? 0,
+        }));
+      }
+
+      // Fallback: simple item-wise format
       return [
         {
           item: 'Lesson Plan',
           required: engagementDetails.lessonPlan?.required ?? approvedApplicationsCount,
-          done: engagementDetails.lessonPlan?.done ?? lessonPlans.approved ?? 0,
+          done: engagementDetails.lessonPlan?.done ?? lessonPlans.total ?? 0,
         },
         {
           item: 'Pre-Test',
@@ -413,7 +430,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
     }
 
     return [];
-  }, [trainingModalType, trainingWiseSummary, facultyTrainingDetails, facultyMetrics.facultyWithCompletedTrainings, trainings.total, approvedApplicationsCount, engagementDetails, lessonPlans.approved, preTestResponses.total, postTestResponses.total, feedback.total]);
+  }, [trainingModalType, trainingWiseSummary, facultyTrainingDetails, facultyMetrics.facultyWithCompletedTrainings, trainings.total, approvedApplicationsCount, engagementDetails, lessonPlans.total, preTestResponses.total, postTestResponses.total, feedback.total]);
 
   const trainingModalConfig = useMemo(() => {
     if (trainingModalType === 'faculty') {

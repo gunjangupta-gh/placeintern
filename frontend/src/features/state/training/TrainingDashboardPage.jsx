@@ -239,11 +239,28 @@ const TrainingDashboardPage = () => {
     }
 
     if (detailModalType === "engagement") {
+      // Use training-wise data if available (each item has per-training engagement breakdown)
+      if (Array.isArray(trainingWiseSummary) && trainingWiseSummary.length > 0) {
+        return trainingWiseSummary.map((item, index) => ({
+          trainingId: item?.trainingId || `training-${index + 1}`,
+          trainingTitle: item?.trainingTitle || item?.title || `Training ${index + 1}`,
+          lessonPlanRequired: item?.lessonPlanRequired ?? 0,
+          lessonPlanDone: item?.lessonPlanDone ?? 0,
+          preTestRequired: item?.preTestRequired ?? 0,
+          preTestDone: item?.preTestDone ?? 0,
+          postTestRequired: item?.postTestRequired ?? 0,
+          postTestDone: item?.postTestDone ?? 0,
+          feedbackRequired: item?.feedbackRequired ?? 0,
+          feedbackDone: item?.feedbackDone ?? 0,
+        }));
+      }
+
+      // Fallback: simple item-wise format
       return [
         {
           item: "Lesson Plan",
           required: engagementDetails.lessonPlan?.required ?? approvedApplicationsCountFallback,
-          done: engagementDetails.lessonPlan?.done ?? lessonPlans.approved ?? 0,
+          done: engagementDetails.lessonPlan?.done ?? lessonPlans.total ?? 0,
         },
         {
           item: "Pre-Test",
@@ -264,7 +281,7 @@ const TrainingDashboardPage = () => {
     }
 
     return [];
-  }, [detailModalType, trainingWiseSummary, facultyTrainingDetails, engagementDetails, trainings.total, summary.nominations, applications.total, facultyMetrics.facultyWithCompletedTrainings, lessonPlans.approved, preTestResponses.total, postTestResponses.total, feedback.total]);
+  }, [detailModalType, trainingWiseSummary, facultyTrainingDetails, engagementDetails, trainings.total, summary.nominations, applications.total, facultyMetrics.facultyWithCompletedTrainings, lessonPlans.total, preTestResponses.total, postTestResponses.total, feedback.total, approvedApplicationsCountFallback]);
 
   const detailModalConfig = useMemo(() => {
     if (detailModalType === "faculty") {

@@ -964,7 +964,7 @@ export class TrainingService {
       const toDateOnly = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
       const today = toDateOnly(now);
 
-      const [trainings, applications, attendanceAgg, teachers, feedbackResponses, totalLessonPlans, approvedLessonPlans, totalCertificates, activeBranches, totalPreTestResponses, totalPostTestResponses] =
+      const [trainings, applications, attendanceAgg, teachers, feedbackResponses, lessonPlansByTraining, approvedLessonPlans, totalCertificates, activeBranches, preTestByTraining, postTestByTraining] =
         await Promise.all([
           this.prisma.training.findMany({
             select: {
@@ -1008,7 +1008,10 @@ export class TrainingService {
               trainingId: true,
             },
           }),
-          this.prisma.lessonPlan.count(),
+          this.prisma.lessonPlan.groupBy({
+            by: ['trainingId'],
+            _count: { _all: true },
+          }),
           this.prisma.lessonPlan.count({ where: { status: 'APPROVED' } }),
           this.prisma.trainingCertificate.count(),
           this.prisma.branch.findMany({
@@ -1020,8 +1023,14 @@ export class TrainingService {
               code: true,
             },
           }),
-          this.prisma.preTestResponse.count(),
-          this.prisma.postTestResponse.count(),
+          this.prisma.preTestResponse.groupBy({
+            by: ['trainingId'],
+            _count: { _all: true },
+          }),
+          this.prisma.postTestResponse.groupBy({
+            by: ['trainingId'],
+            _count: { _all: true },
+          }),
         ]);
 
       const certificateFacultyUsers = (await this.prisma.trainingCertificate.findMany({
@@ -1030,6 +1039,31 @@ export class TrainingService {
           userId: true,
         },
       })) as Array<{ userId: string }>;
+
+      // Build per-training lookup maps from groupBy results
+      const lessonPlanCountByTraining = new Map<string, number>(
+        lessonPlansByTraining.map((item) => [item.trainingId, item._count._all]),
+      );
+      const preTestCountByTraining = new Map<string, number>(
+        preTestByTraining.map((item) => [item.trainingId, item._count._all]),
+      );
+      const postTestCountByTraining = new Map<string, number>(
+        postTestByTraining.map((item) => [item.trainingId, item._count._all]),
+      );
+      const feedbackCountByTraining = new Map<string, number>();
+      for (const response of feedbackResponses) {
+        if (response.trainingId) {
+          feedbackCountByTraining.set(
+            response.trainingId,
+            (feedbackCountByTraining.get(response.trainingId) || 0) + 1,
+          );
+        }
+      }
+
+      // Derive totals from grouped data
+      const totalLessonPlans = lessonPlansByTraining.reduce((sum, item) => sum + item._count._all, 0);
+      const totalPreTestResponses = preTestByTraining.reduce((sum, item) => sum + item._count._all, 0);
+      const totalPostTestResponses = postTestByTraining.reduce((sum, item) => sum + item._count._all, 0);
 
       const approvedApplicationsByTraining = new Map<string, number>();
       const trainingById = new Map(trainings.map((training) => [training.id, training]));
@@ -1323,6 +1357,8 @@ export class TrainingService {
             }
           }
 
+          const approvedCount = approvedApplicationsByTraining.get(training.id) || 0;
+
           return {
             trainingId: training.id,
             trainingTitle: training.title,
@@ -1330,6 +1366,15 @@ export class TrainingService {
             totalNominations: approvedTeacherApplications.length,
             facultyWithFullAttendanceMarked,
             facultyWithNotFullAttendance,
+            // Per-training engagement data
+            lessonPlanRequired: approvedCount,
+            lessonPlanDone: lessonPlanCountByTraining.get(training.id) || 0,
+            preTestRequired: training.preTestFormId ? approvedCount : 0,
+            preTestDone: preTestCountByTraining.get(training.id) || 0,
+            postTestRequired: training.postTestFormId ? approvedCount : 0,
+            postTestDone: postTestCountByTraining.get(training.id) || 0,
+            feedbackRequired: training.feedbackFormId ? approvedCount : 0,
+            feedbackDone: feedbackCountByTraining.get(training.id) || 0,
           };
         })
         .sort((a, b) => b.totalNominations - a.totalNominations);
@@ -1425,7 +1470,7 @@ export class TrainingService {
         engagementDetails: {
           lessonPlan: {
             required: approvedApplications,
-            done: approvedLessonPlans,
+            done: totalLessonPlans,
           },
           preTest: {
             required: preTestRequired,

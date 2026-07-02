@@ -1,17 +1,14 @@
 import React, { useEffect } from 'react';
 import {
   Alert,
-  DatePicker,
   Form,
   Input,
-  InputNumber,
   Modal,
   Select,
   Typography,
   message,
 } from 'antd';
 import { BookOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -28,18 +25,19 @@ const LessonPlanModal = ({
 
   useEffect(() => {
     if (open && lessonPlan) {
-      // Pre-fill form if editing
+      // Pre-fill form if editing — map to DTO-compatible field names
       form.setFieldsValue({
         title: lessonPlan.title,
-        subject: lessonPlan.subject,
-        topic: lessonPlan.topic,
-        duration: lessonPlan.duration,
-        objectives: lessonPlan.objectives,
-        materials: lessonPlan.materials,
-        activities: lessonPlan.activities,
-        assessment: lessonPlan.assessment,
-        reflection: lessonPlan.reflection,
-        implementationDate: lessonPlan.implementationDate ? dayjs(lessonPlan.implementationDate) : null,
+        courseOrSemester: lessonPlan.courseOrSemester,
+        connectionToTraining: lessonPlan.connectionToTraining,
+        learningObjectives: lessonPlan.learningObjectives || [],
+        newSkillsTechnologies: lessonPlan.newSkillsTechnologies,
+        deliveryMethods: lessonPlan.deliveryMethods,
+        handsOnActivities: lessonPlan.handsOnActivities,
+        assessmentMethods: lessonPlan.assessmentMethods,
+        resourceRequirements: lessonPlan.resourceRequirements,
+        implementationTimeline: lessonPlan.implementationTimeline,
+        expectedOutcomes: lessonPlan.expectedOutcomes,
       });
     } else if (!open) {
       form.resetFields();
@@ -51,9 +49,18 @@ const LessonPlanModal = ({
       const values = await form.validateFields();
       
       const payload = {
-        ...values,
         trainingId: training.id,
-        implementationDate: values.implementationDate?.toISOString(),
+        title: values.title,
+        courseOrSemester: values.courseOrSemester,
+        connectionToTraining: values.connectionToTraining,
+        learningObjectives: values.learningObjectives || [],
+        newSkillsTechnologies: values.newSkillsTechnologies,
+        deliveryMethods: values.deliveryMethods,
+        handsOnActivities: values.handsOnActivities,
+        assessmentMethods: values.assessmentMethods,
+        resourceRequirements: values.resourceRequirements,
+        implementationTimeline: values.implementationTimeline,
+        expectedOutcomes: values.expectedOutcomes,
       };
 
       await onSubmit(payload);
@@ -101,76 +108,76 @@ const LessonPlanModal = ({
           </Form.Item>
 
           <Form.Item
-            name="subject"
-            label="Subject"
-            rules={[{ required: true, message: 'Please enter the subject' }]}
+            name="courseOrSemester"
+            label="Course / Semester"
           >
-            <Input placeholder="e.g., Computer Science" />
+            <Input placeholder="e.g., Computer Science - Semester 3" />
           </Form.Item>
 
           <Form.Item
-            name="topic"
-            label="Topic/Unit"
-            rules={[{ required: true, message: 'Please enter the topic' }]}
-          >
-            <Input placeholder="e.g., Python Basics" />
-          </Form.Item>
-
-          <Form.Item
-            name="duration"
-            label="Duration (minutes)"
-            rules={[{ required: true, message: 'Please enter duration' }]}
-          >
-            <InputNumber min={15} max={300} className="w-full" placeholder="60" />
-          </Form.Item>
-
-          <Form.Item
-            name="implementationDate"
-            label="Implementation Date"
-          >
-            <DatePicker className="w-full" format="YYYY-MM-DD" />
-          </Form.Item>
-
-          <Form.Item
-            name="objectives"
-            label="Learning Objectives"
-            rules={[{ required: true, message: 'Please enter learning objectives' }]}
+            name="connectionToTraining"
+            label="Connection to Training"
+            rules={[{ required: true, message: 'Please describe the connection to training' }]}
           >
             <TextArea
               rows={3}
-              placeholder="List the key learning objectives for this lesson..."
+              placeholder="How does the training connect to this lesson? What concepts are you applying?"
               showCount
               maxLength={1000}
             />
           </Form.Item>
 
           <Form.Item
-            name="materials"
-            label="Materials & Resources"
+            name="learningObjectives"
+            label="Learning Objectives"
+            rules={[{ required: true, message: 'Please enter learning objectives' }]}
+          >
+            <Select
+              mode="tags"
+              tokenSeparators={[',']}
+              placeholder="Add objectives (press Enter or comma to add)"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="newSkillsTechnologies"
+            label="New Skills / Technologies"
           >
             <TextArea
               rows={2}
-              placeholder="List materials, tools, and resources needed..."
+              placeholder="Describe new skills or technologies introduced..."
               showCount
               maxLength={500}
             />
           </Form.Item>
 
           <Form.Item
-            name="activities"
-            label="Teaching Activities"
-            rules={[{ required: true, message: 'Please describe teaching activities' }]}
+            name="deliveryMethods"
+            label="Delivery Methods"
           >
             <TextArea
-              rows={4}
-              placeholder="Describe the teaching activities and methodology applied from the training..."
+              rows={2}
+              placeholder="Describe the delivery methods used..."
+              showCount
+              maxLength={500}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="handsOnActivities"
+            label="Hands-on Activities"
+            rules={[{ required: true, message: 'Please describe hands-on activities' }]}
+          >
+            <TextArea
+              rows={3}
+              placeholder="Describe the hands-on activities and methodology applied from the training..."
               showCount
               maxLength={2000}
             />
           </Form.Item>
 
           <Form.Item
-            name="assessment"
+            name="assessmentMethods"
             label="Assessment Methods"
           >
             <TextArea
@@ -182,12 +189,31 @@ const LessonPlanModal = ({
           </Form.Item>
 
           <Form.Item
-            name="reflection"
-            label="Reflection & Application"
+            name="resourceRequirements"
+            label="Resource Requirements"
+          >
+            <TextArea
+              rows={2}
+              placeholder="List materials, tools, and resources needed..."
+              showCount
+              maxLength={500}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="implementationTimeline"
+            label="Implementation Timeline"
+          >
+            <Input placeholder="e.g., 2 weeks starting from August 2026" />
+          </Form.Item>
+
+          <Form.Item
+            name="expectedOutcomes"
+            label="Expected Outcomes & Reflection"
           >
             <TextArea
               rows={3}
-              placeholder="How did you apply concepts from the training? What worked well?"
+              placeholder="What are the expected outcomes? How did you apply concepts from the training?"
               showCount
               maxLength={1000}
             />
