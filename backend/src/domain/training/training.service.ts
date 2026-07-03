@@ -1281,12 +1281,14 @@ export class TrainingService {
         const attendedDays = attendanceMap.get(`${application.userId}:${application.trainingId}`) || 0;
         const attendedHours = Math.min(attendedDays, safeTrainingDays) * hoursPerDay;
 
-        facultyHoursMap.set(application.userId, (facultyHoursMap.get(application.userId) || 0) + attendedHours);
-
         const trainingStart = toDateOnly(training.startDate);
         const trainingEnd = toDateOnly(training.endDate);
         const isCompletedTraining = trainingEnd < today;
         const hasFullAttendance = attendedDays >= safeTrainingDays;
+
+        if (isCompletedTraining && attendedDays > 0) {
+          facultyHoursMap.set(application.userId, (facultyHoursMap.get(application.userId) || 0) + attendedHours);
+        }
 
         if (isCompletedTraining && hasFullAttendance) {
           facultyWithCompletedTrainings.add(application.userId);
@@ -1995,14 +1997,17 @@ export class TrainingService {
       const totalHoursForTraining = training.duration ?? safeTrainingDays * 8;
       const hoursPerDay = totalHoursForTraining / safeTrainingDays;
 
-      const attendedDays =
-        attendanceMap.get(`${application.userId}:${application.trainingId}`) || 0;
+      const attendedDays = attendanceMap.get(`${application.userId}:${application.trainingId}`) || 0;
       const attendedHours = Math.min(attendedDays, safeTrainingDays) * hoursPerDay;
 
-      facultyHoursMap.set(
-        application.userId,
-        (facultyHoursMap.get(application.userId) || 0) + attendedHours,
-      );
+      const isCompletedTraining = training.endDate < now;
+
+      if (isCompletedTraining && attendedDays > 0) {
+        facultyHoursMap.set(
+          application.userId,
+          (facultyHoursMap.get(application.userId) || 0) + attendedHours,
+        );
+      }
 
       if (training.endDate < now && attendedDays > 0) {
         facultyWithCompletedTrainings.add(application.userId);

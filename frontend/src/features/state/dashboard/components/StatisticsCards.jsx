@@ -125,7 +125,16 @@ const StatCard = ({ icon: Icon, title, lines = [], onClick, onView, infoTooltip,
       <div className="space-y-1 mt-1">
         {lines.map((line) => (
           <Text key={String(line.label || '')} className="block text-[12px] leading-snug text-slate-600">
-            {String(line.label || '')}: <span className="font-semibold text-slate-800">{String(line.value ?? '-')}</span>
+            {String(line.label || '')}:{" "}
+            {line.tooltip ? (
+              <Tooltip title={line.tooltip}>
+                <span className="font-semibold text-slate-800 border-b border-dashed border-slate-400 cursor-help">
+                  {String(line.value ?? '-')}
+                </span>
+              </Tooltip>
+            ) : (
+              <span className="font-semibold text-slate-800">{String(line.value ?? '-')}</span>
+            )}
           </Text>
         ))}
       </div>
@@ -366,7 +375,8 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
         return trainingWiseSummary.map((item, index) => ({
           trainingId: item?.trainingId || `training-${index + 1}`,
           trainingTitle: item?.trainingTitle || item?.title || `Training ${index + 1}`,
-          totalTrainings: item?.totalTrainings ?? 1,
+          startDate: item?.startDate,
+          endDate: item?.endDate,
           totalNominations: item?.totalNominations ?? 0,
           facultyWithFullAttendanceMarked: item?.facultyWithFullAttendanceMarked ?? 0,
           facultyWithNotFullAttendance: item?.facultyWithNotFullAttendance ?? 0,
@@ -393,6 +403,8 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
         return trainingWiseSummary.map((item, index) => ({
           trainingId: item?.trainingId || `training-${index + 1}`,
           trainingTitle: item?.trainingTitle || item?.title || `Training ${index + 1}`,
+          startDate: item?.startDate,
+          endDate: item?.endDate,
           lessonPlanRequired: item?.lessonPlanRequired ?? 0,
           lessonPlanDone: item?.lessonPlanDone ?? 0,
           preTestRequired: item?.preTestRequired ?? 0,
@@ -432,58 +444,48 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
     return [];
   }, [trainingModalType, trainingWiseSummary, facultyTrainingDetails, facultyMetrics.facultyWithCompletedTrainings, trainings.total, approvedApplicationsCount, engagementDetails, lessonPlans.total, preTestResponses.total, postTestResponses.total, feedback.total]);
 
-  const trainingModalConfig = useMemo(() => {
-    if (trainingModalType === 'faculty') {
-      const hasTrainingRows = Array.isArray(trainingWiseSummary) && trainingWiseSummary.length > 0;
-      return {
-        title: 'Training Wise Summary',
-        width: 800,
-        columns: hasTrainingRows
-          ? [
-              { title: 'Training', dataIndex: 'trainingTitle', key: 'trainingTitle', render: (value) => (
-                  <Tooltip title={String(value || '')}>
-                    <div
-                      className="text-sm"
-                      style={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        wordBreak: 'break-word',
-                      }}
-                    >
-                      {String(value || '')}
-                    </div>
-                  </Tooltip>
-                ) },
-              { title: 'Total Nominations', dataIndex: 'totalNominations', key: 'totalNominations', align: 'right', width: 140, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
-              { title: 'Faculty with Full Attendance Marked', dataIndex: 'facultyWithFullAttendanceMarked', key: 'facultyWithFullAttendanceMarked', align: 'right', width: 180, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
-              { title: 'Faculty with Not Full Attendance', dataIndex: 'facultyWithNotFullAttendance', key: 'facultyWithNotFullAttendance', align: 'right', width: 180, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
-            ]
-          : [
-              { title: 'Metric', dataIndex: 'metric', key: 'metric', render: (value) => <Text className="text-sm">{String(value || '')}</Text> },
-              { title: 'Count', dataIndex: 'count', key: 'count', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
-            ],
-        dataSource: trainingModalRows,
-      };
-    }
-
-    if (trainingModalType === 'engagement') {
-      return {
-        title: 'Engagement Details',
-        width: 720,
-        columns: [
-          { title: 'Item', dataIndex: 'item', key: 'item', render: (value) => <Text className="text-sm">{String(value || '')}</Text> },
-          { title: 'Required', dataIndex: 'required', key: 'required', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text> },
-          { title: 'Done', dataIndex: 'done', key: 'done', align: 'right', width: 120, render: (value) => <Text className="text-sm font-semibold text-emerald-600">{Number(value || 0)}</Text> },
-        ],
-      };
-    }
-
-    return null;
-  }, [trainingModalType, trainingWiseSummary]);
-
   const closeTrainingModal = () => setTrainingModalType(null);
+
+  const engagementOverall = useMemo(() => {
+    const calculatePercentage = (done, required) => {
+      if (!required) return "0%";
+      return `${Math.round((done / required) * 100)}%`;
+    };
+
+    let preTestReq = 0, preTestDone = 0;
+    let postTestReq = 0, postTestDone = 0;
+    let feedbackReq = 0, feedbackDone = 0;
+    let lessonPlanReq = 0, lessonPlanDone = 0;
+
+    if (Array.isArray(trainingWiseSummary) && trainingWiseSummary.length > 0) {
+      trainingWiseSummary.forEach(item => {
+        preTestReq += item.preTestRequired || 0;
+        preTestDone += item.preTestDone || 0;
+        postTestReq += item.postTestRequired || 0;
+        postTestDone += item.postTestDone || 0;
+        feedbackReq += item.feedbackRequired || 0;
+        feedbackDone += item.feedbackDone || 0;
+        lessonPlanReq += item.lessonPlanRequired || 0;
+        lessonPlanDone += item.lessonPlanDone || 0;
+      });
+    } else {
+      preTestReq = engagementDetails.preTest?.required ?? preTestResponses.total ?? 0;
+      preTestDone = engagementDetails.preTest?.done ?? preTestResponses.total ?? 0;
+      postTestReq = engagementDetails.postTest?.required ?? postTestResponses.total ?? 0;
+      postTestDone = engagementDetails.postTest?.done ?? postTestResponses.total ?? 0;
+      feedbackReq = engagementDetails.feedback?.required ?? feedback.total ?? 0;
+      feedbackDone = engagementDetails.feedback?.done ?? feedback.total ?? 0;
+      lessonPlanReq = engagementDetails.lessonPlan?.required ?? approvedApplicationsCount;
+      lessonPlanDone = engagementDetails.lessonPlan?.done ?? lessonPlans.total ?? 0;
+    }
+
+    return {
+      preTest: calculatePercentage(preTestDone, preTestReq),
+      postTest: calculatePercentage(postTestDone, postTestReq),
+      feedback: calculatePercentage(feedbackDone, feedbackReq),
+      lessonPlan: calculatePercentage(lessonPlanDone, lessonPlanReq),
+    };
+  }, [trainingWiseSummary, engagementDetails, preTestResponses, postTestResponses, lessonPlans, feedback, approvedApplicationsCount]);
 
   const trainingCards = [
     {
@@ -507,10 +509,16 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
         },
         {
           label: 'Completed',
-          value:
+          value: `${trainingMetrics.totalTrainingsConducted || 0} / ${
             facultyTrainingDetails.facultyWithFullAttendanceMarked ??
             facultyMetrics.facultyWithCompletedTrainings ??
-            0,
+            0
+          }`,
+          tooltip: `${trainingMetrics.totalTrainingsConducted || 0} Conducted Trainings / ${
+            facultyTrainingDetails.facultyWithFullAttendanceMarked ??
+            facultyMetrics.facultyWithCompletedTrainings ??
+            0
+          } Completed Faculties`,
         },
         { label: 'Ongoing', value: trainings.ongoing || 0 },
       ],
@@ -533,10 +541,10 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
       icon: CheckCircleOutlined,
       variant: 'warning',
       lines: [
-        { label: 'Pre-Test Filled', value: preTestResponses.total || 0 },
-        { label: 'Post-Test Filled', value: postTestResponses.total || 0 },
-        { label: 'Feedback Submitted', value: feedback.total || 0 },
-        { label: 'Lesson Plans', value: summary.lessonPlanCreated || lessonPlans.created || lessonPlans.total || 0 },
+        { label: 'Pre-Test Filled', value: engagementOverall.preTest },
+        { label: 'Post-Test Filled', value: engagementOverall.postTest },
+        { label: 'Feedback Submitted', value: engagementOverall.feedback },
+        { label: 'Lesson Plans', value: engagementOverall.lessonPlan },
       ],
       onView: () => setTrainingModalType('engagement'),
     },
@@ -630,32 +638,12 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
         </div>
       </div>
 
-      {trainingModalType === 'engagement' ? (
-        <EngagementDetailsModal
-          open={trainingModalType === 'engagement'}
-          onCancel={closeTrainingModal}
-          engagementData={trainingModalRows}
-        />
-      ) : (
-        <Modal
-          title={<span className="font-semibold text-base">{trainingModalConfig?.title || 'Training Details'}</span>}
-          open={trainingModalType !== null}
-          onCancel={closeTrainingModal}
-          footer={null}
-          width={trainingModalConfig?.width || 720}
-          className="[&_.ant-modal-content]:rounded-2xl"
-          destroyOnClose
-        >
-          <Table
-            rowKey={(record) => record.trainingId || record.metric || record.item}
-            columns={trainingModalConfig?.columns || []}
-            dataSource={trainingModalRows}
-            size="small"
-            pagination={{ pageSize: 10, size: 'small', showSizeChanger: false }}
-            className="mt-4 [&_.ant-table-thead_th]:bg-gray-50 [&_.ant-table-thead_th]:text-[10px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:text-slate-500"
-          />
-        </Modal>
-      )}
+      <EngagementDetailsModal
+        open={trainingModalType !== null}
+        onCancel={closeTrainingModal}
+        engagementData={trainingModalRows}
+        type={trainingModalType || 'engagement'}
+      />
 
       <CollegeBreakdownModal
         visible={modalType !== null}
