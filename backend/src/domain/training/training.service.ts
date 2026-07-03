@@ -1307,7 +1307,9 @@ export class TrainingService {
         }
       }
 
-      const facultyHoursValues = Array.from(facultyHoursMap.values());
+      const facultyHoursValues = Array.from(facultyHoursMap.entries())
+        .filter(([userId]) => facultyWithCompletedTrainings.has(userId))
+        .map(([, hours]) => hours);
       const participatingFacultyCount = facultyHoursValues.length;
       const totalFacultyHours = facultyHoursValues.reduce((sum, hours) => sum + hours, 0);
       const averageHoursPerFaculty = participatingFacultyCount > 0 ? totalFacultyHours / participatingFacultyCount : 0;
@@ -2021,7 +2023,9 @@ export class TrainingService {
       }
     }
 
-    const facultyHoursValues = Array.from(facultyHoursMap.values());
+    const facultyHoursValues = Array.from(facultyHoursMap.entries())
+      .filter(([userId]) => facultyWithCompletedTrainings.has(userId))
+      .map(([, hours]) => hours);
     const participatingFacultyCount = facultyHoursValues.length;
     const totalFacultyHours = facultyHoursValues.reduce((sum, hours) => sum + hours, 0);
     const averageHoursPerFaculty = participatingFacultyCount > 0 ? totalFacultyHours / participatingFacultyCount : 0;
