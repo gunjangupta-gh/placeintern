@@ -1248,14 +1248,14 @@ export class TrainingService {
         }
         processedFacultyTraining.add(facultyTrainingKey);
 
+        if (!teacherIds.has(application.userId)) {
+          continue;
+        }
+
         approvedApplicationsByTraining.set(
           application.trainingId,
           (approvedApplicationsByTraining.get(application.trainingId) || 0) + 1,
         );
-
-        if (!teacherIds.has(application.userId)) {
-          continue;
-        }
 
         const training = trainingById.get(application.trainingId);
         if (!training) {
@@ -1345,17 +1345,16 @@ export class TrainingService {
                 (1000 * 60 * 60 * 24),
             ) + 1;
           const safeTrainingDays = Math.max(trainingDays, 1);
-          const approvedTeacherApplications = applications.filter(
+          const approvedTrainingApplications = applications.filter(
             (application) =>
               application.status === 'APPROVED' &&
-              application.trainingId === training.id &&
-              teacherIds.has(application.userId),
+              application.trainingId === training.id
           );
 
           let facultyWithFullAttendanceMarked = 0;
           let facultyWithNotFullAttendance = 0;
 
-          for (const application of approvedTeacherApplications) {
+          for (const application of approvedTrainingApplications) {
             const attendedDays = attendanceMap.get(`${application.userId}:${application.trainingId}`) || 0;
 
             if (attendedDays >= safeTrainingDays) {
@@ -1373,7 +1372,7 @@ export class TrainingService {
             startDate: training.startDate,
             endDate: training.endDate,
             totalTrainings: 1,
-            totalNominations: approvedTeacherApplications.length,
+            totalNominations: approvedTrainingApplications.length,
             facultyWithFullAttendanceMarked,
             facultyWithNotFullAttendance,
             // Per-training engagement data
@@ -1405,9 +1404,7 @@ export class TrainingService {
 
       const totalFacultyRegistered = new Set(applications.map((application) => application.userId)).size;
       const applicantFacultyCount = new Set(
-        applications
-          .filter((application) => teacherIds.has(application.userId))
-          .map((application) => application.userId),
+        applications.map((application) => application.userId),
       ).size;
       const facultyApplicationCoveragePercentage =
         totalFaculty > 0 ? (applicantFacultyCount / totalFaculty) * 100 : 0;
@@ -2066,17 +2063,16 @@ export class TrainingService {
               (1000 * 60 * 60 * 24),
           ) + 1;
         const safeTrainingDays = Math.max(trainingDays, 1);
-        const approvedTeacherApplications = scopedApplications.filter(
+        const approvedTrainingApplications = scopedApplications.filter(
           (application) =>
             application.status === 'APPROVED' &&
-            application.trainingId === training.id &&
-            allFacultyIds.has(application.userId),
+            application.trainingId === training.id
         );
 
         let facultyWithFullAttendanceMarked = 0;
         let facultyWithNotFullAttendance = 0;
 
-        for (const application of approvedTeacherApplications) {
+        for (const application of approvedTrainingApplications) {
           const attendedDays = attendanceMap.get(`${application.userId}:${application.trainingId}`) || 0;
 
           if (attendedDays >= safeTrainingDays) {
@@ -2092,7 +2088,7 @@ export class TrainingService {
           startDate: training.startDate,
           endDate: training.endDate,
           totalTrainings: 1,
-          totalNominations: approvedTeacherApplications.length,
+          totalNominations: approvedTrainingApplications.length,
           facultyWithFullAttendanceMarked,
           facultyWithNotFullAttendance,
         };
@@ -2103,9 +2099,7 @@ export class TrainingService {
 
     const totalFacultyRegistered = new Set(approvedApplications.map((application) => application.userId)).size;
     const applicantFacultyCount = new Set(
-      scopedApplications
-        .filter((application) => allFacultyIds.has(application.userId))
-        .map((application) => application.userId),
+      scopedApplications.map((application) => application.userId),
     ).size;
     const facultyApplicationCoveragePercentage =
       totalFaculty > 0 ? (applicantFacultyCount / totalFaculty) * 100 : 0;
