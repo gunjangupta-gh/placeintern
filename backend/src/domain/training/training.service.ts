@@ -1228,9 +1228,7 @@ export class TrainingService {
       }
 
       const facultyHoursMap = new Map<string, number>();
-      for (const teacher of teachers) {
-        facultyHoursMap.set(teacher.id, 0);
-      }
+      const processedFacultyTraining = new Set<string>();
       const facultyWithOngoingTrainings = new Set<string>();
       const facultyWithCompletedTrainings = new Set<string>();
       const facultyWithNotFullAttendance = new Set<string>();
@@ -1243,6 +1241,12 @@ export class TrainingService {
         if (application.status !== 'APPROVED') {
           continue;
         }
+
+        const facultyTrainingKey = `${application.userId}:${application.trainingId}`;
+        if (processedFacultyTraining.has(facultyTrainingKey)) {
+          continue;
+        }
+        processedFacultyTraining.add(facultyTrainingKey);
 
         approvedApplicationsByTraining.set(
           application.trainingId,
@@ -1302,13 +1306,14 @@ export class TrainingService {
       }
 
       const facultyHoursValues = Array.from(facultyHoursMap.values());
+      const participatingFacultyCount = facultyHoursValues.length;
       const totalFacultyHours = facultyHoursValues.reduce((sum, hours) => sum + hours, 0);
-      const averageHoursPerFaculty = totalFaculty > 0 ? totalFacultyHours / totalFaculty : 0;
+      const averageHoursPerFaculty = participatingFacultyCount > 0 ? totalFacultyHours / participatingFacultyCount : 0;
       const highestHoursSingleFaculty = facultyHoursValues.length > 0 ? Math.max(...facultyHoursValues) : 0;
       const lowestHoursSingleFaculty = facultyHoursValues.length > 0 ? Math.min(...facultyHoursValues) : 0;
 
       const facultyCompleted40Hours = facultyHoursValues.filter((hours) => hours >= 40).length;
-      const facultyCompletedUnder40Hours = Math.max(totalFaculty - facultyCompleted40Hours, 0);
+      const facultyCompletedUnder40Hours = Math.max(participatingFacultyCount - facultyCompleted40Hours, 0);
 
       for (const response of feedbackResponses) {
         const courseId = resolveCourseForTraining(response.userId, response.trainingId);
@@ -1330,6 +1335,7 @@ export class TrainingService {
         .sort((a, b) => b.facultyCount - a.facultyCount);
 
       const trainingWiseSummary = trainings
+        .filter((training) => training.isPublished && training.endDate < now)
         .map((training) => {
           const trainingDays =
             Math.ceil(
@@ -1362,6 +1368,8 @@ export class TrainingService {
           return {
             trainingId: training.id,
             trainingTitle: training.title,
+            startDate: training.startDate,
+            endDate: training.endDate,
             totalTrainings: 1,
             totalNominations: approvedTeacherApplications.length,
             facultyWithFullAttendanceMarked,
@@ -1945,9 +1953,7 @@ export class TrainingService {
     }
 
     const facultyHoursMap = new Map<string, number>();
-    for (const teacher of teachers) {
-      facultyHoursMap.set(teacher.id, 0);
-    }
+    const processedFacultyTraining = new Set<string>();
 
     const facultyWithCompletedTrainings = new Set<string>();
     const facultyWithOngoingTrainings = new Set<string>();
@@ -1956,6 +1962,12 @@ export class TrainingService {
       if (!allFacultyIds.has(application.userId)) {
         continue;
       }
+
+      const facultyTrainingKey = `${application.userId}:${application.trainingId}`;
+      if (processedFacultyTraining.has(facultyTrainingKey)) {
+        continue;
+      }
+      processedFacultyTraining.add(facultyTrainingKey);
 
       const training = trainingById.get(application.trainingId);
       if (!training) {
@@ -2008,13 +2020,14 @@ export class TrainingService {
     }
 
     const facultyHoursValues = Array.from(facultyHoursMap.values());
+    const participatingFacultyCount = facultyHoursValues.length;
     const totalFacultyHours = facultyHoursValues.reduce((sum, hours) => sum + hours, 0);
-    const averageHoursPerFaculty = totalFaculty > 0 ? totalFacultyHours / totalFaculty : 0;
+    const averageHoursPerFaculty = participatingFacultyCount > 0 ? totalFacultyHours / participatingFacultyCount : 0;
     const highestHoursSingleFaculty = facultyHoursValues.length > 0 ? Math.max(...facultyHoursValues) : 0;
     const lowestHoursSingleFaculty = facultyHoursValues.length > 0 ? Math.min(...facultyHoursValues) : 0;
 
     const facultyCompleted40Hours = facultyHoursValues.filter((hours) => hours >= 40).length;
-    const facultyCompletedUnder40Hours = Math.max(totalFaculty - facultyCompleted40Hours, 0);
+    const facultyCompletedUnder40Hours = Math.max(participatingFacultyCount - facultyCompleted40Hours, 0);
 
     const scopedFeedbackResponses = feedbackResponses.filter((response) =>
       scopedTrainingIds.has(response.trainingId),
@@ -2040,6 +2053,7 @@ export class TrainingService {
       .sort((a, b) => b.facultyCount - a.facultyCount);
 
     const trainingWiseSummary = scopedTrainings
+      .filter((training) => training.isPublished && training.endDate < now)
       .map((training) => {
         const trainingDays =
           Math.ceil(
@@ -2070,6 +2084,8 @@ export class TrainingService {
         return {
           trainingId: training.id,
           trainingTitle: training.title,
+          startDate: training.startDate,
+          endDate: training.endDate,
           totalTrainings: 1,
           totalNominations: approvedTeacherApplications.length,
           facultyWithFullAttendanceMarked,

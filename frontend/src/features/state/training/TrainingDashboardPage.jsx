@@ -94,7 +94,16 @@ const StatCard = ({ icon: Icon, title, lines = [], onClick, onView, infoTooltip,
       <div className="space-y-1 mt-1">
         {lines.map((line) => (
           <Text key={String(line.label || '')} className="block text-[12px] leading-snug text-slate-600">
-            {String(line.label || '')}: <span className="font-semibold text-slate-800">{String(line.value ?? '-')}</span>
+            {String(line.label || '')}:{" "}
+            {line.tooltip ? (
+              <Tooltip title={line.tooltip}>
+                <span className="font-semibold text-slate-800 border-b border-dashed border-slate-400 cursor-help">
+                  {String(line.value ?? '-')}
+                </span>
+              </Tooltip>
+            ) : (
+              <span className="font-semibold text-slate-800">{String(line.value ?? '-')}</span>
+            )}
           </Text>
         ))}
       </div>
@@ -208,6 +217,8 @@ const TrainingDashboardPage = () => {
         return trainingWiseSummary.map((item, index) => ({
           trainingId: item?.trainingId || `training-${index + 1}`,
           trainingTitle: item?.trainingTitle || item?.title || `Training ${index + 1}`,
+          startDate: item?.startDate,
+          endDate: item?.endDate,
           totalTrainings: item?.totalTrainings ?? 1,
           totalNominations: item?.totalNominations ?? 0,
           facultyWithFullAttendanceMarked: item?.facultyWithFullAttendanceMarked ?? 0,
@@ -244,6 +255,8 @@ const TrainingDashboardPage = () => {
         return trainingWiseSummary.map((item, index) => ({
           trainingId: item?.trainingId || `training-${index + 1}`,
           trainingTitle: item?.trainingTitle || item?.title || `Training ${index + 1}`,
+          startDate: item?.startDate,
+          endDate: item?.endDate,
           lessonPlanRequired: item?.lessonPlanRequired ?? 0,
           lessonPlanDone: item?.lessonPlanDone ?? 0,
           preTestRequired: item?.preTestRequired ?? 0,
@@ -283,114 +296,6 @@ const TrainingDashboardPage = () => {
     return [];
   }, [detailModalType, trainingWiseSummary, facultyTrainingDetails, engagementDetails, trainings.total, summary.nominations, applications.total, facultyMetrics.facultyWithCompletedTrainings, lessonPlans.total, preTestResponses.total, postTestResponses.total, feedback.total, approvedApplicationsCountFallback]);
 
-  const detailModalConfig = useMemo(() => {
-    if (detailModalType === "faculty") {
-      const hasTrainingRows = Array.isArray(trainingWiseSummary) && trainingWiseSummary.length > 0;
-      return {
-        title: "Training Wise Summary",
-        width: 800,
-        columns: hasTrainingRows
-          ? [
-              {
-                title: "Training",
-                dataIndex: "trainingTitle",
-                key: "trainingTitle",
-                render: (value) => (
-                  <Tooltip title={String(value || '')}>
-                    <div
-                      className="text-sm"
-                      style={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        wordBreak: 'break-word',
-                      }}
-                    >
-                      {String(value || '')}
-                    </div>
-                  </Tooltip>
-                ),
-              },
-              {
-                title: "Total Nominations",
-                dataIndex: "totalNominations",
-                key: "totalNominations",
-                align: "right",
-                width: 140,
-                render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text>,
-              },
-              {
-                title: "Faculty with Full Attendance Marked",
-                dataIndex: "facultyWithFullAttendanceMarked",
-                key: "facultyWithFullAttendanceMarked",
-                align: "right",
-                width: 180,
-                render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text>,
-              },
-              {
-                title: "Faculty with Not Full Attendance",
-                dataIndex: "facultyWithNotFullAttendance",
-                key: "facultyWithNotFullAttendance",
-                align: "right",
-                width: 180,
-                render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text>,
-              },
-            ]
-          : [
-              {
-                title: "Metric",
-                dataIndex: "metric",
-                key: "metric",
-                render: (value) => <Text className="text-sm">{String(value || '')}</Text>,
-              },
-              {
-                title: "Count",
-                dataIndex: "count",
-                key: "count",
-                align: "right",
-                width: 120,
-                render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text>,
-              },
-            ],
-        dataSource: detailModalRows,
-      };
-    }
-
-    if (detailModalType === "engagement") {
-      return {
-        title: "Engagement Details",
-        width: 720,
-        columns: [
-          {
-            title: "Item",
-            dataIndex: "item",
-            key: "item",
-            render: (value) => <Text className="text-sm">{String(value || '')}</Text>,
-          },
-          {
-            title: "Required",
-            dataIndex: "required",
-            key: "required",
-            align: "right",
-            width: 120,
-            render: (value) => <Text className="text-sm font-semibold">{Number(value || 0)}</Text>,
-          },
-          {
-            title: "Done",
-            dataIndex: "done",
-            key: "done",
-            align: "right",
-            width: 120,
-            render: (value) => <Text className="text-sm font-semibold text-emerald-600">{Number(value || 0)}</Text>,
-          },
-        ],
-        dataSource: detailModalRows,
-      };
-    }
-
-    return null;
-  }, [detailModalRows, detailModalType]);
 
   const closeDetailModal = () => setDetailModalType(null);
 
@@ -402,6 +307,47 @@ const TrainingDashboardPage = () => {
   };
 
   const approvedApplicationsCount = summary.nominations || applications.total || 0;
+
+  const engagementOverall = useMemo(() => {
+    const calculatePercentage = (done, required) => {
+      if (!required) return "0%";
+      return `${Math.round((done / required) * 100)}%`;
+    };
+
+    let preTestReq = 0, preTestDone = 0;
+    let postTestReq = 0, postTestDone = 0;
+    let feedbackReq = 0, feedbackDone = 0;
+    let lessonPlanReq = 0, lessonPlanDone = 0;
+
+    if (Array.isArray(trainingWiseSummary) && trainingWiseSummary.length > 0) {
+      trainingWiseSummary.forEach(item => {
+        preTestReq += item.preTestRequired || 0;
+        preTestDone += item.preTestDone || 0;
+        postTestReq += item.postTestRequired || 0;
+        postTestDone += item.postTestDone || 0;
+        feedbackReq += item.feedbackRequired || 0;
+        feedbackDone += item.feedbackDone || 0;
+        lessonPlanReq += item.lessonPlanRequired || 0;
+        lessonPlanDone += item.lessonPlanDone || 0;
+      });
+    } else {
+      preTestReq = engagementDetails.preTest?.required ?? preTestResponses.total ?? 0;
+      preTestDone = engagementDetails.preTest?.done ?? preTestResponses.total ?? 0;
+      postTestReq = engagementDetails.postTest?.required ?? postTestResponses.total ?? 0;
+      postTestDone = engagementDetails.postTest?.done ?? postTestResponses.total ?? 0;
+      feedbackReq = engagementDetails.feedback?.required ?? feedback.total ?? 0;
+      feedbackDone = engagementDetails.feedback?.done ?? feedback.total ?? 0;
+      lessonPlanReq = engagementDetails.lessonPlan?.required ?? approvedApplicationsCount;
+      lessonPlanDone = engagementDetails.lessonPlan?.done ?? lessonPlans.total ?? 0;
+    }
+
+    return {
+      preTest: calculatePercentage(preTestDone, preTestReq),
+      postTest: calculatePercentage(postTestDone, postTestReq),
+      feedback: calculatePercentage(feedbackDone, feedbackReq),
+      lessonPlan: calculatePercentage(lessonPlanDone, lessonPlanReq),
+    };
+  }, [trainingWiseSummary, engagementDetails, preTestResponses, postTestResponses, lessonPlans, feedback, approvedApplicationsCount]);
 
   const stats = useMemo(
     () => [
@@ -426,10 +372,16 @@ const TrainingDashboardPage = () => {
           },
           {
             label: "Completed",
-            value:
+            value: `${trainingMetrics.totalTrainingsConducted || 0} / ${
               facultyTrainingDetails.facultyWithFullAttendanceMarked ??
               facultyMetrics.facultyWithCompletedTrainings ??
-              0,
+              0
+            }`,
+            tooltip: `${trainingMetrics.totalTrainingsConducted || 0} Conducted Trainings / ${
+              facultyTrainingDetails.facultyWithFullAttendanceMarked ??
+              facultyMetrics.facultyWithCompletedTrainings ??
+              0
+            } Completed Faculties`,
           },
           { label: "Ongoing", value: trainings.ongoing || 0 },
         ],
@@ -454,10 +406,10 @@ const TrainingDashboardPage = () => {
         title: "Engagement",
         icon: CheckCircleOutlined,
         lines: [
-          { label: "Pre-Test Filled", value: preTestResponses.total || 0 },
-          { label: "Post-Test Filled", value: postTestResponses.total || 0 },
-          { label: "Feedback Submitted", value: feedback.total || 0 },
-          { label: "Lesson Plans", value: summary.lessonPlanCreated || lessonPlans.created || lessonPlans.total || 0 },
+          { label: "Pre-Test Filled", value: engagementOverall.preTest },
+          { label: "Post-Test Filled", value: engagementOverall.postTest },
+          { label: "Feedback Submitted", value: engagementOverall.feedback },
+          { label: "Lesson Plans", value: engagementOverall.lessonPlan },
         ],
         variant: "warning",
         onClick: () => navigate("/app/training/manage"),
@@ -575,32 +527,12 @@ const TrainingDashboardPage = () => {
         />
       </Card>
 
-      {detailModalType === "engagement" ? (
-        <EngagementDetailsModal
-          open={detailModalType === "engagement"}
-          onCancel={closeDetailModal}
-          engagementData={detailModalRows}
-        />
-      ) : (
-        <Modal
-          title={<span className="font-semibold text-base">{detailModalConfig?.title || "Training Details"}</span>}
-          open={detailModalType !== null}
-          onCancel={closeDetailModal}
-          footer={null}
-          width={detailModalConfig?.width || 720}
-          className="[&_.ant-modal-content]:rounded-2xl"
-          destroyOnClose
-        >
-          <Table
-            rowKey={(record) => record.trainingId || record.metric || record.item}
-            columns={detailModalConfig?.columns || []}
-            dataSource={detailModalConfig?.dataSource || []}
-            size="small"
-            pagination={{ pageSize: 10, size: 'small', showSizeChanger: false }}
-            className="mt-4 [&_.ant-table-thead_th]:bg-gray-50 [&_.ant-table-thead_th]:text-[10px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:text-slate-500"
-          />
-        </Modal>
-      )}
+      <EngagementDetailsModal
+        open={detailModalType !== null}
+        onCancel={closeDetailModal}
+        engagementData={detailModalRows}
+        type={detailModalType || 'engagement'}
+      />
 
       <Modal
         title={`Create Training - Step ${formStep + 1} of ${TRAINING_FORM_STEP_TITLES.length}: ${TRAINING_FORM_STEP_TITLES[formStep]}`}
