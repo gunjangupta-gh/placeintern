@@ -18,6 +18,7 @@ import {
   CheckCircleOutlined,
   EyeOutlined,
   InfoCircleOutlined,
+  RiseOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import {
@@ -51,6 +52,10 @@ const STAT_VARIANTS = {
   purple: {
     iconWrap: "bg-purple-100",
     iconColor: "text-purple-700",
+  },
+  success: {
+    iconWrap: "bg-emerald-100",
+    iconColor: "text-emerald-700",
   },
 };
 
@@ -175,6 +180,7 @@ const TrainingDashboardPage = () => {
   const facultyMetrics = dashboard.facultyMetrics || {};
   const completionMetrics = dashboard.completionMetrics || {};
   const hoursDistribution = dashboard.hoursDistribution || {};
+  const testPerformance = dashboard.testPerformance || {};
   const feedback = dashboard.feedback || {};
   const preTestResponses = dashboard.preTestResponses || {};
   const postTestResponses = dashboard.postTestResponses || {};
@@ -407,6 +413,22 @@ const TrainingDashboardPage = () => {
         onClick: () => navigate("/app/training/manage"),
         onView: viewableCards.engagement,
       },
+      {
+        title: "Test Performance",
+        icon: RiseOutlined,
+        lines: [
+          { label: "Avg Pre-Test Score", value: `${testPerformance.avgPreTestScore ?? 0}%` },
+          { label: "Avg Post-Test Score", value: `${testPerformance.avgPostTestScore ?? 0}%` },
+          {
+            label: (testPerformance.avgImprovement ?? 0) >= 0 ? "Improvement" : "Decline",
+            value: `${(testPerformance.avgImprovement ?? 0) >= 0 ? "+" : ""}${testPerformance.avgImprovement ?? 0}%`,
+            tooltip: `Based on ${testPerformance.totalCompared ?? 0} faculty who submitted both pre-test and post-test. Improved: ${testPerformance.facultyImproved ?? 0}, Declined: ${testPerformance.facultyDeclined ?? 0}, No Change: ${testPerformance.facultyNoChange ?? 0}.`,
+          },
+        ],
+        variant: "success",
+        onClick: () => navigate("/app/training/manage"),
+        infoTooltip: "Improvement = Avg Post-Test Score − Avg Pre-Test Score, across faculty who submitted both tests for a training.",
+      },
     ],
     [
       summary,
@@ -419,6 +441,7 @@ const TrainingDashboardPage = () => {
       lessonPlans,
       completionMetrics,
       hoursDistribution,
+      testPerformance,
       preTestResponses,
       postTestResponses,
       feedback,
@@ -493,7 +516,7 @@ const TrainingDashboardPage = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 mb-3">
         {stats.map((stat) => (
           <div key={stat.title}>
             <StatCard {...stat} />

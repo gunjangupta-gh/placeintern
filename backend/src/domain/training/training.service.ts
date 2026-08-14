@@ -964,7 +964,7 @@ export class TrainingService {
       const toDateOnly = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
       const today = toDateOnly(now);
 
-      const [trainings, applications, attendanceAgg, teachers, feedbackResponses, lessonPlansByTraining, approvedLessonPlans, totalCertificates, activeBranches, preTestByTraining, postTestByTraining] =
+      const [trainings, applications, attendanceAgg, teachers, feedbackResponses, lessonPlansByTraining, approvedLessonPlans, totalCertificates, activeBranches, preTestByTraining, postTestByTraining, preTestScores, postTestScores] =
         await Promise.all([
           this.prisma.training.findMany({
             select: {
@@ -1030,6 +1030,12 @@ export class TrainingService {
           this.prisma.postTestResponse.groupBy({
             by: ['trainingId'],
             _count: { _all: true },
+          }),
+          this.prisma.preTestResponse.findMany({
+            select: { userId: true, trainingId: true, score: true },
+          }),
+          this.prisma.postTestResponse.findMany({
+            select: { userId: true, trainingId: true, score: true },
           }),
         ]);
 
@@ -1311,6 +1317,58 @@ export class TrainingService {
         }
       }
 
+      // Pre vs Post test score comparison (mirrors the "Pre & Post Test Comparison" report builder logic).
+      const preTestScoreMap = new Map<string, number>(
+        preTestScores.map((response) => [`${response.userId}:${response.trainingId}`, response.score ?? 0]),
+      );
+      const postTestScoreMap = new Map<string, number>(
+        postTestScores.map((response) => [`${response.userId}:${response.trainingId}`, response.score ?? 0]),
+      );
+
+      const testScoreImprovements: number[] = [];
+      const preTestScoreValues: number[] = [];
+      const postTestScoreValues: number[] = [];
+      let facultyImproved = 0;
+      let facultyDeclined = 0;
+      let facultyNoChange = 0;
+      const processedFacultyForTestComparison = new Set<string>();
+
+      for (const application of applications) {
+        if (application.status !== 'APPROVED') {
+          continue;
+        }
+
+        const key = `${application.userId}:${application.trainingId}`;
+        if (processedFacultyForTestComparison.has(key)) {
+          continue;
+        }
+
+        const preScore = preTestScoreMap.get(key);
+        const postScore = postTestScoreMap.get(key);
+        if (preScore === undefined || postScore === undefined) {
+          continue;
+        }
+        processedFacultyForTestComparison.add(key);
+
+        const improvement = postScore - preScore;
+        preTestScoreValues.push(preScore);
+        postTestScoreValues.push(postScore);
+        testScoreImprovements.push(improvement);
+
+        if (improvement >= 5) {
+          facultyImproved += 1;
+        } else if (improvement <= -5) {
+          facultyDeclined += 1;
+        } else {
+          facultyNoChange += 1;
+        }
+      }
+
+      const average = (values: number[]) => (values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : 0);
+      const avgPreTestScore = average(preTestScoreValues);
+      const avgPostTestScore = average(postTestScoreValues);
+      const avgTestScoreImprovement = average(testScoreImprovements);
+
       const facultyHoursValues = Array.from(facultyHoursMap.entries())
         .filter(([userId]) => facultyWithCompletedTrainings.has(userId))
         .map(([, hours]) => hours);
@@ -1527,6 +1585,15 @@ export class TrainingService {
           averageHoursPerFaculty: Number(averageHoursPerFaculty.toFixed(2)),
           highestHoursSingleFaculty: Number(highestHoursSingleFaculty.toFixed(2)),
           lowestHoursSingleFaculty: Number(lowestHoursSingleFaculty.toFixed(2)),
+        },
+        testPerformance: {
+          totalCompared: testScoreImprovements.length,
+          avgPreTestScore: Number(avgPreTestScore.toFixed(2)),
+          avgPostTestScore: Number(avgPostTestScore.toFixed(2)),
+          avgImprovement: Number(avgTestScoreImprovement.toFixed(2)),
+          facultyImproved,
+          facultyDeclined,
+          facultyNoChange,
         },
         year: now.getFullYear(),
       };

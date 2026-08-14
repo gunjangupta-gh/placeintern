@@ -11,6 +11,7 @@ import {
   PlusOutlined,
   SettingOutlined,
   CheckCircleOutlined,
+  RiseOutlined,
 } from '@ant-design/icons';
 import stateService from '../../../../services/state.service';
 import EngagementDetailsModal from '../../../../components/training/EngagementDetailsModal';
@@ -361,6 +362,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
   const facultyMetrics = dashboard.facultyMetrics || {};
   const completionMetrics = dashboard.completionMetrics || {};
   const hoursDistribution = dashboard.hoursDistribution || {};
+  const testPerformance = dashboard.testPerformance || {};
   const feedback = dashboard.feedback || {};
   const preTestResponses = dashboard.preTestResponses || {};
   const postTestResponses = dashboard.postTestResponses || {};
@@ -540,6 +542,21 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
       ],
       onView: () => setTrainingModalType('engagement'),
     },
+    {
+      title: 'Test Performance',
+      icon: RiseOutlined,
+      variant: 'success',
+      lines: [
+        { label: 'Avg Pre-Test Score', value: `${testPerformance.avgPreTestScore ?? 0}%` },
+        { label: 'Avg Post-Test Score', value: `${testPerformance.avgPostTestScore ?? 0}%` },
+        {
+          label: (testPerformance.avgImprovement ?? 0) >= 0 ? 'Improvement' : 'Decline',
+          value: `${(testPerformance.avgImprovement ?? 0) >= 0 ? '+' : ''}${testPerformance.avgImprovement ?? 0}%`,
+          tooltip: `Based on ${testPerformance.totalCompared ?? 0} faculty who submitted both pre-test and post-test. Improved: ${testPerformance.facultyImproved ?? 0}, Declined: ${testPerformance.facultyDeclined ?? 0}, No Change: ${testPerformance.facultyNoChange ?? 0}.`,
+        },
+      ],
+      infoTooltip: 'Improvement = Avg Post-Test Score − Avg Pre-Test Score, across faculty who submitted both tests for a training.',
+    },
   ];
 
   return (
@@ -617,7 +634,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
         <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">
           Training Statistics
         </Text>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {trainingLoading
             ? Array.from({ length: 5 }).map((_, idx) => (
                 <div key={`training-loading-${idx}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3 h-full">
