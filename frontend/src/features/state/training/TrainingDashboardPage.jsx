@@ -371,24 +371,16 @@ const TrainingDashboardPage = () => {
             value: summary.nominations || applications.nominations || applications.total || 0,
           },
           {
-            label: "Completed",
-            value: `${trainingMetrics.totalTrainingsConducted || 0} / ${
-              facultyTrainingDetails.facultyWithFullAttendanceMarked ??
-              facultyMetrics.facultyWithCompletedTrainings ??
-              0
-            }`,
-            tooltip: `${trainingMetrics.totalTrainingsConducted || 0} Conducted Trainings / ${
-              facultyTrainingDetails.facultyWithFullAttendanceMarked ??
-              facultyMetrics.facultyWithCompletedTrainings ??
-              0
-            } Completed Faculties`,
+            label: "No. of Attendees",
+            value: facultyTrainingDetails.facultyAttendeesCount ?? 0,
+            tooltip: "Unique faculty who attended at least one day of a completed training out of their approved nominations.",
           },
           { label: "Ongoing", value: trainings.ongoing || 0 },
         ],
         variant: "warning",
         onClick: () => navigate("/app/training/manage"),
         onView: viewableCards.faculty,
-        infoTooltip: "Unique faculty counts based on approved nominations. Full attendance means all scheduled training days were marked.",
+        infoTooltip: "Unique faculty counts based on approved nominations. \"No. of Attendees\" counts faculty with at least one day of marked attendance in a completed training — full attendance is not required.",
       },
       {
         title: "Completion & Hours",

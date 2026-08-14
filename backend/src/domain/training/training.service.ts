@@ -1232,6 +1232,7 @@ export class TrainingService {
       const facultyWithOngoingTrainings = new Set<string>();
       const facultyWithCompletedTrainings = new Set<string>();
       const facultyWithNotFullAttendance = new Set<string>();
+      const facultyAttendees = new Set<string>();
       const completedFacultyIds = new Set<string>();
       for (const record of certificateFacultyUsers) {
         completedFacultyIds.add(record.userId);
@@ -1285,20 +1286,23 @@ export class TrainingService {
         const trainingEnd = toDateOnly(training.endDate);
         const isCompletedTraining = trainingEnd < today;
         const hasFullAttendance = attendedDays >= safeTrainingDays;
+        const hasAnyAttendance = attendedDays > 0;
 
-        if (isCompletedTraining && attendedDays > 0) {
+        if (isCompletedTraining && hasAnyAttendance) {
           facultyHoursMap.set(application.userId, (facultyHoursMap.get(application.userId) || 0) + attendedHours);
-        }
-
-        if (isCompletedTraining && hasFullAttendance) {
-          facultyWithCompletedTrainings.add(application.userId);
+          // Attendee = at least one day of attendance marked, full attendance not required.
+          facultyAttendees.add(application.userId);
 
           const courseId = resolveCourseForTraining(application.userId, application.trainingId);
           // Only track if we have a valid course (existing branch)
           if (courseId && courseWiseMap.has(courseId)) {
             courseWiseMap.get(courseId)?.completedFacultyIds.add(application.userId);
           }
-        } else if (isCompletedTraining && attendedDays > 0) {
+        }
+
+        if (isCompletedTraining && hasFullAttendance) {
+          facultyWithCompletedTrainings.add(application.userId);
+        } else if (isCompletedTraining && hasAnyAttendance) {
           facultyWithNotFullAttendance.add(application.userId);
         }
 
@@ -1473,6 +1477,7 @@ export class TrainingService {
           totalNominations: totalApplications,
           facultyWithFullAttendanceMarked: facultyWithCompletedTrainings.size,
           facultyWithNotFullAttendance: facultyWithNotFullAttendance.size,
+          facultyAttendeesCount: facultyAttendees.size,
           completedFaculty: completedFacultyIds.size,
         },
         trainingWiseSummary,
