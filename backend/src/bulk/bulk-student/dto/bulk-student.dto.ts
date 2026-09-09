@@ -1,82 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsEmail, IsNotEmpty, IsOptional, IsEnum, IsArray, ValidateNested, IsInt, Min, Max } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsArray, ValidateNested, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class BulkStudentRowDto {
+  @ApiProperty({ description: 'Roll number (used as the student login identifier)' })
+  @IsString()
+  @IsNotEmpty({ message: 'Roll number is required' })
+  rollNumber: string;
+
   @ApiProperty({ description: 'Student full name' })
   @IsString()
   @IsNotEmpty()
   name: string;
-
-  @ApiProperty({ description: 'Email address' })
-  @IsEmail()
-  @IsNotEmpty()
-  email: string;
-
-  @ApiProperty({ description: 'Phone number', required: false })
-  @IsString()
-  @IsOptional()
-  phoneNo?: string;
-
-  @ApiProperty({ description: 'Enrollment/Admission number', required: false })
-  @IsString()
-  @IsOptional()
-  enrollmentNumber?: string;
-
-  @ApiProperty({ description: 'Roll number', required: false })
-  @IsString()
-  @IsOptional()
-  rollNumber?: string;
-
-  @ApiProperty({ description: 'Batch name (e.g., "2023-2026")', required: false })
-  @IsString()
-  @IsOptional()
-  batchName?: string;
-
-  @ApiProperty({ description: 'Branch/Department name', required: false })
-  @IsString()
-  @IsOptional()
-  branchName?: string;
-
-  @ApiProperty({ description: 'Current semester (1-8)', required: false })
-  @IsInt()
-  @Min(1)
-  @Max(8)
-  @IsOptional()
-  currentSemester?: number;
-
-  @ApiProperty({ description: 'Date of birth (YYYY-MM-DD)', required: false })
-  @IsString()
-  @IsOptional()
-  dateOfBirth?: string;
-
-  @ApiProperty({ description: 'Gender', enum: ['MALE', 'FEMALE', 'OTHER'], required: false })
-  @IsEnum(['MALE', 'FEMALE', 'OTHER'])
-  @IsOptional()
-  gender?: string;
-
-  @ApiProperty({ description: 'Address', required: false })
-  @IsString()
-  @IsOptional()
-  address?: string;
-
-  @ApiProperty({ description: 'Parent name', required: false })
-  @IsString()
-  @IsOptional()
-  parentName?: string;
-
-  @ApiProperty({ description: 'Parent contact', required: false })
-  @IsString()
-  @IsOptional()
-  parentContact?: string;
-
-  @ApiProperty({ description: '10th percentage', required: false })
-  @IsOptional()
-  tenthPercentage?: number;
-
-  @ApiProperty({ description: '12th percentage', required: false })
-  @IsOptional()
-  twelfthPercentage?: number;
 
   @ApiProperty({ description: 'Year of admission (e.g., 2025)', required: true })
   @IsInt()
@@ -84,6 +19,24 @@ export class BulkStudentRowDto {
   @Min(2000, { message: 'Admission year must be 2000 or later' })
   @Max(2100, { message: 'Admission year must be before 2100' })
   admissionYear: number;
+
+  @ApiProperty({ description: 'Batch name (e.g., "2023-2026"). Auto-matched to an existing batch.' })
+  @IsString()
+  @IsNotEmpty({ message: 'Batch is required' })
+  batchName: string;
+
+  @ApiProperty({
+    description: 'College/Institution name. Auto-matched to an existing institution. Required when no default institution applies (State Directorate).',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  institutionName?: string;
+
+  @ApiProperty({ description: 'Branch/Course name. Auto-matched to an existing branch.', required: false })
+  @IsString()
+  @IsOptional()
+  branchName?: string;
 }
 
 export class BulkStudentUploadDto {
@@ -108,8 +61,9 @@ export class BulkStudentResultDto {
   successRecords: Array<{
     row: number;
     name: string;
-    email: string;
-    enrollmentNumber: string;
+    rollNumber: string;
+    institution?: string;
+    branch?: string;
     studentId: string;
     userId: string;
     temporaryPassword: string;
@@ -120,8 +74,8 @@ export class BulkStudentResultDto {
   failedRecords: Array<{
     row: number;
     name?: string;
-    email?: string;
-    enrollmentNumber?: string;
+    rollNumber?: string;
+    institution?: string;
     error: string;
     details?: string;
   }>;

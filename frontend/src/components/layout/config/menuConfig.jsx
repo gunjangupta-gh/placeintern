@@ -123,10 +123,10 @@ export const menuConfig = {
         path: "/app/users/bulk-create",
       },
       {
-        key: "bulk-staff-upload",
-        label: "Staff/Students",
+        key: "bulk-student-upload",
+        label: "Students",
         icon: <TeamOutlined />,
-        path: "/app/bulk-upload",
+        path: "/app/students/bulk-upload",
       },
       {
         key: "bulk-internship-upload",

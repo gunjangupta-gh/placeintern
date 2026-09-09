@@ -23,6 +23,8 @@ import { Role } from '../../generated/prisma/client';
 import { BulkStudentResultDto } from './dto/bulk-student.dto';
 import { BulkQueueService } from '../shared/bulk-queue.service';
 
+const MAX_STUDENTS_PER_UPLOAD = 5000;
+
 @ApiTags('Bulk Operations - Students')
 @Controller('bulk/students')
 @ApiBearerAuth()
@@ -38,10 +40,13 @@ export class BulkStudentController {
   @Post('upload')
   @Roles(Role.PRINCIPAL, Role.SYSTEM_ADMIN, Role.STATE_DIRECTORATE)
   @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Bulk upload students from CSV/Excel file' })
+  @ApiOperation({
+    summary: 'Bulk upload students from CSV/Excel file',
+    description: 'Institution is auto-linked from the "College Name" column in Excel. Branch is auto-linked from the "Course" column.',
+  })
   @ApiConsumes('multipart/form-data')
   @ApiQuery({ name: 'async', type: Boolean, required: false, description: 'Process asynchronously via queue (recommended for large files)' })
-  @ApiQuery({ name: 'institutionId', type: String, required: false, description: 'Institution ID (required for STATE_DIRECTORATE)' })
+  @ApiQuery({ name: 'institutionId', type: String, required: false, description: 'Optional default institution ID (overrides per-row College Name resolution)' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -88,25 +93,19 @@ export class BulkStudentController {
     }
 
     const user = req.user;
-    let institutionId: string;
 
-    this.logger.log(`Bulk student upload - User: ${user.userId}, Role: ${user.role}, User InstitutionId: ${user.institutionId}`);
+    // For PRINCIPAL, use their institution as default fallback
+    // For STATE_DIRECTORATE, institution comes from Excel "College Name" column (unless overridden via query)
+    const defaultInstitutionId =
+      user.role === Role.STATE_DIRECTORATE
+        ? queryInstitutionId || null
+        : user.institutionId;
 
-    // STATE_DIRECTORATE must provide institutionId in query
-    if (user.role === Role.STATE_DIRECTORATE) {
-      if (!queryInstitutionId) {
-        throw new BadRequestException('Institution ID is required for State Directorate');
-      }
-      institutionId = queryInstitutionId;
-    } else {
-      // PRINCIPAL uses their own institution
-      institutionId = user.institutionId;
-      if (!institutionId) {
-        throw new BadRequestException('Institution ID not found for the user');
-      }
+    if (user.role !== Role.STATE_DIRECTORATE && !defaultInstitutionId) {
+      throw new BadRequestException('Institution ID not found for the user');
     }
 
-    this.logger.log(`Using institutionId: ${institutionId} for bulk upload`);
+    this.logger.log(`Bulk student upload - User: ${user.userId}, Role: ${user.role}, DefaultInstitutionId: ${defaultInstitutionId}`);
 
     // Parse file
     const students = await this.bulkStudentService.parseFile(file.buffer, file.originalname);
@@ -115,8 +114,8 @@ export class BulkStudentController {
       throw new BadRequestException('No valid data found in the file');
     }
 
-    if (students.length > 1000) {
-      throw new BadRequestException('Maximum 1000 students can be uploaded at once');
+    if (students.length > MAX_STUDENTS_PER_UPLOAD) {
+      throw new BadRequestException(`Maximum ${MAX_STUDENTS_PER_UPLOAD} students can be uploaded at once`);
     }
 
     // Check if async processing is requested (default to async for large files)
@@ -126,7 +125,7 @@ export class BulkStudentController {
       // Queue the job for background processing
       const result = await this.bulkQueueService.queueStudentUpload(
         students,
-        institutionId,
+        defaultInstitutionId,
         user.userId,
         file.originalname,
         file.size,
@@ -139,7 +138,7 @@ export class BulkStudentController {
     }
 
     // Process synchronously for smaller files
-    const result = await this.bulkStudentService.bulkUploadStudents(students, institutionId, user.userId);
+    const result = await this.bulkStudentService.bulkUploadStudents(students, defaultInstitutionId, user.userId);
 
     return result;
   }
@@ -147,9 +146,12 @@ export class BulkStudentController {
   @Post('validate')
   @Roles(Role.PRINCIPAL, Role.SYSTEM_ADMIN, Role.STATE_DIRECTORATE)
   @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Validate student data from CSV/Excel file without creating records' })
+  @ApiOperation({
+    summary: 'Validate student data from CSV/Excel file without creating records',
+    description: 'Validates student data including institution matching from the "College Name" column.',
+  })
   @ApiConsumes('multipart/form-data')
-  @ApiQuery({ name: 'institutionId', type: String, required: false, description: 'Institution ID (required for STATE_DIRECTORATE)' })
+  @ApiQuery({ name: 'institutionId', type: String, required: false, description: 'Optional default institution ID (overrides per-row College Name resolution)' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -176,25 +178,20 @@ export class BulkStudentController {
     }
 
     const user = req.user;
-    let institutionId: string;
+    const defaultInstitutionId =
+      user.role === Role.STATE_DIRECTORATE
+        ? queryInstitutionId || null
+        : user.institutionId;
 
-    if (user.role === Role.STATE_DIRECTORATE) {
-      if (!queryInstitutionId) {
-        throw new BadRequestException('Institution ID is required for State Directorate');
-      }
-      institutionId = queryInstitutionId;
-    } else {
-      institutionId = user.institutionId;
-      if (!institutionId) {
-        throw new BadRequestException('Institution ID not found for the user');
-      }
+    if (user.role !== Role.STATE_DIRECTORATE && !defaultInstitutionId) {
+      throw new BadRequestException('Institution ID not found for the user');
     }
 
     // Parse file
     const students = await this.bulkStudentService.parseFile(file.buffer, file.originalname);
 
     // Validate students
-    const validationResult = await this.bulkStudentService.validateStudents(students, institutionId);
+    const validationResult = await this.bulkStudentService.validateStudents(students, defaultInstitutionId);
 
     return validationResult;
   }

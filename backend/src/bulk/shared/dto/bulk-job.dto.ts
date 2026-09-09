@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString, IsNumber, IsDateString } from 'class-validator';
+import { Type } from 'class-transformer';
 import { BulkJobType, BulkJobStatus } from '../../../generated/prisma/client';
 
 export class CreateBulkJobDto {
@@ -185,11 +186,13 @@ export class BulkJobListQueryDto {
   @ApiPropertyOptional()
   @IsNumber()
   @IsOptional()
+  @Type(() => Number)
   page?: number;
 
   @ApiPropertyOptional()
   @IsNumber()
   @IsOptional()
+  @Type(() => Number)
   limit?: number;
 
   @ApiPropertyOptional()

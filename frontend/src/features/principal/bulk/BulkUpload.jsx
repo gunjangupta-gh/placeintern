@@ -72,33 +72,32 @@ const BulkUpload = () => {
     data.forEach((row, index) => {
       const errors = [];
 
-      // Normalize keys - match backend expected column names (maps to User + Student tables)
-      // User fields: name, email, phoneNo, rollNumber, dob
-      // Student fields: gender
+      // Normalize keys - match backend BulkStudentRowDto
+      const rollNumber = row['Roll Number'] || row['rollNumber'] || row['Roll No'];
       const name = row['Name'] || row['name'] || row['Student Name'];
-      const email = row['Email'] || row['email'];
-      const phoneNo = row['Phone'] || row['phone'] || row['Contact'] || row['phoneNo'];
-      const rollNumber = row['Roll Number'] || row['rollNumber'];
-      const gender = row['Gender'] || row['gender'];
-      const dateOfBirth = row['Date of Birth'] || row['DOB'] || row['dateOfBirth'];
+      const admissionYear = row['Admission Year'] || row['admissionYear'];
+      const batchName = row['Batch'] || row['batch'];
+      const institutionName = row['College Name'] || row['Institution'] || row['institution'];
+      const branchName = row['Course'] || row['Branch'] || row['branch'];
 
       // Required field validations
+      if (!rollNumber || String(rollNumber).trim() === '') errors.push('Roll Number is required');
       if (!name || String(name).trim() === '') errors.push('Name is required');
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) errors.push('Valid email is required');
-
-      // Optional field validations
-      if (gender && !['MALE', 'FEMALE', 'OTHER'].includes(String(gender).toUpperCase())) {
-        errors.push('Gender must be MALE, FEMALE, or OTHER');
+      if (!admissionYear || isNaN(Number(admissionYear))) {
+        errors.push('Admission Year is required');
+      } else if (Number(admissionYear) < 2000 || Number(admissionYear) > 2100) {
+        errors.push('Admission Year must be between 2000 and 2100');
       }
+      if (!batchName || String(batchName).trim() === '') errors.push('Batch is required');
 
       const record = {
         ...row,
-        name,
-        email,
-        phoneNo,
         rollNumber,
-        gender,
-        dateOfBirth,
+        name,
+        admissionYear,
+        batchName,
+        institutionName,
+        branchName,
         rowNumber: index + 2, // +2 because Excel starts at 1 and header is row 1
         errors: errors,
       };
@@ -273,10 +272,14 @@ const BulkUpload = () => {
   const validColumns = [
     { title: 'Row', dataIndex: 'rowNumber', key: 'rowNumber', width: 70 },
     { title: 'Name', dataIndex: 'name', key: 'name' },
-    { title: 'Email', dataIndex: 'email', key: 'email' },
     ...(uploadType === 'students'
-      ? [{ title: 'Roll Number', dataIndex: 'rollNumber', key: 'rollNumber' }]
+      ? [
+          { title: 'Roll Number', dataIndex: 'rollNumber', key: 'rollNumber' },
+          { title: 'Admission Year', dataIndex: 'admissionYear', key: 'admissionYear' },
+          { title: 'Batch', dataIndex: 'batchName', key: 'batchName' },
+        ]
       : [
+          { title: 'Email', dataIndex: 'email', key: 'email' },
           { title: 'Role', dataIndex: 'role', key: 'role' },
           { title: 'Department', dataIndex: 'department', key: 'department' },
         ]),
@@ -285,7 +288,7 @@ const BulkUpload = () => {
   const invalidColumns = [
     { title: 'Row', dataIndex: 'rowNumber', key: 'rowNumber', width: 70 },
     { title: 'Name', dataIndex: 'name', key: 'name' },
-    { title: 'Email', dataIndex: 'email', key: 'email' },
+    { title: uploadType === 'students' ? 'Roll Number' : 'Email', dataIndex: uploadType === 'students' ? 'rollNumber' : 'email', key: 'identifier' },
     {
       title: 'Errors',
       dataIndex: 'errors',
@@ -506,14 +509,21 @@ const BulkUpload = () => {
                   <CheckCircleOutlined /> Successfully Created ({uploadResult.successRecords.length})
                 </h3>
                 <Table
-                  columns={[
-                    { title: 'Row', dataIndex: 'row', key: 'row', width: 60 },
-                    { title: 'Name', dataIndex: 'name', key: 'name' },
-                    { title: 'Email', dataIndex: 'email', key: 'email' },
+                  columns={
                     uploadType === 'students'
-                      ? { title: 'Enrollment No.', dataIndex: 'enrollmentNumber', key: 'enrollmentNumber' }
-                      : { title: 'Role', dataIndex: 'role', key: 'role' },
-                  ]}
+                      ? [
+                          { title: 'Row', dataIndex: 'row', key: 'row', width: 60 },
+                          { title: 'Name', dataIndex: 'name', key: 'name' },
+                          { title: 'Roll Number', dataIndex: 'rollNumber', key: 'rollNumber' },
+                          { title: 'Temporary Password', dataIndex: 'temporaryPassword', key: 'temporaryPassword' },
+                        ]
+                      : [
+                          { title: 'Row', dataIndex: 'row', key: 'row', width: 60 },
+                          { title: 'Name', dataIndex: 'name', key: 'name' },
+                          { title: 'Email', dataIndex: 'email', key: 'email' },
+                          { title: 'Role', dataIndex: 'role', key: 'role' },
+                        ]
+                  }
                   dataSource={uploadResult.successRecords}
                   rowKey="row"
                   pagination={{ pageSize: 5 }}
@@ -532,7 +542,12 @@ const BulkUpload = () => {
                   columns={[
                     { title: 'Row', dataIndex: 'row', key: 'row', width: 60 },
                     { title: 'Name', dataIndex: 'name', key: 'name', render: (text) => text || '-' },
-                    { title: 'Email', dataIndex: 'email', key: 'email', render: (text) => text || '-' },
+                    {
+                      title: uploadType === 'students' ? 'Roll Number' : 'Email',
+                      dataIndex: uploadType === 'students' ? 'rollNumber' : 'email',
+                      key: 'identifier',
+                      render: (text) => text || '-',
+                    },
                     {
                       title: 'Error',
                       dataIndex: 'error',

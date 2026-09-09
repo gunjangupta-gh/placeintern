@@ -51,6 +51,7 @@ import ReportBuilder from '../../features/state/reports/ReportBuilder';
 import ReportBuilderDashboard from '../../features/state/reports/ReportBuilderDashboard';
 import AuditLogs from '../../features/state/audit/AuditLogs';
 import BulkUserCreate from '../../features/state/users/BulkUserCreate';
+import BulkStudentUpload from '../../features/state/students/BulkStudentUpload';
 import CredentialsReset from '../../features/state/users/CredentialsReset';
 import CompaniesOverview from '../../features/state/companies/CompaniesOverview';
 import RestoreCenter from '../../features/state/restore/RestoreCenter';
@@ -364,6 +365,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE]}>
               <BulkUserCreate />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="students/bulk-upload"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <BulkStudentUpload />
             </ProtectedRoute>
           }
         />

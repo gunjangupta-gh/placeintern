@@ -139,7 +139,14 @@ export class UserService {
   async createStudent(
     institutionId: string,
     data: CreateStudentData,
-    options?: { password?: string; skipValidation?: boolean },
+    options?: {
+      password?: string;
+      skipValidation?: boolean;
+      /** Skip the per-row intake capacity lookup (caller has already precomputed it in bulk) */
+      skipIntakeCapacityCheck?: boolean;
+      /** Warning precomputed by the caller (e.g. bulk intake capacity check), merged into the result */
+      precomputedWarning?: string;
+    },
   ): Promise<CreateUserResult> {
     this.logger.log(`Creating student: ${data.email} for institution: ${institutionId}`);
 
@@ -169,10 +176,10 @@ export class UserService {
       this.generateTemporaryPassword(data.name, data.admissionNumber || data.rollNumber || data.email);
     const hashedPassword = await bcrypt.hash(temporaryPassword, BCRYPT_SALT_ROUNDS);
 
-    let warningText: string | undefined;
+    let warningText: string | undefined = options?.precomputedWarning;
 
     // Check intake capacity limits (warning only)
-    if (data.batchId && data.branchId) {
+    if (!options?.skipIntakeCapacityCheck && data.batchId && data.branchId) {
       const batchQuery = await this.prisma.batch.findUnique({
         where: { id: data.batchId },
         select: { name: true },
@@ -379,6 +386,18 @@ export class UserService {
       select: { admissionNumber: true },
     });
     return new Set(existing.map((s) => s.admissionNumber).filter(Boolean) as string[]);
+  }
+
+  /**
+   * Bulk check for existing roll numbers (used as the student login identifier)
+   * Returns set of roll numbers that already exist
+   */
+  async findExistingRollNumbers(rollNumbers: string[]): Promise<Set<string>> {
+    const existing = await this.prisma.user.findMany({
+      where: { rollNumber: { in: rollNumbers } },
+      select: { rollNumber: true },
+    });
+    return new Set(existing.map((u) => u.rollNumber).filter(Boolean) as string[]);
   }
 
   /**

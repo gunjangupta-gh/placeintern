@@ -27,18 +27,26 @@ export class BulkQueueService {
 
   /**
    * Queue a bulk student upload job
+   * institutionId can be null for STATE_DIRECTORATE - institution comes from the
+   * "College Name" column per row
    */
   async queueStudentUpload(
     students: any[],
-    institutionId: string,
+    institutionId: string | null,
     createdById: string,
     fileName: string,
     fileSize: number,
   ): Promise<QueueJobResponseDto> {
+    const trackingInstitutionId = await this.resolveTrackingInstitutionIdForStudents(
+      students,
+      institutionId,
+      createdById,
+    );
+
     return this.queueBulkOperation({
       type: BulkJobType.STUDENTS,
       data: students,
-      institutionId,
+      institutionId: trackingInstitutionId,
       createdById,
       fileName,
       fileSize,
@@ -287,6 +295,65 @@ export class BulkQueueService {
     }
 
     throw new Error('Unable to resolve institution for bulk user job tracking');
+  }
+
+  /**
+   * BulkJob schema requires institutionId. For STATE_DIRECTORATE student uploads,
+   * pick a valid tracking institution without affecting row-level institution linking.
+   */
+  private async resolveTrackingInstitutionIdForStudents(
+    students: any[],
+    institutionId: string | null,
+    createdById: string,
+  ): Promise<string> {
+    if (institutionId) {
+      return institutionId;
+    }
+
+    const institutions = await this.prisma.institution.findMany({
+      select: { id: true, name: true, code: true, shortName: true, isActive: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const lookup = new Map<string, string>();
+    for (const inst of institutions) {
+      const keys = [inst.name || '', inst.code || '', inst.shortName || ''];
+      for (const key of keys) {
+        const normalized = this.normalizeInstitutionKey(key);
+        if (normalized) {
+          lookup.set(normalized, inst.id);
+        }
+      }
+    }
+
+    for (const student of students) {
+      const rawName = String(student?.institutionName || '').trim();
+      const normalized = this.normalizeInstitutionKey(rawName);
+      if (!normalized) {
+        continue;
+      }
+
+      const matchedId = lookup.get(normalized);
+      if (matchedId) {
+        return matchedId;
+      }
+    }
+
+    const uploader = await this.prisma.user.findUnique({
+      where: { id: createdById },
+      select: { institutionId: true },
+    });
+
+    if (uploader?.institutionId) {
+      return uploader.institutionId;
+    }
+
+    const fallbackInstitution = institutions.find((inst) => inst.isActive) || institutions[0];
+    if (fallbackInstitution) {
+      return fallbackInstitution.id;
+    }
+
+    throw new Error('Unable to resolve institution for bulk student job tracking');
   }
 
   /**
