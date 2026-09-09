@@ -567,8 +567,8 @@ export class BulkStudentService {
 
     const loginInfo = [
       { Info: 'Login', Details: 'Students log in with Roll Number + Password (no email needed).' },
-      { Info: 'Password Format', Details: 'First 4 letters of name (lowercase) + last 4 characters of roll number + "@123"' },
-      { Info: 'Example', Details: 'Name: John Doe, Roll Number: R2023001 -> Password: john3001@123' },
+      { Info: 'Password Format', Details: 'First 4 letters of name (lowercase) + @ + last 4 characters of roll number' },
+      { Info: 'Example', Details: 'Name: John Doe, Roll Number: R2023001 -> Password: john@3001' },
     ];
 
     return ExcelUtils.createFromJson([

@@ -61,12 +61,12 @@ export class UserService {
 
   /**
    * Generate a temporary password for new users
-   * Format: first 4 chars of name + last 4 chars of identifier + @123
+   * Format: first 4 chars of name + @ + last 4 chars of identifier
    */
   generateTemporaryPassword(name: string, identifier: string): string {
     const namePart = name.replace(/\s/g, '').substring(0, 4).toLowerCase();
     const idPart = identifier.slice(-4);
-    return `${namePart}${idPart}@123`;
+    return `${namePart}@${idPart}`;
   }
 
   /**
