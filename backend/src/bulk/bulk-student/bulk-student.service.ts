@@ -433,6 +433,7 @@ export class BulkStudentService {
           entry.rollNumber,
           entry.batchId,
           entry.branchId,
+          entry.branchName,
           entry.warning,
         );
 
@@ -510,6 +511,7 @@ export class BulkStudentService {
     rollNumber: string,
     batchId: string,
     branchId?: string,
+    branchName?: string,
     precomputedWarning?: string,
   ) {
     const studentData: CreateStudentData = {
@@ -518,7 +520,7 @@ export class BulkStudentService {
       rollNumber,
       batchId,
       branchId,
-      branchName: studentDto.branchName,
+      branchName: branchName || studentDto.branchName,
       admissionYear: studentDto.admissionYear,
     };
 

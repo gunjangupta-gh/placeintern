@@ -231,6 +231,8 @@ export class UserService {
           dob: data.dateOfBirth,
           rollNumber: data.rollNumber,
           institutionId,
+          branchId: data.branchId,
+          branchName: data.branchName,
           active: true,
           hasChangedDefaultPassword: false,
         },
