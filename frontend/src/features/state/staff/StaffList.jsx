@@ -54,6 +54,20 @@ const DESIGNATION_OPTIONS = [
   { value: 'OTHER', label: 'Other' },
 ];
 
+const DESIGNATION_LABEL_MAP = DESIGNATION_OPTIONS.reduce((acc, opt) => {
+  acc[opt.value] = opt.label;
+  return acc;
+}, {});
+
+// Prefer the standardized designation enum; fall back to the free-text legacy value
+// for staff whose records haven't been mapped to the enum yet.
+const getDesignationLabel = (record) => {
+  if (record?.designationEnum) {
+    return DESIGNATION_LABEL_MAP[record.designationEnum] || record.designationEnum;
+  }
+  return record?.designation || '-';
+};
+
 const StaffList = () => {
   const { modal } = App.useApp();
   const dispatch = useDispatch();
@@ -301,7 +315,7 @@ const StaffList = () => {
         'Employment Type': record.guestTeacher ? 'Part-time' : 'Full-time',
         Institution: record.Institution?.name || 'Not Assigned',
         Branch: record.branchName || '-',
-        Designation: record.designation || '-',
+        Designation: getDesignationLabel(record),
         Qualification: record.qualification || '-',
         'Date of Joining': record.dateOfJoining ? new Date(record.dateOfJoining).toLocaleDateString('en-IN') : '-',
         Phone: record.phoneNo || '-',
@@ -371,10 +385,9 @@ const StaffList = () => {
     },
     {
       title: 'Designation',
-      dataIndex: 'designation',
       key: 'designation',
-      width: 120,
-      render: (text) => <span className="text-xs">{text || '-'}</span>,
+      width: 140,
+      render: (_, record) => <span className="text-xs">{getDesignationLabel(record)}</span>,
     },
     {
       title: 'Qualification',

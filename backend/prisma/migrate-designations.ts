@@ -52,11 +52,45 @@ const DESIGNATION_MAPPING: Record<string, Designation> = {
   // Other roles
   'instructor': Designation.INSTRUCTOR,
   'librarian': Designation.LIBRARIAN,
+  'library assistant': Designation.LIBRARIAN,
   'fashion designer': Designation.FASHION_DESIGNER,
   'senior fashion designer': Designation.FASHION_DESIGNER,
   'peon': Designation.PEON,
   'assistant prof (contractual basis)': Designation.ASSISTANT_PROFESSOR,
   'tpo': Designation.TPO,
+  'placement officer': Designation.TPO,
+  'training and placement officer': Designation.TPO,
+
+  // Admin Staff variations
+  'asstt director': Designation.ASSTT_DIRECTOR,
+  'assistant director': Designation.ASSTT_DIRECTOR,
+  'additional director': Designation.ADDITIONAL_DIRECTOR,
+  'deputy director (staff)': Designation.DEPUTY_DIRECTOR_STAFF,
+  'deputy director staff': Designation.DEPUTY_DIRECTOR_STAFF,
+  'deputy director (conduct)': Designation.DEPUTY_DIRECTOR_CONDUCT,
+  'deputy director conduct': Designation.DEPUTY_DIRECTOR_CONDUCT,
+  'deputy director (planning)': Designation.DEPUTY_DIRECTOR_PLANNING,
+  'deputy director planning': Designation.DEPUTY_DIRECTOR_PLANNING,
+  'director (academics)': Designation.DIRECTOR_ACADEMICS,
+  'director academics': Designation.DIRECTOR_ACADEMICS,
+  'registrar': Designation.REGISTRAR,
+  'hod - controller (examinations)': Designation.HOD_CONTROLLER_EXAMINATIONS,
+  'controller of examinations': Designation.HOD_CONTROLLER_EXAMINATIONS,
+  'demonstrator': Designation.DEMONSTRATOR,
+  'stenotypist': Designation.STENOTYPIST,
+  'clerk': Designation.CLERK,
+  'jr. scale stenographer': Designation.JR_SCALE_STENOGRAPHER,
+  'jr scale stenographer': Designation.JR_SCALE_STENOGRAPHER,
+  'junior stenographer': Designation.JR_SCALE_STENOGRAPHER,
+  'junior asstt': Designation.JUNIOR_ASSTT,
+  'junior assistant': Designation.JUNIOR_ASSTT,
+  'office assistant': Designation.JUNIOR_ASSTT,
+  'sr asstt': Designation.SR_ASSTT,
+  'sr. asstt': Designation.SR_ASSTT,
+  'senior assistant': Designation.SR_ASSTT,
+  'supdt grade 2': Designation.SUPDT_GRADE_2,
+  'supdt. grade 2': Designation.SUPDT_GRADE_2,
+  'superintendent grade 2': Designation.SUPDT_GRADE_2,
 };
 
 function normalizeDesignation(designation: string | null): Designation | null {
@@ -137,12 +171,74 @@ function normalizeDesignation(designation: string | null): Designation | null {
     return Designation.PEON;
   }
 
+  // Admin Staff partial matches (order matters: more specific checks first)
+  if (normalized.includes('deputy director') && normalized.includes('staff')) {
+    return Designation.DEPUTY_DIRECTOR_STAFF;
+  }
+  if (normalized.includes('deputy director') && normalized.includes('conduct')) {
+    return Designation.DEPUTY_DIRECTOR_CONDUCT;
+  }
+  if (normalized.includes('deputy director') && normalized.includes('planning')) {
+    return Designation.DEPUTY_DIRECTOR_PLANNING;
+  }
+  if (normalized.includes('additional director')) {
+    return Designation.ADDITIONAL_DIRECTOR;
+  }
+  if (normalized.includes('director') && normalized.includes('academic')) {
+    return Designation.DIRECTOR_ACADEMICS;
+  }
+  if (normalized.includes('asstt') && normalized.includes('director')) {
+    return Designation.ASSTT_DIRECTOR;
+  }
+  if (normalized.includes('assistant director')) {
+    return Designation.ASSTT_DIRECTOR;
+  }
+  if (normalized.includes('registrar')) {
+    return Designation.REGISTRAR;
+  }
+  if (normalized.includes('controller') && normalized.includes('examination')) {
+    return Designation.HOD_CONTROLLER_EXAMINATIONS;
+  }
+  if (normalized.includes('demonstrator')) {
+    return Designation.DEMONSTRATOR;
+  }
+  if (normalized.includes('stenotypist')) {
+    return Designation.STENOTYPIST;
+  }
+  if (normalized.includes('steno')) {
+    return Designation.JR_SCALE_STENOGRAPHER;
+  }
+  if (normalized.includes('supdt') || normalized.includes('supt')) {
+    return Designation.SUPDT_GRADE_2;
+  }
+  if (normalized.includes('superintendent')) {
+    return Designation.SUPDT_GRADE_2;
+  }
+  if ((normalized.includes('sr') || normalized.includes('senior')) && normalized.includes('asstt')) {
+    return Designation.SR_ASSTT;
+  }
+  if ((normalized.includes('sr') || normalized.includes('senior')) && normalized.includes('assistant')) {
+    return Designation.SR_ASSTT;
+  }
+  if (normalized.includes('clerk')) {
+    return Designation.CLERK;
+  }
+  if (normalized.includes('junior') && (normalized.includes('asstt') || normalized.includes('assistant'))) {
+    return Designation.JUNIOR_ASSTT;
+  }
+  if (normalized.includes('office assistant') || normalized === 'asstt' || normalized === 'assistant') {
+    return Designation.JUNIOR_ASSTT;
+  }
+
   // Everything else (garbage data like locations, courses, etc.) becomes OTHER
   return Designation.OTHER;
 }
 
 async function main() {
-  console.log('=== Starting Designation Migration ===\n');
+  const dryRun = process.argv.includes('--dry-run') || process.argv.includes('-d');
+
+  console.log('=== Starting Designation Migration ===');
+  console.log(`Mode: ${dryRun ? 'DRY RUN (no writes)' : 'LIVE'}\n`);
 
   // Get all users with designation (not null)
   const usersWithDesignation = await prisma.user.findMany({
@@ -163,23 +259,35 @@ async function main() {
   const mappingLog: { original: string; mapped: Designation }[] = [];
   let updatedCount = 0;
   let skippedCount = 0;
+  let reclassifiedCount = 0;
 
   for (const user of usersWithDesignation) {
-    // Skip if already has designationEnum
-    if (user.designationEnum) {
+    // Skip if already mapped to a specific (non-OTHER) enum value.
+    // Rows previously bucketed into OTHER are re-checked, since the matcher
+    // below may now recognize a designation that an earlier version missed.
+    if (user.designationEnum && user.designationEnum !== Designation.OTHER) {
       skippedCount++;
       continue;
     }
 
     const mappedDesignation = normalizeDesignation(user.designation);
 
+    // Nothing changed: still unmapped or still resolves to OTHER
+    if (!mappedDesignation || (user.designationEnum === Designation.OTHER && mappedDesignation === Designation.OTHER)) {
+      if (user.designationEnum === Designation.OTHER) skippedCount++;
+      continue;
+    }
+
     if (mappedDesignation) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { designationEnum: mappedDesignation },
-      });
+      if (!dryRun) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { designationEnum: mappedDesignation },
+        });
+      }
 
       updatedCount++;
+      if (user.designationEnum === Designation.OTHER) reclassifiedCount++;
       stats[mappedDesignation] = (stats[mappedDesignation] || 0) + 1;
 
       // Log first occurrence of each mapping for review
@@ -192,8 +300,8 @@ async function main() {
 
   console.log('=== Migration Statistics ===\n');
   console.log(`Total users processed: ${usersWithDesignation.length}`);
-  console.log(`Updated: ${updatedCount}`);
-  console.log(`Skipped (already had enum): ${skippedCount}\n`);
+  console.log(`${dryRun ? 'Would update' : 'Updated'}: ${updatedCount} (of which reclassified out of OTHER: ${reclassifiedCount})`);
+  console.log(`Skipped (already had a specific enum, or still unmapped): ${skippedCount}\n`);
 
   console.log('=== Designation Distribution ===\n');
   const sortedStats = Object.entries(stats).sort((a, b) => b[1] - a[1]);

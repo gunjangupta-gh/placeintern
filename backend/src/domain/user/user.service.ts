@@ -218,8 +218,12 @@ export class UserService {
       }
     }
 
-    // Create user and student in transaction
-    const result = await this.prisma.$transaction(async (tx) => {
+    // Create user and student in transaction. Wrapped in executeWithRetry because
+    // bulk uploads run many of these concurrently (see BULK_CREATE_CONCURRENCY) - under
+    // that load, round-trips to the DB occasionally exceed Prisma's default 5s interactive
+    // transaction timeout (P2028), so a generous explicit timeout plus a retry keeps a row
+    // from failing solely due to transient contention with its sibling rows.
+    const result = await this.prisma.executeWithRetry(() => this.prisma.$transaction(async (tx) => {
       // Create user account
       const user = await tx.user.create({
         data: {
@@ -270,7 +274,7 @@ export class UserService {
       });
 
       return { user, student };
-    });
+    }, { timeout: 15000, maxWait: 10000 }));
 
     // Invalidate cache
     await this.cache.del(`students:${institutionId}`);
