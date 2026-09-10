@@ -14,13 +14,13 @@ datasource db {
 // Models
 
 model User {
-  id         String  @id @default(uuid())
-  email      String? @unique
-  password   String
-  name       String
-  phoneNo    String?
-  rollNumber String?
-  dob        String?
+  id            String    @id @default(uuid())
+  email         String?   @unique
+  password      String
+  name          String
+  phoneNo       String?
+  rollNumber    String?
+  dob           String?
   qualification String?
   dateOfJoining DateTime?
 
@@ -29,26 +29,27 @@ model User {
   branch     Branch? @relation(fields: [branchId], references: [id])
   branchName String? // Cached for quick access
 
-  designation     String?      // Only for TEACHER/PRINCIPAL (legacy - kept for backward compatibility)
+  designation     String? // Only for TEACHER/PRINCIPAL (legacy - kept for backward compatibility)
   designationEnum Designation? // Enum-based designation for filtering
   guestTeacher    Boolean      @default(false) // true = part-time/guest teacher
   role            Role?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  active          Boolean      @default(true)
+  createdAt       DateTime     @default(now())
 
   // Password reset fields
-  resetPasswordToken  String?
-  resetPasswordExpiry DateTime?
-  Student             Student?
-  Institution         Institution?            @relation(fields: [institutionId], references: [id])
-  institutionId       String?
+  resetPasswordToken        String?
+  resetPasswordExpiry       DateTime?
+  Student                   Student?
+  Institution               Institution?            @relation(fields: [institutionId], references: [id])
+  institutionId             String?
   // Internship relations
-  menteeApplications  InternshipApplication[] @relation("StudentMentor")
-  mentorAssignments   MentorAssignment[]      @relation("AssignedMentor")
-  assignedBy          MentorAssignment[]      @relation("AssignedBy")
-  facultyVisitLogs    FacultyVisitLog[]       @relation("FacultyVisits")
-  principalFeedbacks  PrincipalFeedback[]     @relation("PrincipalFeedbackAuthor")
-  auditLogs           AuditLog[]              @relation("AuditUser")
+  menteeApplications        InternshipApplication[] @relation("StudentMentor")
+  mentoredInternshipReports InternshipReport[]      @relation("ReportFacultyMentor")
+  mentorAssignments         MentorAssignment[]      @relation("AssignedMentor")
+  assignedBy                MentorAssignment[]      @relation("AssignedBy")
+  facultyVisitLogs          FacultyVisitLog[]       @relation("FacultyVisits")
+  principalFeedbacks        PrincipalFeedback[]     @relation("PrincipalFeedbackAuthor")
+  auditLogs                 AuditLog[]              @relation("AuditUser")
 
   // Notification relations
   Notification Notification[]
@@ -100,25 +101,25 @@ model User {
   dismissedAlerts SystemAlertDismissal[] @relation("AlertDismissals")
 
   // Training Module Relations
-  createdTrainings        Training[]            @relation("TrainingCreator")
-  trainingApplications    TrainingApplication[] @relation("TrainingApplicant")
-  reviewedApplications    TrainingApplication[] @relation("ApplicationReviewer")
-  trainingAttendances     TrainingAttendance[]  @relation("TrainingAttendee")
-  markedAttendances       TrainingAttendance[]  @relation("AttendanceMarker")
-  createdFeedbackForms    FeedbackForm[]        @relation("FeedbackFormCreator")
-  feedbackResponses       FeedbackResponse[]    @relation("FeedbackRespondent")
-  lessonPlans             LessonPlan[]          @relation("LessonPlanAuthor")
-  reviewedLessonPlans     LessonPlan[]          @relation("LessonPlanReviewer")
-  receivedCertificates    TrainingCertificate[] @relation("CertificateRecipient")
-  issuedCertificates      TrainingCertificate[] @relation("CertificateIssuer")
+  createdTrainings        Training[]               @relation("TrainingCreator")
+  trainingApplications    TrainingApplication[]    @relation("TrainingApplicant")
+  reviewedApplications    TrainingApplication[]    @relation("ApplicationReviewer")
+  trainingAttendances     TrainingAttendance[]     @relation("TrainingAttendee")
+  markedAttendances       TrainingAttendance[]     @relation("AttendanceMarker")
+  createdFeedbackForms    FeedbackForm[]           @relation("FeedbackFormCreator")
+  feedbackResponses       FeedbackResponse[]       @relation("FeedbackRespondent")
+  lessonPlans             LessonPlan[]             @relation("LessonPlanAuthor")
+  reviewedLessonPlans     LessonPlan[]             @relation("LessonPlanReviewer")
+  receivedCertificates    TrainingCertificate[]    @relation("CertificateRecipient")
+  issuedCertificates      TrainingCertificate[]    @relation("CertificateIssuer")
   trainingRecommendations TrainingRecommendation[] @relation("TrainingRecommender")
   reviewedRecommendations TrainingRecommendation[] @relation("RecommendationReviewer")
 
   // Pre-test & Post-test Relations
-  createdPreTestForms     PreTestForm[]         @relation("PreTestFormCreator")
-  createdPostTestForms    PostTestForm[]        @relation("PostTestFormCreator")
-  preTestResponses        PreTestResponse[]     @relation("PreTestRespondent")
-  postTestResponses       PostTestResponse[]    @relation("PostTestRespondent")
+  createdPreTestForms  PreTestForm[]      @relation("PreTestFormCreator")
+  createdPostTestForms PostTestForm[]     @relation("PostTestFormCreator")
+  preTestResponses     PreTestResponse[]  @relation("PreTestRespondent")
+  postTestResponses    PostTestResponse[] @relation("PostTestRespondent")
 
   // Performance Indexes
   @@index([institutionId])
@@ -234,9 +235,9 @@ model Student {
   gender String?
 
   // Academic
-  admissionYear        Int?              // Year of admission (e.g., 2025). Used to calculate currentYear and currentSemester
-  currentYear          Int?              // 1, 2, or 3 - Updated by cron job based on admissionYear
-  currentSemester      Int?              // 1-6 - Updated by cron job based on admissionYear
+  admissionYear        Int? // Year of admission (e.g., 2025). Used to calculate currentYear and currentSemester
+  currentYear          Int? // 1, 2, or 3 - Updated by cron job based on admissionYear
+  currentSemester      Int? // 1-6 - Updated by cron job based on admissionYear
   currentSemesterMarks Float?
   tenthper             Float?
   twelthper            Float?
@@ -257,19 +258,20 @@ model Student {
   branch        Branch?      @relation(fields: [branchId], references: [id])
 
   // Pre-Placement Offer (PPO)
-  prePlacementOfferReceived Boolean?   // null = not responded, true = received PPO, false = no PPO
-  prePlacementOfferMarkedAt DateTime?  // When the student marked their PPO status
-  prePlacementOfferCompany  String?    // Company name if PPO received
+  prePlacementOfferReceived Boolean? // null = not responded, true = received PPO, false = no PPO
+  prePlacementOfferMarkedAt DateTime? // When the student marked their PPO status
+  prePlacementOfferCompany  String? // Company name if PPO received
 
   // Relations
   document               Document[]
-  createdAt              DateTime                @default(now())
+  createdAt              DateTime                   @default(now())
   internshipApplications InternshipApplication[]
   mentorAssignments      MentorAssignment[]
   monthlyReports         MonthlyReport[]
   grievances             Grievance[]
   principalFeedbacks     PrincipalFeedbackStudent[]
   placementInterest      StudentPlacementInterest?
+  internshipReports      InternshipReport[]
 
   // Performance Indexes
   @@index([institutionId])
@@ -303,13 +305,13 @@ enum Category {
 
 // Batch Management (Simplified)
 model Batch {
-  id            String       @id @default(uuid())
-  name          String       @unique // e.g., "2023-26"
-  isActive      Boolean      @default(true)
+  id            String         @id @default(uuid())
+  name          String         @unique // e.g., "2023-26"
+  isActive      Boolean        @default(true)
   students      Student[]
   intakes       BranchIntake[]
-  createdAt     DateTime     @default(now())
-  Institution   Institution? @relation(fields: [institutionId], references: [id])
+  createdAt     DateTime       @default(now())
+  Institution   Institution?   @relation(fields: [institutionId], references: [id])
   institutionId String?
 
   // Performance Indexes
@@ -386,12 +388,12 @@ model Institution {
   website        String?
 
   // Location & Land Information
-  latitude         Float?
-  longitude        Float?
-  gpsMapLink       String?
-  totalLandAcres   Float?
-  landOwnership    LandOwnershipType?
-  hasLandDispute   Boolean?
+  latitude       Float?
+  longitude      Float?
+  gpsMapLink     String?
+  totalLandAcres Float?
+  landOwnership  LandOwnershipType?
+  hasLandDispute Boolean?
 
   // Administrative Details
   establishedYear  Int?
@@ -412,10 +414,10 @@ model Institution {
 
   // --- Relations to other models ---
   // Add relations for models that DIRECTLY belong to an institution
-  users     User[]
-  batches   Batch[]
-  auditLogs AuditLog[] // Audit logs should track the institution context
-  branchIntakes BranchIntake[]
+  users                 User[]
+  batches               Batch[]
+  auditLogs             AuditLog[] // Audit logs should track the institution context
+  branchIntakes         BranchIntake[]
   branchStaffCapacities BranchStaffCapacity[]
 
   Student Student[]
@@ -423,6 +425,8 @@ model Institution {
   // Internship (self-identified only)
   Branch     Branch[]
   Department Department[]
+
+  internshipReports InternshipReport[]
 
   // Help & Support
   supportTickets SupportTicket[]
@@ -502,13 +506,13 @@ model Branch {
   institution   Institution? @relation(fields: [institutionId], references: [id])
 
   // Relations
-  users    User[] // Teachers and Students with branchId
-  students Student[] // Direct student relation (for backward compatibility)
-  intakes  BranchIntake[]
+  users           User[] // Teachers and Students with branchId
+  students        Student[] // Direct student relation (for backward compatibility)
+  intakes         BranchIntake[]
   staffCapacities BranchStaffCapacity[]
 
   // Training Module - Target disciplines for trainings
-  trainings Training[] @relation("TrainingBranches")
+  trainings               Training[]               @relation("TrainingBranches")
   trainingRecommendations TrainingRecommendation[] @relation("RecommendationBranches")
 
   createdAt DateTime @default(now())
@@ -518,27 +522,27 @@ model Branch {
 }
 
 model BranchIntake {
-  id            String      @id @default(uuid())
+  id String @id @default(uuid())
 
   institutionId String
   institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
 
-  branchId      String
-  branch        Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   // Optional: tie intake to a specific Batch (preferred if you manage cohorts)
-  batchId       String?
-  batch         Batch?      @relation(fields: [batchId], references: [id])
+  batchId String?
+  batch   Batch?  @relation(fields: [batchId], references: [id])
 
   // Intake year is required so each institution/branch row is unique and auditable
-  academicYear  String      // e.g., "2023-24"
+  academicYear String // e.g., "2023-24"
 
-  sanctionedSeats Int       @default(0)
-  feeWaiverSeats  Int       @default(0)
+  sanctionedSeats Int @default(0)
+  feeWaiverSeats  Int @default(0)
 
-  isActive      Boolean     @default(true)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([institutionId, branchId, academicYear])
   @@index([institutionId])
@@ -548,24 +552,24 @@ model BranchIntake {
 }
 
 model BranchStaffCapacity {
-  id            String      @id @default(uuid())
+  id String @id @default(uuid())
 
   institutionId String
   institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
 
-  branchId      String
-  branch        Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
-  academicYear  String      // e.g., "2023-24"
+  academicYear String // e.g., "2023-24"
 
   // Staff numbers for this specific branch
-  sanctionedPosts Int       @default(0) // Total officially allocated teaching posts
-  filledPosts     Int       @default(0) // Regular staff currently filling those posts
-  guestFaculty    Int       @default(0) // Guest/contract faculty count
+  sanctionedPosts Int @default(0) // Total officially allocated teaching posts
+  filledPosts     Int @default(0) // Regular staff currently filling those posts
+  guestFaculty    Int @default(0) // Guest/contract faculty count
 
-  isActive      Boolean     @default(true)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([institutionId, branchId, academicYear])
   @@index([institutionId])
@@ -1133,14 +1137,14 @@ model PrincipalFeedback {
   status        VisitLogStatus @default(SCHEDULED)
 
   // Observations
-  studentPerformance         String?
-  workEnvironment            String?
-  skillsDevelopment          String?
-  attendanceStatus           String?
-  workQuality                String?
-  responseFromOrganisation   String?
-  observationsAboutStudent   String?
-  observationsAboutIndustry  String?
+  studentPerformance        String?
+  workEnvironment           String?
+  skillsDevelopment         String?
+  attendanceStatus          String?
+  workQuality               String?
+  responseFromOrganisation  String?
+  observationsAboutStudent  String?
+  observationsAboutIndustry String?
 
   // Ratings (1-5 scale)
   studentProgressRating     Int?
@@ -1901,77 +1905,77 @@ enum FeedbackFormPurpose {
 
 // Training Session - Calendar entries (system-wide)
 model Training {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   title       String
-  description String?  @db.Text
+  description String? @db.Text
 
   // Provider/Partner 
-  providedBy      String?
-  trainerName     String?
-  trainerBio      String?
-  trainerContact  String?
+  providedBy     String?
+  trainerName    String?
+  trainerBio     String?
+  trainerContact String?
 
   // Schedule
-  startDate       DateTime
-  endDate         DateTime
-  startTime         DateTime?
-  endTime           DateTime?
-  duration        Int?      // Total duration in hours
+  startDate           DateTime
+  endDate             DateTime
+  startTime           DateTime?
+  endTime             DateTime?
+  duration            Int? // Total duration in hours
   applicationDeadline DateTime
 
   // Location & Delivery
-  deliveryMode    TrainingDeliveryMode @default(OFFLINE)
-  venue           String?   // For offline/hybrid
-  address         String?
-  city            String?
-  state           String?
-  meetingLink     String?   // For online/hybrid
+  deliveryMode TrainingDeliveryMode @default(OFFLINE)
+  venue        String? // For offline/hybrid
+  address      String?
+  city         String?
+  state        String?
+  meetingLink  String? // For online/hybrid
 
   // Capacity & Prerequisites
-  capacity        Int
-  prerequisites   String?   @db.Text
-  difficulty      TrainingDifficulty @default(INTERMEDIATE)
+  capacity      Int
+  prerequisites String?            @db.Text
+  difficulty    TrainingDifficulty @default(INTERMEDIATE)
 
   //cost
-  cost            Float?    // Cost of the training (if applicable)
+  cost Float? // Cost of the training (if applicable)
 
   // Learning Outcomes (stored as JSON array)
-  learningOutcomes Json?    // ["Outcome 1", "Outcome 2", ...]
+  learningOutcomes Json? // ["Outcome 1", "Outcome 2", ...]
 
   // Target Disciplines (linked to Branch)
   targetBranches     Branch[]      @relation("TrainingBranches")
-  designation        String?       // e.g., "For Computer Science Faculty" (legacy display text)
+  designation        String? // e.g., "For Computer Science Faculty" (legacy display text)
   targetDesignations Designation[] // Target designations for filtering (e.g., [LECTURER, SENIOR_LECTURER])
 
   // Feedback Form (optional, global form assigned to this training)
-  feedbackFormId  String?
-  feedbackForm    FeedbackForm? @relation(fields: [feedbackFormId], references: [id])
+  feedbackFormId String?
+  feedbackForm   FeedbackForm? @relation(fields: [feedbackFormId], references: [id])
 
   // Pre-test Form (optional, for prerequisites assessment before training)
-  preTestFormId   String?
-  preTestForm     PreTestForm? @relation(fields: [preTestFormId], references: [id])
+  preTestFormId String?
+  preTestForm   PreTestForm? @relation(fields: [preTestFormId], references: [id])
 
   // Post-test Form (optional, for learning assessment after training)
-  postTestFormId  String?
-  postTestForm    PostTestForm? @relation(fields: [postTestFormId], references: [id])
+  postTestFormId String?
+  postTestForm   PostTestForm? @relation(fields: [postTestFormId], references: [id])
 
   // Status
-  isActive        Boolean   @default(true)
-  isPublished     Boolean   @default(false)
-  publishedAt     DateTime?
+  isActive    Boolean   @default(true)
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
 
   // Creator
-  createdById     String
-  createdBy       User      @relation("TrainingCreator", fields: [createdById], references: [id])
+  createdById String
+  createdBy   User   @relation("TrainingCreator", fields: [createdById], references: [id])
 
   // Relations
-  applications        TrainingApplication[]
-  attendances         TrainingAttendance[]
-  lessonPlans         LessonPlan[]
-  certificates        TrainingCertificate[]
-  feedbackResponses   FeedbackResponse[]    @relation("TrainingFeedback")
-  preTestResponses    PreTestResponse[]     @relation("TrainingPreTest")
-  postTestResponses   PostTestResponse[]    @relation("TrainingPostTest")
+  applications          TrainingApplication[]
+  attendances           TrainingAttendance[]
+  lessonPlans           LessonPlan[]
+  certificates          TrainingCertificate[]
+  feedbackResponses     FeedbackResponse[]       @relation("TrainingFeedback")
+  preTestResponses      PreTestResponse[]        @relation("TrainingPreTest")
+  postTestResponses     PostTestResponse[]       @relation("TrainingPostTest")
   sourceRecommendations TrainingRecommendation[] @relation("ImplementedRecommendation")
 
   createdAt DateTime @default(now())
@@ -1988,35 +1992,35 @@ model Training {
 
 // Training Application - Faculty enrollment
 model TrainingApplication {
-  id          String   @id @default(uuid())
+  id String @id @default(uuid())
 
   // Applicant
-  userId      String
-  user        User     @relation("TrainingApplicant", fields: [userId], references: [id])
+  userId String
+  user   User   @relation("TrainingApplicant", fields: [userId], references: [id])
 
   // Training
-  trainingId  String
-  training    Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  trainingId String
+  training   Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
 
   // Application Details
-  relevanceToTeaching  String?  @db.Text  // How is this relevant to your teaching?
-  expectedApplication  String?  @db.Text  // How will you apply this learning?
+  relevanceToTeaching String? @db.Text // How is this relevant to your teaching?
+  expectedApplication String? @db.Text // How will you apply this learning?
 
   // Status & Workflow
-  status      TrainingApplicationStatus @default(SUBMITTED)
-  appliedAt   DateTime  @default(now())
-  reviewedAt  DateTime?
-  reviewedById String?
-  reviewedBy  User?     @relation("ApplicationReviewer", fields: [reviewedById], references: [id])
+  status         TrainingApplicationStatus @default(SUBMITTED)
+  appliedAt      DateTime                  @default(now())
+  reviewedAt     DateTime?
+  reviewedById   String?
+  reviewedBy     User?                     @relation("ApplicationReviewer", fields: [reviewedById], references: [id])
   reviewComments String?
 
   // Flags
-  isActive    Boolean   @default(true)
+  isActive Boolean @default(true)
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([userId, trainingId])  // One application per user per training
+  @@unique([userId, trainingId]) // One application per user per training
   @@index([userId])
   @@index([trainingId])
   @@index([status])
@@ -2027,35 +2031,35 @@ model TrainingApplication {
 
 // Training Attendance - Time-stamped attendance
 model TrainingAttendance {
-  id          String   @id @default(uuid())
+  id String @id @default(uuid())
 
   // Attendee
-  userId      String
-  user        User     @relation("TrainingAttendee", fields: [userId], references: [id])
+  userId String
+  user   User   @relation("TrainingAttendee", fields: [userId], references: [id])
 
   // Training
-  trainingId  String
-  training    Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  trainingId String
+  training   Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
 
   // Attendance Details
-  markedAt    DateTime @default(now())
-  markedById  String?  // Who marked (self or admin)
-  markedBy    User?    @relation("AttendanceMarker", fields: [markedById], references: [id])
+  markedAt   DateTime @default(now())
+  markedById String? // Who marked (self or admin)
+  markedBy   User?    @relation("AttendanceMarker", fields: [markedById], references: [id])
 
   // For multi-day trainings
-  attendanceDate DateTime @default(now())  // Which day of training
+  attendanceDate DateTime @default(now()) // Which day of training
 
   // Location verification (captured when marking attendance)
-  latitude    Float?
-  longitude   Float?
-  locationAddress String?  // Reverse geocoded or user-provided address
-  ipAddress   String?
-  userAgent   String?
+  latitude        Float?
+  longitude       Float?
+  locationAddress String? // Reverse geocoded or user-provided address
+  ipAddress       String?
+  userAgent       String?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([userId, trainingId, attendanceDate])  // One attendance per day per training
+  @@unique([userId, trainingId, attendanceDate]) // One attendance per day per training
   @@index([userId])
   @@index([trainingId])
   @@index([attendanceDate])
@@ -2065,31 +2069,31 @@ model TrainingAttendance {
 
 // Feedback Form - Global reusable templates
 model FeedbackForm {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   title       String
   description String?
 
   // Questions stored as JSON array
   // Example: [{ "id": "q1", "type": "rating", "question": "Rate quality", "required": true, "options": {"min": 1, "max": 5} }]
-  questions   Json
+  questions Json
 
   // Purpose/Category
-  purpose     FeedbackFormPurpose @default(GENERAL)
+  purpose FeedbackFormPurpose @default(GENERAL)
 
   // Status
-  isActive    Boolean  @default(true)
-  isPublished Boolean  @default(false)
+  isActive    Boolean @default(true)
+  isPublished Boolean @default(false)
 
   // Creator
   createdById String
-  createdBy   User     @relation("FeedbackFormCreator", fields: [createdById], references: [id])
+  createdBy   User   @relation("FeedbackFormCreator", fields: [createdById], references: [id])
 
   // Relations
-  trainings   Training[]
-  responses   FeedbackResponse[]
+  trainings Training[]
+  responses FeedbackResponse[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([purpose])
   @@index([isActive, isPublished])
@@ -2099,30 +2103,30 @@ model FeedbackForm {
 
 // Feedback Response - Global responses (can be linked to training or standalone)
 model FeedbackResponse {
-  id          String   @id @default(uuid())
+  id String @id @default(uuid())
 
   // Respondent
-  userId      String
-  user        User     @relation("FeedbackRespondent", fields: [userId], references: [id])
+  userId String
+  user   User   @relation("FeedbackRespondent", fields: [userId], references: [id])
 
   // Form
   feedbackFormId String
   feedbackForm   FeedbackForm @relation(fields: [feedbackFormId], references: [id])
 
   // Optional Training Link (null for general feedback)
-  trainingId  String?
-  training    Training? @relation("TrainingFeedback", fields: [trainingId], references: [id], onDelete: Cascade)
+  trainingId String?
+  training   Training? @relation("TrainingFeedback", fields: [trainingId], references: [id], onDelete: Cascade)
 
   // Responses stored as JSON
   // Example: { "q1": 5, "q2": "Great training!", "q3": ["option1", "option2"] }
-  responses   Json
+  responses Json
 
   submittedAt DateTime @default(now())
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([userId, feedbackFormId, trainingId])  // One response per form per context
+  @@unique([userId, feedbackFormId, trainingId]) // One response per form per context
   @@index([userId])
   @@index([feedbackFormId])
   @@index([trainingId])
@@ -2132,48 +2136,48 @@ model FeedbackResponse {
 
 // Lesson Plan - Post-training curriculum integration
 model LessonPlan {
-  id          String   @id @default(uuid())
+  id String @id @default(uuid())
 
   // Faculty
-  userId      String
-  user        User     @relation("LessonPlanAuthor", fields: [userId], references: [id])
+  userId String
+  user   User   @relation("LessonPlanAuthor", fields: [userId], references: [id])
 
   // Training
-  trainingId  String
-  training    Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  trainingId String
+  training   Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
 
   // Lesson Plan Content
-  title              String
-  courseOrSemester   String?   // Which course/semester this applies to
-  connectionToTraining String? @db.Text  // How training connects to this lesson
-  learningObjectives Json?     // Array of objectives
-  newSkillsTechnologies String? @db.Text
-  deliveryMethods    String?   @db.Text  // Lectures, labs, projects, etc.
-  handsOnActivities  String?   @db.Text
-  assessmentMethods  String?   @db.Text
-  industryConnections String?  @db.Text
-  resourceRequirements String? @db.Text
+  title                  String
+  courseOrSemester       String? // Which course/semester this applies to
+  connectionToTraining   String? @db.Text // How training connects to this lesson
+  learningObjectives     Json? // Array of objectives
+  newSkillsTechnologies  String? @db.Text
+  deliveryMethods        String? @db.Text // Lectures, labs, projects, etc.
+  handsOnActivities      String? @db.Text
+  assessmentMethods      String? @db.Text
+  industryConnections    String? @db.Text
+  resourceRequirements   String? @db.Text
   implementationTimeline String?
-  expectedOutcomes   String?   @db.Text
+  expectedOutcomes       String? @db.Text
 
   // Attachments
-  attachments        String[]  @default([])
+  attachments String[] @default([])
 
   // Status & Review
-  status             LessonPlanStatus @default(DRAFT)
-  submittedAt        DateTime?
-  dueDate            DateTime?  // 2-4 weeks after training
+  status      LessonPlanStatus @default(DRAFT)
+  submittedAt DateTime?
+  dueDate     DateTime? // 2-4 weeks after training
 
   // Review
-  reviewedById       String?
-  reviewedBy         User?     @relation("LessonPlanReviewer", fields: [reviewedById], references: [id])
-  reviewedAt         DateTime?
-  reviewComments     String?   @db.Text
+  reviewedById   String?
+  reviewedBy     User?     @relation("LessonPlanReviewer", fields: [reviewedById], references: [id])
+  reviewedAt     DateTime?
+  reviewComments String?   @db.Text
 
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([userId, trainingId])  // One lesson plan per training per faculty
+  @@unique([userId, trainingId]) // One lesson plan per training per faculty
   @@index([userId])
   @@index([trainingId])
   @@index([status])
@@ -2184,37 +2188,37 @@ model LessonPlan {
 
 // Training Certificate - Completion certificates
 model TrainingCertificate {
-  id          String   @id @default(uuid())
+  id String @id @default(uuid())
 
   // Certificate Number (unique identifier for verification)
   certificateNumber String @unique
 
   // Recipient
-  userId      String
-  user        User     @relation("CertificateRecipient", fields: [userId], references: [id])
+  userId String
+  user   User   @relation("CertificateRecipient", fields: [userId], references: [id])
 
   // Training
-  trainingId  String
-  training    Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  trainingId String
+  training   Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
 
   // Certificate Details
-  issuedAt    DateTime @default(now())
-  issuedById  String?
-  issuedBy    User?    @relation("CertificateIssuer", fields: [issuedById], references: [id])
+  issuedAt   DateTime @default(now())
+  issuedById String?
+  issuedBy   User?    @relation("CertificateIssuer", fields: [issuedById], references: [id])
 
   // File
   certificateUrl String?
   downloadCount  Int     @default(0)
 
   // Verification
-  isValid     Boolean  @default(true)
-  revokedAt   DateTime?
+  isValid       Boolean   @default(true)
+  revokedAt     DateTime?
   revokedReason String?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([userId, trainingId])  // One certificate per training per user
+  @@unique([userId, trainingId]) // One certificate per training per user
   @@index([userId])
   @@index([trainingId])
   @@index([certificateNumber])
@@ -2239,53 +2243,53 @@ enum TrainingRecommendationPriority {
 }
 
 model TrainingRecommendation {
-  id          String   @id @default(uuid())
+  id String @id @default(uuid())
 
   // Recommender (Faculty)
-  userId      String
-  user        User     @relation("TrainingRecommender", fields: [userId], references: [id])
+  userId String
+  user   User   @relation("TrainingRecommender", fields: [userId], references: [id])
 
   // Recommendation Details
-  title              String
-  description        String   @db.Text
-  targetAudience     String?  // Who should attend (e.g., "CSE Faculty", "All Faculty")
-  suggestedDuration  Int?     // Suggested duration in hours
-  suggestedMode      TrainingDeliveryMode?
+  title               String
+  description         String                @db.Text
+  targetAudience      String? // Who should attend (e.g., "CSE Faculty", "All Faculty")
+  suggestedDuration   Int? // Suggested duration in hours
+  suggestedMode       TrainingDeliveryMode?
   suggestedDifficulty TrainingDifficulty?
 
   // Topics & Outcomes
-  topicsCovered      String?  @db.Text  // Main topics to be covered
-  learningOutcomes   String?  @db.Text  // Expected learning outcomes
-  relevanceReason    String?  @db.Text  // Why this training is needed
+  topicsCovered    String? @db.Text // Main topics to be covered
+  learningOutcomes String? @db.Text // Expected learning outcomes
+  relevanceReason  String? @db.Text // Why this training is needed
 
   // Additional Info
-  suggestedTrainer   String?  // Name/org of suggested trainer if any
-  resourceLinks      String[] @default([])  // Reference links/resources
-  estimatedBudget    Float?   // Estimated cost if known
+  suggestedTrainer String? // Name/org of suggested trainer if any
+  resourceLinks    String[] @default([]) // Reference links/resources
+  estimatedBudget  Float? // Estimated cost if known
 
   // Target Branches (optional)
-  targetBranches     Branch[] @relation("RecommendationBranches")
+  targetBranches Branch[] @relation("RecommendationBranches")
 
   // Priority & Status
-  priority           TrainingRecommendationPriority @default(MEDIUM)
-  status             TrainingRecommendationStatus @default(PENDING)
+  priority TrainingRecommendationPriority @default(MEDIUM)
+  status   TrainingRecommendationStatus   @default(PENDING)
 
   // Review
-  reviewedById       String?
-  reviewedBy         User?    @relation("RecommendationReviewer", fields: [reviewedById], references: [id])
-  reviewedAt         DateTime?
-  reviewComments     String?  @db.Text
-  rejectionReason    String?  @db.Text
+  reviewedById    String?
+  reviewedBy      User?     @relation("RecommendationReviewer", fields: [reviewedById], references: [id])
+  reviewedAt      DateTime?
+  reviewComments  String?   @db.Text
+  rejectionReason String?   @db.Text
 
   // If implemented, link to the actual training
   implementedTrainingId String?
   implementedTraining   Training? @relation("ImplementedRecommendation", fields: [implementedTrainingId], references: [id])
 
   // Voting/Support (optional feature)
-  supportCount       Int      @default(0)
+  supportCount Int @default(0)
 
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([status])
@@ -2308,41 +2312,41 @@ enum TestFormPurpose {
 
 // Pre-Test Form - Prerequisites assessment before training
 model PreTestForm {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   title       String
   description String?
 
   // Questions stored as JSON array (same format as FeedbackForm)
   // Example: [{ "id": "q1", "type": "multiChoice", "question": "What is your experience level?", "required": true, "options": {"choices": ["Beginner", "Intermediate", "Advanced"]} }]
-  questions   Json
+  questions Json
 
   // Purpose/Category
-  purpose     TestFormPurpose @default(PRE_TEST)
+  purpose TestFormPurpose @default(PRE_TEST)
 
   // Passing criteria (optional)
-  passingScore Float?  // Minimum percentage to pass (e.g., 70.0)
+  passingScore Float? // Minimum percentage to pass (e.g., 70.0)
 
   // Live window and timer configuration (form-level)
-  isLiveWindowEnabled Boolean  @default(false)
+  isLiveWindowEnabled Boolean   @default(false)
   liveFrom            DateTime?
   liveUntil           DateTime?
-  enforceTimer        Boolean  @default(true)
+  enforceTimer        Boolean   @default(true)
   durationMinutes     Int?
 
   // Status
-  isActive    Boolean  @default(true)
-  isPublished Boolean  @default(false)
+  isActive    Boolean @default(true)
+  isPublished Boolean @default(false)
 
   // Creator
   createdById String
-  createdBy   User     @relation("PreTestFormCreator", fields: [createdById], references: [id])
+  createdBy   User   @relation("PreTestFormCreator", fields: [createdById], references: [id])
 
   // Relations
-  trainings   Training[]
-  responses   PreTestResponse[]
+  trainings Training[]
+  responses PreTestResponse[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([purpose])
   @@index([isActive, isPublished])
@@ -2352,40 +2356,40 @@ model PreTestForm {
 
 // Post-Test Form - Learning assessment after training
 model PostTestForm {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   title       String
   description String?
 
   // Questions stored as JSON array (same format as FeedbackForm)
-  questions   Json
+  questions Json
 
   // Purpose/Category
-  purpose     TestFormPurpose @default(POST_TEST)
+  purpose TestFormPurpose @default(POST_TEST)
 
   // Passing criteria (optional)
-  passingScore Float?  // Minimum percentage to pass (e.g., 70.0)
+  passingScore Float? // Minimum percentage to pass (e.g., 70.0)
 
   // Live window and timer configuration (form-level)
-  isLiveWindowEnabled Boolean  @default(false)
+  isLiveWindowEnabled Boolean   @default(false)
   liveFrom            DateTime?
   liveUntil           DateTime?
-  enforceTimer        Boolean  @default(true)
+  enforceTimer        Boolean   @default(true)
   durationMinutes     Int?
 
   // Status
-  isActive    Boolean  @default(true)
-  isPublished Boolean  @default(false)
+  isActive    Boolean @default(true)
+  isPublished Boolean @default(false)
 
   // Creator
   createdById String
-  createdBy   User     @relation("PostTestFormCreator", fields: [createdById], references: [id])
+  createdBy   User   @relation("PostTestFormCreator", fields: [createdById], references: [id])
 
   // Relations
-  trainings   Training[]
-  responses   PostTestResponse[]
+  trainings Training[]
+  responses PostTestResponse[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([purpose])
   @@index([isActive, isPublished])
@@ -2395,34 +2399,34 @@ model PostTestForm {
 
 // Pre-Test Response - Faculty's pre-test submission
 model PreTestResponse {
-  id          String   @id @default(uuid())
+  id String @id @default(uuid())
 
   // Respondent
-  userId      String
-  user        User     @relation("PreTestRespondent", fields: [userId], references: [id])
+  userId String
+  user   User   @relation("PreTestRespondent", fields: [userId], references: [id])
 
   // Form
   preTestFormId String
   preTestForm   PreTestForm @relation(fields: [preTestFormId], references: [id])
 
   // Training Link
-  trainingId  String
-  training    Training @relation("TrainingPreTest", fields: [trainingId], references: [id], onDelete: Cascade)
+  trainingId String
+  training   Training @relation("TrainingPreTest", fields: [trainingId], references: [id], onDelete: Cascade)
 
   // Responses stored as JSON
   // Example: { "q1": "Intermediate", "q2": true, "q3": ["option1", "option2"] }
-  responses   Json
+  responses Json
 
   // Scoring (if applicable)
-  score       Float?   // Percentage score (0-100)
-  passed      Boolean? // Whether user passed based on passingScore
+  score  Float? // Percentage score (0-100)
+  passed Boolean? // Whether user passed based on passingScore
 
   submittedAt DateTime @default(now())
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([userId, preTestFormId, trainingId])  // One response per form per training
+  @@unique([userId, preTestFormId, trainingId]) // One response per form per training
   @@index([userId])
   @@index([preTestFormId])
   @@index([trainingId])
@@ -2432,33 +2436,33 @@ model PreTestResponse {
 
 // Post-Test Response - Faculty's post-test submission
 model PostTestResponse {
-  id          String   @id @default(uuid())
+  id String @id @default(uuid())
 
   // Respondent
-  userId      String
-  user        User     @relation("PostTestRespondent", fields: [userId], references: [id])
+  userId String
+  user   User   @relation("PostTestRespondent", fields: [userId], references: [id])
 
   // Form
   postTestFormId String
   postTestForm   PostTestForm @relation(fields: [postTestFormId], references: [id])
 
   // Training Link
-  trainingId  String
-  training    Training @relation("TrainingPostTest", fields: [trainingId], references: [id], onDelete: Cascade)
+  trainingId String
+  training   Training @relation("TrainingPostTest", fields: [trainingId], references: [id], onDelete: Cascade)
 
   // Responses stored as JSON
-  responses   Json
+  responses Json
 
   // Scoring (if applicable)
-  score       Float?   // Percentage score (0-100)
-  passed      Boolean? // Whether user passed based on passingScore
+  score  Float? // Percentage score (0-100)
+  passed Boolean? // Whether user passed based on passingScore
 
   submittedAt DateTime @default(now())
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([userId, postTestFormId, trainingId])  // One response per form per training
+  @@unique([userId, postTestFormId, trainingId]) // One response per form per training
   @@index([userId])
   @@index([postTestFormId])
   @@index([trainingId])
@@ -2482,22 +2486,22 @@ enum JobLocationPreference {
 }
 
 enum ExpectedSalaryRange {
-  RANGE_10K_15K   // 10,000 - 15,000
-  RANGE_15K_20K   // 15,000 - 20,000
-  RANGE_20K_PLUS  // 20,000+
+  RANGE_10K_15K // 10,000 - 15,000
+  RANGE_15K_20K // 15,000 - 20,000
+  RANGE_20K_PLUS // 20,000+
 }
 
 model StudentPlacementInterest {
-  id        String   @id @default(uuid())
+  id String @id @default(uuid())
 
   // Relation to Student
-  studentId String   @unique
-  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String  @unique
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   // Form Fields
-  planAfterDiploma       PlanAfterDiploma
-  interestedForPrivateJob JobLocationPreference?  // Only applicable if planAfterDiploma is PRIVATE_JOB
-  expectedSalary         ExpectedSalaryRange?     // Only applicable if planAfterDiploma is PRIVATE_JOB
+  planAfterDiploma        PlanAfterDiploma
+  interestedForPrivateJob JobLocationPreference? // Only applicable if planAfterDiploma is PRIVATE_JOB
+  expectedSalary          ExpectedSalaryRange? // Only applicable if planAfterDiploma is PRIVATE_JOB
 
   // Metadata
   submittedAt DateTime @default(now())
@@ -2520,12 +2524,14 @@ model Company {
   alias       String[] @default([]) // Alternative names/variations
 
   // Address & Contact Information
-  address String? // Company address
-  city    String?
-  state   String?
-  pinCode String?
-  contact String? // Company contact number
-  email   String? // Company email
+  address        String? // Company address
+  city           String?
+  state          String?
+  pinCode        String?
+  contact        String? // Company contact number
+  email          String? // Company email
+  website        String? // Company website URL
+  industrySector String? // e.g. IT, Manufacturing, Healthcare
 
   // Status
   isActive Boolean @default(true)
@@ -2539,6 +2545,61 @@ model Company {
   @@index([city])
   @@index([state])
   @@map("companies")
+}
+
+// =============================================
+// TPO INTERNSHIP REPORT (govt data-gathering, not the permanent internship record)
+// =============================================
+
+enum EnrollmentStatus {
+  ENROLLED
+  DROPPED_OUT
+}
+
+enum InternshipMode {
+  ONLINE
+  OFFLINE
+}
+
+model InternshipReport {
+  id String @id @default(uuid())
+
+  studentId     String
+  student       Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  institutionId String // denormalized from student, for fast principal/state scoping
+  institution   Institution @relation(fields: [institutionId], references: [id])
+
+  enrollmentStatus EnrollmentStatus @default(ENROLLED)
+
+  companyName         String
+  organizationWebsite String?
+  modeOfInternship    InternshipMode?
+  industrySector      String?
+
+  isWorkInPunjab Boolean?
+  workDistrict   String? // filled when isWorkInPunjab = true
+  workState      String? // filled when isWorkInPunjab = false
+
+  hrName        String?
+  hrPhoneNumber String?
+
+  isStipendOffered      Boolean?
+  stipendAmountPerMonth Float? // filled when isStipendOffered = true
+
+  isOfferLetterReceived Boolean?
+  offerLetterUrl        String?
+
+  facultyMentorId String?
+  facultyMentor   User?   @relation("ReportFacultyMentor", fields: [facultyMentorId], references: [id])
+
+  createdBy String // Principal user id who entered this record
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([institutionId])
+  @@index([studentId])
+  @@index([facultyMentorId])
+  @@map("internship_reports")
 }
 
 // =============================================

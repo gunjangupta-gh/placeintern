@@ -2878,6 +2878,8 @@ export class StudentService {
         address: true,
         contact: true,
         email: true,
+        website: true,
+        industrySector: true,
       },
       orderBy: { name: 'asc' },
       take: limit,

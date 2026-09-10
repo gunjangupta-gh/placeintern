@@ -100,6 +100,37 @@ export const bulkService = {
     return response.data;
   },
 
+  // Self-identified internship bulk upload
+  async uploadSelfInternships(file, onProgress, useAsync = false, institutionId = null) {
+    const formData = new FormData();
+    formData.append('file', resolveRawFile(file));
+    let url = `/bulk/self-internships/upload?async=${useAsync}`;
+    if (institutionId) {
+      url += `&institutionId=${institutionId}`;
+    }
+    const response = await API.post(url, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: onProgress,
+    });
+    return response.data;
+  },
+  async validateSelfInternships(file, institutionId = null) {
+    const formData = new FormData();
+    formData.append('file', resolveRawFile(file));
+    let url = '/bulk/self-internships/validate';
+    if (institutionId) {
+      url += `?institutionId=${institutionId}`;
+    }
+    const response = await API.post(url, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+  async downloadSelfInternshipTemplate() {
+    const response = await API.get('/bulk/self-internships/template', { responseType: 'blob' });
+    return response.data;
+  },
+
   // Generic template download (used by principal portal)
   async downloadTemplate(type) {
     const response = await API.get(`/bulk/templates/${type}`, {

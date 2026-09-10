@@ -95,6 +95,8 @@ import PrincipalFeedback from '../../features/principal/faculty/PrincipalFeedbac
 import Grievances from '../../features/principal/grievances/Grievances';
 import SelfIdentifiedInternships from '../../features/principal/internships/SelfIdentifiedInternships';
 import BulkSelfInternshipUpload from '../../features/principal/bulk/BulkSelfInternshipUpload';
+import InternshipReportList from '../../features/principal/internship-reports/InternshipReportList';
+import InternshipReportOverview from '../../features/state/internship-reports/InternshipReportOverview';
 import BulkJobHistory from '../../features/common/bulk/BulkJobHistory';
 import PrincipalTrainingOverviewPage from '../../features/principal/training/TrainingOverviewPage';
 import PrincipalApplicationReviewPage from '../../features/principal/training/ApplicationReviewPage';
@@ -261,6 +263,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE]}>
               <InstitutionPerformance />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="internship-reports-overview"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <InternshipReportOverview />
             </ProtectedRoute>
           }
         />
@@ -763,6 +773,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
               <SelfIdentifiedInternships />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="internship-reports"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
+              <InternshipReportList />
             </ProtectedRoute>
           }
         />

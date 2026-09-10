@@ -90,6 +90,12 @@ export const menuConfig = {
         icon: <UsergroupAddOutlined />,
         path: "/app/students-directory",
       },
+      {
+        key: "internship-reports-overview",
+        label: "Internship Reports (TPO)",
+        icon: <AuditOutlined />,
+        path: "/app/internship-reports-overview",
+      },
     ],
   },
   STATE_COMPANIES: {
@@ -292,6 +298,12 @@ export const menuConfig = {
         label: "Grievances",
         icon: <AlertOutlined />,
         path: "/app/grievances",
+      },
+      {
+        key: "internship-reports",
+        label: "Internship Reports (TPO)",
+        icon: <AuditOutlined />,
+        path: "/app/internship-reports",
       },
     ],
   },

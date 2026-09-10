@@ -6,10 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   fetchStudents,
   updateStudent,
-  deleteStudent,
   resetUserPassword,
   optimisticallyUpdateStudent,
-  optimisticallyDeleteStudent,
   rollbackStudentOperation,
 } from '../store/principalSlice';
 import {
@@ -22,7 +20,6 @@ import DataTable from '../../../components/tables/DataTable';
 import {
   EyeOutlined,
   EditOutlined,
-  DeleteOutlined,
   UserOutlined,
   SearchOutlined,
   PlusOutlined,
@@ -225,30 +222,6 @@ const StudentList = () => {
     });
   };
 
-  const handleDelete = (record) => {
-    const previousList = [...list];
-
-    Modal.confirm({
-      title: 'Deactivate Student',
-      content: `Are you sure you want to deactivate ${record.name}? The student will no longer be able to access the system but their data will be preserved.`,
-      okText: 'Deactivate',
-      okType: 'danger',
-      onOk: async () => {
-        // Optimistic update - remove from active list
-        dispatch(optimisticallyDeleteStudent(record.id));
-        toast.success('Student deactivated successfully');
-
-        try {
-          await dispatch(deleteStudent(record.id)).unwrap();
-        } catch (error) {
-          // Rollback on failure
-          dispatch(rollbackStudentOperation({ list: previousList }));
-          toast.error(error || 'Failed to deactivate student');
-        }
-      },
-    });
-  };
-
   const getActionMenuItems = (record) => [
     {
       key: 'view',
@@ -277,16 +250,6 @@ const StudentList = () => {
       icon: (record.user?.active ?? record.isActive) ? <StopOutlined /> : <CheckCircleOutlined />,
       onClick: () => handleToggleStatus(record),
       danger: (record.user?.active ?? record.isActive),
-    },
-    {
-      type: 'divider',
-    },
-    {
-      key: 'delete',
-      label: 'Deactivate',
-      icon: <StopOutlined />,
-      onClick: () => handleDelete(record),
-      danger: true,
     },
   ];
 

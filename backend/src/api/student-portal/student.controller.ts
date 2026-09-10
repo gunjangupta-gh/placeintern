@@ -462,7 +462,7 @@ export class StudentController {
 
   // Companies
   @Get('companies')
-  @Roles(Role.STUDENT)
+  @Roles(Role.STUDENT, Role.PRINCIPAL)
   @ApiOperation({ summary: 'Get companies list for dropdown selection' })
   @ApiResponse({ status: 200, description: 'Companies retrieved successfully' })
   async getCompanies(
