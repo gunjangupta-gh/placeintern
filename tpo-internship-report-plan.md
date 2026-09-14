@@ -220,7 +220,6 @@ verify, not something to skip because the change is additive):
 
 ## 8. Explicitly out of scope for this version
 
-- Bulk Excel upload for `InternshipReport` (manual form only).
 - Any link, sync, or "promote" action to/from `InternshipApplication` — confirmed not wanted.
 - Reporting periods/cycles (e.g., "Sept 2026 submission" vs "Jan 2027 submission") — one live
   record per gathered internship, exported whenever needed.
@@ -231,3 +230,35 @@ verify, not something to skip because the change is additive):
    or is this strictly a PRINCIPAL-only feature?
 2. For the export route, do you want the exact header text/line breaks from the source file (e.g.
    "Mode of Internship\r\n(Online / Offline)"), or cleaned-up single-line headers?
+
+## 9. Bulk Excel upload (added after initial build)
+
+Manual one-by-one entry is slow when a Principal has to gather this for a whole institution at
+once, so a bulk Excel path was added alongside (not instead of) the manual CRUD form on the same
+page, `frontend/src/features/principal/internship-reports/` (`/app/internship-reports`). This is
+still purely additive to the standalone `InternshipReport` table — no schema change, no link to
+`InternshipApplication`.
+
+- **Template is pre-filled per institution, not blank.** `GET /internship-reports/bulk/template`
+  looks up the principal's own institution's active students and writes one row per student with
+  their minimum identifying details already filled in (a hidden `Student ID` reference column,
+  Roll Number, Name, Branch, Semester, Email, Phone), so the Principal doesn't have to type or look
+  up identifiers. The remaining internship-detail columns (Company Name, Mode, Work Location,
+  Stipend, Offer Letter, Faculty Mentor Email, etc.) are left blank for the Principal to fill in.
+  `Student ID` is the authoritative match key on upload (Roll Number is a fallback if it's ever
+  missing/edited); the sheet notes not to edit that column.
+- **Faculty Mentor** is entered as an email in the sheet and resolved server-side to a `User`
+  (`TEACHER`/`FACULTY_COORDINATOR`) in the same institution — same normalization rule as the manual
+  form, just keyed by email instead of a picker.
+- **Upload creates new report rows** (same semantics as "Add Report" in the manual form) — it does
+  not upsert/update existing reports for a student, since a student can have more than one gathered
+  report over time (no unique constraint on `studentId`). Rows that fail validation (student not
+  found, missing company name, bad faculty mentor email, etc.) are skipped with a per-row error;
+  valid rows are still created (partial success), mirroring the existing
+  `bulk-self-internship` upload behavior.
+- Routes: `GET /internship-reports/bulk/template`, `POST /internship-reports/bulk/validate`
+  (dry-run, no writes), `POST /internship-reports/bulk/upload` — all `PRINCIPAL`-only, scoped to
+  the caller's own institution server-side (never a client-supplied institution id).
+- Frontend: the page heading changed to **"Internship Confirmation for 2027"**, with a "Manage"
+  tab (existing table/add/edit/delete) and a "Bulk Upload" tab (download template → upload filled
+  sheet → review validation → confirm) on the same page.

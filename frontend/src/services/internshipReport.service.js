@@ -56,4 +56,29 @@ export const internshipReportService = {
     const response = await API.get(url);
     return response.data;
   },
+
+  // Bulk upload — template is pre-filled with this institution's students
+  async downloadBulkTemplate() {
+    const response = await API.get('/internship-reports/bulk/template', { responseType: 'blob' });
+    return response.data;
+  },
+
+  async validateBulkUpload(file) {
+    const formData = new FormData();
+    formData.append('file', file?.originFileObj || file);
+    const response = await API.post('/internship-reports/bulk/validate', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  async uploadBulk(file, onProgress) {
+    const formData = new FormData();
+    formData.append('file', file?.originFileObj || file);
+    const response = await API.post('/internship-reports/bulk/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: onProgress,
+    });
+    return response.data;
+  },
 };

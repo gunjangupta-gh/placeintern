@@ -92,7 +92,7 @@ export const menuConfig = {
       },
       {
         key: "internship-reports-overview",
-        label: "Internship Reports (TPO)",
+        label: "Internship Confirmation",
         icon: <AuditOutlined />,
         path: "/app/internship-reports-overview",
       },
@@ -301,7 +301,7 @@ export const menuConfig = {
       },
       {
         key: "internship-reports",
-        label: "Internship Reports (TPO)",
+        label: "Internship Confirmation",
         icon: <AuditOutlined />,
         path: "/app/internship-reports",
       },

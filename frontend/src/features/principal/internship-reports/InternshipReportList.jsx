@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Input, Dropdown, Modal, Tag, theme } from 'antd';
+import { Button, Input, Dropdown, Modal, Tag, Tabs, theme } from 'antd';
 import { toast } from 'react-hot-toast';
 import {
   PlusOutlined,
@@ -12,6 +12,7 @@ import {
 import DataTable from '../../../components/tables/DataTable';
 import { internshipReportService } from '../../../services/internshipReport.service';
 import InternshipReportModal from './InternshipReportModal';
+import InternshipReportBulkUpload from './InternshipReportBulkUpload';
 
 const { Search } = Input;
 
@@ -142,12 +143,17 @@ const InternshipReportList = () => {
     },
   ];
 
-  return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 24, backgroundColor: token.colorBgLayout, minHeight: '100vh' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ fontSize: 24, fontWeight: 'bold', color: token.colorTextHeading, margin: 0 }}>
-          Internship Reports (TPO Data)
-        </h1>
+  const manageTab = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <Search
+          placeholder="Search by student name, roll number, or company"
+          allowClear
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          style={{ width: '100%', maxWidth: 340 }}
+          prefix={<SearchOutlined style={{ color: token.colorTextDescription }} />}
+        />
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Button icon={<ReloadOutlined />} onClick={fetchReports} disabled={loading}>
             Refresh
@@ -157,20 +163,6 @@ const InternshipReportList = () => {
           </Button>
         </div>
       </div>
-
-      <Card
-        style={{ borderRadius: token.borderRadiusLG, border: `1px solid ${token.colorBorderSecondary}` }}
-        bodyStyle={{ padding: 16 }}
-      >
-        <Search
-          placeholder="Search by student name, roll number, or company"
-          allowClear
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          style={{ width: '100%', maxWidth: 340 }}
-          prefix={<SearchOutlined style={{ color: token.colorTextDescription }} />}
-        />
-      </Card>
 
       <div style={{ backgroundColor: token.colorBgContainer, borderRadius: token.borderRadiusLG, border: `1px solid ${token.colorBorderSecondary}`, overflow: 'hidden' }}>
         <DataTable
@@ -186,6 +178,26 @@ const InternshipReportList = () => {
           }}
         />
       </div>
+    </div>
+  );
+
+  return (
+    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 24, backgroundColor: token.colorBgLayout, minHeight: '100vh' }}>
+      <h1 style={{ fontSize: 24, fontWeight: 'bold', color: token.colorTextHeading, margin: 0 }}>
+        Internship Confirmation for 2027
+      </h1>
+
+      <Tabs
+        defaultActiveKey="manage"
+        items={[
+          { key: 'manage', label: 'Manage Reports', children: manageTab },
+          {
+            key: 'bulk',
+            label: 'Bulk Upload',
+            children: <InternshipReportBulkUpload onUploaded={fetchReports} />,
+          },
+        ]}
+      />
 
       <InternshipReportModal
         open={modalOpen}
