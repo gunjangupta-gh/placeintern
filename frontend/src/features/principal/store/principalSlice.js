@@ -320,7 +320,7 @@ export const deleteStudent = createAsyncThunk(
 // Also toggles related mentor assignments and internship applications
 export const toggleStudentStatus = createAsyncThunk(
   'principal/toggleStudentStatus',
-  async ({ studentId }, { rejectWithValue, dispatch, getState }) => {
+  async ({ studentId, reason, remarks }, { rejectWithValue, dispatch, getState }) => {
     // Save current state for rollback
     const previousList = [...getState().principal.students.list];
 
@@ -329,7 +329,7 @@ export const toggleStudentStatus = createAsyncThunk(
       dispatch(principalSlice.actions.optimisticallyToggleStudentStatus(studentId));
 
       // Make API call
-      const response = await principalService.toggleStudentStatus(studentId);
+      const response = await principalService.toggleStudentStatus(studentId, { reason, remarks });
       return { studentId, ...response };
     } catch (error) {
       // Rollback on error

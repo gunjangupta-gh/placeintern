@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Button, Tag, Avatar, Input, Select, Card, Dropdown, Modal, theme } from 'antd';
+import { Button, Tag, Avatar, Input, Select, Card, Modal, Space, Tooltip, Switch, InputNumber, theme } from 'antd';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
   fetchStudents,
   updateStudent,
+  toggleStudentStatus,
   resetUserPassword,
   optimisticallyUpdateStudent,
   rollbackStudentOperation,
@@ -23,9 +24,7 @@ import {
   UserOutlined,
   SearchOutlined,
   PlusOutlined,
-  MoreOutlined,
-  CheckCircleOutlined,
-  StopOutlined,
+  TrophyOutlined,
   KeyOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
@@ -34,8 +33,17 @@ import ProfileAvatar from '../../../components/common/ProfileAvatar';
 import StudentModal from './StudentModal';
 import { useLookup } from '../../shared/hooks/useLookup';
 
-const { Search } = Input;
+const { Search, TextArea } = Input;
 const { Option } = Select;
+
+// Keep in sync with backend DeactivationReason enum (see schema.prisma)
+const DEACTIVATION_REASONS = [
+  { value: 'DROPOUT', label: 'Dropout' },
+  { value: 'TRANSFERRED', label: 'Transferred' },
+  { value: 'DISCIPLINARY', label: 'Disciplinary Action' },
+  { value: 'DATA_CLEANUP', label: 'Data Cleanup' },
+  { value: 'OTHER', label: 'Other' },
+];
 
 const StudentList = () => {
   const dispatch = useDispatch();
@@ -88,6 +96,16 @@ const StudentList = () => {
   const [editingStudentId, setEditingStudentId] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Deactivation confirmation modal (opened by clicking the Status tag)
+  const [deactivateModal, setDeactivateModal] = useState({ open: false, record: null });
+  const [deactivateForm, setDeactivateForm] = useState({ reason: undefined, remarks: '' });
+  const [deactivateSubmitting, setDeactivateSubmitting] = useState(false);
+
+  // Placement confirmation modal (opened from the Actions column)
+  const [placementModal, setPlacementModal] = useState({ open: false, record: null });
+  const [placementForm, setPlacementForm] = useState({ isPlaced: false, placedCompany: '', placedPackage: null });
+  const [placementSubmitting, setPlacementSubmitting] = useState(false);
+
   const handleOpenModal = (studentId = null) => {
     setEditingStudentId(studentId);
     setModalOpen(true);
@@ -136,38 +154,6 @@ const StudentList = () => {
 
   const handleEdit = (record) => {
     handleOpenModal(record.id);
-  };
-
-  const handleToggleStatus = async (record) => {
-    // Use User SOT pattern: prefer user.active, fallback to isActive
-    const currentStatus = record.user?.active ?? record.isActive;
-    const newStatus = !currentStatus;
-    const actionText = newStatus ? 'activate' : 'deactivate';
-    const previousList = [...list];
-    const studentName = record.user?.name || record.name;
-
-    Modal.confirm({
-      title: `${newStatus ? 'Activate' : 'Deactivate'} Student`,
-      content: `Are you sure you want to ${actionText} ${studentName}?`,
-      okText: newStatus ? 'Activate' : 'Deactivate',
-      okType: newStatus ? 'primary' : 'danger',
-      onOk: async () => {
-        // Optimistic update - update UI immediately
-        dispatch(optimisticallyUpdateStudent({ id: record.id, data: { isActive: newStatus } }));
-        toast.success(`Student ${newStatus ? 'activated' : 'deactivated'} successfully`);
-
-        try {
-          await dispatch(updateStudent({
-            id: record.id,
-            data: { isActive: newStatus }
-          })).unwrap();
-        } catch (error) {
-          // Rollback on failure
-          dispatch(rollbackStudentOperation({ list: previousList }));
-          toast.error(error || `Failed to ${actionText} student`);
-        }
-      },
-    });
   };
 
   const handleResetPassword = (record) => {
@@ -222,36 +208,99 @@ const StudentList = () => {
     });
   };
 
-  const getActionMenuItems = (record) => [
-    {
-      key: 'view',
-      label: 'View Details',
-      icon: <EyeOutlined />,
-      onClick: () => handleView(record),
-    },
-    {
-      key: 'edit',
-      label: 'Edit',
-      icon: <EditOutlined />,
-      onClick: () => handleEdit(record),
-    },
-    {
-      type: 'divider',
-    },
-    {
-      key: 'resetPassword',
-      label: 'Reset Password',
-      icon: <KeyOutlined />,
-      onClick: () => handleResetPassword(record),
-    },
-    {
-      key: 'toggle',
-      label: (record.user?.active ?? record.isActive) ? 'Deactivate' : 'Activate',
-      icon: (record.user?.active ?? record.isActive) ? <StopOutlined /> : <CheckCircleOutlined />,
-      onClick: () => handleToggleStatus(record),
-      danger: (record.user?.active ?? record.isActive),
-    },
-  ];
+  // --- Status tag click -> deactivate (with reason) or reactivate (simple confirm) ---
+  const closeDeactivateModal = () => {
+    setDeactivateModal({ open: false, record: null });
+    setDeactivateForm({ reason: undefined, remarks: '' });
+  };
+
+  const handleStatusTagClick = (record) => {
+    const activeStatus = record.user?.active ?? record.isActive;
+
+    if (activeStatus) {
+      setDeactivateModal({ open: true, record });
+      return;
+    }
+
+    const studentName = record.user?.name || record.name;
+    Modal.confirm({
+      title: 'Activate Student',
+      content: `Are you sure you want to activate ${studentName}?`,
+      okText: 'Activate',
+      okType: 'primary',
+      onOk: async () => {
+        try {
+          await dispatch(toggleStudentStatus({ studentId: record.id })).unwrap();
+          toast.success('Student activated successfully');
+        } catch (error) {
+          toast.error(error || 'Failed to activate student');
+        }
+      },
+    });
+  };
+
+  const handleConfirmDeactivate = async () => {
+    if (!deactivateModal.record) return;
+    if (!deactivateForm.reason) {
+      toast.error('Please select a reason for deactivation');
+      return;
+    }
+
+    setDeactivateSubmitting(true);
+    try {
+      await dispatch(toggleStudentStatus({
+        studentId: deactivateModal.record.id,
+        reason: deactivateForm.reason,
+        remarks: deactivateForm.remarks?.trim() || undefined,
+      })).unwrap();
+      toast.success('Student deactivated successfully');
+      closeDeactivateModal();
+    } catch (error) {
+      toast.error(error || 'Failed to deactivate student');
+    } finally {
+      setDeactivateSubmitting(false);
+    }
+  };
+
+  // --- Placement action (from the Actions column) ---
+  const openPlacementModal = (record) => {
+    setPlacementForm({
+      isPlaced: record.isPlaced ?? false,
+      placedCompany: record.placedCompany || '',
+      placedPackage: record.placedPackage ?? null,
+    });
+    setPlacementModal({ open: true, record });
+  };
+
+  const closePlacementModal = () => {
+    setPlacementModal({ open: false, record: null });
+  };
+
+  const handleConfirmPlacement = async () => {
+    if (!placementModal.record) return;
+    if (placementForm.isPlaced && !placementForm.placedCompany?.trim()) {
+      toast.error('Company name is required when marking a student as placed');
+      return;
+    }
+
+    setPlacementSubmitting(true);
+    try {
+      await dispatch(updateStudent({
+        id: placementModal.record.id,
+        data: {
+          isPlaced: placementForm.isPlaced,
+          placedCompany: placementForm.isPlaced ? placementForm.placedCompany.trim() : undefined,
+          placedPackage: placementForm.isPlaced ? placementForm.placedPackage : undefined,
+        },
+      })).unwrap();
+      toast.success(placementForm.isPlaced ? 'Student marked as placed' : 'Placement status cleared');
+      closePlacementModal();
+    } catch (error) {
+      toast.error(error || 'Failed to update placement status');
+    } finally {
+      setPlacementSubmitting(false);
+    }
+  };
 
   // Memoized columns definition
   const columns = useMemo(() => [
@@ -297,28 +346,42 @@ const StudentList = () => {
       render: (isActive, record) => {
         const activeStatus = record.user?.active ?? isActive;
         return (
-          <Tag color={activeStatus ? 'success' : 'default'} bordered={false}>
-            {activeStatus ? 'Active' : 'Inactive'}
-          </Tag>
+          <Tooltip title={activeStatus ? 'Click to deactivate' : 'Click to activate'}>
+            <Tag
+              color={activeStatus ? 'success' : 'default'}
+              bordered={false}
+              style={{ cursor: 'pointer' }}
+              onClick={() => handleStatusTagClick(record)}
+            >
+              {activeStatus ? 'Active' : 'Inactive'}
+            </Tag>
+          </Tooltip>
         );
       },
     },
     {
-      title: '',
+      title: 'Actions',
       key: 'actions',
-      width: 50,
+      width: 160,
       render: (_, record) => (
-        <Dropdown
-          menu={{ items: getActionMenuItems(record) }}
-          trigger={['click']}
-          placement="bottomRight"
-        >
-          <Button
-            type="text"
-            icon={<MoreOutlined style={{ fontSize: '18px' }} />}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          />
-        </Dropdown>
+        <Space size={4}>
+          <Tooltip title="View Details">
+            <Button type="text" icon={<EyeOutlined style={{ fontSize: 16 }} />} onClick={() => handleView(record)} />
+          </Tooltip>
+          <Tooltip title="Edit">
+            <Button type="text" icon={<EditOutlined style={{ fontSize: 16 }} />} onClick={() => handleEdit(record)} />
+          </Tooltip>
+          <Tooltip title="Reset Password">
+            <Button type="text" icon={<KeyOutlined style={{ fontSize: 16 }} />} onClick={() => handleResetPassword(record)} />
+          </Tooltip>
+          <Tooltip title={record.isPlaced ? 'Placed (click to view/edit)' : 'Mark as Placed'}>
+            <Button
+              type="text"
+              icon={<TrophyOutlined style={{ fontSize: 16, color: record.isPlaced ? token.colorSuccess : undefined }} />}
+              onClick={() => openPlacementModal(record)}
+            />
+          </Tooltip>
+        </Space>
       ),
     },
   ], [filters, list, token]);
@@ -442,9 +505,94 @@ const StudentList = () => {
         studentId={editingStudentId}
         onSuccess={handleModalSuccess}
       />
+
+      {/* Deactivation confirmation modal - opened by clicking the Status tag */}
+      <Modal
+        title="Deactivate Student"
+        open={deactivateModal.open}
+        onCancel={closeDeactivateModal}
+        onOk={handleConfirmDeactivate}
+        okText="Deactivate"
+        okButtonProps={{ danger: true, loading: deactivateSubmitting }}
+        cancelButtonProps={{ disabled: deactivateSubmitting }}
+        destroyOnClose
+      >
+        <p>
+          Are you sure you want to deactivate{' '}
+          <strong>{deactivateModal.record?.user?.name || deactivateModal.record?.name}</strong>?
+          This will also deactivate their mentor assignment and internship application.
+        </p>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ marginBottom: 4, fontSize: 13, color: token.colorTextSecondary }}>Reason</div>
+          <Select
+            style={{ width: '100%' }}
+            placeholder="Select a reason"
+            value={deactivateForm.reason}
+            onChange={(value) => setDeactivateForm(prev => ({ ...prev, reason: value }))}
+          >
+            {DEACTIVATION_REASONS.map(r => (
+              <Option key={r.value} value={r.value}>{r.label}</Option>
+            ))}
+          </Select>
+        </div>
+        <div>
+          <div style={{ marginBottom: 4, fontSize: 13, color: token.colorTextSecondary }}>Remarks (optional)</div>
+          <TextArea
+            rows={3}
+            placeholder="Any additional detail, e.g. destination institution, notice reference, etc."
+            value={deactivateForm.remarks}
+            onChange={(e) => setDeactivateForm(prev => ({ ...prev, remarks: e.target.value }))}
+          />
+        </div>
+      </Modal>
+
+      {/* Placement confirmation modal - opened from the Actions column */}
+      <Modal
+        title="Placement Status"
+        open={placementModal.open}
+        onCancel={closePlacementModal}
+        onOk={handleConfirmPlacement}
+        okText="Save"
+        okButtonProps={{ loading: placementSubmitting }}
+        cancelButtonProps={{ disabled: placementSubmitting }}
+        destroyOnClose
+      >
+        <p>
+          Placement status for <strong>{placementModal.record?.user?.name || placementModal.record?.name}</strong>
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <Switch
+            checked={placementForm.isPlaced}
+            onChange={(checked) => setPlacementForm(prev => ({ ...prev, isPlaced: checked }))}
+          />
+          <span>{placementForm.isPlaced ? 'Placed' : 'Not Placed'}</span>
+        </div>
+        {placementForm.isPlaced && (
+          <>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ marginBottom: 4, fontSize: 13, color: token.colorTextSecondary }}>Company</div>
+              <Input
+                placeholder="Company name"
+                value={placementForm.placedCompany}
+                onChange={(e) => setPlacementForm(prev => ({ ...prev, placedCompany: e.target.value }))}
+              />
+            </div>
+            <div>
+              <div style={{ marginBottom: 4, fontSize: 13, color: token.colorTextSecondary }}>Package (LPA)</div>
+              <InputNumber
+                style={{ width: '100%' }}
+                min={0}
+                step={0.1}
+                placeholder="e.g. 3.5"
+                value={placementForm.placedPackage}
+                onChange={(value) => setPlacementForm(prev => ({ ...prev, placedPackage: value }))}
+              />
+            </div>
+          </>
+        )}
+      </Modal>
     </div>
   );
 };
 
 export default StudentList;
-

@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { LruCacheService } from '../../core/cache/lru-cache.service';
-import { Prisma, ApplicationStatus, Role, GrievanceStatus, MonthlyReportStatus, AuditAction, AuditCategory, AuditSeverity, InternshipPhase } from '../../generated/prisma/client';
+import { Prisma, ApplicationStatus, Role, GrievanceStatus, MonthlyReportStatus, AuditAction, AuditCategory, AuditSeverity, InternshipPhase, DeactivationReason } from '../../generated/prisma/client';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
+import { ToggleStudentStatusDto } from './dto/toggle-student-status.dto';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { AssignMentorDto } from './dto/assign-mentor.dto';
 import { UserService } from '../../domain/user/user.service';
@@ -1708,6 +1709,17 @@ export class PrincipalService {
     // Handle relation fields - convert IDs to Prisma relation connect syntax
     const studentUpdateData: any = { ...updateData };
 
+    // Placement: marking a student placed stamps placedAt; unmarking clears the details
+    if (typeof studentUpdateData.isPlaced === 'boolean') {
+      if (studentUpdateData.isPlaced) {
+        studentUpdateData.placedAt = new Date();
+      } else {
+        studentUpdateData.placedAt = null;
+        studentUpdateData.placedCompany = null;
+        studentUpdateData.placedPackage = null;
+      }
+    }
+
     // Handle batchId -> batch relation
     if (studentUpdateData.batchId !== undefined) {
       if (studentUpdateData.batchId) {
@@ -1871,7 +1883,7 @@ export class PrincipalService {
    * When deactivating: deactivates mentor assignments and internship applications
    * When activating: reactivates internship applications (mentor assignments need reassignment)
    */
-  async toggleStudentStatus(principalId: string, studentId: string) {
+  async toggleStudentStatus(principalId: string, studentId: string, toggleStatusDto?: ToggleStudentStatusDto) {
     const principal = await this.prisma.user.findUnique({
       where: { id: principalId },
     });
@@ -1892,6 +1904,8 @@ export class PrincipalService {
 
     const currentStatus = student.user?.active ?? true;
     const newStatus = !currentStatus;
+    const deactivationReason = toggleStatusDto?.reason ?? DeactivationReason.OTHER;
+    const deactivationRemarks = toggleStatusDto?.remarks;
 
     await this.prisma.$transaction(async (tx) => {
       if (!newStatus) {
@@ -1918,10 +1932,25 @@ export class PrincipalService {
         });
       }
 
-      // Toggle the user's active status
+      // Toggle the user's active status, recording who/when/why on deactivation
+      // and clearing that record on reactivation.
       await tx.user.update({
         where: { id: student.userId },
-        data: { active: newStatus },
+        data: newStatus
+          ? {
+              active: true,
+              deactivatedAt: null,
+              deactivatedBy: null,
+              deactivationReason: null,
+              deactivationRemarks: null,
+            }
+          : {
+              active: false,
+              deactivatedAt: new Date(),
+              deactivatedBy: principalId,
+              deactivationReason,
+              deactivationRemarks,
+            },
       });
     });
 
@@ -1933,12 +1962,12 @@ export class PrincipalService {
       userId: principalId,
       userName: principal.name,
       userRole: principal.role,
-      description: `Student ${newStatus ? 'activated' : 'deactivated'}: ${student.user?.name} (${student.user?.email})`,
+      description: `Student ${newStatus ? 'activated' : 'deactivated'}: ${student.user?.name} (${student.user?.email})${!newStatus ? ` [reason: ${deactivationReason}]` : ''}`,
       category: AuditCategory.ADMINISTRATIVE,
       severity: AuditSeverity.HIGH,
       institutionId: principal.institutionId,
       oldValues: { active: currentStatus },
-      newValues: { active: newStatus },
+      newValues: newStatus ? { active: newStatus } : { active: newStatus, deactivationReason, deactivationRemarks },
     }).catch(() => {});
 
     await this.cache.invalidateByTags(['students', `student:${studentId}`]);

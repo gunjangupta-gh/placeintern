@@ -36,6 +36,12 @@ model User {
   active          Boolean      @default(true)
   createdAt       DateTime     @default(now())
 
+  // Deactivation tracking (who/when/why active was last set to false)
+  deactivatedAt       DateTime?
+  deactivatedBy       String? // userId of admin/principal who deactivated, or a script tag
+  deactivationReason  DeactivationReason?
+  deactivationRemarks String?
+
   // Password reset fields
   resetPasswordToken        String?
   resetPasswordExpiry       DateTime?
@@ -137,6 +143,7 @@ model User {
   @@index([designationEnum])
   @@index([role, designationEnum])
   @@index([dateOfJoining])
+  @@index([deactivationReason])
 }
 
 enum Role {
@@ -147,6 +154,16 @@ enum Role {
   STATE_DIRECTORATE
   SYSTEM_ADMIN
   ADMIN_STAFF
+}
+
+// Reason recorded when a User.active flip to false represents something worth
+// distinguishing later (e.g. reporting student dropouts specifically).
+enum DeactivationReason {
+  DROPOUT
+  TRANSFERRED
+  DISCIPLINARY
+  DATA_CLEANUP
+  OTHER
 }
 
 // Faculty/Staff Designation - for TEACHER/PRINCIPAL/ADMIN_STAFF roles
@@ -262,6 +279,13 @@ model Student {
   prePlacementOfferMarkedAt DateTime? // When the student marked their PPO status
   prePlacementOfferCompany  String? // Company name if PPO received
 
+  // Placement (confirmed outcome, set by Principal - distinct from PPO above and from
+  // StudentPlacementInterest, which only captures the student's future intent)
+  isPlaced      Boolean   @default(false)
+  placedAt      DateTime?
+  placedCompany String?
+  placedPackage Float? // Annual/monthly package as entered by principal, e.g. LPA
+
   // Relations
   document               Document[]
   createdAt              DateTime                   @default(now())
@@ -282,6 +306,7 @@ model Student {
   @@index([institutionId, branchId])
   @@index([clearanceStatus])
   @@index([admissionYear])
+  @@index([isPlaced])
 }
 
 enum ClearanceStatus {

@@ -57,4 +57,7 @@ secrets/
 
 # Prisma
 prisma/migrations/migration_lock.toml
+
+# Report exports contain student PII (names, roll numbers) - keep local only
+/reports
 /src/generated/prisma

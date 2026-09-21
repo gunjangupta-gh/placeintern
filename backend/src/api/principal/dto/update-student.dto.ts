@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsEmail, IsOptional, IsEnum, IsDateString, IsBoolean, IsInt, Matches, Min, Max } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsEnum, IsDateString, IsBoolean, IsInt, IsNumber, Matches, Min, Max } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { AdmissionType, Category, ClearanceStatus } from '../../../generated/prisma/client';
 
@@ -168,4 +168,25 @@ export class UpdateStudentDto {
   @Min(2000, { message: 'Admission year must be 2000 or later' })
   @Max(2100, { message: 'Admission year must be before 2100' })
   admissionYear?: number;
+
+  @ApiProperty({ description: 'Placement status - true if student has a confirmed job placement', required: false })
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return value;
+  })
+  @IsBoolean()
+  @IsOptional()
+  isPlaced?: boolean;
+
+  @ApiProperty({ description: 'Company name where the student was placed', required: false })
+  @IsString()
+  @IsOptional()
+  placedCompany?: string;
+
+  @ApiProperty({ description: 'Placement package (e.g. LPA)', required: false })
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  placedPackage?: number;
 }

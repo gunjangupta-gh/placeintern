@@ -25,6 +25,7 @@ import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { Role } from '../../generated/prisma/client';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
+import { ToggleStudentStatusDto } from './dto/toggle-student-status.dto';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { AssignMentorDto } from './dto/assign-mentor.dto';
 
@@ -140,8 +141,12 @@ export class PrincipalController {
 
   @Patch('students/:id/toggle-status')
   @ApiOperation({ summary: 'Toggle student active status (also toggles mentor assignments and internship applications)' })
-  async toggleStudentStatus(@Request() req, @Param('id') id: string) {
-    return this.principalService.toggleStudentStatus(req.user.userId, id);
+  async toggleStudentStatus(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() toggleStatusDto: ToggleStudentStatusDto,
+  ) {
+    return this.principalService.toggleStudentStatus(req.user.userId, id, toggleStatusDto);
   }
 
   @Post('students/bulk-upload')

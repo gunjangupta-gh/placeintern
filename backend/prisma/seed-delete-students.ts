@@ -1,8 +1,9 @@
 /**
- * Permanently deletes all STUDENT-role Users (and everything that cascades from
- * them: Student, Document, InternshipApplication, MentorAssignment,
- * MonthlyReport, Grievance, PrincipalFeedbackStudent, StudentPlacementInterest,
- * UserSession, PasswordHistory, Notification, TrainingApplication/Attendance,
+ * Permanently deletes STUDENT-role Users in a given batch (default: "2024-2027")
+ * - and everything that cascades from them: Student, Document,
+ * InternshipApplication, MentorAssignment, MonthlyReport, Grievance,
+ * PrincipalFeedbackStudent, StudentPlacementInterest, UserSession,
+ * PasswordHistory, Notification, TrainingApplication/Attendance,
  * FeedbackResponse, TrainingCertificate, TrainingRecommendation,
  * PreTestResponse, PostTestResponse, etc. - see schema.prisma onDelete: Cascade
  * chains rooted at User/Student).
@@ -16,9 +17,10 @@
  *   - Requires --confirm to actually delete anything.
  *
  * Usage:
- *   ts-node prisma/seed-delete-students.ts               # dry run
- *   ts-node prisma/seed-delete-students.ts --verbose      # dry run, list every match
- *   ts-node prisma/seed-delete-students.ts --confirm      # actually delete
+ *   ts-node prisma/seed-delete-students.ts                     # dry run, batch 2024-2027
+ *   ts-node prisma/seed-delete-students.ts --verbose            # dry run, list every match
+ *   ts-node prisma/seed-delete-students.ts --confirm             # actually delete
+ *   ts-node prisma/seed-delete-students.ts --batch="2023-2026"   # target a different batch
  */
 
 import { PrismaClient, Role } from '../src/generated/prisma/client';
@@ -27,17 +29,21 @@ import { Pool } from 'pg';
 import 'dotenv/config';
 
 const CHUNK_SIZE = 500;
+const DEFAULT_BATCH = '2024-2027';
 
 interface ParsedArgs {
   confirm: boolean;
   verbose: boolean;
+  batch: string;
 }
 
 function parseArgs(): ParsedArgs {
   const args = process.argv.slice(2);
+  const batchArg = args.find((a) => a.startsWith('--batch='));
   return {
     confirm: args.includes('--confirm'),
     verbose: args.includes('--verbose') || args.includes('-v'),
+    batch: batchArg ? batchArg.split('=')[1].trim() : DEFAULT_BATCH,
   };
 }
 
@@ -50,7 +56,7 @@ function chunk<T>(items: T[], size: number): T[][] {
 }
 
 async function main() {
-  const { confirm, verbose } = parseArgs();
+  const { confirm, verbose, batch: batchName } = parseArgs();
 
   if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL is not set');
@@ -65,11 +71,17 @@ async function main() {
     console.log('DELETE STUDENTS SEED SCRIPT');
     console.log('='.repeat(80));
     console.log(`Mode: ${confirm ? 'LIVE - WILL DELETE' : 'DRY RUN'}`);
-    console.log(`Scope: ALL institutions`);
+    console.log(`Scope: ALL institutions, batch "${batchName}"`);
     console.log('');
 
+    const batch = await prisma.batch.findFirst({ where: { name: batchName }, select: { id: true, name: true } });
+    if (!batch) {
+      const allBatches = await prisma.batch.findMany({ select: { name: true }, orderBy: { name: 'asc' } });
+      throw new Error(`Batch not found: ${batchName}. Available batches: ${allBatches.map((b) => b.name).join(', ')}`);
+    }
+
     const targetUsers = await prisma.user.findMany({
-      where: { role: Role.STUDENT },
+      where: { role: Role.STUDENT, Student: { is: { batchId: batch.id } } },
       select: { id: true, name: true, email: true, rollNumber: true, institutionId: true },
       orderBy: { createdAt: 'asc' },
     });
