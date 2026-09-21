@@ -25,7 +25,7 @@ import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { Role } from '../../generated/prisma/client';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
-import { ToggleStudentStatusDto } from './dto/toggle-student-status.dto';
+import { ToggleStudentStatusDto } from '../../core/common/dto/toggle-student-status.dto';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { AssignMentorDto } from './dto/assign-mentor.dto';
 

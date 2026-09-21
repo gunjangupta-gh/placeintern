@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
+import { ToggleStudentStatusDto } from '../../core/common/dto/toggle-student-status.dto';
 
 // Import sub-services
 import { StateDashboardService } from './services/state-dashboard.service';
@@ -460,8 +461,8 @@ export class StateService {
     return this.mentorService.deleteStudent(studentId, deletedBy);
   }
 
-  async toggleStudentStatus(studentId: string, toggledBy: string) {
-    return this.mentorService.toggleStudentStatus(studentId, toggledBy);
+  async toggleStudentStatus(studentId: string, toggledBy: string, toggleStatusDto?: ToggleStudentStatusDto) {
+    return this.mentorService.toggleStudentStatus(studentId, toggledBy, toggleStatusDto);
   }
 
   // ==========================================

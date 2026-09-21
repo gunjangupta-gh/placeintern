@@ -441,8 +441,8 @@ export const stateService = {
     return response.data;
   },
 
-  async toggleStudentStatus(studentId) {
-    const response = await API.patch(`/state/students/${studentId}/toggle-status`);
+  async toggleStudentStatus(studentId, data = {}) {
+    const response = await API.patch(`/state/students/${studentId}/toggle-status`, data);
     return response.data;
   },
 

@@ -30,20 +30,12 @@ import {
 } from '@ant-design/icons';
 import { getStatusColor } from '../../../utils/format';
 import ProfileAvatar from '../../../components/common/ProfileAvatar';
+import DeactivationConfirmModal from '../../../components/common/DeactivationConfirmModal';
 import StudentModal from './StudentModal';
 import { useLookup } from '../../shared/hooks/useLookup';
 
-const { Search, TextArea } = Input;
+const { Search } = Input;
 const { Option } = Select;
-
-// Keep in sync with backend DeactivationReason enum (see schema.prisma)
-const DEACTIVATION_REASONS = [
-  { value: 'DROPOUT', label: 'Dropout' },
-  { value: 'TRANSFERRED', label: 'Transferred' },
-  { value: 'DISCIPLINARY', label: 'Disciplinary Action' },
-  { value: 'DATA_CLEANUP', label: 'Data Cleanup' },
-  { value: 'OTHER', label: 'Other' },
-];
 
 const StudentList = () => {
   const dispatch = useDispatch();
@@ -507,44 +499,17 @@ const StudentList = () => {
       />
 
       {/* Deactivation confirmation modal - opened by clicking the Status tag */}
-      <Modal
-        title="Deactivate Student"
+      <DeactivationConfirmModal
         open={deactivateModal.open}
+        studentName={deactivateModal.record?.user?.name || deactivateModal.record?.name}
+        reason={deactivateForm.reason}
+        remarks={deactivateForm.remarks}
+        onReasonChange={(value) => setDeactivateForm(prev => ({ ...prev, reason: value }))}
+        onRemarksChange={(value) => setDeactivateForm(prev => ({ ...prev, remarks: value }))}
         onCancel={closeDeactivateModal}
-        onOk={handleConfirmDeactivate}
-        okText="Deactivate"
-        okButtonProps={{ danger: true, loading: deactivateSubmitting }}
-        cancelButtonProps={{ disabled: deactivateSubmitting }}
-        destroyOnClose
-      >
-        <p>
-          Are you sure you want to deactivate{' '}
-          <strong>{deactivateModal.record?.user?.name || deactivateModal.record?.name}</strong>?
-          This will also deactivate their mentor assignment and internship application.
-        </p>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ marginBottom: 4, fontSize: 13, color: token.colorTextSecondary }}>Reason</div>
-          <Select
-            style={{ width: '100%' }}
-            placeholder="Select a reason"
-            value={deactivateForm.reason}
-            onChange={(value) => setDeactivateForm(prev => ({ ...prev, reason: value }))}
-          >
-            {DEACTIVATION_REASONS.map(r => (
-              <Option key={r.value} value={r.value}>{r.label}</Option>
-            ))}
-          </Select>
-        </div>
-        <div>
-          <div style={{ marginBottom: 4, fontSize: 13, color: token.colorTextSecondary }}>Remarks (optional)</div>
-          <TextArea
-            rows={3}
-            placeholder="Any additional detail, e.g. destination institution, notice reference, etc."
-            value={deactivateForm.remarks}
-            onChange={(e) => setDeactivateForm(prev => ({ ...prev, remarks: e.target.value }))}
-          />
-        </div>
-      </Modal>
+        onConfirm={handleConfirmDeactivate}
+        confirmLoading={deactivateSubmitting}
+      />
 
       {/* Placement confirmation modal - opened from the Actions column */}
       <Modal

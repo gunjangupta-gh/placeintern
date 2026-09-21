@@ -4,7 +4,7 @@ import { LruCacheService } from '../../core/cache/lru-cache.service';
 import { Prisma, ApplicationStatus, Role, GrievanceStatus, MonthlyReportStatus, AuditAction, AuditCategory, AuditSeverity, InternshipPhase, DeactivationReason } from '../../generated/prisma/client';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
-import { ToggleStudentStatusDto } from './dto/toggle-student-status.dto';
+import { ToggleStudentStatusDto } from '../../core/common/dto/toggle-student-status.dto';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { AssignMentorDto } from './dto/assign-mentor.dto';
 import { UserService } from '../../domain/user/user.service';

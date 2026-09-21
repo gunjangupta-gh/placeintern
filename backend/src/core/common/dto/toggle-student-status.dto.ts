@@ -2,6 +2,8 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { DeactivationReason } from '../../../generated/prisma/client';
 
+// Shared by Principal, Faculty, and State-Directorate "toggle student status"
+// endpoints so a deactivation reason is recorded the same way everywhere.
 export class ToggleStudentStatusDto {
   @ApiProperty({
     description: 'Reason for deactivation (ignored when reactivating)',

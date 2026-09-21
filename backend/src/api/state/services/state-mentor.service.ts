@@ -3,7 +3,8 @@ import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { LookupService } from '../../shared/lookup.service';
-import { Role, AuditAction, AuditCategory, AuditSeverity } from '../../../generated/prisma/client';
+import { Role, AuditAction, AuditCategory, AuditSeverity, DeactivationReason } from '../../../generated/prisma/client';
+import { ToggleStudentStatusDto } from '../../../core/common/dto/toggle-student-status.dto';
 
 @Injectable()
 export class StateMentorService {
@@ -517,7 +518,7 @@ export class StateMentorService {
    * When deactivating: deactivates mentor assignments and internship applications
    * When activating: reactivates internship applications
    */
-  async toggleStudentStatus(studentId: string, toggledBy: string) {
+  async toggleStudentStatus(studentId: string, toggledBy: string, toggleStatusDto?: ToggleStudentStatusDto) {
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
       select: {
@@ -533,6 +534,8 @@ export class StateMentorService {
 
     const currentStatus = student.user?.active ?? true;
     const newStatus = !currentStatus;
+    const deactivationReason = toggleStatusDto?.reason ?? DeactivationReason.OTHER;
+    const deactivationRemarks = toggleStatusDto?.remarks;
 
     await this.prisma.$transaction(async (tx) => {
       if (!newStatus) {
@@ -559,11 +562,26 @@ export class StateMentorService {
         });
       }
 
-      // Toggle the user's active status
+      // Toggle the user's active status, recording who/when/why on deactivation
+      // and clearing that record on reactivation.
       if (student.user?.id) {
         await tx.user.update({
           where: { id: student.user.id },
-          data: { active: newStatus },
+          data: newStatus
+            ? {
+                active: true,
+                deactivatedAt: null,
+                deactivatedBy: null,
+                deactivationReason: null,
+                deactivationRemarks: null,
+              }
+            : {
+                active: false,
+                deactivatedAt: new Date(),
+                deactivatedBy: toggledBy,
+                deactivationReason,
+                deactivationRemarks,
+              },
         });
       }
     });
@@ -575,7 +593,7 @@ export class StateMentorService {
       entityId: studentId,
       userId: toggledBy,
       userRole: Role.STATE_DIRECTORATE,
-      description: `Student ${student.user?.name} (${student.user?.email}) ${newStatus ? 'activated' : 'deactivated'} by State Directorate`,
+      description: `Student ${student.user?.name} (${student.user?.email}) ${newStatus ? 'activated' : 'deactivated'} by State Directorate${!newStatus ? ` [reason: ${deactivationReason}]` : ''}`,
       category: AuditCategory.USER_MANAGEMENT,
       severity: AuditSeverity.HIGH,
       institutionId: student.institutionId || undefined,
@@ -585,9 +603,7 @@ export class StateMentorService {
         studentEmail: student.user?.email,
         active: currentStatus,
       },
-      newValues: {
-        active: newStatus,
-      },
+      newValues: newStatus ? { active: newStatus } : { active: newStatus, deactivationReason, deactivationRemarks },
     }).catch(() => {});
 
     // Invalidate cache

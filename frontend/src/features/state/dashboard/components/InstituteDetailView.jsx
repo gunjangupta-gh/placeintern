@@ -89,6 +89,7 @@ import {
   selectAllMentorsLoading,
 } from "../../store/stateSlice";
 import { useDebounce } from "../../../../hooks/useDebounce";
+import DeactivationConfirmModal from "../../../../components/common/DeactivationConfirmModal";
 import { getImageUrl } from "../../../../utils/imageUtils";
 import { stateService } from "../../../../services/state.service";
 import InstitutionDocumentsTab from "./InstitutionDocumentsTab";
@@ -1066,6 +1067,11 @@ const InstituteDetailView = ({ defaultTab = null }) => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [fileExplorerOpen, setFileExplorerOpen] = useState(false);
 
+  // Deactivation confirmation modal (captures a reason before deactivating a student)
+  const [deactivateStudentModal, setDeactivateStudentModal] = useState({ open: false, record: null });
+  const [deactivateStudentForm, setDeactivateStudentForm] = useState({ reason: undefined, remarks: '' });
+  const [deactivateStudentSubmitting, setDeactivateStudentSubmitting] = useState(false);
+
   // Search states
   const [studentSearchInput, setStudentSearchInput] = useState("");
   const debouncedStudentSearch = useDebounce(studentSearchInput, 400);
@@ -1389,35 +1395,35 @@ const InstituteDetailView = ({ defaultTab = null }) => {
     [dispatch, applyFilters],
   );
 
-  // Toggle student status handler (activate/deactivate)
+  // Toggle student status handler (activate/deactivate).
+  // Deactivating opens the DeactivationConfirmModal (captures a reason);
+  // activating needs no reason, so it stays a simple Modal.confirm.
   const handleToggleStudentStatus = useCallback(
     (student) => {
       const isActive = student.user?.active !== false;
-      const action = isActive ? "Deactivate" : "Activate";
-      const actionLower = isActive ? "deactivate" : "activate";
+
+      if (isActive) {
+        setDeactivateStudentForm({ reason: undefined, remarks: '' });
+        setDeactivateStudentModal({ open: true, record: student });
+        return;
+      }
 
       Modal.confirm({
-        title: `${action} Student`,
-        icon: (
-          <ExclamationCircleOutlined
-            className={isActive ? "text-warning" : "text-success"}
-          />
-        ),
+        title: "Activate Student",
+        icon: <ExclamationCircleOutlined className="text-success" />,
         content: (
           <div>
             <p>
-              Are you sure you want to {actionLower}{" "}
+              Are you sure you want to activate{" "}
               <strong>{student.user?.name || student.name}</strong>?
             </p>
             <p className="text-text-tertiary text-sm mt-2">
-              {isActive
-                ? "The student will no longer be able to access the system. Mentor assignments and internship applications will be deactivated but all data will be preserved."
-                : "The student will be able to access the system again. Mentor assignments and internship applications will be reactivated."}
+              The student will be able to access the system again. Mentor assignments and internship applications will be reactivated.
             </p>
           </div>
         ),
-        okText: action,
-        okType: isActive ? "danger" : "primary",
+        okText: "Activate",
+        okType: "primary",
         onOk: async () => {
           try {
             await dispatch(
@@ -1426,12 +1432,10 @@ const InstituteDetailView = ({ defaultTab = null }) => {
                 institutionId: selectedInstitute?.id,
               }),
             ).unwrap();
-            toast.success(`Student ${actionLower}d successfully`);
+            toast.success("Student activated successfully");
           } catch (error) {
             toast.error(
-              typeof error === "string"
-                ? error
-                : `Failed to ${actionLower} student`,
+              typeof error === "string" ? error : "Failed to activate student",
             );
           }
         },
@@ -1439,6 +1443,36 @@ const InstituteDetailView = ({ defaultTab = null }) => {
     },
     [dispatch, selectedInstitute?.id],
   );
+
+  const closeDeactivateStudentModal = useCallback(() => {
+    setDeactivateStudentModal({ open: false, record: null });
+  }, []);
+
+  const handleConfirmDeactivateStudent = useCallback(async () => {
+    if (!deactivateStudentModal.record) return;
+    if (!deactivateStudentForm.reason) {
+      toast.error("Please select a reason for deactivation");
+      return;
+    }
+
+    setDeactivateStudentSubmitting(true);
+    try {
+      await dispatch(
+        toggleStudentStatus({
+          studentId: deactivateStudentModal.record.id,
+          institutionId: selectedInstitute?.id,
+          reason: deactivateStudentForm.reason,
+          remarks: deactivateStudentForm.remarks?.trim() || undefined,
+        }),
+      ).unwrap();
+      toast.success("Student deactivated successfully");
+      closeDeactivateStudentModal();
+    } catch (error) {
+      toast.error(typeof error === "string" ? error : "Failed to deactivate student");
+    } finally {
+      setDeactivateStudentSubmitting(false);
+    }
+  }, [dispatch, selectedInstitute?.id, deactivateStudentModal.record, deactivateStudentForm, closeDeactivateStudentModal]);
 
   // Toggle faculty status handler (activate/deactivate)
   const handleToggleFacultyStatus = useCallback(
@@ -2136,6 +2170,19 @@ const InstituteDetailView = ({ defaultTab = null }) => {
         student={selectedStudent}
         onClose={() => setStudentModalVisible(false)}
         institutionId={selectedInstitute?.id}
+      />
+
+      {/* Deactivation confirmation modal */}
+      <DeactivationConfirmModal
+        open={deactivateStudentModal.open}
+        studentName={deactivateStudentModal.record?.user?.name || deactivateStudentModal.record?.name}
+        reason={deactivateStudentForm.reason}
+        remarks={deactivateStudentForm.remarks}
+        onReasonChange={(value) => setDeactivateStudentForm(prev => ({ ...prev, reason: value }))}
+        onRemarksChange={(value) => setDeactivateStudentForm(prev => ({ ...prev, remarks: value }))}
+        onCancel={closeDeactivateStudentModal}
+        onConfirm={handleConfirmDeactivateStudent}
+        confirmLoading={deactivateStudentSubmitting}
       />
 
       {/* Mentor Assignment Modal */}

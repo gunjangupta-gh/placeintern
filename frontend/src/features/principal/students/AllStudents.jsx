@@ -16,7 +16,10 @@ import {
   Select,
   Tabs,
   Empty,
-  Dropdown,
+  Space,
+  Tooltip,
+  Switch,
+  InputNumber,
   theme,
   Grid,
 } from 'antd';
@@ -52,13 +55,12 @@ import {
   UploadOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
-  PlayCircleOutlined,
+  TrophyOutlined,
   BulbOutlined,
   LaptopOutlined,
   SettingOutlined,
   LoadingOutlined,
   KeyOutlined,
-  MoreOutlined,
   DeleteOutlined,
   BranchesOutlined,
   CarOutlined,
@@ -70,6 +72,7 @@ import {
 import { credentialsService } from '../../../services/credentials.service';
 import principalService from '../../../services/principal.service';
 import { useBranches } from '../../shared/hooks/useLookup';
+import DeactivationConfirmModal from '../../../components/common/DeactivationConfirmModal';
 import StudentModal from './StudentModal';
 import dayjs from 'dayjs';
 import { getPresignedUrl } from '../../../utils/imageUtils';
@@ -113,6 +116,16 @@ const AllStudents = () => {
   const [hasMore, setHasMore] = useState(true);
   const [resettingCredential, setResettingCredential] = useState(false);
   const [deletingInternship, setDeletingInternship] = useState(null);
+
+  // Deactivation confirmation modal (opened by clicking the Status tag)
+  const [deactivateModal, setDeactivateModal] = useState({ open: false });
+  const [deactivateForm, setDeactivateForm] = useState({ reason: undefined, remarks: '' });
+  const [deactivateSubmitting, setDeactivateSubmitting] = useState(false);
+
+  // Placement confirmation modal (opened from the profile actions)
+  const [placementModal, setPlacementModal] = useState(false);
+  const [placementForm, setPlacementForm] = useState({ isPlaced: false, placedCompany: '', placedPackage: null });
+  const [placementSubmitting, setPlacementSubmitting] = useState(false);
   const listRef = useRef(null);
   const PAGE_SIZE = 50;
 
@@ -248,7 +261,7 @@ const AllStudents = () => {
     handleRefresh();
   };
 
-  // Handle active state toggle
+  // Handle active state toggle (used for reactivation - no reason needed)
   const handleActiveStateToggle = async () => {
     if (!selectedStudent) return;
 
@@ -263,6 +276,99 @@ const AllStudents = () => {
       dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
       toast.error(error || 'Failed to toggle student status');
+    }
+  };
+
+  // Status tag click -> deactivate (with reason) or reactivate (simple confirm)
+  const handleStatusTagClick = () => {
+    if (!selectedStudent) return;
+    const activeStatus = selectedStudent?.user?.active;
+
+    if (activeStatus) {
+      setDeactivateForm({ reason: undefined, remarks: '' });
+      setDeactivateModal({ open: true });
+      return;
+    }
+
+    Modal.confirm({
+      title: 'Activate Student',
+      content: `Are you sure you want to activate ${selectedStudent?.user?.name}?`,
+      okText: 'Activate',
+      okType: 'primary',
+      onOk: handleActiveStateToggle,
+    });
+  };
+
+  const closeDeactivateModal = () => {
+    setDeactivateModal({ open: false });
+    setDeactivateForm({ reason: undefined, remarks: '' });
+  };
+
+  const handleConfirmDeactivate = async () => {
+    if (!selectedStudent) return;
+    if (!deactivateForm.reason) {
+      toast.error('Please select a reason for deactivation');
+      return;
+    }
+
+    setDeactivateSubmitting(true);
+    try {
+      const result = await dispatch(toggleStudentStatus({
+        studentId: selectedStudent.id,
+        reason: deactivateForm.reason,
+        remarks: deactivateForm.remarks?.trim() || undefined,
+      })).unwrap();
+      toast.success(result.message || 'Student deactivated successfully');
+      setSelectedStudent(prev => ({ ...prev, user: { ...prev.user, active: result.active } }));
+      setSelectedStudentFull(prev => prev ? { ...prev, user: { ...prev.user, active: result.active } } : null);
+      dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
+      closeDeactivateModal();
+    } catch (error) {
+      toast.error(error || 'Failed to deactivate student');
+    } finally {
+      setDeactivateSubmitting(false);
+    }
+  };
+
+  // Placement action (from the profile actions)
+  const openPlacementModal = () => {
+    if (!selectedStudent) return;
+    setPlacementForm({
+      isPlaced: displayStudent?.isPlaced ?? false,
+      placedCompany: displayStudent?.placedCompany || '',
+      placedPackage: displayStudent?.placedPackage ?? null,
+    });
+    setPlacementModal(true);
+  };
+
+  const closePlacementModal = () => setPlacementModal(false);
+
+  const handleConfirmPlacement = async () => {
+    if (!selectedStudent) return;
+    if (placementForm.isPlaced && !placementForm.placedCompany?.trim()) {
+      toast.error('Company name is required when marking a student as placed');
+      return;
+    }
+
+    setPlacementSubmitting(true);
+    try {
+      await dispatch(updateStudent({
+        id: selectedStudent.id,
+        data: {
+          isPlaced: placementForm.isPlaced,
+          placedCompany: placementForm.isPlaced ? placementForm.placedCompany.trim() : undefined,
+          placedPackage: placementForm.isPlaced ? placementForm.placedPackage : undefined,
+        },
+      })).unwrap();
+      toast.success(placementForm.isPlaced ? 'Student marked as placed' : 'Placement status cleared');
+      setSelectedStudent(prev => ({ ...prev, isPlaced: placementForm.isPlaced }));
+      setSelectedStudentFull(prev => prev ? { ...prev, isPlaced: placementForm.isPlaced } : null);
+      closePlacementModal();
+      handleRefresh();
+    } catch (error) {
+      toast.error(error || 'Failed to update placement status');
+    } finally {
+      setPlacementSubmitting(false);
     }
   };
 
@@ -1173,48 +1279,37 @@ const AllStudents = () => {
                 style={{ borderRadius: token.borderRadiusLG, boxShadow: token.boxShadowTertiary, position: 'relative' }}
               >
                 <div style={{ position: 'absolute', top: 16, right: 16 }}>
-                  <Dropdown
-                    menu={{
-                      items: [
-                        { key: 'edit', icon: <EditOutlined />, label: 'Edit Profile', onClick: openEditModal },
-                        { key: 'upload', icon: <UploadOutlined />, label: 'Add Document', onClick: openUploadModal },
-                        {
-                          key: 'reset',
-                          icon: <KeyOutlined />,
-                          label: resettingCredential ? 'Resetting...' : 'Reset Credential',
-                          disabled: resettingCredential,
-                          onClick: () => {
-                            Modal.confirm({
-                              title: 'Reset Student Credential',
-                              content: `Are you sure you want to reset the password for ${selectedStudent?.name}?`,
-                              okText: 'Reset',
-                              okButtonProps: { danger: true },
-                              onOk: handleResetCredential,
-                            });
-                          },
-                        },
-                        { type: 'divider' },
-                        {
-                          key: 'toggle',
-                          icon: selectedStudent?.user?.active ? <StopOutlined /> : <PlayCircleOutlined />,
-                          label: selectedStudent?.user?.active ? 'Deactivate' : 'Activate',
-                          danger: selectedStudent?.user?.active,
-                          onClick: () => {
-                            Modal.confirm({
-                              title: `${selectedStudent?.user?.active ? 'Deactivate' : 'Activate'} Student`,
-                              content: `Are you sure you want to ${selectedStudent?.user?.active ? 'deactivate' : 'activate'} ${selectedStudent?.user?.name}?`,
-                              okText: selectedStudent?.user?.active ? 'Deactivate' : 'Activate',
-                              okButtonProps: { danger: selectedStudent?.user?.active },
-                              onOk: handleActiveStateToggle,
-                            });
-                          },
-                        },
-                      ],
-                    }}
-                    trigger={['click']}
-                  >
-                    <Button type="text" icon={<MoreOutlined style={{ fontSize: 20 }} />} />
-                  </Dropdown>
+                  <Space size={4}>
+                    <Tooltip title="Edit Profile">
+                      <Button type="text" icon={<EditOutlined style={{ fontSize: 16 }} />} onClick={openEditModal} />
+                    </Tooltip>
+                    <Tooltip title="Add Document">
+                      <Button type="text" icon={<UploadOutlined style={{ fontSize: 16 }} />} onClick={openUploadModal} />
+                    </Tooltip>
+                    <Tooltip title={resettingCredential ? 'Resetting...' : 'Reset Credential'}>
+                      <Button
+                        type="text"
+                        icon={<KeyOutlined style={{ fontSize: 16 }} />}
+                        disabled={resettingCredential}
+                        onClick={() => {
+                          Modal.confirm({
+                            title: 'Reset Student Credential',
+                            content: `Are you sure you want to reset the password for ${selectedStudent?.name}?`,
+                            okText: 'Reset',
+                            okButtonProps: { danger: true },
+                            onOk: handleResetCredential,
+                          });
+                        }}
+                      />
+                    </Tooltip>
+                    <Tooltip title={displayStudent?.isPlaced ? 'Placed (click to view/edit)' : 'Mark as Placed'}>
+                      <Button
+                        type="text"
+                        icon={<TrophyOutlined style={{ fontSize: 16, color: displayStudent?.isPlaced ? token.colorSuccess : undefined }} />}
+                        onClick={openPlacementModal}
+                      />
+                    </Tooltip>
+                  </Space>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 24 }}>
                   <ProfileAvatar
@@ -1233,9 +1328,16 @@ const AllStudents = () => {
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       <Tag color="blue" bordered={false}>{displayStudent?.user?.branchName || displayStudent.branchName}</Tag>
                       <Tag color={getCategoryColor(displayStudent.category)} bordered={false}>{displayStudent.category}</Tag>
-                      <Tag color={displayStudent?.user?.active ? 'success' : 'error'} bordered={false}>
-                        {displayStudent?.user?.active ? 'Active' : 'Inactive'}
-                      </Tag>
+                      <Tooltip title={displayStudent?.user?.active ? 'Click to deactivate' : 'Click to activate'}>
+                        <Tag
+                          color={displayStudent?.user?.active ? 'success' : 'error'}
+                          bordered={false}
+                          style={{ cursor: 'pointer' }}
+                          onClick={handleStatusTagClick}
+                        >
+                          {displayStudent?.user?.active ? 'Active' : 'Inactive'}
+                        </Tag>
+                      </Tooltip>
                     </div>
                   </div>
                 </div>
@@ -1294,6 +1396,63 @@ const AllStudents = () => {
         studentId={editingStudentId}
         onSuccess={handleModalSuccess}
       />
+
+      {/* Deactivation confirmation modal - opened by clicking the Status tag */}
+      <DeactivationConfirmModal
+        open={deactivateModal.open}
+        studentName={selectedStudent?.user?.name}
+        reason={deactivateForm.reason}
+        remarks={deactivateForm.remarks}
+        onReasonChange={(value) => setDeactivateForm(prev => ({ ...prev, reason: value }))}
+        onRemarksChange={(value) => setDeactivateForm(prev => ({ ...prev, remarks: value }))}
+        onCancel={closeDeactivateModal}
+        onConfirm={handleConfirmDeactivate}
+        confirmLoading={deactivateSubmitting}
+      />
+
+      {/* Placement confirmation modal - opened from the profile actions */}
+      <Modal
+        title="Placement Status"
+        open={placementModal}
+        onCancel={closePlacementModal}
+        onOk={handleConfirmPlacement}
+        okText="Save"
+        okButtonProps={{ loading: placementSubmitting }}
+        cancelButtonProps={{ disabled: placementSubmitting }}
+        destroyOnClose
+      >
+        <p>Placement status for <strong>{selectedStudent?.user?.name}</strong></p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <Switch
+            checked={placementForm.isPlaced}
+            onChange={(checked) => setPlacementForm(prev => ({ ...prev, isPlaced: checked }))}
+          />
+          <span>{placementForm.isPlaced ? 'Placed' : 'Not Placed'}</span>
+        </div>
+        {placementForm.isPlaced && (
+          <>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ marginBottom: 4, fontSize: 13, color: token.colorTextSecondary }}>Company</div>
+              <Input
+                placeholder="Company name"
+                value={placementForm.placedCompany}
+                onChange={(e) => setPlacementForm(prev => ({ ...prev, placedCompany: e.target.value }))}
+              />
+            </div>
+            <div>
+              <div style={{ marginBottom: 4, fontSize: 13, color: token.colorTextSecondary }}>Package (LPA)</div>
+              <InputNumber
+                style={{ width: '100%' }}
+                min={0}
+                step={0.1}
+                placeholder="e.g. 3.5"
+                value={placementForm.placedPackage}
+                onChange={(value) => setPlacementForm(prev => ({ ...prev, placedPackage: value }))}
+              />
+            </div>
+          </>
+        )}
+      </Modal>
 
       {/* Upload Document Modal */}
       <Modal

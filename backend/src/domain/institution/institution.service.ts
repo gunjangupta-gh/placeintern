@@ -65,13 +65,25 @@ export class InstitutionService {
     if (!type) return undefined;
 
     const typeMapping: Record<string, InstitutionType> = {
-      POLYTECHNIC: InstitutionType.POLYTECHNIC,
+      // Legacy free-text values (old spreadsheets/imports) map to the Government variant
+      POLYTECHNIC: InstitutionType.GOVT_POLYTECHNIC,
+      ITI: InstitutionType.GOVT_ITI,
+
+      GOVT_POLYTECHNIC: InstitutionType.GOVT_POLYTECHNIC,
+      GOVT_AIDED_POLYTECHNIC: InstitutionType.GOVT_AIDED_POLYTECHNIC,
+      PRIVATE_POLYTECHNIC: InstitutionType.PRIVATE_POLYTECHNIC,
+      GOVT_ITI: InstitutionType.GOVT_ITI,
+      GOVT_AIDED_ITI: InstitutionType.GOVT_AIDED_ITI,
+      PRIVATE_ITI: InstitutionType.PRIVATE_ITI,
+      GOVT_SPECIAL_TRADE_INSTITUTE: InstitutionType.GOVT_SPECIAL_TRADE_INSTITUTE,
+      GOVT_AIDED_SPECIAL_TRADE_INSTITUTE: InstitutionType.GOVT_AIDED_SPECIAL_TRADE_INSTITUTE,
+      PRIVATE_SPECIAL_TRADE_INSTITUTE: InstitutionType.PRIVATE_SPECIAL_TRADE_INSTITUTE,
+
       ENGINEERING_COLLEGE: InstitutionType.ENGINEERING_COLLEGE,
       ENGINEERING: InstitutionType.ENGINEERING_COLLEGE,
       UNIVERSITY: InstitutionType.UNIVERSITY,
       DEGREE_COLLEGE: InstitutionType.DEGREE_COLLEGE,
       DEGREE: InstitutionType.DEGREE_COLLEGE,
-      ITI: InstitutionType.ITI,
       SKILL_CENTER: InstitutionType.SKILL_CENTER,
       SKILL: InstitutionType.SKILL_CENTER,
     };

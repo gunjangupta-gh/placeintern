@@ -282,14 +282,23 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
 
   const isEditMode = !!institutionId;
 
-  // Institution Types (aligned with backend/schema)
+  // Institution Types (aligned with backend InstitutionType enum, schema.prisma).
+  // Polytechnic/ITI/Special Trade Institute are split by ownership; the other
+  // kinds don't currently have an ownership distinction in the data.
   const institutionTypes = [
-    "POLYTECHNIC",
-    "ENGINEERING_COLLEGE",
-    "UNIVERSITY",
-    "DEGREE_COLLEGE",
-    "ITI",
-    "SKILL_CENTER",
+    { value: 'GOVT_POLYTECHNIC', label: 'Govt. Polytechnic' },
+    { value: 'GOVT_AIDED_POLYTECHNIC', label: 'Govt. Aided Polytechnic' },
+    { value: 'PRIVATE_POLYTECHNIC', label: 'Private Polytechnic' },
+    { value: 'GOVT_ITI', label: 'Govt. ITI' },
+    { value: 'GOVT_AIDED_ITI', label: 'Govt. Aided ITI' },
+    { value: 'PRIVATE_ITI', label: 'Private ITI' },
+    { value: 'GOVT_SPECIAL_TRADE_INSTITUTE', label: 'Govt. Special Trade Institute' },
+    { value: 'GOVT_AIDED_SPECIAL_TRADE_INSTITUTE', label: 'Govt. Aided Special Trade Institute' },
+    { value: 'PRIVATE_SPECIAL_TRADE_INSTITUTE', label: 'Private Special Trade Institute' },
+    { value: 'ENGINEERING_COLLEGE', label: 'Engineering College' },
+    { value: 'UNIVERSITY', label: 'University' },
+    { value: 'DEGREE_COLLEGE', label: 'Degree College' },
+    { value: 'SKILL_CENTER', label: 'Skill Center' },
   ];
 
   useEffect(() => {
@@ -377,7 +386,7 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
           country: "India",
           state: "Punjab", // Default or dynamic
           isActive: "true",
-          type: "POLYTECHNIC",
+          type: "GOVT_POLYTECHNIC",
           coveredAreaDetails: buildDefaultCoveredAreaRows(),
           branchIntakes: buildDefaultBranchIntakeRows(),
           staffCapacities: buildDefaultStaffCapacityRows(),
@@ -542,8 +551,8 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
                     <Col xs={24} md={12}>
                       <Form.Item name="type" label="Institution Type" rules={[{ required: true, message: 'Please select institution type' }]}>
                         <Select placeholder="Select type" className="h-10">
-                          {institutionTypes.map((type) => (
-                            <Option key={type} value={type}>{type.replace(/_/g, ' ')}</Option>
+                          {institutionTypes.map((opt) => (
+                            <Option key={opt.value} value={opt.value}>{opt.label}</Option>
                           ))}
                         </Select>
                       </Form.Item>

@@ -41,7 +41,7 @@ export class CreateInstitutionDto {
   @IsString()
   shortName?: string;
 
-  @ApiPropertyOptional({ enum: InstitutionType, default: InstitutionType.POLYTECHNIC })
+  @ApiPropertyOptional({ enum: InstitutionType, default: InstitutionType.GOVT_POLYTECHNIC })
   @IsOptional()
   @IsEnum(InstitutionType)
   type?: InstitutionType;

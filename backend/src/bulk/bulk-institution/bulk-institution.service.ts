@@ -355,7 +355,7 @@ export class BulkInstitutionService {
       {
         'Name': 'XYZ Polytechnic',
         'Code': 'XYZ001',
-        'Type': 'POLYTECHNIC',
+        'Type': 'GOVT_POLYTECHNIC',
         'Email': 'contact@xyzpolytechnic.edu',
         'Phone': '0121-9876543',
         'Address': '456 Tech Street',
@@ -372,7 +372,7 @@ export class BulkInstitutionService {
     const instructionsData = [
       { Field: 'Name', Required: 'Yes', Description: 'Full name of the institution', Example: 'ABC Engineering College' },
       { Field: 'Code', Required: 'Yes', Description: 'Unique institution code', Example: 'ABC001' },
-      { Field: 'Type', Required: 'No', Description: 'Institution type: POLYTECHNIC, ENGINEERING_COLLEGE, UNIVERSITY, DEGREE_COLLEGE, ITI, SKILL_CENTER', Example: 'ENGINEERING_COLLEGE' },
+      { Field: 'Type', Required: 'No', Description: 'Institution type: GOVT_POLYTECHNIC, GOVT_AIDED_POLYTECHNIC, PRIVATE_POLYTECHNIC, GOVT_ITI, GOVT_AIDED_ITI, PRIVATE_ITI, GOVT_SPECIAL_TRADE_INSTITUTE, GOVT_AIDED_SPECIAL_TRADE_INSTITUTE, PRIVATE_SPECIAL_TRADE_INSTITUTE, ENGINEERING_COLLEGE, UNIVERSITY, DEGREE_COLLEGE, SKILL_CENTER', Example: 'GOVT_POLYTECHNIC' },
       { Field: 'Email', Required: 'Yes', Description: 'Institution contact email', Example: 'contact@abc.edu' },
       { Field: 'Phone', Required: 'No', Description: 'Institution contact phone', Example: '0121-2345678' },
       { Field: 'Address', Required: 'No', Description: 'Institution address', Example: '123 College Road' },

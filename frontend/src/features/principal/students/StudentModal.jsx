@@ -208,9 +208,11 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
     { value: 'Other', label: 'Other' },
   ];
 
-  // Clearance status options
+  // Clearance status options - keep in sync with backend ClearanceStatus enum (schema.prisma)
   const clearanceStatusOptions = [
     { value: 'PENDING', label: 'Pending' },
+    { value: 'APPEARED', label: 'Appeared (Final Exam)' },
+    { value: 'PASSED', label: 'Passed (Final Exam)' },
     { value: 'CLEARED', label: 'Cleared' },
     { value: 'HOLD', label: 'Hold' },
     { value: 'REJECTED', label: 'Rejected' },

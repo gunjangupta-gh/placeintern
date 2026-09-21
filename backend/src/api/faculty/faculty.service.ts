@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { LruCacheService } from '../../core/cache/lru-cache.service';
-import { Prisma, ApplicationStatus, MonthlyReportStatus, AuditAction, AuditCategory, AuditSeverity, Role, InternshipPhase } from '../../generated/prisma/client';
+import { Prisma, ApplicationStatus, MonthlyReportStatus, AuditAction, AuditCategory, AuditSeverity, Role, InternshipPhase, DeactivationReason } from '../../generated/prisma/client';
+import { ToggleStudentStatusDto } from '../../core/common/dto/toggle-student-status.dto';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
 import { ExpectedCycleService } from '../../domain/internship/expected-cycle/expected-cycle.service';
@@ -3362,7 +3363,7 @@ export class FacultyService {
    * SECURITY: Requires facultyId to verify authorization via MentorAssignment
    * Also toggles mentor assignments and internship applications
    */
-  async toggleStudentStatus(studentId: string, facultyId: string) {
+  async toggleStudentStatus(studentId: string, facultyId: string, toggleStatusDto?: ToggleStudentStatusDto) {
     // Verify faculty is assigned to this student
     const isAuthorized = await this.prisma.mentorAssignment.findFirst({
       where: {
@@ -3391,6 +3392,8 @@ export class FacultyService {
 
     const currentStatus = student.user.active ?? true;
     const newStatus = !currentStatus;
+    const deactivationReason = toggleStatusDto?.reason ?? DeactivationReason.OTHER;
+    const deactivationRemarks = toggleStatusDto?.remarks;
 
     // Use transaction to ensure all related data is updated atomically
     await this.prisma.$transaction(async (tx) => {
@@ -3417,10 +3420,25 @@ export class FacultyService {
         });
       }
 
-      // Toggle user active status
+      // Toggle user active status, recording who/when/why on deactivation and
+      // clearing that record on reactivation.
       await tx.user.update({
         where: { id: student.user!.id },
-        data: { active: newStatus },
+        data: newStatus
+          ? {
+              active: true,
+              deactivatedAt: null,
+              deactivatedBy: null,
+              deactivationReason: null,
+              deactivationRemarks: null,
+            }
+          : {
+              active: false,
+              deactivatedAt: new Date(),
+              deactivatedBy: facultyId,
+              deactivationReason,
+              deactivationRemarks,
+            },
       });
     });
 
@@ -3435,12 +3453,12 @@ export class FacultyService {
       userId: facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Student ${newStatus ? 'activated' : 'deactivated'} by faculty: ${student.user?.name} (mentor assignments and internship applications also ${newStatus ? 'reactivated' : 'deactivated'})`,
+      description: `Student ${newStatus ? 'activated' : 'deactivated'} by faculty: ${student.user?.name} (mentor assignments and internship applications also ${newStatus ? 'reactivated' : 'deactivated'})${!newStatus ? ` [reason: ${deactivationReason}]` : ''}`,
       category: AuditCategory.USER_MANAGEMENT,
       severity: AuditSeverity.HIGH,
       institutionId: faculty?.institutionId || undefined,
       oldValues: { active: currentStatus },
-      newValues: { active: newStatus },
+      newValues: newStatus ? { active: newStatus } : { active: newStatus, deactivationReason, deactivationRemarks },
     }).catch(() => {});
 
     await this.cache.invalidateByTags(['students', `student:${studentId}`, 'users', `user:${student.userId}`, 'faculty', `faculty:${facultyId}`]);

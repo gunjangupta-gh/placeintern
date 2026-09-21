@@ -314,6 +314,8 @@ enum ClearanceStatus {
   CLEARED
   HOLD
   REJECTED
+  APPEARED // student appeared for final exams
+  PASSED // student passed final exams
 }
 
 enum AdmissionType {
@@ -398,7 +400,7 @@ model Institution {
   code      String?         @unique // The unique code for the institution (e.g., "INST001", "MAIN_CAMPUS")
   name      String? // Optional: Full name of the institution
   shortName String?
-  type      InstitutionType @default(POLYTECHNIC)
+  type      InstitutionType @default(GOVT_POLYTECHNIC)
 
   // Contact Information
   address        String?
@@ -466,12 +468,28 @@ model Institution {
 }
 
 enum InstitutionType {
-  POLYTECHNIC
+  // Kinds without an ownership distinction in current use - unchanged
   ENGINEERING_COLLEGE
   UNIVERSITY
   DEGREE_COLLEGE
-  ITI
   SKILL_CENTER
+
+  // Polytechnic / ITI / Special Trade Institute, split by ownership
+  GOVT_POLYTECHNIC
+  GOVT_AIDED_POLYTECHNIC
+  PRIVATE_POLYTECHNIC
+  GOVT_ITI
+  GOVT_AIDED_ITI
+  PRIVATE_ITI
+  GOVT_SPECIAL_TRADE_INSTITUTE
+  GOVT_AIDED_SPECIAL_TRADE_INSTITUTE
+  PRIVATE_SPECIAL_TRADE_INSTITUTE
+
+  // Legacy values - kept (not removed) so old data/migrations are never invalidated.
+  // No institution should be left on these after the backfill migration; the
+  // create/edit UI no longer offers them.
+  POLYTECHNIC
+  ITI
 }
 
 enum LandOwnershipType {

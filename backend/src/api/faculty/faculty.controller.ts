@@ -23,6 +23,7 @@ import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { Role } from '../../generated/prisma/client';
 import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
+import { ToggleStudentStatusDto } from '../../core/common/dto/toggle-student-status.dto';
 import {
   CreateVisitLogDto,
   UpdateVisitLogDto,
@@ -619,8 +620,9 @@ export class FacultyController {
   async toggleStudentStatus(
     @Param('id') studentId: string,
     @Req() req,
+    @Body() toggleStatusDto: ToggleStudentStatusDto,
   ) {
-    return this.facultyService.toggleStudentStatus(studentId, req.user.userId);
+    return this.facultyService.toggleStudentStatus(studentId, req.user.userId, toggleStatusDto);
   }
 
   @Post('students/:id/reset-password')

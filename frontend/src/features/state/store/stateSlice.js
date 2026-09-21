@@ -1145,9 +1145,9 @@ export const deleteInstituteStudent = createAsyncThunk(
 // Toggle student status thunk (activate/deactivate)
 export const toggleStudentStatus = createAsyncThunk(
   'state/toggleStudentStatus',
-  async ({ studentId, institutionId }, { rejectWithValue }) => {
+  async ({ studentId, institutionId, reason, remarks }, { rejectWithValue }) => {
     try {
-      const response = await stateService.toggleStudentStatus(studentId);
+      const response = await stateService.toggleStudentStatus(studentId, { reason, remarks });
       return { studentId, institutionId, ...response };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to toggle student status');

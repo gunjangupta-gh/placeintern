@@ -40,6 +40,7 @@ import {
   deleteMonthlyReport,
 } from '../store/facultySlice';
 import ProfileAvatar from '../../../components/common/ProfileAvatar';
+import DeactivationConfirmModal from '../../../components/common/DeactivationConfirmModal';
 import {
   SearchOutlined,
   UserOutlined,
@@ -126,6 +127,8 @@ const AssignedStudentsList = () => {
   const [fileList, setFileList] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [togglingStatus, setTogglingStatus] = useState(false);
+  const [deactivateModalOpen, setDeactivateModalOpen] = useState(false);
+  const [deactivateForm, setDeactivateForm] = useState({ reason: undefined, remarks: '' });
 
   // Edit student modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -386,8 +389,10 @@ const AssignedStudentsList = () => {
     }
   };
 
-  // Handle activate/deactivate student with optimistic update
-  const handleToggleStatus = async () => {
+  // Handle activate/deactivate student with optimistic update.
+  // Deactivating requires a reason (opens the confirmation modal below);
+  // reactivating (newStatus === true) needs no reason and can call this directly.
+  const handleToggleStatus = async ({ reason, remarks } = {}) => {
     if (!selectedStudent) return;
 
     const studentId = selectedStudent.id;
@@ -405,7 +410,9 @@ const AssignedStudentsList = () => {
     try {
       await dispatch(toggleStudentStatus({
         studentId,
-        isActive: newStatus
+        isActive: newStatus,
+        reason,
+        remarks,
       })).unwrap();
       toast.success(`Student ${newStatus ? 'activated' : 'deactivated'} successfully`);
     } catch (error) {
@@ -417,6 +424,25 @@ const AssignedStudentsList = () => {
     } finally {
       setTogglingStatus(false);
     }
+  };
+
+  const handleToggleStatusClick = () => {
+    if (selectedStudent?.user?.active === false) {
+      // Reactivating - no reason needed
+      handleToggleStatus();
+      return;
+    }
+    setDeactivateForm({ reason: undefined, remarks: '' });
+    setDeactivateModalOpen(true);
+  };
+
+  const handleConfirmDeactivate = async () => {
+    if (!deactivateForm.reason) {
+      toast.error('Please select a reason for deactivation');
+      return;
+    }
+    await handleToggleStatus({ reason: deactivateForm.reason, remarks: deactivateForm.remarks?.trim() || undefined });
+    setDeactivateModalOpen(false);
   };
 
   const handleResetPassword = () => {
@@ -528,7 +554,7 @@ const AssignedStudentsList = () => {
       icon: selectedStudent?.user?.active === false ? <PlayCircleOutlined /> : <StopOutlined />,
       label: selectedStudent?.user?.active === false ? 'Activate Student' : 'Deactivate Student',
       danger: selectedStudent?.user?.active !== false,
-      onClick: handleToggleStatus,
+      onClick: handleToggleStatusClick,
     },
   ];
 
@@ -1353,6 +1379,19 @@ const AssignedStudentsList = () => {
           />
         </div>
       </Modal>
+
+      {/* Deactivation confirmation modal */}
+      <DeactivationConfirmModal
+        open={deactivateModalOpen}
+        studentName={selectedStudent?.user?.name}
+        reason={deactivateForm.reason}
+        remarks={deactivateForm.remarks}
+        onReasonChange={(value) => setDeactivateForm(prev => ({ ...prev, reason: value }))}
+        onRemarksChange={(value) => setDeactivateForm(prev => ({ ...prev, remarks: value }))}
+        onCancel={() => setDeactivateModalOpen(false)}
+        onConfirm={handleConfirmDeactivate}
+        confirmLoading={togglingStatus}
+      />
     </div>
   );
 };

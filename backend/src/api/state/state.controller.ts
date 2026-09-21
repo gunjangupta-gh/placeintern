@@ -21,6 +21,7 @@ import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { Role } from '../../generated/prisma/client';
+import { ToggleStudentStatusDto } from '../../core/common/dto/toggle-student-status.dto';
 import {
   CreateInstitutionDto,
   UpdateInstitutionDto,
@@ -817,9 +818,10 @@ export class StateController {
   async toggleStudentStatus(
     @Param('id') studentId: string,
     @Req() req,
+    @Body() toggleStatusDto: ToggleStudentStatusDto,
   ) {
     const toggledBy = req.user?.userId || 'state-admin';
-    return this.stateService.toggleStudentStatus(studentId, toggledBy);
+    return this.stateService.toggleStudentStatus(studentId, toggledBy, toggleStatusDto);
   }
 
   // ==================== Restore Center ====================

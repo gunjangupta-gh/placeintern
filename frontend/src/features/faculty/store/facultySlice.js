@@ -768,7 +768,7 @@ export const uploadStudentDocument = createAsyncThunk(
 
 export const toggleStudentStatus = createAsyncThunk(
   'faculty/toggleStudentStatus',
-  async ({ studentId }, { rejectWithValue, dispatch, getState }) => {
+  async ({ studentId, reason, remarks }, { rejectWithValue, dispatch, getState }) => {
     // Save current state for rollback
     const previousList = [...getState().faculty.students.list];
 
@@ -777,7 +777,7 @@ export const toggleStudentStatus = createAsyncThunk(
       dispatch(facultySlice.actions.optimisticallyToggleStudentStatus(studentId));
 
       // Make API call
-      const response = await facultyService.toggleStudentStatus(studentId);
+      const response = await facultyService.toggleStudentStatus(studentId, { reason, remarks });
       return { studentId, ...response };
     } catch (error) {
       // Rollback on error

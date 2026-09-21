@@ -24,6 +24,7 @@ import {
 } from "../store/facultySlice";
 import StudentDetailsModal from "../dashboard/components/StudentDetailsModal";
 import ProfileAvatar from "../../../components/common/ProfileAvatar";
+import DeactivationConfirmModal from "../../../components/common/DeactivationConfirmModal";
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -43,6 +44,11 @@ const AssignedStudents = React.memo(() => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
 
+  // Deactivation confirmation modal (captures a reason before deactivating)
+  const [deactivateModal, setDeactivateModal] = useState({ open: false, record: null });
+  const [deactivateForm, setDeactivateForm] = useState({ reason: undefined, remarks: '' });
+  const [deactivateSubmitting, setDeactivateSubmitting] = useState(false);
+
   useEffect(() => {
     dispatch(fetchAssignedStudents());
   }, [dispatch]);
@@ -51,7 +57,7 @@ const AssignedStudents = React.memo(() => {
     dispatch(fetchAssignedStudents({ forceRefresh: true }));
   }, [dispatch]);
 
-  // Handle toggle student status
+  // Handle toggle student status (used directly for reactivation - no reason needed)
   const handleToggleStatus = useCallback(async (student) => {
     try {
       const result = await dispatch(toggleStudentStatus({ studentId: student.id })).unwrap();
@@ -60,6 +66,38 @@ const AssignedStudents = React.memo(() => {
       toast.error(error || 'Failed to toggle student status');
     }
   }, [dispatch]);
+
+  const openDeactivateModal = useCallback((student) => {
+    setDeactivateForm({ reason: undefined, remarks: '' });
+    setDeactivateModal({ open: true, record: student });
+  }, []);
+
+  const closeDeactivateModal = useCallback(() => {
+    setDeactivateModal({ open: false, record: null });
+  }, []);
+
+  const handleConfirmDeactivate = useCallback(async () => {
+    if (!deactivateModal.record) return;
+    if (!deactivateForm.reason) {
+      toast.error('Please select a reason for deactivation');
+      return;
+    }
+
+    setDeactivateSubmitting(true);
+    try {
+      const result = await dispatch(toggleStudentStatus({
+        studentId: deactivateModal.record.id,
+        reason: deactivateForm.reason,
+        remarks: deactivateForm.remarks?.trim() || undefined,
+      })).unwrap();
+      toast.success(result.message || 'Student deactivated successfully');
+      closeDeactivateModal();
+    } catch (error) {
+      toast.error(error || 'Failed to deactivate student');
+    } finally {
+      setDeactivateSubmitting(false);
+    }
+  }, [dispatch, deactivateModal.record, deactivateForm, closeDeactivateModal]);
 
   // Flatten and process student data
   const students = useMemo(() => {
@@ -217,25 +255,32 @@ const AssignedStudents = React.memo(() => {
           >
             Details
           </Button>
-          <Popconfirm
-            title={r.isActive ? "Deactivate Student" : "Activate Student"}
-            description={r.isActive
-              ? "This will deactivate the student and their mentor assignments and internship applications."
-              : "This will activate the student and their mentor assignments and internship applications."
-            }
-            onConfirm={() => handleToggleStatus(r)}
-            okText="Yes"
-            cancelText="No"
-            okButtonProps={{ danger: r.isActive }}
-          >
+          {r.isActive ? (
             <Button
               type="text"
-              icon={r.isActive ? <StopOutlined /> : <PlayCircleOutlined />}
-              style={{ color: r.isActive ? token.colorError : token.colorSuccess }}
+              icon={<StopOutlined />}
+              style={{ color: token.colorError }}
+              onClick={() => openDeactivateModal(r)}
             >
-              {r.isActive ? "Deactivate" : "Activate"}
+              Deactivate
             </Button>
-          </Popconfirm>
+          ) : (
+            <Popconfirm
+              title="Activate Student"
+              description="This will activate the student and their mentor assignments and internship applications."
+              onConfirm={() => handleToggleStatus(r)}
+              okText="Yes"
+              cancelText="No"
+            >
+              <Button
+                type="text"
+                icon={<PlayCircleOutlined />}
+                style={{ color: token.colorSuccess }}
+              >
+                Activate
+              </Button>
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -368,6 +413,19 @@ const AssignedStudents = React.memo(() => {
         }}
         onRefresh={forceRefresh}
         loading={loading}
+      />
+
+      {/* Deactivation confirmation modal */}
+      <DeactivationConfirmModal
+        open={deactivateModal.open}
+        studentName={deactivateModal.record?.name}
+        reason={deactivateForm.reason}
+        remarks={deactivateForm.remarks}
+        onReasonChange={(value) => setDeactivateForm(prev => ({ ...prev, reason: value }))}
+        onRemarksChange={(value) => setDeactivateForm(prev => ({ ...prev, remarks: value }))}
+        onCancel={closeDeactivateModal}
+        onConfirm={handleConfirmDeactivate}
+        confirmLoading={deactivateSubmitting}
       />
     </div>
   );
