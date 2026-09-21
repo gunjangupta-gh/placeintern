@@ -16,8 +16,7 @@ import {
   Select,
   Tabs,
   Empty,
-  Space,
-  Tooltip,
+  Dropdown,
   Switch,
   InputNumber,
   theme,
@@ -56,6 +55,8 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   TrophyOutlined,
+  PlayCircleOutlined,
+  MoreOutlined,
   BulbOutlined,
   LaptopOutlined,
   SettingOutlined,
@@ -279,8 +280,8 @@ const AllStudents = () => {
     }
   };
 
-  // Status tag click -> deactivate (with reason) or reactivate (simple confirm)
-  const handleStatusTagClick = () => {
+  // Toggle menu item click -> deactivate (with reason) or reactivate (simple confirm)
+  const handleToggleStatusClick = () => {
     if (!selectedStudent) return;
     const activeStatus = selectedStudent?.user?.active;
 
@@ -1279,37 +1280,46 @@ const AllStudents = () => {
                 style={{ borderRadius: token.borderRadiusLG, boxShadow: token.boxShadowTertiary, position: 'relative' }}
               >
                 <div style={{ position: 'absolute', top: 16, right: 16 }}>
-                  <Space size={4}>
-                    <Tooltip title="Edit Profile">
-                      <Button type="text" icon={<EditOutlined style={{ fontSize: 16 }} />} onClick={openEditModal} />
-                    </Tooltip>
-                    <Tooltip title="Add Document">
-                      <Button type="text" icon={<UploadOutlined style={{ fontSize: 16 }} />} onClick={openUploadModal} />
-                    </Tooltip>
-                    <Tooltip title={resettingCredential ? 'Resetting...' : 'Reset Credential'}>
-                      <Button
-                        type="text"
-                        icon={<KeyOutlined style={{ fontSize: 16 }} />}
-                        disabled={resettingCredential}
-                        onClick={() => {
-                          Modal.confirm({
-                            title: 'Reset Student Credential',
-                            content: `Are you sure you want to reset the password for ${selectedStudent?.name}?`,
-                            okText: 'Reset',
-                            okButtonProps: { danger: true },
-                            onOk: handleResetCredential,
-                          });
-                        }}
-                      />
-                    </Tooltip>
-                    <Tooltip title={displayStudent?.isPlaced ? 'Placed (click to view/edit)' : 'Mark as Placed'}>
-                      <Button
-                        type="text"
-                        icon={<TrophyOutlined style={{ fontSize: 16, color: displayStudent?.isPlaced ? token.colorSuccess : undefined }} />}
-                        onClick={openPlacementModal}
-                      />
-                    </Tooltip>
-                  </Space>
+                  <Dropdown
+                    menu={{
+                      items: [
+                        { key: 'edit', icon: <EditOutlined />, label: 'Edit Profile', onClick: openEditModal },
+                        { key: 'upload', icon: <UploadOutlined />, label: 'Add Document', onClick: openUploadModal },
+                        {
+                          key: 'reset',
+                          icon: <KeyOutlined />,
+                          label: resettingCredential ? 'Resetting...' : 'Reset Credential',
+                          disabled: resettingCredential,
+                          onClick: () => {
+                            Modal.confirm({
+                              title: 'Reset Student Credential',
+                              content: `Are you sure you want to reset the password for ${selectedStudent?.name}?`,
+                              okText: 'Reset',
+                              okButtonProps: { danger: true },
+                              onOk: handleResetCredential,
+                            });
+                          },
+                        },
+                        {
+                          key: 'placement',
+                          icon: <TrophyOutlined />,
+                          label: displayStudent?.isPlaced ? 'Placement (Placed)' : 'Mark as Placed',
+                          onClick: openPlacementModal,
+                        },
+                        { type: 'divider' },
+                        {
+                          key: 'toggle',
+                          icon: selectedStudent?.user?.active ? <StopOutlined /> : <PlayCircleOutlined />,
+                          label: selectedStudent?.user?.active ? 'Deactivate' : 'Activate',
+                          danger: selectedStudent?.user?.active,
+                          onClick: handleToggleStatusClick,
+                        },
+                      ],
+                    }}
+                    trigger={['click']}
+                  >
+                    <Button type="text" icon={<MoreOutlined style={{ fontSize: 20 }} />} />
+                  </Dropdown>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 24 }}>
                   <ProfileAvatar
@@ -1328,16 +1338,9 @@ const AllStudents = () => {
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       <Tag color="blue" bordered={false}>{displayStudent?.user?.branchName || displayStudent.branchName}</Tag>
                       <Tag color={getCategoryColor(displayStudent.category)} bordered={false}>{displayStudent.category}</Tag>
-                      <Tooltip title={displayStudent?.user?.active ? 'Click to deactivate' : 'Click to activate'}>
-                        <Tag
-                          color={displayStudent?.user?.active ? 'success' : 'error'}
-                          bordered={false}
-                          style={{ cursor: 'pointer' }}
-                          onClick={handleStatusTagClick}
-                        >
-                          {displayStudent?.user?.active ? 'Active' : 'Inactive'}
-                        </Tag>
-                      </Tooltip>
+                      <Tag color={displayStudent?.user?.active ? 'success' : 'error'} bordered={false}>
+                        {displayStudent?.user?.active ? 'Active' : 'Inactive'}
+                      </Tag>
                     </div>
                   </div>
                 </div>
