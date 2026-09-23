@@ -67,7 +67,11 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "report:batch-tracker": "ts-node scripts/generate-batch-tracker-report.ts",
+    "report:batch-tracker:dry": "ts-node scripts/generate-batch-tracker-report.ts -- --dry-run",
+    "report:batch-tracker:verbose": "ts-node scripts/generate-batch-tracker-report.ts -- --verbose",
+    "report:batch-tracker:dry-verbose": "ts-node scripts/generate-batch-tracker-report.ts -- --dry-run --verbose"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",
