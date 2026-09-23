@@ -850,6 +850,13 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
+    // Contact fields are displayed masked (e.g. "2*****8@x.com") - never persist a masked value
+    if (data.email?.includes('*') || data.phoneNo?.includes('*')) {
+      throw new BadRequestException(
+        'Email or phone appears to be masked. Please enter the full value.',
+      );
+    }
+
     // Check email uniqueness if changing email
     if (data.email && data.email !== user.email) {
       const emailExists = await this.prisma.user.findUnique({

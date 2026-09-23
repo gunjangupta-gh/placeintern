@@ -207,10 +207,16 @@ const UserProfile = ({ visible, onClose }) => {
         branchId = matchedBranch?.id || data.branchName;
       }
 
+      // /auth/me returns masked email/phone - load real values for the edit form
+      // so masked strings are never submitted back and saved.
+      const unmaskedResponse = await API.get('/auth/me/unmasked-contact');
+      const unmasked = unmaskedResponse.data;
+      setUnmaskedData(unmasked);
+
       form.setFieldsValue({
         name: data.name,
-        email: data.email,
-        phoneNo: data.phoneNo || '',
+        email: unmasked?.email || '',
+        phoneNo: unmasked?.phoneNo || '',
         designation: normalizeDesignation(data.designation),
         qualification: data.qualification || '',
         dateOfJoining: data.dateOfJoining ? dayjs(data.dateOfJoining) : null,
@@ -303,6 +309,8 @@ const UserProfile = ({ visible, onClose }) => {
         message.success('Profile updated successfully');
         setUserData(response.data.data);
         setEditing(false);
+        // Contact details may have changed - refetch real values on next reveal
+        setUnmaskedData(null);
 
         if (values.name !== userData.name || values.email !== userData.email) {
           const loginResponse = localStorage.getItem('loginResponse');
