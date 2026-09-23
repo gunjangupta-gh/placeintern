@@ -15,7 +15,7 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { THROTTLE_PRESETS } from '../../core/config/throttle.config';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, NoFilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes, ApiResponse } from '@nestjs/swagger';
 import { PrincipalService } from './principal.service';
@@ -119,6 +119,8 @@ export class PrincipalController {
 
   @Post('students')
   @ApiOperation({ summary: 'Create new student' })
+  // Parses multipart/form-data bodies (text fields only) in addition to JSON
+  @UseInterceptors(NoFilesInterceptor())
   async createStudent(@Request() req, @Body() createStudentDto: CreateStudentDto) {
     return this.principalService.createStudent(req.user.userId, createStudentDto);
   }

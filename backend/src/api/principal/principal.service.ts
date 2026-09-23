@@ -1560,26 +1560,40 @@ export class PrincipalService {
     const result = await this.userService.createStudent(principal.institutionId, {
       name: createStudentDto.name,
       email: createStudentDto.email,
-      phoneNo: createStudentDto.phoneNo,
+      phoneNo: createStudentDto.phoneNo || createStudentDto.contact,
       rollNumber: createStudentDto.rollNumber,
       batchId: createStudentDto.batchId,
       branchId,
       branchName,
-      dateOfBirth: createStudentDto.dateOfBirth,
+      dateOfBirth: createStudentDto.dateOfBirth || createStudentDto.dob,
       gender: createStudentDto.gender,
       address: createStudentDto.address,
       parentName: createStudentDto.parentName,
-      parentContact: createStudentDto.parentPhone,
+      parentContact: createStudentDto.parentPhone || createStudentDto.parentContact,
+      currentSemester: createStudentDto.currentSemester,
       admissionYear: createStudentDto.admissionYear,
     });
 
-    // Optionally connect scholarship after student is created.
-    if (createStudentDto.scholarshipId) {
+    // Persist remaining profile fields (and optional scholarship) not handled by the domain service
+    const extraStudentData: Prisma.StudentUpdateInput = {
+      motherName: createStudentDto.motherName,
+      city: createStudentDto.city,
+      state: createStudentDto.state,
+      district: createStudentDto.district,
+      tehsil: createStudentDto.tehsil,
+      pinCode: createStudentDto.pinCode,
+      admissionType: createStudentDto.admissionType,
+      category: createStudentDto.category,
+      currentYear: createStudentDto.currentYear,
+      clearanceStatus: createStudentDto.clearanceStatus,
+      ...(createStudentDto.scholarshipId && {
+        scholarship: { connect: { id: createStudentDto.scholarshipId } },
+      }),
+    };
+    if (Object.values(extraStudentData).some((value) => value !== undefined)) {
       await this.prisma.student.update({
         where: { id: result.student.id },
-        data: {
-          scholarship: { connect: { id: createStudentDto.scholarshipId } },
-        },
+        data: extraStudentData,
       });
     }
 

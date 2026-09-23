@@ -54,17 +54,28 @@ export const principalService = {
   },
 
   async createStudent(data, profileImage = null) {
-    const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        formData.append(key, value);
-      }
-    });
+    // Only use FormData if there's a profile image, otherwise send JSON
     if (profileImage) {
+      const formData = new FormData();
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formData.append(key, value);
+        }
+      });
       formData.append('profileImage', profileImage);
+      // Don't set Content-Type header - let Axios set it automatically with the correct boundary
+      const response = await API.post('/principal/students', formData);
+      return response.data;
     }
-    // Don't set Content-Type header - let Axios set it automatically with the correct boundary
-    const response = await API.post('/principal/students', formData);
+
+    // Drop null/undefined so optional DTO fields are simply omitted.
+    // profileImage (antd Upload file list) is not accepted by the create endpoint.
+    const payload = Object.fromEntries(
+      Object.entries(data).filter(
+        ([key, value]) => key !== 'profileImage' && value !== undefined && value !== null,
+      ),
+    );
+    const response = await API.post('/principal/students', payload);
     return response.data;
   },
 
