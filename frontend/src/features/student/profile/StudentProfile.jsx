@@ -471,6 +471,8 @@ export default function StudentProfile() {
 
       // Step 1: Update profile data using Redux (text fields)
       await dispatch(updateProfile(values)).unwrap();
+      // Contact details may have changed - refetch real values on next reveal/edit
+      unmaskedDataRef.current = null;
 
       // Step 2: Upload profile image if provided
       if (profileImageList.length > 0 && profileImageList[0].originFileObj) {
@@ -503,18 +505,32 @@ export default function StudentProfile() {
     }
   };
 
-  const openEditModal = () => {
+  const openEditModal = async () => {
     if (toastShownRef.current) {
       toast.dismiss(toastShownRef.current);
       toastShownRef.current = false;
     }
 
+    // Profile data contains masked contact fields - load the real values for editing
+    // so masked strings are never submitted back and saved.
+    let unmasked = unmaskedDataRef.current;
+    if (!unmasked) {
+      try {
+        unmasked = await studentService.getOwnUnmaskedContact();
+        unmaskedDataRef.current = unmasked;
+      } catch (err) {
+        console.error("Failed to load contact details:", err);
+        toast.error("Could not load your contact details. Please try again.");
+        return;
+      }
+    }
+
     form.setFieldsValue({
       name: student?.user?.name || student.name,
-      email: student?.user?.email || student.email,
-      contact: student?.user?.phoneNo || student.contact,
+      email: unmasked?.email || "",
+      contact: unmasked?.phoneNo || "",
       parentName: student.parentName,
-      parentContact: student.parentContact,
+      parentContact: unmasked?.parentContact || "",
       address: student.address,
       dob: student?.user?.dob
         ? student?.user?.dob.slice(0, 10)
@@ -1503,6 +1519,18 @@ export default function StudentProfile() {
             </Col>
             <Col span={12}>
               <Form.Item
+                name="admissionType"
+                label={<span className="text-xs font-medium">Admission Type</span>}
+                rules={[{ required: true, message: "Please select admission type" }]}
+              >
+                <Select placeholder="Select" className="h-9 rounded-lg text-xs">
+                  <Option value="FIRST_YEAR">First Year</Option>
+                  <Option value="LEET">LEET</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
                 name="parentName"
                 label={<span className="text-xs font-medium">Parent Name</span>}
                 rules={[{ required: true }]}
@@ -1550,6 +1578,7 @@ export default function StudentProfile() {
                 label={
                   <span className="text-xs font-medium">Date of Birth</span>
                 }
+                rules={[{ required: true, message: "Please select date of birth" }]}
               >
                 <Input type="date" className="rounded-lg h-9 text-xs" />
               </Form.Item>

@@ -802,6 +802,7 @@ export class AuthService {
         email: true,
         phoneNo: true,
         dob: true,
+        Student: { select: { parentContact: true } },
       },
     });
 
@@ -817,6 +818,7 @@ export class AuthService {
       email: user.email,
       phoneNo: user.phoneNo,
       dob: user.dob,
+      parentContact: user.Student?.parentContact ?? null,
     };
   }
 

@@ -21,6 +21,8 @@ import {
   PlanAfterDiploma,
   JobLocationPreference,
   ExpectedSalaryRange,
+  AdmissionType,
+  Category,
 } from "../../generated/prisma/client";
 import { AuditService } from "../../infrastructure/audit/audit.service";
 import {
@@ -704,13 +706,36 @@ export class StudentService {
       "parentContact",
       "motherName",
       "gender",
+      "category",
+      "admissionType",
     ]);
+
+    // Contact fields are shown masked (e.g. "2*****8@x.com") - never persist a masked value
+    const maskedKeys = new Set(["email", "contact", "parentContact"]);
 
     const safeUpdateData: Record<string, any> = {};
     for (const [key, value] of Object.entries(dto ?? {})) {
       if (!allowedKeys.has(key)) continue;
       if (value === undefined) continue;
+      if (maskedKeys.has(key) && typeof value === "string" && value.includes("*")) {
+        throw new BadRequestException(
+          `${key} appears to be masked. Please enter the full value.`,
+        );
+      }
       safeUpdateData[key] = value;
+    }
+
+    if (
+      safeUpdateData.admissionType !== undefined &&
+      !Object.values(AdmissionType).includes(safeUpdateData.admissionType)
+    ) {
+      throw new BadRequestException("Invalid admission type");
+    }
+    if (
+      safeUpdateData.category !== undefined &&
+      !Object.values(Category).includes(safeUpdateData.category)
+    ) {
+      throw new BadRequestException("Invalid category");
     }
 
     // Build user update data for synced fields
