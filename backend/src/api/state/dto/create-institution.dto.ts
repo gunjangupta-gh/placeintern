@@ -131,6 +131,39 @@ export class CreateInstitutionDto {
   @IsBoolean()
   hasLandDispute?: boolean;
 
+  @ApiPropertyOptional({ description: 'Whether a library is available' })
+  @IsOptional()
+  @IsBoolean()
+  hasLibrary?: boolean;
+
+  @ApiPropertyOptional({ description: 'Whether books as per AICTE norms are available' })
+  @IsOptional()
+  @IsBoolean()
+  libraryAictBooksAvailable?: boolean;
+
+  @ApiPropertyOptional({ description: 'Whether a college bus/van is available' })
+  @IsOptional()
+  @IsBoolean()
+  hasCollegeBus?: boolean;
+
+  @ApiPropertyOptional({ description: 'Whether the college bus/van has a driver' })
+  @IsOptional()
+  @IsBoolean()
+  busHasDriver?: boolean;
+
+  @ApiPropertyOptional({ description: 'Number of computers' })
+  @IsOptional()
+  @Transform(transformOptionalInt)
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  computersCount?: number;
+
+  @ApiPropertyOptional({ description: 'Whether all computers are connected to the internet' })
+  @IsOptional()
+  @IsBoolean()
+  computersAllInternetConnected?: boolean;
+
   @ApiPropertyOptional({ description: 'Year institution was established' })
   @IsOptional()
   @Transform(transformOptionalInt)

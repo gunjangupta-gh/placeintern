@@ -257,6 +257,12 @@ export const menuConfig = {
     icon: <SolutionOutlined />,
     path: "/app/staff",
   },
+  PRINCIPAL_INSTITUTION: {
+    key: "principal-institution",
+    title: "My Institution",
+    icon: <BankOutlined />,
+    path: "/app/my-institution",
+  },
   PRINCIPAL_INTERNSHIP: {
     key: "principal-internship",
     title: "Internship",
@@ -908,6 +914,7 @@ export const getMenuSectionsForRole = (role) => {
       sections.push(menuConfig.PRINCIPAL_HOME);
       sections.push(menuConfig.PRINCIPAL_PEOPLE);
       sections.push(menuConfig.PRINCIPAL_STAFF);
+      sections.push(menuConfig.PRINCIPAL_INSTITUTION);
       sections.push(menuConfig.PRINCIPAL_INTERNSHIP);
       sections.push(menuConfig.PRINCIPAL_TRAINING);
       sections.push(menuConfig.PRINCIPAL_OPERATIONS);

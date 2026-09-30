@@ -375,6 +375,48 @@ export const principalService = {
     const response = await API.delete(`/principal/students/${studentId}/documents/${documentId}`);
     return response.data;
   },
+
+  // Own institution details (the institution is resolved server-side from the
+  // logged-in principal - no institution id is ever sent)
+  async getInstitution() {
+    const response = await API.get('/principal/institution');
+    return response.data;
+  },
+
+  async updateInstitution(data) {
+    const response = await API.put('/principal/institution', data);
+    return response.data;
+  },
+
+  async getInstitutionBranchIntakes() {
+    const response = await API.get('/principal/institution/intakes');
+    return response.data;
+  },
+
+  async replaceInstitutionBranchIntakes(intakes) {
+    const response = await API.put('/principal/institution/intakes', { intakes });
+    return response.data;
+  },
+
+  async getInstitutionBranchStaffCapacities() {
+    const response = await API.get('/principal/institution/staff-capacities');
+    return response.data;
+  },
+
+  async replaceInstitutionBranchStaffCapacities(capacities) {
+    const response = await API.put('/principal/institution/staff-capacities', { capacities });
+    return response.data;
+  },
+
+  async getOwnBranches() {
+    const response = await API.get('/principal/branches');
+    return response.data;
+  },
+
+  async getOwnBatches() {
+    const response = await API.get('/principal/batches');
+    return response.data;
+  },
 };
 
 export default principalService;

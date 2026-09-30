@@ -28,6 +28,7 @@ import { UpdateStudentDto } from './dto/update-student.dto';
 import { ToggleStudentStatusDto } from '../../core/common/dto/toggle-student-status.dto';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { AssignMentorDto } from './dto/assign-mentor.dto';
+import { UpdatePrincipalInstitutionDto } from './dto/update-principal-institution.dto';
 
 @ApiTags('Principal')
 @ApiBearerAuth()
@@ -87,9 +88,58 @@ export class PrincipalController {
   }
 
   @Put('institution')
-  @ApiOperation({ summary: 'Update institution details' })
-  async updateInstitution(@Request() req, @Body() updateData: any) {
+  @Throttle({ default: THROTTLE_PRESETS.mutation })
+  @ApiOperation({ summary: 'Update own institution details (allow-listed fields only)' })
+  async updateInstitution(@Request() req, @Body() updateData: UpdatePrincipalInstitutionDto) {
     return this.principalService.updateInstitution(req.user.userId, updateData);
+  }
+
+  @Get('institution/intakes')
+  @ApiOperation({ summary: 'Get branch-wise intake records for own institution' })
+  async getInstitutionBranchIntakes(@Request() req) {
+    return this.principalService.getInstitutionBranchIntakes(req.user.userId);
+  }
+
+  @Put('institution/intakes')
+  @Throttle({ default: THROTTLE_PRESETS.mutation })
+  @ApiOperation({ summary: 'Replace branch-wise intake records for own institution' })
+  async replaceInstitutionBranchIntakes(
+    @Request() req,
+    @Body() body: {
+      intakes: Array<{
+        branchId: string;
+        academicYear: string;
+        batchId?: string | null;
+        sanctionedSeats: number;
+        feeWaiverSeats?: number;
+        isActive?: boolean;
+      }>;
+    },
+  ) {
+    return this.principalService.replaceInstitutionBranchIntakes(req.user.userId, body?.intakes || []);
+  }
+
+  @Get('institution/staff-capacities')
+  @ApiOperation({ summary: 'Get branch-wise staff capacity records for own institution' })
+  async getInstitutionBranchStaffCapacities(@Request() req) {
+    return this.principalService.getInstitutionBranchStaffCapacities(req.user.userId);
+  }
+
+  @Put('institution/staff-capacities')
+  @Throttle({ default: THROTTLE_PRESETS.mutation })
+  @ApiOperation({ summary: 'Replace branch-wise staff capacity records for own institution' })
+  async replaceInstitutionBranchStaffCapacities(
+    @Request() req,
+    @Body() body: {
+      capacities: Array<{
+        branchId: string;
+        academicYear: string;
+        sanctionedPosts: number;
+        isActive?: boolean;
+      }>;
+    },
+  ) {
+    return this.principalService.replaceInstitutionBranchStaffCapacities(req.user.userId, body?.capacities || []);
   }
 
   // Student Management

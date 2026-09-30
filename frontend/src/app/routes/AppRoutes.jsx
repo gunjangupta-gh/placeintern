@@ -87,6 +87,7 @@ import PrincipalOverview from '../../features/principal/overview/PrincipalOvervi
 import StudentList from '../../features/principal/students/StudentList';
 import AllStudents from '../../features/principal/students/AllStudents';
 import StaffList from '../../features/principal/staff/StaffList';
+import PrincipalInstitutionDetails from '../../features/principal/institution/InstitutionDetails';
 import MentorAssignment from '../../features/principal/mentors/MentorAssignment';
 import BulkUpload from '../../features/principal/bulk/BulkUpload';
 import FacultyProgress from '../../features/principal/faculty/FacultyProgress';
@@ -725,6 +726,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
               <StaffList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="my-institution"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
+              <PrincipalInstitutionDetails />
             </ProtectedRoute>
           }
         />

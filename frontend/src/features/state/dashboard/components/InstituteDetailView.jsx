@@ -632,6 +632,16 @@ const FacultyTab = memo(
 
 FacultyTab.displayName = "FacultyTab";
 
+// null/undefined = not filled in yet (shown as "-"), distinct from an explicit "No"
+const renderYesNo = (value) => {
+  if (value === null || value === undefined) return '-';
+  return (
+    <Tag color={value ? 'success' : 'default'} className="m-0 text-[10px]">
+      {value ? 'Yes' : 'No'}
+    </Tag>
+  );
+};
+
 // Land Records Tab Component
 const LandRecordsTab = memo(({ data, loading, error }) => {
   if (loading) return <div className="flex justify-center py-12"><Spin size="large" /></div>;
@@ -737,6 +747,8 @@ const LandRecordsTab = memo(({ data, loading, error }) => {
                   <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Available (Sq.ft)</th>
                   <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Required (Sq.ft)</th>
                   <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Additional Need</th>
+                  <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Furniture</th>
+                  <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Smart Boards / TVs</th>
                 </tr>
               </thead>
               <tbody>
@@ -751,6 +763,8 @@ const LandRecordsTab = memo(({ data, loading, error }) => {
                         <Tag color="warning" className="m-0 text-[9px]">{area.additionalRequirementSqFt.toLocaleString()}</Tag>
                       ) : '-'}
                     </td>
+                    <td className="py-1.5 px-2 text-center">{renderYesNo(area.furnitureAvailable)}</td>
+                    <td className="py-1.5 px-2 text-center">{area.smartBoardsCount ?? '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -779,6 +793,47 @@ const LandRecordsTab = memo(({ data, loading, error }) => {
             <div className="text-lg font-bold text-purple-600">{commonArea?.availableAreaSqFt?.toLocaleString() || 0}</div>
             <div className="text-[10px] text-text-tertiary">Common Area (Sq.ft)</div>
           </div>
+        </div>
+      </Card>
+
+      {/* Other Information */}
+      <Card size="small" title={<span className="text-xs font-semibold">Other Information</span>}
+        className="rounded-lg" bodyStyle={{ padding: "8px" }}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-background-tertiary/30">
+                <th className="text-left py-1.5 px-2 text-text-tertiary font-medium">Sr No</th>
+                <th className="text-left py-1.5 px-2 text-text-tertiary font-medium">Description</th>
+                <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Yes / No</th>
+                <th className="text-left py-1.5 px-2 text-text-tertiary font-medium">Description</th>
+                <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Yes / No</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="py-1.5 px-2">1</td>
+                <td className="py-1.5 px-2 text-text-primary font-medium">Library Available</td>
+                <td className="py-1.5 px-2 text-center">{renderYesNo(institution.hasLibrary)}</td>
+                <td className="py-1.5 px-2 text-text-primary font-medium">Books as per AICTE Norms Available</td>
+                <td className="py-1.5 px-2 text-center">{renderYesNo(institution.libraryAictBooksAvailable)}</td>
+              </tr>
+              <tr>
+                <td className="py-1.5 px-2">2</td>
+                <td className="py-1.5 px-2 text-text-primary font-medium">College Bus / Van</td>
+                <td className="py-1.5 px-2 text-center">{renderYesNo(institution.hasCollegeBus)}</td>
+                <td className="py-1.5 px-2 text-text-primary font-medium">Driver</td>
+                <td className="py-1.5 px-2 text-center">{renderYesNo(institution.busHasDriver)}</td>
+              </tr>
+              <tr>
+                <td className="py-1.5 px-2">3</td>
+                <td className="py-1.5 px-2 text-text-primary font-medium">Number of Computers</td>
+                <td className="py-1.5 px-2 text-center">{institution.computersCount ?? '-'}</td>
+                <td className="py-1.5 px-2 text-text-primary font-medium">Are all Computers Connected to Internet</td>
+                <td className="py-1.5 px-2 text-center">{renderYesNo(institution.computersAllInternetConnected)}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </Card>
 

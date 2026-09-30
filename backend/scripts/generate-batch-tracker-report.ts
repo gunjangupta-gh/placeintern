@@ -25,6 +25,11 @@
  *   - %                         : completed / expected (blank when expected = 0)
  *   Internship `isActive` is intentionally ignored, because the batch data has been deactivated.
  *
+ * Application filter:
+ *   Only InternshipApplications where internshipPhase = COMPLETED **and** status = COMPLETED
+ *   are counted towards visits, reports, expectedVisits, expectedReports, and mentor tallies.
+ *   Students are still included in the headcount regardless of their application status.
+ *
  * Usage:
  *   ts-node scripts/generate-batch-tracker-report.ts --dry-run
  *   ts-node scripts/generate-batch-tracker-report.ts --dry-run --verbose
@@ -301,6 +306,8 @@ async function main() {
             totalExpectedVisits: true,
             submittedReportsCount: true,
             completedVisitsCount: true,
+            internshipPhase: true,
+            status: true,
           },
         },
       },
@@ -347,6 +354,7 @@ async function main() {
     const allMentors = new Set<string>();
     let studentsWithoutInstitution = 0;
     let counterMismatches = 0;
+    let dropoutStudents = 0;
 
     for (const s of students) {
       const inst = s.Institution ?? s.user.Institution;
@@ -359,13 +367,22 @@ async function main() {
         bucket = { collegeName, totalStudents: 0, mentors: new Set(), expectedVisits: 0, completedVisits: 0, expectedReports: 0, submittedReports: 0 };
         buckets.set(key, bucket);
       }
-      bucket.totalStudents++;
 
       const studentMentors = new Set<string>();
       s.mentorAssignments.forEach((m) => studentMentors.add(m.mentorId));
 
       let sExpectedVisits = 0, sCompletedVisits = 0, sExpectedReports = 0, sSubmittedReports = 0;
+      let hasCompletedApp = false;
       for (const app of s.internshipApplications) {
+        // Only count applications that are fully completed
+        if (app.internshipPhase !== 'COMPLETED' || app.status !== 'COMPLETED') {
+          log(
+            `  skipping app=${app.id} (${s.user.name}): internshipPhase=${app.internshipPhase} status=${app.status}`,
+          );
+          continue;
+        }
+
+        hasCompletedApp = true;
         if (app.mentorId) studentMentors.add(app.mentorId);
         const submitted = reportCountMap.get(app.id) ?? 0;
         const completed = visitCountMap.get(app.id) ?? 0;
@@ -382,6 +399,15 @@ async function main() {
         }
       }
 
+      // Dropout: deactivated before internship completed — exclude from headcount and metrics
+      if (!hasCompletedApp) {
+        dropoutStudents++;
+        log(`  dropout (excluded) ${s.user.rollNumber || 'n/a'} | ${s.user.name} | ${collegeName} | active=${s.user.active} | internships=${s.internshipApplications.length}`);
+        continue;
+      }
+
+      // Only now count the student and accumulate their metrics
+      bucket.totalStudents++;
       studentMentors.forEach((m) => {
         bucket!.mentors.add(m);
         allMentors.add(m);
@@ -416,6 +442,9 @@ async function main() {
       })),
     );
 
+    if (dropoutStudents > 0) {
+      console.warn(`NOTE: ${dropoutStudents} student(s) excluded from the report (no completed internship — likely dropouts). Run with --verbose to see who.`);
+    }
     if (studentsWithoutInstitution > 0) {
       console.warn(`WARNING: ${studentsWithoutInstitution} students have no institution and are grouped under "Unknown Institution".`);
     }

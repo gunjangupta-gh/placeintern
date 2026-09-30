@@ -64,6 +64,6 @@ import { BotModule } from './bot/bot.module';
     StateComplianceService,
     StateStudentService,
   ],
-  exports: [StateService],
+  exports: [StateService, StateInstitutionService],
 })
 export class StateModule {}

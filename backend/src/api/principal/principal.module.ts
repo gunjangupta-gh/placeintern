@@ -10,6 +10,7 @@ import { AcademicModule } from '../../domain/academic/academic.module';
 import { AuditModule } from '../../infrastructure/audit/audit.module';
 import { FileStorageModule } from '../../infrastructure/file-storage/file-storage.module';
 import { InternshipModule } from '../../domain/internship/internship.module';
+import { StateModule } from '../state/state.module';
 
 // Training module
 import { PrincipalTrainingModule } from './training/principal-training.module';
@@ -24,6 +25,8 @@ import { AuditService } from '../../infrastructure/audit/audit.service';
     AuditModule,
     FileStorageModule,
     InternshipModule,
+    // Shared institution intake / staff-capacity logic (StateInstitutionService)
+    StateModule,
     // Training sub-module
     PrincipalTrainingModule,
   ],

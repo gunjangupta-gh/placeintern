@@ -7,6 +7,8 @@ import { UpdateStudentDto } from './dto/update-student.dto';
 import { ToggleStudentStatusDto } from '../../core/common/dto/toggle-student-status.dto';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { AssignMentorDto } from './dto/assign-mentor.dto';
+import { UpdatePrincipalInstitutionDto } from './dto/update-principal-institution.dto';
+import { StateInstitutionService } from '../state/services/state-institution.service';
 import { UserService } from '../../domain/user/user.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
@@ -41,6 +43,7 @@ export class PrincipalService {
     private readonly auditService: AuditService,
     private readonly fileStorageService: FileStorageService,
     private readonly expectedCycleService: ExpectedCycleService,
+    private readonly stateInstitutionService: StateInstitutionService,
   ) {}
 
   /**
@@ -535,6 +538,7 @@ export class PrincipalService {
       include: {
         Institution: {
           include: {
+            coveredAreaDetails: { orderBy: { entityType: 'asc' } },
             _count: {
               select: {
                 users: true,
@@ -583,25 +587,151 @@ export class PrincipalService {
   }
 
   /**
-   * Update institution details
+   * Resolve the principal's own institution. The institution is NEVER taken
+   * from the request - a principal can only ever touch this one.
    */
-  async updateInstitution(principalId: string, updateData: Prisma.InstitutionUpdateInput) {
+  private async getOwnInstitutionId(principalId: string): Promise<string> {
     const principal = await this.prisma.user.findUnique({
       where: { id: principalId },
+      select: { institutionId: true },
     });
 
-    if (!principal || !principal.institutionId) {
+    if (!principal?.institutionId) {
       throw new NotFoundException('Institution not found');
     }
 
-    const updated = await this.prisma.institution.update({
-      where: { id: principal.institutionId },
-      data: updateData,
+    return principal.institutionId;
+  }
+
+  /**
+   * Update own institution details (allow-listed fields only, see
+   * UpdatePrincipalInstitutionDto). Covered-area rows are upserted per
+   * entityType and only provided fields are written, so a partial payload can
+   * never wipe existing data.
+   */
+  async updateInstitution(principalId: string, dto: UpdatePrincipalInstitutionDto) {
+    const institutionId = await this.getOwnInstitutionId(principalId);
+    const { coveredAreaDetails, ...scalarFields } = dto;
+
+    const seenEntities = new Set<string>();
+    for (const row of coveredAreaDetails ?? []) {
+      if (seenEntities.has(row.entityType)) {
+        throw new BadRequestException(`Duplicate covered area row for ${row.entityType}`);
+      }
+      seenEntities.add(row.entityType);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.institution.update({
+        where: { id: institutionId },
+        data: scalarFields,
+      });
+
+      for (const row of coveredAreaDetails ?? []) {
+        const { entityType, lastMajorRepairDate, ...rest } = row;
+        const values = {
+          ...rest,
+          ...(lastMajorRepairDate !== undefined && {
+            lastMajorRepairDate: lastMajorRepairDate === null ? null : new Date(lastMajorRepairDate),
+          }),
+        };
+
+        await tx.institutionCoveredArea.upsert({
+          where: { institutionId_entityType: { institutionId, entityType } },
+          update: values,
+          create: { institutionId, entityType, ...values },
+        });
+      }
     });
 
-    await this.cache.invalidateByTags([`institution:${principal.institutionId}`]);
+    this.auditService.log({
+      action: AuditAction.INSTITUTION_UPDATE,
+      entityType: 'Institution',
+      entityId: institutionId,
+      userId: principalId,
+      userRole: Role.PRINCIPAL,
+      description: 'Institution details updated by principal',
+      category: AuditCategory.ADMINISTRATIVE,
+      severity: AuditSeverity.MEDIUM,
+      institutionId,
+      changedFields: [
+        ...Object.keys(scalarFields).filter((k) => scalarFields[k] !== undefined),
+        ...(coveredAreaDetails?.length ? ['coveredAreaDetails'] : []),
+      ],
+      newValues: dto as any,
+    }).catch(() => {});
 
-    return updated;
+    await this.cache.invalidateByTags(['state', 'institutions', `institution:${institutionId}`]);
+
+    return this.getInstitution(principalId);
+  }
+
+  /** Reject branch/batch IDs that belong to a different institution. */
+  private async assertOwnBranchesAndBatches(
+    institutionId: string,
+    branchIds: Array<string | undefined | null>,
+    batchIds: Array<string | undefined | null> = [],
+  ) {
+    const branches = [...new Set(branchIds.filter(Boolean))] as string[];
+    if (branches.length) {
+      const count = await this.prisma.branch.count({ where: { id: { in: branches }, institutionId } });
+      if (count !== branches.length) {
+        throw new BadRequestException('One or more branches do not belong to your institution');
+      }
+    }
+
+    const batches = [...new Set(batchIds.filter(Boolean))] as string[];
+    if (batches.length) {
+      const count = await this.prisma.batch.count({ where: { id: { in: batches }, institutionId } });
+      if (count !== batches.length) {
+        throw new BadRequestException('One or more batches do not belong to your institution');
+      }
+    }
+  }
+
+  async getInstitutionBranchIntakes(principalId: string) {
+    const institutionId = await this.getOwnInstitutionId(principalId);
+    return this.stateInstitutionService.getInstitutionBranchIntakes(institutionId);
+  }
+
+  async replaceInstitutionBranchIntakes(
+    principalId: string,
+    intakes: Parameters<StateInstitutionService['replaceInstitutionBranchIntakes']>[1],
+  ) {
+    const institutionId = await this.getOwnInstitutionId(principalId);
+    await this.assertOwnBranchesAndBatches(
+      institutionId,
+      (intakes || []).map((i) => i.branchId),
+      (intakes || []).map((i) => i.batchId),
+    );
+    return this.stateInstitutionService.replaceInstitutionBranchIntakes(
+      institutionId,
+      intakes,
+      principalId,
+      Role.PRINCIPAL,
+    );
+  }
+
+  async getInstitutionBranchStaffCapacities(principalId: string) {
+    const institutionId = await this.getOwnInstitutionId(principalId);
+    return this.stateInstitutionService.getInstitutionBranchStaffCapacities(institutionId);
+  }
+
+  async replaceInstitutionBranchStaffCapacities(
+    principalId: string,
+    capacities: Parameters<StateInstitutionService['replaceInstitutionBranchStaffCapacities']>[1],
+  ) {
+    const institutionId = await this.getOwnInstitutionId(principalId);
+    await this.assertOwnBranchesAndBatches(
+      institutionId,
+      (capacities || []).map((c) => c.branchId),
+    );
+    return this.stateInstitutionService.replaceInstitutionBranchStaffCapacities(
+      institutionId,
+      capacities,
+      principalId,
+      Role.PRINCIPAL,
+    );
   }
 
   /**

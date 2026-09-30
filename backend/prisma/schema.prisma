@@ -422,6 +422,14 @@ model Institution {
   landOwnership  LandOwnershipType?
   hasLandDispute Boolean?
 
+  // Other Information (all nullable: null = not yet filled in, distinct from "No")
+  hasLibrary                    Boolean?
+  libraryAictBooksAvailable     Boolean?
+  hasCollegeBus                 Boolean?
+  busHasDriver                  Boolean?
+  computersCount                Int?
+  computersAllInternetConnected Boolean?
+
   // Administrative Details
   establishedYear  Int?
   affiliatedTo     String? // University/Board affiliation
@@ -523,6 +531,10 @@ model InstitutionCoveredArea {
   declaredUnsafeAreaSqFt    Float?
   lastMajorRepairDate       DateTime?
   futureExpansionScope      String?
+
+  // Facilities in this covered area (nullable: null = not yet filled in)
+  furnitureAvailable Boolean?
+  smartBoardsCount   Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

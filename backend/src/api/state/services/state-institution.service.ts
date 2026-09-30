@@ -620,6 +620,7 @@ export class StateInstitutionService {
       isActive?: boolean;
     }>,
     userId?: string,
+    userRole: Role = Role.STATE_DIRECTORATE,
   ) {
     const institution = await this.prisma.institution.findUnique({
       where: { id: institutionId },
@@ -700,7 +701,7 @@ export class StateInstitutionService {
       entityType: 'Institution',
       entityId: institution.id,
       userId: userId || 'SYSTEM',
-      userRole: Role.STATE_DIRECTORATE,
+      userRole,
       description: `Branch intake updated for institution ${institution.name}`,
       category: AuditCategory.SYSTEM_ADMIN,
       severity: AuditSeverity.MEDIUM,
@@ -809,6 +810,7 @@ export class StateInstitutionService {
       isActive?: boolean;
     }>,
     userId?: string,
+    userRole: Role = Role.STATE_DIRECTORATE,
   ) {
     const institution = await this.prisma.institution.findUnique({
       where: { id: institutionId },
@@ -869,7 +871,7 @@ export class StateInstitutionService {
       entityType: 'Institution',
       entityId: institution.id,
       userId: userId || 'SYSTEM',
-      userRole: Role.STATE_DIRECTORATE,
+      userRole,
       description: `Branch staff capacities updated for institution ${institution.name}`,
       category: AuditCategory.SYSTEM_ADMIN,
       severity: AuditSeverity.MEDIUM,
@@ -913,6 +915,13 @@ export class StateInstitutionService {
         hasLandDispute: true,
         totalStudentSeats: true,
         totalStaffSeats: true,
+        // Other Information
+        hasLibrary: true,
+        libraryAictBooksAvailable: true,
+        hasCollegeBus: true,
+        busHasDriver: true,
+        computersCount: true,
+        computersAllInternetConnected: true,
         // Covered area details
         coveredAreaDetails: {
           select: {
@@ -922,6 +931,8 @@ export class StateInstitutionService {
             availableAreaSqFt: true,
             additionalRequirementSqFt: true,
             declaredUnsafeAreaSqFt: true,
+            furnitureAvailable: true,
+            smartBoardsCount: true,
           },
         },
         branchIntakes: {
