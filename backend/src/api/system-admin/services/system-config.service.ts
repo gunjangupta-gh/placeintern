@@ -218,7 +218,7 @@ const DEFAULT_CONFIGS: SystemConfigItem[] = [
     key: 'maintenance.logRetentionDays',
     value: 90,
     category: ConfigCategory.MAINTENANCE,
-    description: 'Number of days to retain audit logs',
+    description: 'Not enforced: audit logs are retained permanently',
     type: 'number',
     defaultValue: 90,
     validation: { min: 30, max: 365 },

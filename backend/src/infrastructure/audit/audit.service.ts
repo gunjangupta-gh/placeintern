@@ -369,30 +369,6 @@ export class AuditService {
   }
 
   /**
-   * Delete old audit logs (cleanup)
-   */
-  async deleteOldLogs(daysToKeep: number = 90): Promise<number> {
-    try {
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-
-      const result = await this.prisma.auditLog.deleteMany({
-        where: {
-          timestamp: {
-            lt: cutoffDate,
-          },
-        },
-      });
-
-      this.logger.log(`Deleted ${result.count} old audit logs`);
-      return result.count;
-    } catch (error) {
-      this.logger.error('Failed to delete old audit logs', error);
-      throw error;
-    }
-  }
-
-  /**
    * Determine category based on action
    */
   private determineCategory(action: AuditAction): AuditCategory {
