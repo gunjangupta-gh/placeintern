@@ -126,16 +126,6 @@ const InstitutionFormTabs = ({
               </Select>
             </Form.Item>
           </Col>
-          {isPrincipalMode && (
-            <Col xs={24}>
-              <Alert
-                type="info"
-                showIcon
-                className="rounded-lg"
-                message="Institution type, code, status and capacity totals are managed by the State Directorate."
-              />
-            </Col>
-          )}
         </Row>
       ),
     },
