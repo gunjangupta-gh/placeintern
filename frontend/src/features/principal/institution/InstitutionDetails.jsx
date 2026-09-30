@@ -156,9 +156,6 @@ const InstitutionDetails = () => {
             <Title level={3} className="!mb-0 !text-xl font-semibold" style={{ color: token.colorText }}>
               My Institution
             </Title>
-            <Text className="text-xs" style={{ color: token.colorTextSecondary }}>
-              {editing ? 'Update your institution details' : 'View and manage your institution details'}
-            </Text>
           </div>
           {!loading && !loadError && (
             <div className="flex gap-2">
