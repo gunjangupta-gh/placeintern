@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { createStaff, updateStaff, fetchStaff } from '../store/principalSlice';
 import { SaveOutlined } from '@ant-design/icons';
 import { useBranches } from '../../shared/hooks/useLookup';
+import { DESIGNATION_OPTIONS } from '../../shared/constants/designations';
 
 const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
   const dispatch = useDispatch();
@@ -53,7 +54,7 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
         email: staffMember.email,
         phoneNo: staffMember.phoneNo,
         role: staffMember.role,
-        designation: staffMember.designation,
+        designationEnum: staffMember.designationEnum || undefined,
         branchId,
       });
     } else if (open && !isEditMode) {
@@ -81,7 +82,13 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
         email: values.email,
         phoneNo: values.phoneNo,
         role: values.role,
-        designation: values.designation,
+        designationEnum: values.designationEnum,
+        // Keep the legacy free-text field aligned with the selected designation
+        // (not for "Other", which would overwrite a meaningful legacy value).
+        designation:
+          values.designationEnum && values.designationEnum !== 'OTHER'
+            ? DESIGNATION_OPTIONS.find((o) => o.value === values.designationEnum)?.label
+            : undefined,
         branchId: values.branchId,
         branchName: branchName,
       };
@@ -191,10 +198,16 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
             </Col>
             <Col xs={24}>
               <Form.Item
-                name="designation"
+                name="designationEnum"
                 label="Designation"
               >
-                <Input placeholder="Enter designation (e.g., Assistant Professor, Senior Lecturer)" />
+                <Select
+                  placeholder="Select designation"
+                  options={DESIGNATION_OPTIONS}
+                  showSearch
+                  optionFilterProp="label"
+                  allowClear
+                />
               </Form.Item>
             </Col>
           </Row>

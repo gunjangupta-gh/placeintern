@@ -2423,6 +2423,7 @@ export class PrincipalService {
         active: true,
         phoneNo: createStaffDto.phoneNo,
         designation: createStaffDto.designation,
+        designationEnum: createStaffDto.designationEnum,
         branchName: createStaffDto.branchName,
         Institution: { connect: { id: principal.institutionId } },
       },

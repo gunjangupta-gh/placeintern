@@ -6,6 +6,7 @@ import { SaveOutlined } from '@ant-design/icons';
 import { createStaff, updateStaff } from '../store/stateSlice';
 import stateService from '../../../services/state.service';
 import { useLookup } from '../../shared/hooks/useLookup';
+import { DESIGNATION_OPTIONS } from '../../shared/constants/designations';
 
 // Role options matching Prisma Role enum (for staff management)
 const ROLE_OPTIONS = [
@@ -15,49 +16,6 @@ const ROLE_OPTIONS = [
   { value: 'ADMIN_STAFF', label: 'Admin Staff' },
 ];
 
-// Designation options matching Prisma Designation enum
-const DESIGNATION_OPTIONS = [
-  // Faculty/Teacher Designations
-  { value: 'PRINCIPAL', label: 'Principal' },
-  { value: 'HOD', label: 'HOD' },
-  { value: 'SENIOR_LECTURER', label: 'Senior Lecturer' },
-  { value: 'LECTURER', label: 'Lecturer' },
-  { value: 'ASSISTANT_PROFESSOR', label: 'Assistant Professor' },
-  { value: 'FOREMAN_INSTRUCTOR', label: 'Foreman Instructor' },
-  { value: 'WORKSHOP_INSTRUCTOR', label: 'Workshop Instructor' },
-  { value: 'WORKSHOP_SUPERINTENDENT', label: 'Workshop Superintendent' },
-  { value: 'WORKSHOP_FOREMAN', label: 'Workshop Foreman' },
-  { value: 'LAB_TECHNICIAN', label: 'Lab Technician' },
-  { value: 'TECHNICIAN', label: 'Technician' },
-  { value: 'INSTRUCTOR', label: 'Instructor' },
-  { value: 'SYSTEM_ANALYST', label: 'System Analyst' },
-  { value: 'SYSTEM_ADMINISTRATOR', label: 'System Administrator' },
-  { value: 'SYSTEM_MANAGER', label: 'System Manager' },
-  { value: 'PROGRAMMER', label: 'Programmer' },
-  { value: 'NETWORK_ENGINEER', label: 'Network Engineer' },
-  { value: 'COMPUTER_OPERATOR', label: 'Computer Operator' },
-  { value: 'LIBRARIAN', label: 'Librarian' },
-  { value: 'TPO', label: 'TPO' },
-  { value: 'FASHION_DESIGNER', label: 'Fashion Designer' },
-  { value: 'PEON', label: 'Peon' },
-  // Admin Staff Designations
-  { value: 'ASSTT_DIRECTOR', label: 'Asstt. Director' },
-  { value: 'ADDITIONAL_DIRECTOR', label: 'Additional Director' },
-  { value: 'DEPUTY_DIRECTOR_STAFF', label: 'Deputy Director (Staff)' },
-  { value: 'DEPUTY_DIRECTOR_CONDUCT', label: 'Deputy Director (Conduct)' },
-  { value: 'DEPUTY_DIRECTOR_PLANNING', label: 'Deputy Director (Planning)' },
-  { value: 'DIRECTOR_ACADEMICS', label: 'Director (Academics)' },
-  { value: 'REGISTRAR', label: 'Registrar' },
-  { value: 'HOD_CONTROLLER_EXAMINATIONS', label: 'HOD - Controller (Examinations)' },
-  { value: 'DEMONSTRATOR', label: 'Demonstrator' },
-  { value: 'STENOTYPIST', label: 'Stenotypist' },
-  { value: 'CLERK', label: 'Clerk' },
-  { value: 'JR_SCALE_STENOGRAPHER', label: 'Jr. Scale Stenographer' },
-  { value: 'JUNIOR_ASSTT', label: 'Junior Asstt.' },
-  { value: 'SR_ASSTT', label: 'Sr. Asstt.' },
-  { value: 'SUPDT_GRADE_2', label: 'Supdt. Grade 2' },
-  { value: 'OTHER', label: 'Other' },
-];
 
 const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
   const dispatch = useDispatch();

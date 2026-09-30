@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsEmail, IsNotEmpty, IsOptional, IsEnum } from 'class-validator';
-import { Role } from '../../../generated/prisma/enums';
+import { Role, Designation } from '../../../generated/prisma/enums';
 
 // Staff-specific roles that can be created by principal
 // Only TEACHER role is available for staff
@@ -46,6 +46,11 @@ export class CreateStaffDto {
   @IsString()
   @IsOptional()
   designation?: string;
+
+  @ApiProperty({ description: 'Designation enum', enum: Designation, required: false })
+  @IsEnum(Designation)
+  @IsOptional()
+  designationEnum?: Designation;
 
   @ApiProperty({ description: 'Employee ID', required: false })
   @IsString()
