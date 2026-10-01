@@ -1,4 +1,8 @@
 import { ReportDefinition } from '../interfaces/report-definition.interface';
+import {
+  STUDENT_PROFILE_FIELDS,
+  profileFieldColumnId,
+} from '../constants/student-profile-fields';
 
 export const studentReportDefinitions: Record<string, ReportDefinition> = {
   'student-directory': {
@@ -140,6 +144,49 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['branchName', 'currentYear', 'institutionName', 'mentorName'],
     sortableColumns: ['rollNumber', 'name', 'branchName', 'currentYear', 'institutionName'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
+  },
+
+  'student-profile-completion': {
+    type: 'student-profile-completion',
+    name: 'Student Profile Completion',
+    description: 'How much of each student profile is completed, with student-wise and college-wise sheets',
+    category: 'Student',
+    icon: 'solution',
+    availableFor: ['STATE_DIRECTORATE', 'PRINCIPAL', 'SYSTEM_ADMIN'],
+    columns: [
+      { id: 'rollNumber', label: 'Roll Number', type: 'string', default: true, sortable: true },
+      { id: 'name', label: 'Name', type: 'string', default: true, sortable: true },
+      { id: 'institutionName', label: 'College Name', type: 'string', default: true, sortable: true },
+      { id: 'branchName', label: 'Branch', type: 'string', default: true, sortable: true },
+      { id: 'currentYear', label: 'Year', type: 'number', default: true, sortable: true },
+      ...STUDENT_PROFILE_FIELDS.map((f) => ({
+        id: profileFieldColumnId(f.key),
+        label: f.label,
+        type: 'string' as const,
+        default: true,
+      })),
+      { id: 'filledFields', label: 'Fields Filled', type: 'number', default: true },
+      { id: 'totalFields', label: 'Total Fields', type: 'number', default: true },
+      { id: 'completionPercentage', label: 'Completion %', type: 'number', default: true, sortable: true },
+      { id: 'missingFields', label: 'Missing Fields', type: 'string', default: true },
+    ],
+    filters: [
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false, placeholder: 'All Institutions' },
+      { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
+      { id: 'currentYear', label: 'Year', type: 'select', required: false, options: [
+        { label: '1st Year', value: 1 },
+        { label: '2nd Year', value: 2 },
+        { label: '3rd Year', value: 3 },
+        { label: '4th Year', value: 4 },
+      ]},
+      { id: 'isActive', label: 'Status', type: 'select', required: false, options: [
+        { label: 'Active', value: true },
+        { label: 'Inactive', value: false },
+      ]},
+    ],
+    groupBy: ['institutionName', 'branchName'],
+    sortableColumns: ['rollNumber', 'name', 'institutionName', 'completionPercentage'],
     exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 

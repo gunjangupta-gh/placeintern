@@ -2,6 +2,10 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../../core/database/prisma.service';
+import {
+  STUDENT_PROFILE_FIELDS,
+  profileFieldColumnId,
+} from './constants/student-profile-fields';
 import { ReportGeneratorService } from './report-generator.service';
 import { ExcelService } from './export/excel.service';
 import { PdfService } from './export/pdf.service';
@@ -96,7 +100,13 @@ export class ReportProcessor extends WorkerHost {
 
       switch (format) {
         case ExportFormat.EXCEL:
-          if (trainingSheetReports.has(reportType)) {
+          if (reportType === 'student-profile-completion') {
+            const sheets = this.buildProfileCompletionSheets(config, data);
+            fileBuffer = await this.excelService.generateMultiSheetExcel(
+              config.title,
+              sheets,
+            );
+          } else if (trainingSheetReports.has(reportType)) {
             const sheets = this.buildTrainingSheets(config, data);
             fileBuffer = await this.excelService.generateMultiSheetExcel(
               config.title,
@@ -325,6 +335,7 @@ export class ReportProcessor extends WorkerHost {
       'student_progress': 'Student Progress Report',
       'student_directory': 'Student Directory Report',
       'student_placement_interest_ppo': 'Student Placement Interest & PPO Report',
+      'student_profile_completion': 'Student Profile Completion Report',
       'internship': 'Internship Report',
       'internship_applications': 'Internship Applications Report',
       'internship_status': 'Internship Status Report',
@@ -388,6 +399,23 @@ export class ReportProcessor extends WorkerHost {
         { field: 'placementsCount', header: 'Placements', type: 'number' as const, width: 12 },
         { field: 'studentActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
         { field: 'userActive', header: 'User Active', type: 'boolean' as const, width: 12 },
+      ],
+      'student_profile_completion': [
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'name', header: 'Student Name', type: 'string' as const, width: 22 },
+        { field: 'institutionName', header: 'College Name', type: 'string' as const, width: 28 },
+        { field: 'branchName', header: 'Branch', type: 'string' as const, width: 18 },
+        { field: 'currentYear', header: 'Year', type: 'number' as const, width: 8 },
+        ...STUDENT_PROFILE_FIELDS.map((f) => ({
+          field: profileFieldColumnId(f.key),
+          header: f.label,
+          type: 'string' as const,
+          width: 14,
+        })),
+        { field: 'filledFields', header: 'Fields Filled', type: 'number' as const, width: 12 },
+        { field: 'totalFields', header: 'Total Fields', type: 'number' as const, width: 12 },
+        { field: 'completionPercentage', header: 'Completion %', type: 'number' as const, width: 14 },
+        { field: 'missingFields', header: 'Missing Fields', type: 'string' as const, width: 50 },
       ],
       'student_placement_interest_ppo': [
         { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 22 },
@@ -1141,6 +1169,87 @@ export class ReportProcessor extends WorkerHost {
     });
 
     return sheets;
+  }
+
+  /**
+   * Student profile completion workbook: student-wise rows + college-wise counts.
+   * College totals are computed from the full (unfiltered-column) data.
+   */
+  private buildProfileCompletionSheets(
+    config: ExportConfig,
+    data: any[],
+  ): { name: string; config: ExportConfig }[] {
+    const byCollege = new Map<
+      string,
+      { total: number; complete: number; started: number; sumPct: number; filled: number[] }
+    >();
+
+    data.forEach((row) => {
+      const college = row.institutionName || 'Unknown';
+      if (!byCollege.has(college)) {
+        byCollege.set(college, {
+          total: 0,
+          complete: 0,
+          started: 0,
+          sumPct: 0,
+          filled: STUDENT_PROFILE_FIELDS.map(() => 0),
+        });
+      }
+      const agg = byCollege.get(college)!;
+      const pct = Number(row.completionPercentage) || 0;
+      agg.total++;
+      agg.sumPct += pct;
+      if (pct >= 100) agg.complete++;
+      if (pct > 0) agg.started++;
+      STUDENT_PROFILE_FIELDS.forEach((f, i) => {
+        if (row[profileFieldColumnId(f.key)] === 'Yes') agg.filled[i]++;
+      });
+    });
+
+    const collegeRows = Array.from(byCollege.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([college, a]) => {
+        const row: Record<string, unknown> = {
+          institutionName: college,
+          totalStudents: a.total,
+          fullyComplete: a.complete,
+          partiallyComplete: a.started - a.complete,
+          notStarted: a.total - a.started,
+          avgCompletion: Math.round((a.sumPct / a.total) * 10) / 10,
+        };
+        STUDENT_PROFILE_FIELDS.forEach((f, i) => {
+          row[profileFieldColumnId(f.key)] = a.filled[i];
+        });
+        return row;
+      });
+
+    const collegeColumns = [
+      { field: 'institutionName', header: 'College Name', type: 'string' as const, width: 32 },
+      { field: 'totalStudents', header: 'Total Students', type: 'number' as const, width: 14 },
+      { field: 'fullyComplete', header: 'Fully Complete (100%)', type: 'number' as const, width: 20 },
+      { field: 'partiallyComplete', header: 'Partially Complete', type: 'number' as const, width: 18 },
+      { field: 'notStarted', header: 'Not Started (0%)', type: 'number' as const, width: 16 },
+      { field: 'avgCompletion', header: 'Avg Completion %', type: 'number' as const, width: 16 },
+      ...STUDENT_PROFILE_FIELDS.map((f) => ({
+        field: profileFieldColumnId(f.key),
+        header: `${f.label} (filled)`,
+        type: 'number' as const,
+        width: 16,
+      })),
+    ];
+
+    return [
+      { name: 'Student Wise', config: { ...config, title: `${config.title} - Student Wise` } },
+      {
+        name: 'College Wise',
+        config: {
+          ...config,
+          title: `${config.title} - College Wise`,
+          columns: collegeColumns,
+          data: collegeRows,
+        },
+      },
+    ];
   }
 
   /**

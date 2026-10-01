@@ -6,6 +6,10 @@ import {
 } from "../../../generated/prisma/client";
 import { PrismaService } from "../../../core/database/prisma.service";
 import { ReportType } from "./interfaces/report.interface";
+import {
+  STUDENT_PROFILE_FIELDS,
+  profileFieldColumnId,
+} from "./constants/student-profile-fields";
 import { getMonthCycle } from "../../../common/utils/monthly-cycle.util";
 
 /**
@@ -797,6 +801,112 @@ export class ReportGeneratorService {
         // Timestamps (formatted in IST)
         createdAt: this.formatToIST(student.createdAt),
       };
+    });
+  }
+
+  /**
+   * Generate Student Profile Completion Report
+   * One row per student with a Yes/No flag per profile field and overall completion %.
+   * College-wise totals are derived from these rows at export time.
+   */
+  async generateStudentProfileCompletionReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: any = {};
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.institutionId) where.institutionId = filters.institutionId;
+    if (filters?.branchId) where.branchId = filters.branchId;
+    if (filters?.currentYear !== undefined && filters?.currentYear !== null) {
+      where.currentYear = Number(filters.currentYear);
+    }
+
+    const isActiveValue = this.parseBooleanLike(filters?.isActive);
+    where.user = { active: isActiveValue !== undefined ? isActiveValue : true };
+
+    const students = await this.prisma.student.findMany({
+      where,
+      select: {
+        gender: true,
+        category: true,
+        admissionType: true,
+        parentName: true,
+        parentContact: true,
+        address: true,
+        city: true,
+        tehsil: true,
+        district: true,
+        state: true,
+        pinCode: true,
+        profileImage: true,
+        currentYear: true,
+        user: {
+          select: {
+            name: true,
+            email: true,
+            phoneNo: true,
+            dob: true,
+            rollNumber: true,
+            branchName: true,
+          },
+        },
+        branch: { select: { name: true } },
+        Institution: { select: { name: true } },
+      },
+      take,
+      skip,
+      orderBy: { createdAt: "desc" },
+    });
+
+    this.warnOnLargeResultSet(students.length, "StudentProfileCompletion");
+
+    const isFilled = (v: unknown) =>
+      v !== null && v !== undefined && String(v).trim() !== "";
+
+    return students.map((s) => {
+      const values: Record<string, unknown> = {
+        name: s.user?.name,
+        email: s.user?.email,
+        phone: s.user?.phoneNo,
+        dob: s.user?.dob,
+        gender: s.gender,
+        category: s.category,
+        admissionType: s.admissionType,
+        parentName: s.parentName,
+        parentContact: s.parentContact,
+        address: s.address,
+        city: s.city,
+        tehsil: s.tehsil,
+        district: s.district,
+        state: s.state,
+        pinCode: s.pinCode,
+        profileImage: s.profileImage,
+      };
+
+      const row: Record<string, unknown> = {
+        rollNumber: s.user?.rollNumber ?? "",
+        name: s.user?.name ?? "",
+        institutionName: s.Institution?.name ?? "",
+        branchName: s.branch?.name ?? s.user?.branchName ?? "",
+        currentYear: s.currentYear,
+      };
+
+      let filled = 0;
+      const missing: string[] = [];
+      for (const f of STUDENT_PROFILE_FIELDS) {
+        const ok = isFilled(values[f.key]);
+        row[profileFieldColumnId(f.key)] = ok ? "Yes" : "No";
+        if (ok) filled++;
+        else missing.push(f.label);
+      }
+
+      const total = STUDENT_PROFILE_FIELDS.length;
+      row.filledFields = filled;
+      row.totalFields = total;
+      row.completionPercentage = Math.round((filled / total) * 1000) / 10;
+      row.missingFields = missing.join(", ");
+      return row;
     });
   }
 
@@ -2770,6 +2880,8 @@ export class ReportGeneratorService {
           filters,
           pagination,
         );
+      case "student-profile-completion":
+        return this.generateStudentProfileCompletionReport(filters, pagination);
       case "student-placement-interest-ppo":
         return this.generateStudentPlacementInterestPpoReport(
           filters,
