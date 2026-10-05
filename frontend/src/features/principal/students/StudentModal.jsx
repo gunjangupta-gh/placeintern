@@ -8,11 +8,14 @@ import dayjs from 'dayjs';
 import { useLookup } from '../../shared/hooks/useLookup';
 import { getImageUrl, getPresignedUrl } from '../../../utils/imageUtils';
 import principalService from '../../../services/principal.service';
+import { stateDistrictTehsilData } from '../../../constants/stateDistrictTehsil.constants';
 
 const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
   const dispatch = useDispatch();
   const { token } = theme.useToken();
   const [form] = Form.useForm();
+  const selectedState = Form.useWatch('state', form);
+  const selectedDistrict = Form.useWatch('district', form);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
 
@@ -503,27 +506,46 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
               <Form.Item
                 name="state"
                 label="State"
-                rules={[{ required: true, message: 'Please enter state' }]}
+                rules={[{ required: true, message: 'Please select state' }]}
               >
-                <Input placeholder="Enter state" />
+                <Select
+                  showSearch
+                  placeholder="Select state"
+                  options={Object.keys(stateDistrictTehsilData).sort().map((v) => ({ value: v, label: v }))}
+                  filterOption={(input, option) => option.label.toLowerCase().includes(input.toLowerCase())}
+                  onChange={() => form.setFieldsValue({ district: undefined, tehsil: undefined })}
+                />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item
                 name="tehsil"
                 label="Tehsil"
-                rules={[{ required: true, message: 'Please enter tehsil' }]}
+                rules={[{ required: true, message: 'Please select tehsil' }]}
               >
-                <Input placeholder="Enter tehsil" />
+                <Select
+                  showSearch
+                  placeholder={selectedDistrict ? 'Select tehsil' : 'Select district first'}
+                  disabled={!selectedDistrict}
+                  options={(stateDistrictTehsilData[selectedState]?.[selectedDistrict] || []).map((v) => ({ value: v, label: v }))}
+                  filterOption={(input, option) => option.label.toLowerCase().includes(input.toLowerCase())}
+                />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item
                 name="district"
                 label="District"
-                rules={[{ required: true, message: 'Please enter district' }]}
+                rules={[{ required: true, message: 'Please select district' }]}
               >
-                <Input placeholder="Enter district" />
+                <Select
+                  showSearch
+                  placeholder={selectedState ? 'Select district' : 'Select state first'}
+                  disabled={!selectedState}
+                  options={Object.keys(stateDistrictTehsilData[selectedState] || {}).sort().map((v) => ({ value: v, label: v }))}
+                  filterOption={(input, option) => option.label.toLowerCase().includes(input.toLowerCase())}
+                  onChange={() => form.setFieldsValue({ tehsil: undefined })}
+                />
               </Form.Item>
             </Col>
           </Row>

@@ -55,6 +55,7 @@ import {
   BookOutlined,
 } from "@ant-design/icons";
 import toast from "react-hot-toast";
+import { stateDistrictTehsilData } from "../../../constants/stateDistrictTehsil.constants";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -123,188 +124,6 @@ export default function StudentProfile() {
   const error = reduxError;
   const rawResults = student?.results || [];
 
-  // State-wise District and Tehsil data
-  const stateDistrictTehsilData = {
-    Punjab: {
-      Amritsar: [
-        "Amritsar-I",
-        "Amritsar-II",
-        "Ajnala",
-        "Attari",
-        "Baba Bakala",
-        "Majitha",
-        "Rayya",
-        "Tarn Taran",
-      ],
-      Barnala: ["Barnala", "Mehal Kalan", "Tapa"],
-      Bathinda: ["Bathinda", "Sangat", "Talwandi Sabo", "Rampura Phul", "Maur"],
-      Faridkot: ["Faridkot", "Jaito", "Kotkapura"],
-      "Fatehgarh Sahib": [
-        "Fatehgarh Sahib",
-        "Amloh",
-        "Bassi Pathana",
-        "Khamanon",
-        "Mandi Gobindgarh",
-        "Sirhind",
-      ],
-      Fazilka: ["Fazilka", "Abohar", "Jalalabad"],
-      Ferozepur: ["Ferozepur", "Fazilka", "Guru Har Sahai", "Zira", "Makhu"],
-      Gurdaspur: [
-        "Gurdaspur",
-        "Batala",
-        "Dera Baba Nanak",
-        "Dhariwal",
-        "Kahnuwan",
-        "Kalanaur",
-        "Pathankot",
-        "Qadian",
-        "Sri Hargobindpur",
-        "Sujanpur",
-      ],
-      Hoshiarpur: [
-        "Hoshiarpur",
-        "Dasuya",
-        "Garhshankar",
-        "Hariana",
-        "Mukerian",
-        "Talwara",
-      ],
-      Jalandhar: [
-        "Jalandhar-I",
-        "Jalandhar-II",
-        "Adampur",
-        "Bhogpur",
-        "Goraya",
-        "Nakodar",
-        "Phillaur",
-        "Shahkot",
-      ],
-      Kapurthala: [
-        "Kapurthala",
-        "Bhulath",
-        "Dhilwan",
-        "Phagwara",
-        "Sultanpur Lodhi",
-      ],
-      Ludhiana: [
-        "Ludhiana East",
-        "Ludhiana West",
-        "Doraha",
-        "Jagraon",
-        "Khanna",
-        "Payal",
-        "Raikot",
-        "Samrala",
-      ],
-      Mansa: ["Mansa", "Budhlada", "Sardulgarh"],
-      Moga: ["Moga", "Baghapurana", "Dharamkot", "Nihal Singh Wala"],
-      "Mohali (S.A.S Nagar)": ["Mohali", "Derabassi", "Kharar", "Kurali"],
-      Muktsar: ["Muktsar", "Gidderbaha", "Malout"],
-      Pathankot: ["Pathankot", "Dhar Kalan", "Sujanpur"],
-      Patiala: ["Patiala", "Nabha", "Rajpura", "Patran", "Samana"],
-      Rupnagar: [
-        "Rupnagar",
-        "Anandpur Sahib",
-        "Chamkaur Sahib",
-        "Morinda",
-        "Nangal",
-      ],
-      Sangrur: [
-        "Sangrur",
-        "Ahmedgarh",
-        "Barnala",
-        "Bhawanigarh",
-        "Dhuri",
-        "Dirba",
-        "Lehragaga",
-        "Longowal",
-        "Malerkotla",
-        "Moonak",
-        "Sunam",
-      ],
-      "Shaheed Bhagat Singh Nagar": [
-        "Nawanshahr",
-        "Balachaur",
-        "Banga",
-        "Garhshankar",
-      ],
-      "Tarn Taran": ["Tarn Taran", "Khadur Sahib", "Patti", "Khem Karan"],
-    },
-    "Himachal Pradesh": {
-      Bilaspur: ["Bilaspur", "Ghumarwin", "Jhandutta", "Sadar"],
-      Chamba: ["Chamba", "Bharmour", "Churah", "Dalhousie", "Pangi", "Salooni"],
-      Hamirpur: ["Hamirpur", "Barsar", "Bhoranj", "Nadaun", "Sujanpur"],
-      Kangra: [
-        "Kangra",
-        "Baijnath",
-        "Baroh",
-        "Dehra",
-        "Dharamshala",
-        "Fatehpur",
-        "Indora",
-        "Jawalamukhi",
-        "Jaisinghpur",
-        "Kangra",
-        "Khundian",
-        "Nurpur",
-        "Palampur",
-        "Pragpur",
-        "Rakkar",
-        "Shahpur",
-        "Sulah",
-      ],
-      Kinnaur: ["Kinnaur", "Hangrang", "Kalpa", "Moorang", "Nichar", "Pooh"],
-      Kullu: [
-        "Kullu",
-        "Ani",
-        "Banjar",
-        "Bhuntar",
-        "Kullu",
-        "Manali",
-        "Naggar",
-        "Nirmand",
-      ],
-      "Lahaul and Spiti": ["Lahaul", "Spiti", "Keylong", "Udaipur"],
-      Mandi: [
-        "Mandi",
-        "Aut",
-        "Balh",
-        "Bali Chowki",
-        "Chachiot",
-        "Dharmpur",
-        "Gohar",
-        "Jogindernagar",
-        "Karsog",
-        "Padhar",
-        "Sarkaghat",
-        "Sundernagar",
-        "Thunag",
-      ],
-      Shimla: [
-        "Shimla",
-        "Chirgaon",
-        "Chopal",
-        "Jubbal",
-        "Kotkhai",
-        "Kumarsain",
-        "Nankhari",
-        "Rampur",
-        "Rohru",
-        "Theog",
-      ],
-      Sirmaur: [
-        "Sirmaur",
-        "Nahan",
-        "Pachhad",
-        "Paonta Sahib",
-        "Rajgarh",
-        "Sangrah",
-        "Shillai",
-      ],
-      Solan: ["Solan", "Arki", "Dharampur", "Kandaghat", "Kasauli", "Nalagarh"],
-      Una: ["Una", "Amb", "Bangana", "Bharwain", "Gagret", "Haroli"],
-    },
-  };
 
   const [selectedState, setSelectedState] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
@@ -380,6 +199,29 @@ export default function StudentProfile() {
     },
     [dispatch],
   );
+
+  // DOB arrives masked in the profile response; load the real value (own data only)
+  const [ownDob, setOwnDob] = useState(null);
+  const hasStudent = !!student;
+  useEffect(() => {
+    if (!hasStudent) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        let data = unmaskedDataRef.current;
+        if (!data) {
+          data = await studentService.getOwnUnmaskedContact();
+          unmaskedDataRef.current = data;
+        }
+        if (!cancelled) setOwnDob(data?.dob ? String(data.dob).slice(0, 10) : null);
+      } catch (err) {
+        console.error("Failed to load date of birth:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hasStudent]);
 
   // Check for incomplete profile and show toast
   useEffect(() => {
@@ -473,6 +315,7 @@ export default function StudentProfile() {
       await dispatch(updateProfile(values)).unwrap();
       // Contact details may have changed - refetch real values on next reveal/edit
       unmaskedDataRef.current = null;
+      if (values.dob) setOwnDob(String(values.dob).slice(0, 10));
 
       // Step 2: Upload profile image if provided
       if (profileImageList.length > 0 && profileImageList[0].originFileObj) {
@@ -532,11 +375,7 @@ export default function StudentProfile() {
       parentName: student.parentName,
       parentContact: unmasked?.parentContact || "",
       address: student.address,
-      dob: student?.user?.dob
-        ? student?.user?.dob.slice(0, 10)
-        : student.dob
-          ? student.dob.slice(0, 10)
-          : null,
+      dob: unmasked?.dob ? String(unmasked.dob).slice(0, 10) : null,
       city: student.city,
       state: student.state,
       pinCode: student.pinCode,
@@ -827,7 +666,7 @@ export default function StudentProfile() {
           <InfoCard
             icon={<CalendarOutlined className="text-base" />}
             label="Date of Birth"
-            value={(student?.user?.dob || student.dob)?.slice(0, 10)}
+            value={ownDob || (student?.user?.dob || student.dob)?.slice(0, 10)}
             color={token.colorWarning}
           />
           <InfoCard
@@ -929,10 +768,12 @@ export default function StudentProfile() {
                               className="text-xs font-semibold"
                               style={{ color: token.colorText }}
                             >
-                              {(student?.user?.dob || student.dob)?.slice(
-                                0,
-                                10,
-                              ) || "N/A"}
+                              {ownDob ||
+                                (student?.user?.dob || student.dob)?.slice(
+                                  0,
+                                  10,
+                                ) ||
+                                "N/A"}
                             </Text>
                           </div>
                           <div
