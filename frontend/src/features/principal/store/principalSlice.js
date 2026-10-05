@@ -1211,7 +1211,9 @@ const principalSlice = createSlice({
         if (updatedStudent?.id) {
           // Replace optimistic entry with real data
           state.students.list = state.students.list.map(s =>
-            s.id === updatedStudent.id ? { ...updatedStudent, _isOptimistic: undefined } : s
+            s.id === updatedStudent.id
+              ? { ...s, ...updatedStudent, user: { ...s.user, ...updatedStudent.user }, _isOptimistic: undefined }
+              : s
           );
         }
         state.lastFetched.students = null; // Invalidate cache to trigger refresh

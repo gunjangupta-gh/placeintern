@@ -6322,7 +6322,7 @@ export class PrincipalService {
     });
 
     // If this is a profile image, update the student's profileImage field
-    if (type === 'profile' || type === 'PROFILE_IMAGE') {
+    if (type === 'profile' || type === 'PROFILE_IMAGE' || type === 'PHOTO') {
       await this.prisma.student.update({
         where: { id: studentId },
         data: { profileImage: uploadResult.url },

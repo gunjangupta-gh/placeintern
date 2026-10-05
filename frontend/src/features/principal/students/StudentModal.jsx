@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Form, Input, InputNumber, Select, DatePicker, Button, Row, Col, Upload, Spin, Modal, Divider, theme, Tooltip } from 'antd';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
-import { createStudent, updateStudent, fetchStudents } from '../store/principalSlice';
+import { createStudent, updateStudent, fetchStudents, uploadStudentDocument } from '../store/principalSlice';
 import { UploadOutlined, SaveOutlined, UserOutlined, PhoneOutlined, MailOutlined, HomeOutlined, CalendarOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useLookup } from '../../shared/hooks/useLookup';
@@ -134,7 +134,9 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
     };
 
     setFormValues();
-  }, [student, form, open, isEditMode]);
+    // Depend on the student's id (not the object) so list refreshes don't overwrite in-progress edits
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [student?.id, form, open, isEditMode]);
 
   const handleClose = () => {
     form.resetFields();
@@ -151,19 +153,29 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
         scholarshipId: values.scholarshipId ?? null,
       };
 
-      // Remove profileImage from values if it's not a new file
-      if (formattedValues.profileImage && Array.isArray(formattedValues.profileImage)) {
-        const hasNewFile = formattedValues.profileImage.some(f => f.originFileObj);
-        if (!hasNewFile) {
-          delete formattedValues.profileImage;
+      // The student create/update endpoints accept JSON fields only (the antd fileList would be
+      // rejected as a non-whitelisted property), so the image is uploaded separately afterwards.
+      const newImageFile = Array.isArray(formattedValues.profileImage)
+        ? formattedValues.profileImage.find(f => f.originFileObj)?.originFileObj
+        : null;
+      delete formattedValues.profileImage;
+
+      const uploadProfileImage = async (id) => {
+        if (!newImageFile || !id) return;
+        try {
+          await dispatch(uploadStudentDocument({ studentId: id, file: newImageFile, type: 'PHOTO' })).unwrap();
+        } catch (err) {
+          toast.error(`Student saved, but profile image upload failed: ${err?.message || err}`);
         }
-      }
+      };
 
       if (isEditMode) {
         await dispatch(updateStudent({ id: studentId, data: formattedValues })).unwrap();
+        await uploadProfileImage(studentId);
         toast.success('Student updated successfully');
       } else {
         const response = await dispatch(createStudent(formattedValues)).unwrap();
+        await uploadProfileImage(response?.id);
         if (response?._warning) {
           toast.success('Student created successfully', { duration: 3000 });
           toast.warning(response._warning, { duration: 8000 });
@@ -230,11 +242,8 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
       transitionName=""
       maskTransitionName=""
     >
-      {initialLoading || lookupLoading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 48 }}>
-          <Spin size="large" />
-        </div>
-      ) : (
+      {/* Keep the Form mounted while loading: unmounting it drops values set via setFieldsValue */}
+      <Spin spinning={initialLoading || lookupLoading} size="large">
         <Form form={form} layout="vertical" onFinish={onFinish} style={{ maxHeight: '70vh', overflowY: 'auto', padding: '0 8px' }}>
           <Divider plain><span style={{ color: token.colorPrimary, fontWeight: 500 }}>Personal Information</span></Divider>
 
@@ -529,7 +538,18 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
                 valuePropName="fileList"
                 getValueFromEvent={normFile}
               >
-                <Upload beforeUpload={() => false} maxCount={1} accept="image/*" listType="picture">
+                <Upload
+                  beforeUpload={(file) => {
+                    if (file.size / 1024 > 500) {
+                      toast.error('Image must be less than 500KB.');
+                      return Upload.LIST_IGNORE;
+                    }
+                    return false;
+                  }}
+                  maxCount={1}
+                  accept="image/*"
+                  listType="picture"
+                >
                   <Button icon={<UploadOutlined />}>Click to Upload</Button>
                 </Upload>
               </Form.Item>
@@ -545,7 +565,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
             </Button>
           </div>
         </Form>
-      )}
+      </Spin>
     </Modal>
   );
 };

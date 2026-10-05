@@ -196,9 +196,11 @@ const AllStudents = () => {
     try {
       const result = await dispatch(fetchStudentById(studentId)).unwrap();
       setSelectedStudentFull(result);
+      // Keep the header/list selection in sync with the latest saved data
+      setSelectedStudent(prev => (prev?.id === result?.id ? { ...prev, ...result } : prev));
     } catch (error) {
       console.error('Failed to load student details:', error);
-      setSelectedStudentFull(null);
+      // Keep showing the last known details rather than blanking the panel
     } finally {
       setLoadingStudentDetails(false);
     }
