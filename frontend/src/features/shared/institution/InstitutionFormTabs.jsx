@@ -189,11 +189,9 @@ const InstitutionFormTabs = ({
                 { title: 'Additional', width: 120, render: (_, __, index) => <Form.Item name={[index, 'additionalRequirementSqFt']} className="mb-0"><InputNumber min={0} step={0.01} className="w-full" /></Form.Item> },
                 { title: 'Unsafe', width: 100, render: (_, __, index) => <Form.Item name={[index, 'declaredUnsafeAreaSqFt']} className="mb-0"><InputNumber min={0} step={0.01} className="w-full" /></Form.Item> },
                 { title: 'Last Repair Date', width: 160, render: (_, __, index) => <Form.Item name={[index, 'lastMajorRepairDate']} className="mb-0"><DatePicker className="w-full" format="DD-MM-YYYY" /></Form.Item> },
-                { title: 'Furniture Available', width: 140, render: (_, __, index) => <Form.Item name={[index, 'furnitureAvailable']} className="mb-0"><YesNoSelect /></Form.Item> },
-                { title: 'Smart Boards / TVs', width: 140, render: (_, __, index) => <Form.Item name={[index, 'smartBoardsCount']} className="mb-0"><InputNumber min={0} precision={0} className="w-full" /></Form.Item> },
                 { title: 'Future Expansion', width: 190, render: (_, __, index) => <Form.Item name={[index, 'futureExpansionScope']} className="mb-0"><Input placeholder="Optional" /></Form.Item> },
               ];
-              return <Table size="small" bordered pagination={false} scroll={{ x: 1310 }} columns={tableColumns} dataSource={fields.map((field) => ({ key: field.key }))} />;
+              return <Table size="small" bordered pagination={false} scroll={{ x: 1030 }} columns={tableColumns} dataSource={fields.map((field) => ({ key: field.key }))} />;
             }}
           </Form.List>
         </>

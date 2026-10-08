@@ -780,8 +780,6 @@ const LandRecordsTab = memo(({ data, loading, error, branchInfrastructure = [], 
                   <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Available (Sq.ft)</th>
                   <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Required (Sq.ft)</th>
                   <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Additional Need</th>
-                  <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Furniture</th>
-                  <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Smart Boards / TVs</th>
                 </tr>
               </thead>
               <tbody>
@@ -796,8 +794,6 @@ const LandRecordsTab = memo(({ data, loading, error, branchInfrastructure = [], 
                         <Tag color="warning" className="m-0 text-[9px]">{area.additionalRequirementSqFt.toLocaleString()}</Tag>
                       ) : '-'}
                     </td>
-                    <td className="py-1.5 px-2 text-center">{renderYesNo(area.furnitureAvailable)}</td>
-                    <td className="py-1.5 px-2 text-center">{area.smartBoardsCount ?? '-'}</td>
                   </tr>
                 ))}
               </tbody>

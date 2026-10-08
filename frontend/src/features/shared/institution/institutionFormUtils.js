@@ -129,8 +129,6 @@ const isCoveredAreaRowFilled = (row = {}) => {
     'declaredUnsafeAreaSqFt',
     'lastMajorRepairDate',
     'futureExpansionScope',
-    'furnitureAvailable',
-    'smartBoardsCount',
   ];
   return keysToCheck.some((key) => !isBlank(row[key]));
 };
@@ -144,8 +142,6 @@ export const buildDefaultCoveredAreaRows = () => COVERED_AREA_ENTITIES.map((enti
   declaredUnsafeAreaSqFt: undefined,
   lastMajorRepairDate: null,
   futureExpansionScope: '',
-  furnitureAvailable: undefined,
-  smartBoardsCount: undefined,
 }));
 
 export const buildDefaultBranchIntakeRows = () => ([{
@@ -183,8 +179,6 @@ const buildCoveredAreaRow = (row) => ({
   declaredUnsafeAreaSqFt: toNumberOrUndefined(row.declaredUnsafeAreaSqFt),
   lastMajorRepairDate: row.lastMajorRepairDate ? row.lastMajorRepairDate.toISOString() : undefined,
   futureExpansionScope: row.futureExpansionScope || undefined,
-  furnitureAvailable: selectToBoolean(row.furnitureAvailable),
-  smartBoardsCount: toNumberOrUndefined(row.smartBoardsCount),
 });
 
 // State payload: empty fields are omitted; covered areas use the Prisma nested
@@ -313,7 +307,6 @@ export const buildInstitutionFormValues = (institution) => {
     acc[row.entityType] = {
       ...row,
       lastMajorRepairDate: row.lastMajorRepairDate ? dayjs(row.lastMajorRepairDate) : null,
-      furnitureAvailable: booleanToSelect(row.furnitureAvailable),
     };
     return acc;
   }, {});

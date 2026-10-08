@@ -154,8 +154,6 @@ const InstitutionProfileView = ({ institution, intakes = [], staffCapacities = [
     { title: 'Additional (Sq.ft)', dataIndex: 'additionalRequirementSqFt', align: 'center', render: (v) => formatNumber(v) ?? '-' },
     { title: 'Unsafe (Sq.ft)', dataIndex: 'declaredUnsafeAreaSqFt', align: 'center', render: (v) => formatNumber(v) ?? '-' },
     { title: 'Last Repair', dataIndex: 'lastMajorRepairDate', align: 'center', render: (v) => formatDate(v) ?? '-' },
-    { title: 'Furniture', dataIndex: 'furnitureAvailable', align: 'center', render: (v) => yesNo(v) ?? '-' },
-    { title: 'Smart Boards / TVs', dataIndex: 'smartBoardsCount', align: 'center', render: (v) => v ?? '-' },
     { title: 'Future Expansion', dataIndex: 'futureExpansionScope', render: (v) => v || '-' },
   ];
 
@@ -200,7 +198,7 @@ const InstitutionProfileView = ({ institution, intakes = [], staffCapacities = [
             bordered
             pagination={false}
             rowKey="entityType"
-            scroll={{ x: 1100 }}
+            scroll={{ x: 900 }}
             columns={coveredColumns}
             dataSource={coveredAreas}
           />
