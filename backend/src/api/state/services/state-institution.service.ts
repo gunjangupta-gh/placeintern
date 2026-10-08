@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../core/database/prisma.service';
+import { calculateStudentProgress } from '../../../common/utils/academic-progress.util';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
-import { Prisma, ApplicationStatus, InternshipPhase, Role, AuditAction, AuditCategory, AuditSeverity } from '../../../generated/prisma/client';
+import { Prisma, ApplicationStatus, InternshipPhase, Role, AuditAction, AuditCategory, AuditSeverity, CoveredAreaEntityType } from '../../../generated/prisma/client';
 import {
   calculateExpectedMonths,
   getExpectedReportsAsOfToday,
@@ -10,6 +11,19 @@ import {
   getMonthCycle,
   MONTHLY_CYCLE,
 } from '../../../common/utils/monthly-cycle.util';
+
+// Same convention as the frontend getDefaultAcademicYear(): "2026-27"
+const getCurrentAcademicYear = (): string => {
+  const year = new Date().getFullYear();
+  return `${year}-${String((year + 1) % 100).padStart(2, '0')}`;
+};
+
+// Prefer the current academic year; if no rows exist for it, fall back to the
+// latest year that does (so the totals don't silently drop to 0).
+const pickAcademicYear = (years: string[], current: string): string => {
+  if (years.includes(current)) return current;
+  return [...years].sort().pop() ?? current;
+};
 
 @Injectable()
 export class StateInstitutionService {
@@ -889,6 +903,122 @@ export class StateInstitutionService {
   }
 
   /**
+   * Get course (branch) wise infrastructure rows for an institution
+   */
+  async getInstitutionBranchInfrastructure(institutionId: string) {
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: institutionId },
+      select: { id: true },
+    });
+
+    if (!institution) {
+      throw new NotFoundException(`Institution with ID ${institutionId} not found`);
+    }
+
+    return this.prisma.branchInfrastructure.findMany({
+      where: { institutionId },
+      include: { branch: { select: { id: true, name: true, shortName: true, code: true } } },
+      orderBy: [{ branch: { name: 'asc' } }, { entityType: 'asc' }],
+    });
+  }
+
+  /**
+   * Replace all course (branch) wise infrastructure rows for an institution.
+   * Entity types are limited to those that are course specific (COMMON_AREA is
+   * institution-wide only).
+   */
+  async replaceInstitutionBranchInfrastructure(
+    institutionId: string,
+    rows: Array<{
+      branchId: string;
+      entityType: CoveredAreaEntityType;
+      numberOfRooms?: number | null;
+      furnitureAvailable?: boolean | null;
+      smartBoardsCount?: number | null;
+    }>,
+    userId?: string,
+    userRole: Role = Role.STATE_DIRECTORATE,
+  ) {
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: institutionId },
+      select: { id: true, name: true },
+    });
+
+    if (!institution) {
+      throw new NotFoundException(`Institution with ID ${institutionId} not found`);
+    }
+
+    const allowedTypes: CoveredAreaEntityType[] = [
+      CoveredAreaEntityType.LECTURE_ROOMS,
+      CoveredAreaEntityType.LABS,
+      CoveredAreaEntityType.WORKSHOPS,
+      CoveredAreaEntityType.OTHERS,
+    ];
+    const toIntOrNull = (value: unknown) =>
+      value === null || value === undefined || value === '' ? null : Math.max(0, Math.trunc(Number(value)) || 0);
+
+    const normalized = (rows || [])
+      .filter((row) => row.branchId && row.entityType)
+      .map((row) => {
+        if (!allowedTypes.includes(row.entityType)) {
+          throw new BadRequestException(`Entity type ${row.entityType} is not supported for course-wise infrastructure`);
+        }
+        return {
+          institutionId,
+          branchId: row.branchId,
+          entityType: row.entityType,
+          numberOfRooms: toIntOrNull(row.numberOfRooms),
+          furnitureAvailable: row.furnitureAvailable ?? null,
+          smartBoardsCount: toIntOrNull(row.smartBoardsCount),
+        };
+      });
+
+    const seen = new Set<string>();
+    for (const row of normalized) {
+      const key = `${row.branchId}:${row.entityType}`;
+      if (seen.has(key)) {
+        throw new BadRequestException('Duplicate infrastructure rows for the same branch and entity type are not allowed');
+      }
+      seen.add(key);
+    }
+
+    // Branches must exist (principals are additionally restricted to their own
+    // institution's branches in PrincipalService)
+    const branchIds = [...new Set(normalized.map((row) => row.branchId))];
+    if (branchIds.length > 0) {
+      const count = await this.prisma.branch.count({ where: { id: { in: branchIds } } });
+      if (count !== branchIds.length) {
+        throw new BadRequestException('One or more branch IDs are invalid');
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.branchInfrastructure.deleteMany({ where: { institutionId } });
+      if (normalized.length > 0) {
+        await tx.branchInfrastructure.createMany({ data: normalized });
+      }
+    });
+
+    this.auditService.log({
+      action: AuditAction.INSTITUTION_UPDATE,
+      entityType: 'Institution',
+      entityId: institution.id,
+      userId: userId || 'SYSTEM',
+      userRole,
+      description: `Course-wise infrastructure updated for institution ${institution.name}`,
+      category: AuditCategory.SYSTEM_ADMIN,
+      severity: AuditSeverity.MEDIUM,
+      institutionId,
+      oldValues: null,
+      newValues: { branchInfrastructureCount: normalized.length },
+    }).catch(() => {});
+
+    await this.cache.invalidateByTags(['state', 'institutions', `institution:${institutionId}`]);
+
+    return this.getInstitutionBranchInfrastructure(institutionId);
+  }
+
+  /**
    * Get institution overview with detailed statistics including self-identified internships
    */
   async getInstitutionOverview(id: string) {
@@ -1371,14 +1501,21 @@ export class StateInstitutionService {
       // branchName is now on User model, so we need to fetch and group manually
       this.prisma.student.findMany({
         where: { institutionId: id, user: { active: true } },
-        select: { user: { select: { branchName: true } } },
+        select: { user: { select: { branchId: true, branchName: true } } },
       }).then(results => {
-        const branchCounts = new Map<string, number>();
+        // Group by branchId (branchName is free text); students without a
+        // branchId fall back to their cached branch name.
+        const branchCounts = new Map<string, { branchId: string | null; branchName: string | null; count: number }>();
         for (const r of results) {
-          const branch = r.user?.branchName || 'Unknown';
-          branchCounts.set(branch, (branchCounts.get(branch) || 0) + 1);
+          const branchId = r.user?.branchId ?? null;
+          const branchName = r.user?.branchName ?? null;
+          const key = branchId ?? `name:${branchName || 'Unknown'}`;
+          const entry = branchCounts.get(key) ?? { branchId, branchName, count: 0 };
+          entry.count += 1;
+          branchCounts.set(key, entry);
         }
-        return Array.from(branchCounts.entries()).map(([branchName, count]) => ({
+        return Array.from(branchCounts.values()).map(({ branchId, branchName, count }) => ({
+          branchId,
           branchName,
           _count: { id: count },
         }));
@@ -1461,42 +1598,99 @@ export class StateInstitutionService {
           endDate: { lt: completedTrainingDate },
         },
       }),
-    ]);    // Faculty branch-wise distribution (similar to branchWiseData for students)
-    const facultyBranchWise = await this.prisma.user.findMany({
-      where: {
-        institutionId: id,
-        role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
-        active: true,
-      },
-      select: { branchName: true },
-    }).then(results => {
-      const branchCounts = new Map<string, number>();
-      for (const r of results) {
-        const branch = r.branchName || 'Unknown';
-        branchCounts.set(branch, (branchCounts.get(branch) || 0) + 1);
-      }
-      return Array.from(branchCounts.entries()).map(([branchName, count]) => ({
-        branch: branchName,
-        count,
-      }));
-    });
+    ]);
 
-    // Year-wise student breakdown (based on currentYear field)
+    // Course-wise capacity for the current academic year (the institution-level
+    // seat totals are derived from these rows, not typed in separately).
+    const currentAcademicYear = getCurrentAcademicYear();
+    const [institutionBranches, staffCapacityRows, facultyUsers] = await Promise.all([
+      this.prisma.branch.findMany({
+        where: { institutionId: id },
+        select: { id: true, name: true, shortName: true },
+      }),
+      this.prisma.branchStaffCapacity.findMany({
+        where: { institutionId: id, isActive: true },
+        select: { branchId: true, academicYear: true, sanctionedPosts: true },
+      }),
+      this.prisma.user.findMany({
+        where: {
+          institutionId: id,
+          role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
+          active: true,
+        },
+        select: { branchId: true, branchName: true, guestTeacher: true },
+      }),
+    ]);
+
+    const intakeRows = (institution.branchIntakes || []).filter((row) => row.isActive);
+    const intakeYear = pickAcademicYear(intakeRows.map((row) => row.academicYear), currentAcademicYear);
+    const staffYear = pickAcademicYear(staffCapacityRows.map((row) => row.academicYear), currentAcademicYear);
+
+    const sanctionedSeatsByBranch = new Map<string, number>();
+    for (const row of intakeRows) {
+      if (row.academicYear !== intakeYear) continue;
+      sanctionedSeatsByBranch.set(row.branchId, (sanctionedSeatsByBranch.get(row.branchId) || 0) + (row.sanctionedSeats || 0));
+    }
+    const sanctionedPostsByBranch = new Map<string, number>();
+    for (const row of staffCapacityRows) {
+      if (row.academicYear !== staffYear) continue;
+      sanctionedPostsByBranch.set(row.branchId, (sanctionedPostsByBranch.get(row.branchId) || 0) + (row.sanctionedPosts || 0));
+    }
+    const branchById = new Map(institutionBranches.map((b) => [b.id, b]));
+    const sumValues = (m: Map<string, number>) => Array.from(m.values()).reduce((a, b) => a + b, 0);
+
+    // Staff by branch: actual active staff grouped by branchId (same roles as
+    // the facultyCount header), plus branches that only have sanctioned posts.
+    const facultyGroups = new Map<string, { branchId: string | null; branchName: string | null; filled: number; guest: number }>();
+    for (const u of facultyUsers) {
+      const key = u.branchId ?? `name:${u.branchName || 'Unknown'}`;
+      const entry = facultyGroups.get(key) ?? { branchId: u.branchId ?? null, branchName: u.branchName ?? null, filled: 0, guest: 0 };
+      if (u.guestTeacher) entry.guest += 1; else entry.filled += 1;
+      facultyGroups.set(key, entry);
+    }
+    for (const branchId of sanctionedPostsByBranch.keys()) {
+      if (!facultyGroups.has(branchId)) {
+        facultyGroups.set(branchId, { branchId, branchName: null, filled: 0, guest: 0 });
+      }
+    }
+    const facultyBranchWise = Array.from(facultyGroups.values()).map((g) => {
+      const branch = g.branchId ? branchById.get(g.branchId) : undefined;
+      return {
+        branchId: g.branchId,
+        branch: branch?.name || g.branchName || 'Unknown',
+        shortName: branch?.shortName || null,
+        count: g.filled + g.guest,
+        filled: g.filled,
+        guest: g.guest,
+        sanctionedPosts: g.branchId && sanctionedPostsByBranch.has(g.branchId) ? sanctionedPostsByBranch.get(g.branchId)! : null,
+      };
+    });
+    const capacitySummary = {
+      studentSeats: sumValues(sanctionedSeatsByBranch),
+      staffPosts: sumValues(sanctionedPostsByBranch),
+      intakeAcademicYear: intakeYear,
+      staffAcademicYear: staffYear,
+    };
+
+    // Year-wise student breakdown. The year is derived from admissionYear at read
+    // time (same formula as the scheduler), so it is right even if the stored
+    // currentYear is stale or was never filled in. The stored value is only a
+    // fallback for students without an admissionYear.
     const yearWiseData = await this.prisma.student.groupBy({
-      by: ['currentYear'],
-      where: {
-        institutionId: id,
-        user: { active: true },
-        currentYear: { not: null },
-      },
+      by: ['admissionYear', 'currentYear'],
+      where: { institutionId: id, user: { active: true } },
       _count: { id: true },
     });
 
-    const yearWiseStudents = {
-      firstYear: yearWiseData.find(y => y.currentYear === 1)?._count.id || 0,
-      secondYear: yearWiseData.find(y => y.currentYear === 2)?._count.id || 0,
-      thirdYear: yearWiseData.find(y => y.currentYear === 3)?._count.id || 0,
-    };
+    const yearWiseStudents = { firstYear: 0, secondYear: 0, thirdYear: 0, unknown: 0 };
+    for (const row of yearWiseData) {
+      const year = calculateStudentProgress(row.admissionYear)?.currentYear ?? row.currentYear;
+      const count = row._count.id;
+      if (year === 1) yearWiseStudents.firstYear += count;
+      else if (year === 2) yearWiseStudents.secondYear += count;
+      else if (year === 3) yearWiseStudents.thirdYear += count;
+      else yearWiseStudents.unknown += count; // no admissionYear, not started, or past the course
+    }
 
     // Calculate unassigned students (active students - students with mentors)
     const unassignedStudents = Math.max(0, activeStudents - assignedStudents);
@@ -1571,11 +1765,36 @@ export class StateInstitutionService {
         externalMentors: externalMentorsCount,
         studentsWithExternalMentors: studentsWithExternalMentors,
       },
-      branchWiseData: branchWiseStudents.map(b => ({
-        branch: b.branchName || 'Unknown',
-        count: b._count.id,
-      })),
+      // Students by branch: enrolled (active) count vs sanctioned intake seats
+      // for the current academic year; branches with intake but no students
+      // are included.
+      branchWiseData: (() => {
+        const rows = branchWiseStudents.map((b) => {
+          const branch = b.branchId ? branchById.get(b.branchId) : undefined;
+          return {
+            branchId: b.branchId,
+            branch: branch?.name || b.branchName || 'Unknown',
+            shortName: branch?.shortName || null,
+            count: b._count.id,
+            sanctionedSeats: b.branchId && sanctionedSeatsByBranch.has(b.branchId) ? sanctionedSeatsByBranch.get(b.branchId)! : null,
+          };
+        });
+        for (const [branchId, seats] of sanctionedSeatsByBranch) {
+          if (!rows.some((r) => r.branchId === branchId)) {
+            const branch = branchById.get(branchId);
+            rows.push({
+              branchId,
+              branch: branch?.name || 'Unknown',
+              shortName: branch?.shortName || null,
+              count: 0,
+              sanctionedSeats: seats,
+            });
+          }
+        }
+        return rows;
+      })(),
       facultyBranchWiseData: facultyBranchWise,
+      capacitySummary,
       companiesCount,
       facultyCount,
       branchIntakeSummary,

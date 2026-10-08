@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsArray, ValidateNested, IsInt, Min, Max } from 'class-validator';
+import { IsString, IsNotEmpty, IsArray, ValidateNested, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class BulkStudentRowDto {
@@ -25,18 +25,42 @@ export class BulkStudentRowDto {
   @IsNotEmpty({ message: 'Batch is required' })
   batchName: string;
 
+  @ApiProperty({ description: 'Student email address (must be unique)' })
+  @IsString()
+  @IsNotEmpty({ message: 'Email is required' })
+  email: string;
+
+  @ApiProperty({ description: 'Student contact number (10 digits)' })
+  @IsString()
+  @IsNotEmpty({ message: 'Contact number is required' })
+  phone: string;
+
+  @ApiProperty({ description: 'Gender: Male, Female or Other' })
+  @IsString()
+  @IsNotEmpty({ message: 'Gender is required' })
+  gender: string;
+
+  @ApiProperty({ description: 'Category: General, OBC, SC or ST' })
+  @IsString()
+  @IsNotEmpty({ message: 'Category is required' })
+  category: string;
+
+  @ApiProperty({ description: 'Admission type: First Year or LEET' })
+  @IsString()
+  @IsNotEmpty({ message: 'Admission type is required' })
+  admissionType: string;
+
   @ApiProperty({
-    description: 'College/Institution name. Auto-matched to an existing institution. Required when no default institution applies (State Directorate).',
-    required: false,
+    description: 'College/Institution name. Auto-matched to an existing institution.',
   })
   @IsString()
-  @IsOptional()
-  institutionName?: string;
+  @IsNotEmpty({ message: 'College name is required' })
+  institutionName: string;
 
-  @ApiProperty({ description: 'Branch/Course name. Auto-matched to an existing branch.', required: false })
+  @ApiProperty({ description: 'Full course/branch name. Auto-matched to an existing branch.' })
   @IsString()
-  @IsOptional()
-  branchName?: string;
+  @IsNotEmpty({ message: 'Course is required' })
+  branchName: string;
 }
 
 export class BulkStudentUploadDto {

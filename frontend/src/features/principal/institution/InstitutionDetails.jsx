@@ -9,6 +9,7 @@ import {
   buildInstitutionFormValues,
   buildPrincipalInstitutionPayload,
   normalizeLookupList,
+  sanitizeBranchInfrastructureRows,
   sanitizeBranchIntakeRows,
   sanitizeStaffCapacityRows,
 } from '../../shared/institution/institutionFormUtils';
@@ -34,12 +35,13 @@ const InstitutionDetails = () => {
   const [institution, setInstitution] = useState(null);
   const [intakes, setIntakes] = useState([]);
   const [staffCapacities, setStaffCapacities] = useState([]);
+  const [branchInfrastructure, setBranchInfrastructure] = useState([]);
   const [branchOptions, setBranchOptions] = useState([]);
   const [batchOptions, setBatchOptions] = useState([]);
 
   // Snapshot of what the form was loaded with, used to only re-save intake /
   // staff rows when they actually changed and to keep existing covered-area rows.
-  const initialRef = useRef({ intakes: '[]', staff: '[]', entityTypes: [] });
+  const initialRef = useRef({ intakes: '[]', staff: '[]', infra: '[]', entityTypes: [] });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,10 +49,11 @@ const InstitutionDetails = () => {
     try {
       // Everything must load before the page is usable: saving a form built
       // from defaults could otherwise overwrite real data with empty rows.
-      const [institutionRes, intakesRes, staffRes, branchesRes, batchesRes] = await Promise.all([
+      const [institutionRes, intakesRes, staffRes, infraRes, branchesRes, batchesRes] = await Promise.all([
         principalService.getInstitution(),
         principalService.getInstitutionBranchIntakes(),
         principalService.getInstitutionBranchStaffCapacities(),
+        principalService.getInstitutionBranchInfrastructure(),
         principalService.getOwnBranches(),
         principalService.getOwnBatches(),
       ]);
@@ -58,6 +61,7 @@ const InstitutionDetails = () => {
       setInstitution(institutionRes?.data || institutionRes);
       setIntakes(normalizeLookupList(intakesRes, 'intakes'));
       setStaffCapacities(normalizeLookupList(staffRes, 'capacities'));
+      setBranchInfrastructure(normalizeLookupList(infraRes, 'rows'));
       setBranchOptions(
         normalizeLookupList(branchesRes, 'branches').map((branch) => ({
           label: branch.code ? `${branch.name} (${branch.code})` : branch.name,
@@ -85,12 +89,14 @@ const InstitutionDetails = () => {
       ...institution,
       branchIntakes: intakes,
       staffCapacities,
+      branchInfrastructure,
     });
     form.resetFields();
     form.setFieldsValue(formValues);
     initialRef.current = {
       intakes: JSON.stringify(sanitizeBranchIntakeRows(formValues.branchIntakes)),
       staff: JSON.stringify(sanitizeStaffCapacityRows(formValues.staffCapacities)),
+      infra: JSON.stringify(sanitizeBranchInfrastructureRows(formValues.branchInfrastructure)),
       entityTypes: (institution.coveredAreaDetails || []).map((row) => row.entityType),
     };
     setActiveFormTab('basic');
@@ -131,6 +137,11 @@ const InstitutionDetails = () => {
       const staffPayload = sanitizeStaffCapacityRows(values.staffCapacities || []);
       if (JSON.stringify(staffPayload) !== initialRef.current.staff) {
         await principalService.replaceInstitutionBranchStaffCapacities(staffPayload);
+      }
+
+      const infraPayload = sanitizeBranchInfrastructureRows(values.branchInfrastructure || []);
+      if (JSON.stringify(infraPayload) !== initialRef.current.infra) {
+        await principalService.replaceInstitutionBranchInfrastructure(infraPayload);
       }
 
       toast.success('Institution details updated successfully');
@@ -226,6 +237,7 @@ const InstitutionDetails = () => {
             institution={institution}
             intakes={intakes}
             staffCapacities={staffCapacities}
+            branchInfrastructure={branchInfrastructure}
           />
         )}
       </div>

@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Res, HttpStatus, Param } from '@nestjs/common';
+import { Controller, Get, UseGuards, Res, Req, HttpStatus, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
@@ -61,8 +61,10 @@ export class TemplateController {
       },
     },
   })
-  async downloadStudentTemplate(@Res() res: Response) {
-    const template = this.bulkStudentService.getTemplate();
+  async downloadStudentTemplate(@Req() req: any, @Res() res: Response) {
+    const template = await this.bulkStudentService.getTemplate(
+      req.user.role === Role.PRINCIPAL ? req.user.institutionId : null,
+    );
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=bulk-student-upload-template.xlsx');
@@ -114,7 +116,7 @@ export class TemplateController {
       },
     },
   })
-  async downloadTemplateByType(@Param('type') type: string, @Res() res: Response) {
+  async downloadTemplateByType(@Param('type') type: string, @Req() req: any, @Res() res: Response) {
     let template: Buffer;
     let filename: string;
 
@@ -124,7 +126,9 @@ export class TemplateController {
         filename = 'bulk-user-upload-template.xlsx';
         break;
       case 'students':
-        template = await this.bulkStudentService.getTemplate();
+        template = await this.bulkStudentService.getTemplate(
+          req.user.role === Role.PRINCIPAL ? req.user.institutionId : null,
+        );
         filename = 'bulk-student-upload-template.xlsx';
         break;
       case 'institutions':

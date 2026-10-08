@@ -333,7 +333,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="batchId" label="Batch">
+              <Form.Item name="batchId" label="Batch" rules={[{ required: true, message: 'Please select batch' }]}>
                 <Select placeholder="Select batch" allowClear>
                   {activeBatches?.map(batch => (
                     <Select.Option key={batch.id} value={batch.id}>
@@ -344,7 +344,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="branchId" label="Branch">
+              <Form.Item name="branchId" label="Branch" rules={[{ required: true, message: 'Please select branch' }]}>
                 <Select placeholder="Select branch" allowClear>
                   {activeBranches?.map(branch => (
                     <Select.Option key={branch.id} value={branch.id}>
@@ -458,7 +458,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="dob" label="Date of Birth">
+              <Form.Item name="dob" label="Date of Birth" rules={[{ required: true, message: 'Please select date of birth' }]}>
                 <DatePicker
                   style={{ width: '100%' }}
                   format="DD/MM/YYYY"

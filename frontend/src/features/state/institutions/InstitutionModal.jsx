@@ -23,6 +23,7 @@ import {
   buildDefaultStaffCapacityRows,
   buildInstitutionFormValues,
   normalizeLookupList,
+  sanitizeBranchInfrastructureRows,
   sanitizeBranchIntakeRows,
   sanitizeInstitutionPayload,
   sanitizeStaffCapacityRows,
@@ -47,10 +48,11 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
     const loadInstitutionForEdit = async () => {
       setLoading(true);
       try {
-        const [institutionResponse, intakesResponse, staffCapacitiesResponse] = await Promise.all([
+        const [institutionResponse, intakesResponse, staffCapacitiesResponse, infraResponse] = await Promise.all([
           stateService.getInstitutionById(institutionId),
           stateService.getInstitutionBranchIntakes(institutionId),
           stateService.getInstitutionBranchStaffCapacities(institutionId),
+          stateService.getInstitutionBranchInfrastructure(institutionId),
         ]);
 
         const detailedInstitution = institutionResponse?.data || institutionResponse;
@@ -66,6 +68,7 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
             ...detailedInstitution,
             branchIntakes: fetchedIntakes,
             staffCapacities: fetchedStaffCapacities,
+            branchInfrastructure: normalizeLookupList(infraResponse, 'rows'),
           };
           form.setFieldsValue(buildInstitutionFormValues(institutionWithIntakes));
         }
@@ -130,6 +133,7 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
           coveredAreaDetails: buildDefaultCoveredAreaRows(),
           branchIntakes: buildDefaultBranchIntakeRows(),
           staffCapacities: buildDefaultStaffCapacityRows(),
+          branchInfrastructure: [],
         });
         setCreatePrincipal(false);
       }
@@ -155,12 +159,14 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
       const payload = sanitizeInstitutionPayload(values);
       const intakePayload = sanitizeBranchIntakeRows(values.branchIntakes || []);
       const staffCapacityPayload = sanitizeStaffCapacityRows(values.staffCapacities || []);
+      const infraPayload = sanitizeBranchInfrastructureRows(values.branchInfrastructure || []);
 
       if (isEditMode) {
         const updatedInstitution = await dispatch(updateInstitution({ id: institutionId, data: payload })).unwrap();
         const savedInstitutionId = updatedInstitution?.institution?.id || updatedInstitution?.id || institutionId;
         await stateService.replaceInstitutionBranchIntakes(savedInstitutionId, intakePayload);
         await stateService.replaceInstitutionBranchStaffCapacities(savedInstitutionId, staffCapacityPayload);
+        await stateService.replaceInstitutionBranchInfrastructure(savedInstitutionId, infraPayload);
         toast.success('Institution updated successfully');
       } else {
         const createdInstitution = await dispatch(createInstitution(payload)).unwrap();
@@ -168,6 +174,9 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
         if (savedInstitutionId) {
           await stateService.replaceInstitutionBranchIntakes(savedInstitutionId, intakePayload);
           await stateService.replaceInstitutionBranchStaffCapacities(savedInstitutionId, staffCapacityPayload);
+          if (infraPayload.length > 0) {
+            await stateService.replaceInstitutionBranchInfrastructure(savedInstitutionId, infraPayload);
+          }
         }
         toast.success('Institution created successfully');
       }

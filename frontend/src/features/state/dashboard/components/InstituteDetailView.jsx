@@ -114,6 +114,25 @@ const MentorOverviewTab = memo(({ institutionId }) => {
 });
 
 // General Overview Tab - Summary statistics (compact version)
+// "enrolled / sanctioned" chip for a branch; turns red when over the sanctioned number.
+const BranchCountChip = ({ count, target, label, tone }) => {
+  const hasTarget = target !== null && target !== undefined;
+  const over = hasTarget && count > target;
+  const colors = tone === "green"
+    ? "bg-green-50 dark:bg-green-900/20 text-green-600"
+    : "bg-blue-50 dark:bg-blue-900/20 text-blue-600";
+  return (
+    <div
+      className={`px-2 py-1 rounded-md flex items-center gap-1.5 ${over ? "bg-red-50 dark:bg-red-900/20 text-red-600" : colors}`}
+      title={hasTarget ? `${count} of ${target} sanctioned${over ? " (over capacity)" : ""}` : undefined}
+    >
+      <span className="text-sm font-bold">{count}</span>
+      {hasTarget && <span className="text-[10px] opacity-70">/ {target}</span>}
+      <span className="text-[10px] text-text-secondary">{label}</span>
+    </div>
+  );
+};
+
 const GeneralOverviewTab = memo(({ data, loading, error, staffCapacities }) => {
   if (loading) return <div className="flex justify-center py-8"><Spin size="default" /></div>;
   if (error) return <Alert type="error" message="Failed to load overview" description={error} showIcon />;
@@ -171,6 +190,11 @@ const GeneralOverviewTab = memo(({ data, loading, error, staffCapacities }) => {
                 size="small" strokeColor="#A855F7" showInfo={false} className="mt-1" />
             </div>
           </div>
+          {yearWiseStudents.unknown > 0 && (
+            <div className="mt-2 text-[10px] text-text-tertiary text-center">
+              {yearWiseStudents.unknown} student{yearWiseStudents.unknown === 1 ? "" : "s"} without a year (admission year missing or outside the course)
+            </div>
+          )}
         </Card>
 
         {/* Internship Overview */}
@@ -239,10 +263,13 @@ const GeneralOverviewTab = memo(({ data, loading, error, staffCapacities }) => {
           {data.branchWiseData?.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {data.branchWiseData.map((branch, index) => (
-                <div key={index} className="px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-900/20 flex items-center gap-1.5">
-                  <span className="text-sm font-bold text-blue-600">{branch.count}</span>
-                  <span className="text-[10px] text-text-secondary">{branch.branch}</span>
-                </div>
+                <BranchCountChip
+                  key={branch.branchId || index}
+                  count={branch.count}
+                  target={branch.sanctionedSeats}
+                  label={branch.branch}
+                  tone="blue"
+                />
               ))}
             </div>
           ) : (
@@ -257,10 +284,13 @@ const GeneralOverviewTab = memo(({ data, loading, error, staffCapacities }) => {
           {data.facultyBranchWiseData?.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {data.facultyBranchWiseData.map((item, index) => (
-                <div key={index} className="px-2 py-1 rounded-md bg-green-50 dark:bg-green-900/20 flex items-center gap-1.5">
-                  <span className="text-sm font-bold text-green-600">{item.count}</span>
-                  <span className="text-[10px] text-text-secondary">{item.branch}</span>
-                </div>
+                <BranchCountChip
+                  key={item.branchId || index}
+                  count={item.count}
+                  target={item.sanctionedPosts}
+                  label={item.shortName || item.branch}
+                  tone="green"
+                />
               ))}
             </div>
           ) : (
@@ -469,10 +499,13 @@ const OverviewTab = memo(({ data, loading, error, staffCapacities, staffCapaciti
           {data.branchWiseData?.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {data.branchWiseData.map((branch, index) => (
-                <div key={index} className="px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-900/20 flex items-center gap-1.5">
-                  <span className="text-sm font-bold text-blue-600">{branch.count}</span>
-                  <span className="text-[10px] text-text-secondary">{branch.branch}</span>
-                </div>
+                <BranchCountChip
+                  key={branch.branchId || index}
+                  count={branch.count}
+                  target={branch.sanctionedSeats}
+                  label={branch.branch}
+                  tone="blue"
+                />
               ))}
             </div>
           ) : (
@@ -484,20 +517,20 @@ const OverviewTab = memo(({ data, loading, error, staffCapacities, staffCapaciti
         <Card size="small" title={<span className="text-xs font-semibold">Staff by Branch</span>}
           extra={<Tag color="green" className="text-[10px] m-0">{data.facultyCount || 0} total</Tag>}
           className="rounded-lg" bodyStyle={{ padding: "8px" }}>
-          {staffCapacities?.length > 0 ? (
+          {data.facultyBranchWiseData?.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
-              {staffCapacities.map((capacity, index) => {
-                const totalStaff = (capacity.filledPosts || 0) + (capacity.guestFaculty || 0);
-                return (
-                  <div key={capacity.id || index} className="px-2 py-1 rounded-md bg-green-50 dark:bg-green-900/20 flex items-center gap-1.5">
-                    <span className="text-sm font-bold text-green-600">{totalStaff}</span>
-                    <span className="text-[10px] text-text-secondary">{capacity.branch?.shortName || capacity.branch?.name || '-'}</span>
-                  </div>
-                );
-              })}
+              {data.facultyBranchWiseData.map((item, index) => (
+                <BranchCountChip
+                  key={item.branchId || index}
+                  count={item.count}
+                  target={item.sanctionedPosts}
+                  label={item.shortName || item.branch}
+                  tone="green"
+                />
+              ))}
             </div>
           ) : (
-            <div className="text-xs text-text-tertiary text-center py-2">No staff capacity data available</div>
+            <div className="text-xs text-text-tertiary text-center py-2">No staff data available</div>
           )}
         </Card>
       </div>
@@ -643,7 +676,7 @@ const renderYesNo = (value) => {
 };
 
 // Land Records Tab Component
-const LandRecordsTab = memo(({ data, loading, error }) => {
+const LandRecordsTab = memo(({ data, loading, error, branchInfrastructure = [], branchInfrastructureLoading = false }) => {
   if (loading) return <div className="flex justify-center py-12"><Spin size="large" /></div>;
   if (error) return <Alert type="error" message="Failed to load land records" description={error} showIcon />;
 
@@ -720,11 +753,11 @@ const LandRecordsTab = memo(({ data, loading, error }) => {
           <div className="space-y-2">
             <div className="flex justify-between py-1.5 border-b border-border/50">
               <span className="text-xs text-text-tertiary">Student Seats</span>
-              <span className="text-xs font-medium text-text-primary">{institution.totalStudentSeats || '-'}</span>
+              <span className="text-xs font-medium text-text-primary">{data?.capacitySummary?.studentSeats || '-'}</span>
             </div>
             <div className="flex justify-between py-1.5 border-b border-border/50">
               <span className="text-xs text-text-tertiary">Staff Seats</span>
-              <span className="text-xs font-medium text-text-primary">{institution.totalStaffSeats || '-'}</span>
+              <span className="text-xs font-medium text-text-primary">{data?.capacitySummary?.staffPosts || '-'}</span>
             </div>
             <div className="flex justify-between py-1.5">
               <span className="text-xs text-text-tertiary">Institution Type</span>
@@ -794,6 +827,59 @@ const LandRecordsTab = memo(({ data, loading, error }) => {
             <div className="text-[10px] text-text-tertiary">Common Area (Sq.ft)</div>
           </div>
         </div>
+      </Card>
+
+      {/* Course-wise Infrastructure */}
+      <Card size="small" title={<span className="text-xs font-semibold">Course-wise Infrastructure</span>}
+        extra={branchInfrastructureLoading ? <Spin size="small" /> : null}
+        className="rounded-lg" bodyStyle={{ padding: "8px" }}>
+        {branchInfrastructure.length === 0 ? (
+          <Empty description="No course-wise infrastructure added" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        ) : (
+          <div className="space-y-2">
+            {(() => {
+              // Reconcile course-wise room totals against institution-wise rooms (warning only)
+              const mismatches = ['LECTURE_ROOMS', 'LABS', 'WORKSHOPS', 'OTHERS'].filter((type) => {
+                const courseTotal = branchInfrastructure
+                  .filter((r) => r.entityType === type)
+                  .reduce((sum, r) => sum + (r.numberOfRooms || 0), 0);
+                const instRooms = getAreaByType(type)?.numberOfRooms;
+                return instRooms != null && courseTotal > instRooms;
+              });
+              return mismatches.length > 0 ? (
+                <Alert
+                  type="warning"
+                  showIcon
+                  message={`Course-wise totals exceed institution-wise rooms for: ${mismatches.map((t) => t.replace(/_/g, ' ')).join(', ')}. Shared rooms may explain this.`}
+                />
+              ) : null;
+            })()}
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-background-tertiary/30">
+                    <th className="text-left py-1.5 px-2 text-text-tertiary font-medium">Course (Branch)</th>
+                    <th className="text-left py-1.5 px-2 text-text-tertiary font-medium">Entity</th>
+                    <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Total Rooms</th>
+                    <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Furniture</th>
+                    <th className="text-center py-1.5 px-2 text-text-tertiary font-medium">Smart Boards / TVs</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {branchInfrastructure.map((row) => (
+                    <tr key={row.id} className="hover:bg-background-tertiary/20">
+                      <td className="py-1.5 px-2 text-text-primary font-medium">{row.branch?.name || '-'}</td>
+                      <td className="py-1.5 px-2">{row.entityType?.replace(/_/g, ' ')}</td>
+                      <td className="py-1.5 px-2 text-center">{row.numberOfRooms ?? '-'}</td>
+                      <td className="py-1.5 px-2 text-center">{renderYesNo(row.furnitureAvailable)}</td>
+                      <td className="py-1.5 px-2 text-center">{row.smartBoardsCount ?? '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Other Information */}
@@ -1107,6 +1193,8 @@ const InstituteDetailView = ({ defaultTab = null }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const [staffCapacities, setStaffCapacities] = useState([]);
   const [staffCapacitiesLoading, setStaffCapacitiesLoading] = useState(false);
+  const [branchInfrastructure, setBranchInfrastructure] = useState([]);
+  const [branchInfrastructureLoading, setBranchInfrastructureLoading] = useState(false);
 
   // Handle defaultTab prop
   useEffect(() => {
@@ -1193,6 +1281,16 @@ const InstituteDetailView = ({ defaultTab = null }) => {
         .finally(() => {
           setStaffCapacitiesLoading(false);
         });
+
+      // Fetch course-wise infrastructure
+      setBranchInfrastructureLoading(true);
+      stateService.getInstitutionBranchInfrastructure(selectedInstitute.id)
+        .then((data) => setBranchInfrastructure(Array.isArray(data) ? data : []))
+        .catch((err) => {
+          console.error("Failed to fetch course-wise infrastructure:", err);
+          setBranchInfrastructure([]);
+        })
+        .finally(() => setBranchInfrastructureLoading(false));
     }
   }, [dispatch, selectedInstitute?.id]);
 
@@ -2211,6 +2309,8 @@ const InstituteDetailView = ({ defaultTab = null }) => {
                     data={overview.data}
                     loading={overview.loading}
                     error={overview.error}
+                    branchInfrastructure={branchInfrastructure}
+                    branchInfrastructureLoading={branchInfrastructureLoading}
                   />
                 </div>
               ),

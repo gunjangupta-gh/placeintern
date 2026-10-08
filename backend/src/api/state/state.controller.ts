@@ -22,6 +22,7 @@ import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { Role } from '../../generated/prisma/client';
 import { ToggleStudentStatusDto } from '../../core/common/dto/toggle-student-status.dto';
+import { ReplaceBranchInfrastructureDto } from './dto/branch-infrastructure.dto';
 import {
   CreateInstitutionDto,
   UpdateInstitutionDto,
@@ -321,6 +322,23 @@ export class StateController {
   ) {
     const userId = req.user?.userId || 'state-admin';
     return this.stateService.replaceInstitutionBranchStaffCapacities(id, body?.capacities || [], userId);
+  }
+
+  @Get('institutions/:id/branch-infrastructure')
+  @ApiOperation({ summary: 'Get course-wise infrastructure records for an institution' })
+  async getInstitutionBranchInfrastructure(@Param('id') id: string) {
+    return this.stateService.getInstitutionBranchInfrastructure(id);
+  }
+
+  @Put('institutions/:id/branch-infrastructure')
+  @ApiOperation({ summary: 'Replace course-wise infrastructure records for an institution' })
+  async replaceInstitutionBranchInfrastructure(
+    @Param('id') id: string,
+    @Body() body: ReplaceBranchInfrastructureDto,
+    @Req() req,
+  ) {
+    const userId = req.user?.userId || 'state-admin';
+    return this.stateService.replaceInstitutionBranchInfrastructure(id, body?.rows || [], userId);
   }
 
   @Throttle({ default: THROTTLE_PRESETS.list })

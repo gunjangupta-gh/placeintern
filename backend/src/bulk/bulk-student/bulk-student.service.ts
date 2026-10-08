@@ -1,6 +1,12 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
-import { AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
+import {
+  AdmissionType,
+  AuditAction,
+  AuditCategory,
+  AuditSeverity,
+  Category,
+} from '../../generated/prisma/client';
 import { BulkStudentRowDto, BulkStudentResultDto, BulkStudentValidationResultDto } from './dto/bulk-student.dto';
 import { UserService, CreateStudentData } from '../../domain/user/user.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
@@ -13,24 +19,51 @@ import {
   findBranchByName,
 } from '../../core/common/utils/institution-matcher.util';
 
-/**
- * Students are uploaded without email/phone/DOB/gender. Roll number is the login
- * identifier (see AuthService.validateStudentByRollNumber). A stable, unique dummy
- * email is still generated because User.email backs a unique DB index and other
- * features may read it - it is never used for login.
- */
-function generateDummyEmail(rollNumber: string): string {
-  const sanitized = rollNumber
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]/g, '');
-  return `${sanitized || 'student'}@placeintern.com`;
-}
-
 /** How many students to create concurrently in a bulk upload batch. DB-round-trip latency
  *  dominates row creation time, so running independent rows concurrently (rather than one
  *  at a time) is what makes large uploads fast. Kept modest to stay within Prisma's connection pool. */
 const BULK_CREATE_CONCURRENCY = 15;
+
+/** Rows pre-formatted as Excel dropdowns in the template (rows 2..N). */
+const TEMPLATE_DROPDOWN_ROWS = 2000;
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const GENDER_OPTIONS = ['Male', 'Female', 'Other'];
+
+/** Accepted spellings (lowercased, non-alphanumerics stripped) -> canonical enum value */
+const CATEGORY_ALIASES: Record<string, Category> = {
+  general: Category.GENERAL,
+  gen: Category.GENERAL,
+  ur: Category.GENERAL,
+  unreserved: Category.GENERAL,
+  obc: Category.OBC,
+  sc: Category.SC,
+  st: Category.ST,
+};
+const CATEGORY_OPTIONS = ['General', 'OBC', 'SC', 'ST'];
+
+const ADMISSION_TYPE_ALIASES: Record<string, AdmissionType> = {
+  firstyear: AdmissionType.FIRST_YEAR,
+  '1styear': AdmissionType.FIRST_YEAR,
+  regular: AdmissionType.FIRST_YEAR,
+  leet: AdmissionType.LEET,
+  lateralentry: AdmissionType.LEET,
+  lateral: AdmissionType.LEET,
+};
+const ADMISSION_TYPE_OPTIONS = ['First Year', 'LEET'];
+
+function aliasKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/** Returns a 10-digit Indian mobile number, or null if the value is not one. */
+function normalizePhone(value: string): string | null {
+  let digits = value.replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
+  else if (digits.length === 11 && digits.startsWith('0')) digits = digits.slice(1);
+  return /^[6-9]\d{9}$/.test(digits) ? digits : null;
+}
 
 async function processInChunks<T, R>(
   items: T[],
@@ -44,6 +77,39 @@ async function processInChunks<T, R>(
     results.push(...chunkResults);
   }
   return results;
+}
+
+interface RowError {
+  field: string;
+  value?: string;
+  error: string;
+}
+
+interface ResolvedRow {
+  rollNumber: string;
+  email: string;
+  phone: string;
+  gender: string;
+  category: Category;
+  admissionType: AdmissionType;
+  batchId: string;
+  institutionId: string;
+  institutionName: string | null;
+  branchId: string;
+  branchName: string;
+}
+
+/** Lookup data loaded once per file and shared by every row. */
+interface RowContext {
+  allInstitutions: MatchableInstitution[];
+  allBranches: MatchableBranch[];
+  batchMap: Map<string, string>;
+  batchNames: string[];
+  defaultInstitutionId: string | null;
+  existingRollNumbers: Set<string>;
+  existingEmails: Set<string>;
+  seenRollNumbers: Map<string, number>;
+  seenEmails: Map<string, number>;
 }
 
 @Injectable()
@@ -69,7 +135,17 @@ export class BulkStudentService {
       // Map CSV columns to DTO fields
       const students: BulkStudentRowDto[] = rawData.map((row: any) => ({
         rollNumber: this.cleanString(row['Roll Number'] || row['rollNumber'] || row['Roll No'] || row['Roll No.']),
-        name: this.cleanString(row['Name'] || row['name'] || row['Student Name']),
+        name: this.cleanString(row['Name'] || row['name'] || row['Student Name'] || row['Full Name']),
+        email: this.cleanString(row['Email'] || row['email'] || row['E-mail'] || row['Email ID'])?.toLowerCase(),
+        phone: this.cleanString(
+          row['Contact Number'] || row['Contact No'] || row['Contact No.'] || row['Contact'] ||
+          row['Phone'] || row['phone'] || row['Mobile'] || row['Mobile No'] || row['Phone Number'],
+        ),
+        gender: this.cleanString(row['Gender'] || row['gender'] || row['Sex']),
+        category: this.cleanString(row['Category'] || row['category'] || row['Caste Category']),
+        admissionType: this.cleanString(
+          row['Admission Type'] || row['admissionType'] || row['Type of Admission'] || row['Admission Mode'],
+        ),
         admissionYear: this.parseNumber(row['Admission Year'] || row['admissionYear'] || row['Year of Admission']),
         batchName: this.cleanString(row['Batch'] || row['batch'] || row['Batch Name']),
         institutionName: this.cleanString(
@@ -79,7 +155,9 @@ export class BulkStudentService {
           row['Name of Institute'] || row['Name of Institution'] || row['Institution Code'] ||
           row['College Code'] || row['Institute Code'],
         ),
-        branchName: this.cleanString(row['Branch'] || row['branch'] || row['Course'] || row['course']),
+        branchName: this.cleanString(
+          row['Course'] || row['course'] || row['Course Name'] || row['Branch'] || row['branch'],
+        ),
       }));
 
       return students;
@@ -90,13 +168,12 @@ export class BulkStudentService {
   }
 
   /**
-   * Validate student data before processing
+   * Load every lookup needed to validate rows, once per file.
    */
-  async validateStudents(
+  private async buildRowContext(
     students: BulkStudentRowDto[],
     defaultInstitutionId: string | null,
-  ): Promise<BulkStudentValidationResultDto> {
-    const errors: Array<{ row: number; field?: string; value?: string; error: string }> = [];
+  ): Promise<{ ctx: RowContext; warnings: Array<{ row: number; field?: string; message: string }> }> {
     const warnings: Array<{ row: number; field?: string; message: string }> = [];
 
     const allInstitutions = await this.prisma.institution.findMany({
@@ -117,100 +194,253 @@ export class BulkStudentService {
     }
 
     const allRollNumbers = students.map((s) => s.rollNumber?.trim()).filter((v): v is string => !!v);
-    const existingRollNumberSet = await this.userService.findExistingRollNumbers(allRollNumbers);
-    const rollNumberFirstOccurrence = new Map<string, number>();
+    const existingRollNumbers = await this.userService.findExistingRollNumbers(allRollNumbers);
 
-    for (let i = 0; i < students.length; i++) {
-      const student = students[i];
-      const rowNumber = i + 2; // +2 because row 1 is header and array is 0-indexed
+    const allEmails = students.map((s) => s.email?.trim().toLowerCase()).filter((v): v is string => !!v);
+    const existingUsers = allEmails.length
+      ? await this.prisma.user.findMany({ where: { email: { in: allEmails } }, select: { email: true } })
+      : [];
+    const existingEmails = new Set(existingUsers.map((u) => u.email.toLowerCase()));
 
-      if (!student.name || student.name.trim() === '') {
-        errors.push({ row: rowNumber, field: 'name', value: student.name, error: 'Name is required' });
-      }
+    return {
+      ctx: {
+        allInstitutions,
+        allBranches: allBranches as MatchableBranch[],
+        batchMap,
+        batchNames: batches.map((b) => b.name),
+        defaultInstitutionId: sanitizedDefaultInstitutionId,
+        existingRollNumbers: new Set(existingRollNumbers),
+        existingEmails,
+        seenRollNumbers: new Map(),
+        seenEmails: new Map(),
+      },
+      warnings,
+    };
+  }
 
-      if (!student.rollNumber || student.rollNumber.trim() === '') {
-        errors.push({ row: rowNumber, field: 'rollNumber', value: student.rollNumber, error: 'Roll number is required' });
-      } else {
-        const rollNumber = student.rollNumber.trim();
-        const firstRow = rollNumberFirstOccurrence.get(rollNumber);
-        if (firstRow !== undefined) {
-          errors.push({
-            row: rowNumber,
-            field: 'rollNumber',
-            value: rollNumber,
-            error: `Duplicate roll number in file (also found in row ${firstRow})`,
-          });
-        } else {
-          rollNumberFirstOccurrence.set(rollNumber, rowNumber);
-        }
+  /**
+   * Validate one row and resolve its lookups (batch, college, course, enums). Every field is
+   * required. Shared by validateStudents and bulkUploadStudents so both apply identical rules.
+   */
+  private resolveRow(
+    student: BulkStudentRowDto,
+    rowNumber: number,
+    ctx: RowContext,
+  ): { errors: RowError[]; resolved?: ResolvedRow } {
+    const errors: RowError[] = [];
 
-        if (existingRollNumberSet.has(rollNumber)) {
-          errors.push({
-            row: rowNumber,
-            field: 'rollNumber',
-            value: rollNumber,
-            error: 'Roll number already exists in the system',
-          });
-        }
-      }
+    // Name
+    if (!student.name?.trim()) {
+      errors.push({ field: 'name', value: student.name, error: 'Name is required' });
+    }
 
-      if (!student.admissionYear) {
-        errors.push({ row: rowNumber, field: 'admissionYear', value: '', error: 'Admission year is required' });
-      } else if (student.admissionYear < 2000 || student.admissionYear > 2100) {
+    // Roll number
+    const rollNumber = student.rollNumber?.trim();
+    if (!rollNumber) {
+      errors.push({ field: 'rollNumber', value: student.rollNumber, error: 'Roll number is required' });
+    } else {
+      const firstRow = ctx.seenRollNumbers.get(rollNumber);
+      if (firstRow !== undefined) {
         errors.push({
-          row: rowNumber,
-          field: 'admissionYear',
-          value: String(student.admissionYear),
-          error: 'Admission year must be between 2000 and 2100',
+          field: 'rollNumber',
+          value: rollNumber,
+          error: `Duplicate roll number in file (also found in row ${firstRow})`,
         });
       }
+      if (ctx.existingRollNumbers.has(rollNumber)) {
+        errors.push({ field: 'rollNumber', value: rollNumber, error: 'Roll number already exists in the system' });
+      }
+    }
 
-      // Batch validation (required)
-      if (!student.batchName || student.batchName.trim() === '') {
-        errors.push({ row: rowNumber, field: 'batchName', value: '', error: 'Batch is required' });
-      } else if (!batchMap.has(student.batchName.trim().toLowerCase())) {
+    // Email
+    const email = student.email?.trim().toLowerCase();
+    if (!email) {
+      errors.push({ field: 'email', value: student.email, error: 'Email is required' });
+    } else if (!EMAIL_REGEX.test(email)) {
+      errors.push({ field: 'email', value: email, error: 'Invalid email format' });
+    } else {
+      const firstRow = ctx.seenEmails.get(email);
+      if (firstRow !== undefined) {
         errors.push({
-          row: rowNumber,
+          field: 'email',
+          value: email,
+          error: `Duplicate email in file (also found in row ${firstRow})`,
+        });
+      }
+      if (ctx.existingEmails.has(email)) {
+        errors.push({ field: 'email', value: email, error: 'Email already exists in the system' });
+      }
+    }
+
+    // Contact number
+    let phone: string | null = null;
+    if (!student.phone?.trim()) {
+      errors.push({ field: 'phone', value: student.phone, error: 'Contact number is required' });
+    } else {
+      phone = normalizePhone(student.phone);
+      if (!phone) {
+        errors.push({
+          field: 'phone',
+          value: student.phone,
+          error: 'Contact number must be a valid 10-digit mobile number',
+        });
+      }
+    }
+
+    // Gender
+    let gender: string | undefined;
+    if (!student.gender?.trim()) {
+      errors.push({ field: 'gender', value: student.gender, error: 'Gender is required' });
+    } else {
+      gender = GENDER_OPTIONS.find((g) => g.toLowerCase() === student.gender!.trim().toLowerCase());
+      if (!gender) {
+        errors.push({
+          field: 'gender',
+          value: student.gender,
+          error: `Invalid gender "${student.gender.trim()}". Allowed: ${GENDER_OPTIONS.join(', ')}`,
+        });
+      }
+    }
+
+    // Category
+    let category: Category | undefined;
+    if (!student.category?.trim()) {
+      errors.push({ field: 'category', value: student.category, error: 'Category is required' });
+    } else {
+      category = CATEGORY_ALIASES[aliasKey(student.category)];
+      if (!category) {
+        errors.push({
+          field: 'category',
+          value: student.category,
+          error: `Invalid category "${student.category.trim()}". Allowed: ${CATEGORY_OPTIONS.join(', ')}`,
+        });
+      }
+    }
+
+    // Admission type
+    let admissionType: AdmissionType | undefined;
+    if (!student.admissionType?.trim()) {
+      errors.push({ field: 'admissionType', value: student.admissionType, error: 'Admission type is required' });
+    } else {
+      admissionType = ADMISSION_TYPE_ALIASES[aliasKey(student.admissionType)];
+      if (!admissionType) {
+        errors.push({
+          field: 'admissionType',
+          value: student.admissionType,
+          error: `Invalid admission type "${student.admissionType.trim()}". Allowed: ${ADMISSION_TYPE_OPTIONS.join(', ')}`,
+        });
+      }
+    }
+
+    // Admission year
+    if (!student.admissionYear) {
+      errors.push({ field: 'admissionYear', value: '', error: 'Admission year is required' });
+    } else if (student.admissionYear < 2000 || student.admissionYear > 2100) {
+      errors.push({
+        field: 'admissionYear',
+        value: String(student.admissionYear),
+        error: 'Admission year must be between 2000 and 2100',
+      });
+    }
+
+    // Batch
+    let batchId: string | undefined;
+    if (!student.batchName?.trim()) {
+      errors.push({ field: 'batchName', value: '', error: 'Batch is required' });
+    } else {
+      batchId = ctx.batchMap.get(student.batchName.trim().toLowerCase());
+      if (!batchId) {
+        errors.push({
           field: 'batchName',
           value: student.batchName,
-          error: `Batch "${student.batchName.trim()}" not found in the system. Available batches: ${batches.map((b) => b.name).join(', ')}`,
+          error: `Batch "${student.batchName.trim()}" not found in the system. Available batches: ${ctx.batchNames.join(', ')}`,
         });
       }
+    }
 
-      // Institution resolution
-      let resolvedInstitution: MatchableInstitution | null = null;
-      if (student.institutionName && student.institutionName.trim() !== '') {
-        resolvedInstitution = findInstitutionByName(student.institutionName, allInstitutions);
-        if (!resolvedInstitution) {
-          errors.push({
-            row: rowNumber,
-            field: 'institutionName',
-            value: student.institutionName,
-            error: `Institution not found: "${student.institutionName}"`,
-          });
-        }
-      } else if (!sanitizedDefaultInstitutionId) {
+    // College
+    let institution: MatchableInstitution | null = null;
+    if (!student.institutionName?.trim()) {
+      errors.push({
+        field: 'institutionName',
+        value: '',
+        error: 'College Name is required (use the "College Name" column)',
+      });
+    } else {
+      institution = findInstitutionByName(student.institutionName, ctx.allInstitutions);
+      if (!institution) {
         errors.push({
-          row: rowNumber,
           field: 'institutionName',
-          value: '',
-          error: 'College Name is required (use the "College Name" column)',
+          value: student.institutionName,
+          error: `Institution not found: "${student.institutionName}"`,
+        });
+      } else if (ctx.defaultInstitutionId && institution.id !== ctx.defaultInstitutionId) {
+        // A principal (or a state user who picked a college) may only upload into that college
+        errors.push({
+          field: 'institutionName',
+          value: student.institutionName,
+          error: `College "${student.institutionName.trim()}" does not match the institution you are uploading for`,
+        });
+        institution = null;
+      }
+    }
+
+    // Course (full name of the branch within the resolved college)
+    let branch: MatchableBranch | null = null;
+    if (!student.branchName?.trim()) {
+      errors.push({ field: 'branchName', value: '', error: 'Course is required (use the full course name)' });
+    } else if (institution) {
+      branch = findBranchByName(student.branchName, institution.id, ctx.allBranches);
+      if (!branch) {
+        errors.push({
+          field: 'branchName',
+          value: student.branchName,
+          error: `Course "${student.branchName.trim()}" not found for this college. Use the full course name from the "Courses" sheet of the template`,
         });
       }
+    }
 
-      // Optional: branch/course
-      if (student.branchName && student.branchName.trim() !== '') {
-        const institutionIdForBranch = resolvedInstitution?.id || sanitizedDefaultInstitutionId;
-        const matchedBranch = institutionIdForBranch
-          ? findBranchByName(student.branchName, institutionIdForBranch, allBranches as MatchableBranch[])
-          : null;
-        if (!matchedBranch) {
-          warnings.push({
-            row: rowNumber,
-            field: 'branchName',
-            message: `Branch "${student.branchName}" not found. Student will be created without branch assignment.`,
-          });
-        }
+    if (errors.length > 0) {
+      return { errors };
+    }
+
+    // Row is clean: reserve its identifiers so later rows can be flagged as duplicates
+    ctx.seenRollNumbers.set(rollNumber!, rowNumber);
+    ctx.seenEmails.set(email!, rowNumber);
+
+    return {
+      errors,
+      resolved: {
+        rollNumber: rollNumber!,
+        email: email!,
+        phone: phone!,
+        gender: gender!,
+        category: category!,
+        admissionType: admissionType!,
+        batchId: batchId!,
+        institutionId: institution!.id,
+        institutionName: institution!.name,
+        branchId: branch!.id,
+        branchName: branch!.name,
+      },
+    };
+  }
+
+  /**
+   * Validate student data before processing
+   */
+  async validateStudents(
+    students: BulkStudentRowDto[],
+    defaultInstitutionId: string | null,
+  ): Promise<BulkStudentValidationResultDto> {
+    const errors: Array<{ row: number; field?: string; value?: string; error: string }> = [];
+    const { ctx, warnings } = await this.buildRowContext(students, defaultInstitutionId);
+
+    for (let i = 0; i < students.length; i++) {
+      const rowNumber = i + 2; // +2 because row 1 is header and array is 0-indexed
+      const result = this.resolveRow(students[i], rowNumber, ctx);
+      for (const e of result.errors) {
+        errors.push({ row: rowNumber, ...e });
       }
     }
 
@@ -255,13 +485,11 @@ export class BulkStudentService {
       },
     }).catch(() => {});
 
-    const allInstitutions = await this.prisma.institution.findMany({
-      select: { id: true, name: true, code: true, shortName: true },
-    });
-    const allBranches = await this.prisma.branch.findMany({
-      select: { id: true, name: true, shortName: true, code: true, institutionId: true },
-    });
-    const batchMap = await this.userService.getBatchMap();
+    const { ctx } = await this.buildRowContext(students, defaultInstitutionId);
+    const sanitizedDefaultInstitutionId = ctx.defaultInstitutionId;
+    if (defaultInstitutionId && !sanitizedDefaultInstitutionId) {
+      this.logger.warn(`Ignoring invalid default institution id "${defaultInstitutionId}" during bulk student upload`);
+    }
 
     // Precompute intake capacity data ONCE for the whole batch (instead of per-row inside
     // UserService.createStudent) - this is what makes large uploads fast, since it turns
@@ -291,24 +519,10 @@ export class BulkStudentService {
     }
     const incomingCountMap = new Map<string, number>();
 
-    const sanitizedDefaultInstitutionId = resolveValidDefaultInstitutionId(defaultInstitutionId, allInstitutions);
-    if (defaultInstitutionId && !sanitizedDefaultInstitutionId) {
-      this.logger.warn(`Ignoring invalid default institution id "${defaultInstitutionId}" during bulk student upload`);
-    }
-
-    const allRollNumbers = students.map((s) => s.rollNumber?.trim()).filter((v): v is string => !!v);
-    const existingRollNumberSet = await this.userService.findExistingRollNumbers(allRollNumbers);
-    const processedRollNumbers = new Set<string>();
-
     interface ToCreate {
       rowNumber: number;
       student: BulkStudentRowDto;
-      rollNumber: string;
-      targetInstitutionId: string;
-      targetInstitutionName: string | null;
-      batchId: string;
-      branchId?: string;
-      branchName?: string;
+      resolved: ResolvedRow;
       warning?: string;
     }
     const toCreate: ToCreate[] = [];
@@ -317,149 +531,71 @@ export class BulkStudentService {
     for (let i = 0; i < students.length; i++) {
       const student = students[i];
       const rowNumber = i + 2;
-      const rollNumber = student.rollNumber?.trim();
+      const { errors, resolved } = this.resolveRow(student, rowNumber, ctx);
 
-      const rowErrors: string[] = [];
-
-      if (!student.name?.trim()) {
-        rowErrors.push('Name is required');
-      }
-      if (!rollNumber) {
-        rowErrors.push('Roll number is required');
-      }
-      if (!student.admissionYear) {
-        rowErrors.push('Admission year is required');
-      } else if (student.admissionYear < 2000 || student.admissionYear > 2100) {
-        rowErrors.push('Admission year must be between 2000 and 2100');
-      }
-
-      if (rollNumber && existingRollNumberSet.has(rollNumber)) {
-        rowErrors.push('Roll number already exists in database');
-      }
-      if (rollNumber && processedRollNumbers.has(rollNumber)) {
-        rowErrors.push('Duplicate roll number in file');
-      }
-
-      // Resolve batch (required)
-      let batchId: string | undefined;
-      if (!student.batchName?.trim()) {
-        rowErrors.push('Batch is required');
-      } else {
-        batchId = batchMap.get(student.batchName.trim().toLowerCase());
-        if (!batchId) {
-          rowErrors.push(`Batch "${student.batchName.trim()}" not found`);
-        }
-      }
-
-      // Resolve institution
-      let targetInstitutionId = sanitizedDefaultInstitutionId;
-      let targetInstitutionName: string | null = null;
-
-      if (student.institutionName && student.institutionName.trim() !== '') {
-        const matchedInstitution = findInstitutionByName(student.institutionName, allInstitutions);
-        if (matchedInstitution) {
-          targetInstitutionId = matchedInstitution.id;
-          targetInstitutionName = matchedInstitution.name;
-        } else {
-          rowErrors.push(`Institution not found: "${student.institutionName}"`);
-        }
-      } else if (!sanitizedDefaultInstitutionId) {
-        rowErrors.push('College Name is required (use the "College Name" column)');
-      }
-
-      if (rowErrors.length > 0) {
+      if (errors.length > 0 || !resolved) {
         failedRecords.push({
           row: rowNumber,
           name: student.name,
-          rollNumber,
+          rollNumber: student.rollNumber?.trim(),
+          email: student.email,
           institution: student.institutionName,
-          error: rowErrors.join('; '),
+          error: errors.map((e) => e.error).join('; '),
         });
         continue;
       }
 
-      processedRollNumbers.add(rollNumber);
-      existingRollNumberSet.add(rollNumber);
-
-      // Resolve branch (optional, non-blocking)
-      let branchId: string | undefined;
-      let branchName: string | undefined;
-      if (student.branchName && targetInstitutionId) {
-        const matchedBranch = findBranchByName(student.branchName, targetInstitutionId, allBranches as MatchableBranch[]);
-        if (matchedBranch) {
-          branchId = matchedBranch.id;
-          branchName = matchedBranch.name;
-        }
-      }
-
       // Intake capacity check (warning only) using the precomputed maps
       let warning: string | undefined;
-      if (targetInstitutionId && branchId && batchId) {
-        const exactKey = `${targetInstitutionId}_${branchId}_${batchId}`;
-        const nameKey = `${targetInstitutionId}_${branchId}_${student.batchName?.trim()}`;
-        const limit = intakeLimitMap.get(exactKey) ?? intakeLimitMap.get(nameKey);
+      const exactKey = `${resolved.institutionId}_${resolved.branchId}_${resolved.batchId}`;
+      const nameKey = `${resolved.institutionId}_${resolved.branchId}_${student.batchName?.trim()}`;
+      const limit = intakeLimitMap.get(exactKey) ?? intakeLimitMap.get(nameKey);
 
-        if (limit !== undefined) {
-          const currentCount = currentCountMap.get(exactKey) || 0;
-          const incomingCount = incomingCountMap.get(exactKey) || 0;
+      if (limit !== undefined) {
+        const currentCount = currentCountMap.get(exactKey) || 0;
+        const incomingCount = incomingCountMap.get(exactKey) || 0;
 
-          if (currentCount + incomingCount >= limit) {
-            warning = `Intake capacity exceeded: ${currentCount + incomingCount + 1} active students for ${limit} available seats.`;
-          }
-          incomingCountMap.set(exactKey, incomingCount + 1);
+        if (currentCount + incomingCount >= limit) {
+          warning = `Intake capacity exceeded: ${currentCount + incomingCount + 1} active students for ${limit} available seats.`;
         }
+        incomingCountMap.set(exactKey, incomingCount + 1);
       }
 
-      toCreate.push({
-        rowNumber,
-        student,
-        rollNumber,
-        targetInstitutionId,
-        targetInstitutionName,
-        batchId,
-        branchId,
-        branchName,
-        warning,
-      });
+      toCreate.push({ rowNumber, student, resolved, warning });
     }
 
     // Phase 2: create the validated rows concurrently (in bounded chunks) - this is the part
     // that was previously a fully sequential loop and dominated wall-clock time on large files.
     await processInChunks(toCreate, BULK_CREATE_CONCURRENCY, async (entry) => {
+      const { resolved } = entry;
       try {
-        const result = await this.createStudent(
-          entry.student,
-          entry.targetInstitutionId,
-          entry.rollNumber,
-          entry.batchId,
-          entry.branchId,
-          entry.branchName,
-          entry.warning,
-        );
+        const result = await this.createStudent(entry.student, resolved, entry.warning);
 
         successRecords.push({
           row: entry.rowNumber,
           name: entry.student.name,
-          rollNumber: entry.rollNumber,
-          institution: entry.targetInstitutionName || entry.student.institutionName,
-          branch: entry.branchName,
+          rollNumber: resolved.rollNumber,
+          email: resolved.email,
+          institution: resolved.institutionName || entry.student.institutionName,
+          branch: resolved.branchName,
           studentId: result.student.id,
           userId: result.user.id,
           temporaryPassword: result.temporaryPassword,
           warning: result.warning,
         });
 
-        this.logger.log(`Student created: ${entry.rollNumber} (Row ${entry.rowNumber})`);
+        this.logger.log(`Student created: ${resolved.rollNumber} (Row ${entry.rowNumber})`);
       } catch (error) {
         failedRecords.push({
           row: entry.rowNumber,
           name: entry.student.name,
-          rollNumber: entry.rollNumber,
+          rollNumber: resolved.rollNumber,
+          email: resolved.email,
           institution: entry.student.institutionName,
           error: error.message,
         });
 
-        this.logger.error(`Failed to create student: ${entry.rollNumber} (Row ${entry.rowNumber})`, error.stack);
+        this.logger.error(`Failed to create student: ${resolved.rollNumber} (Row ${entry.rowNumber})`, error.stack);
       }
     });
 
@@ -505,28 +641,24 @@ export class BulkStudentService {
   /**
    * Create a single student - delegates to domain UserService
    */
-  private async createStudent(
-    studentDto: BulkStudentRowDto,
-    institutionId: string,
-    rollNumber: string,
-    batchId: string,
-    branchId?: string,
-    branchName?: string,
-    precomputedWarning?: string,
-  ) {
+  private async createStudent(studentDto: BulkStudentRowDto, resolved: ResolvedRow, precomputedWarning?: string) {
     const studentData: CreateStudentData = {
       name: studentDto.name,
-      email: generateDummyEmail(rollNumber),
-      rollNumber,
-      batchId,
-      branchId,
-      branchName: branchName || studentDto.branchName,
+      email: resolved.email,
+      phoneNo: resolved.phone,
+      rollNumber: resolved.rollNumber,
+      gender: resolved.gender,
+      category: resolved.category,
+      admissionType: resolved.admissionType,
+      batchId: resolved.batchId,
+      branchId: resolved.branchId,
+      branchName: resolved.branchName,
       admissionYear: studentDto.admissionYear,
     };
 
     // Delegate to domain service (skip validation + the per-row intake capacity lookup,
     // since bulk already validated and precomputed intake capacity for the whole batch)
-    return this.userService.createStudent(institutionId, studentData, {
+    return this.userService.createStudent(resolved.institutionId, studentData, {
       skipValidation: true,
       skipIntakeCapacityCheck: true,
       precomputedWarning,
@@ -534,48 +666,128 @@ export class BulkStudentService {
   }
 
   /**
-   * Download template for bulk student upload
+   * Download template for bulk student upload.
+   *
+   * @param institutionId When set (principal), example rows and the "Courses" reference sheet
+   *   are scoped to that college. When null (state/admin), all colleges are listed.
    */
-  async getTemplate(): Promise<Buffer> {
+  async getTemplate(institutionId?: string | null): Promise<Buffer> {
+    const [institutions, branches, batches] = await Promise.all([
+      this.prisma.institution.findMany({
+        where: institutionId ? { id: institutionId } : undefined,
+        select: { id: true, name: true, code: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.branch.findMany({
+        where: institutionId ? { OR: [{ institutionId }, { institutionId: null }] } : undefined,
+        select: { id: true, name: true, shortName: true, code: true, institutionId: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.batch.findMany({ where: { isActive: true }, select: { name: true }, orderBy: { name: 'asc' } }),
+    ]);
+
+    // One reference row per college + course; global (institution-less) branches apply to every listed college
+    const courseRows: Array<{ 'College Name': string; 'Course (Full Name)': string; 'Short Name': string }> = [];
+    for (const inst of institutions) {
+      for (const b of branches.filter((br) => br.institutionId === inst.id || br.institutionId === null)) {
+        courseRows.push({ 'College Name': inst.name, 'Course (Full Name)': b.name, 'Short Name': b.shortName });
+      }
+    }
+
+    // Example rows use real data from the system so the sample links cleanly
+    const exampleCollege = institutions[0]?.name || 'Government Polytechnic College Amritsar';
+    const exampleCourses = courseRows
+      .filter((r) => r['College Name'] === exampleCollege)
+      .map((r) => r['Course (Full Name)']);
+    const exampleBatch = batches[batches.length - 1]?.name || '2023-2026';
+
     const templateData = [
       {
         'Roll Number': 'R2023001',
         'Name': 'John Doe',
+        'Email': 'john.doe@example.com',
+        'Contact Number': '9876543210',
+        'Gender': 'Male',
+        'Category': 'General',
+        'Admission Type': 'First Year',
         'Admission Year': 2025,
-        'Batch': '2023-2026',
-        'College Name': 'Government Polytechnic College Amritsar',
-        'Course': 'Computer Science',
+        'Batch': exampleBatch,
+        'College Name': exampleCollege,
+        'Course': exampleCourses[0] || 'Computer Science and Engineering',
       },
       {
         'Roll Number': 'R2023002',
         'Name': 'Jane Smith',
+        'Email': 'jane.smith@example.com',
+        'Contact Number': '9876543211',
+        'Gender': 'Female',
+        'Category': 'SC',
+        'Admission Type': 'LEET',
         'Admission Year': 2025,
-        'Batch': '2023-2026',
-        'College Name': 'Government Polytechnic College Amritsar',
-        'Course': 'Electronics',
+        'Batch': exampleBatch,
+        'College Name': exampleCollege,
+        'Course': exampleCourses[1] || exampleCourses[0] || 'Electronics and Communication Engineering',
       },
     ];
 
     const instructionsData = [
       { Field: 'Roll Number', Required: 'Yes', Description: 'Unique roll number - also used as the student login ID', Example: 'R2023001' },
       { Field: 'Name', Required: 'Yes', Description: 'Full name of the student', Example: 'John Doe' },
+      { Field: 'Email', Required: 'Yes', Description: 'Valid email address (must be unique across the system)', Example: 'john.doe@example.com' },
+      { Field: 'Contact Number', Required: 'Yes', Description: '10-digit mobile number', Example: '9876543210' },
+      { Field: 'Gender', Required: 'Yes', Description: `One of: ${GENDER_OPTIONS.join(', ')}`, Example: 'Male' },
+      { Field: 'Category', Required: 'Yes', Description: `One of: ${CATEGORY_OPTIONS.join(', ')}`, Example: 'General' },
+      { Field: 'Admission Type', Required: 'Yes', Description: `One of: ${ADMISSION_TYPE_OPTIONS.join(', ')}`, Example: 'First Year' },
       { Field: 'Admission Year', Required: 'Yes', Description: 'Year of admission (e.g., 2025). Used to calculate current year/semester.', Example: '2025' },
-      { Field: 'Batch', Required: 'Yes', Description: 'Batch name, must match an existing batch (e.g., "2023-2026")', Example: '2023-2026' },
-      { Field: 'College Name', Required: 'Yes*', Description: '*Required for State Directorate. Auto-matches to institution.', Example: 'Government Polytechnic College Amritsar' },
-      { Field: 'Course', Required: 'No', Description: 'Branch/Course name (auto-matches to branch)', Example: 'Computer Science' },
+      { Field: 'Batch', Required: 'Yes', Description: 'Batch name, must match an existing batch (see "Batches" sheet)', Example: exampleBatch },
+      { Field: 'College Name', Required: 'Yes', Description: 'Full college name, auto-matches to the institution (see "Courses" sheet)', Example: exampleCollege },
+      { Field: 'Course', Required: 'Yes', Description: 'FULL course name exactly as listed in the "Courses" sheet for that college', Example: exampleCourses[0] || 'Computer Science and Engineering' },
     ];
 
     const loginInfo = [
-      { Info: 'Login', Details: 'Students log in with Roll Number + Password (no email needed).' },
+      { Info: 'Login', Details: 'Students log in with Roll Number + Password.' },
       { Info: 'Password Format', Details: 'First 4 letters of name (lowercase) + @ + last 4 characters of roll number' },
       { Info: 'Example', Details: 'Name: John Doe, Roll Number: R2023001 -> Password: john@3001' },
     ];
 
-    return ExcelUtils.createFromJson([
-      { name: 'Students', data: templateData },
-      { name: 'Instructions', data: instructionsData },
-      { name: 'Login Info', data: loginInfo },
-    ]);
+    return ExcelUtils.buildWorkbook((workbook) => {
+      const students = ExcelUtils.addSheetFromJson(workbook, 'Students', templateData);
+      ExcelUtils.addSheetFromJson(workbook, 'Instructions', instructionsData);
+      ExcelUtils.addSheetFromJson(
+        workbook,
+        'Courses',
+        courseRows.length ? courseRows : [{ 'College Name': '', 'Course (Full Name)': '', 'Short Name': '' }],
+        { columnWidths: { 'College Name': 50, 'Course (Full Name)': 50, 'Short Name': 14 } },
+      );
+      ExcelUtils.addSheetFromJson(
+        workbook,
+        'Batches',
+        batches.length ? batches.map((b) => ({ Batch: b.name })) : [{ Batch: exampleBatch }],
+      );
+      ExcelUtils.addSheetFromJson(workbook, 'Login Info', loginInfo);
+
+      // Dropdowns so users pick valid values instead of typing them
+      const lastRow = TEMPLATE_DROPDOWN_ROWS + 1;
+      const list = (col: string, formula: string) => {
+        // exceljs groups a whole range under one <dataValidation>; the typings only expose per-cell
+        (students as any).dataValidations.add(`${col}2:${col}${lastRow}`, {
+          type: 'list',
+          allowBlank: false,
+          formulae: [formula],
+          showErrorMessage: true,
+          errorTitle: 'Invalid value',
+          error: 'Please choose a value from the list.',
+        });
+      };
+      list('E', `"${GENDER_OPTIONS.join(',')}"`);
+      list('F', `"${CATEGORY_OPTIONS.join(',')}"`);
+      list('G', `"${ADMISSION_TYPE_OPTIONS.join(',')}"`);
+      if (batches.length) list('I', `Batches!$A$2:$A$${batches.length + 1}`);
+      // Course dropdown only when the list is unambiguous (single college)
+      if (institutions.length === 1 && courseRows.length) {
+        list('K', `Courses!$B$2:$B$${courseRows.length + 1}`);
+      }
+    });
   }
 
   /**

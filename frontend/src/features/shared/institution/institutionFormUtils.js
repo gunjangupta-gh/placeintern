@@ -40,6 +40,10 @@ export const COVERED_AREA_ENTITIES = [
   { value: 'OTHERS', label: 'Others' },
 ];
 
+// Entities tracked course (branch) wise. COMMON_AREA is shared across courses,
+// so it stays institution-wise only.
+export const BRANCH_INFRA_ENTITIES = COVERED_AREA_ENTITIES.filter((e) => e.value !== 'COMMON_AREA');
+
 export const LAND_OWNERSHIP_OPTIONS = [
   { value: 'OWNED', label: 'Owned' },
   { value: 'LEASED', label: 'Leased' },
@@ -96,6 +100,25 @@ export const getDefaultAcademicYear = () => {
   const nextYear = String((year + 1) % 100).padStart(2, '0');
   return `${year}-${nextYear}`;
 };
+
+// Institution-level capacity is derived from the course-wise rows for the
+// current academic year (falling back to the latest year that has rows) rather
+// than typed in separately. Mirrors the server-side capacitySummary.
+const sumForYear = (rows = [], field) => {
+  const active = rows.filter((row) => row && row.isActive !== false && row.academicYear);
+  if (!active.length) return 0;
+  const current = getDefaultAcademicYear();
+  const years = [...new Set(active.map((row) => String(row.academicYear).trim()))];
+  const year = years.includes(current) ? current : years.sort().pop();
+  return active
+    .filter((row) => String(row.academicYear).trim() === year)
+    .reduce((sum, row) => sum + (Number(row[field]) || 0), 0);
+};
+
+export const deriveCapacity = (intakes = [], staffCapacities = []) => ({
+  studentSeats: sumForYear(intakes, 'sanctionedSeats'),
+  staffPosts: sumForYear(staffCapacities, 'sanctionedPosts'),
+});
 
 const isCoveredAreaRowFilled = (row = {}) => {
   const keysToCheck = [
@@ -173,7 +196,12 @@ export const sanitizeInstitutionPayload = (values) => {
   });
 
   const sanitized = Object.entries(basePayload).reduce((acc, [key, value]) => {
-    if (key === 'branchIntakes' || key === 'staffCapacities' || key === 'coveredAreaDetails') {
+    // totalStudentSeats / totalStaffSeats are no longer written: capacity is
+    // derived from the course-wise intake / staff rows.
+    if (
+      key === 'branchIntakes' || key === 'staffCapacities' || key === 'coveredAreaDetails' || key === 'branchInfrastructure'
+      || key === 'totalStudentSeats' || key === 'totalStaffSeats'
+    ) {
       return acc;
     }
 
@@ -260,6 +288,26 @@ export const sanitizeStaffCapacityRows = (rows = []) => rows
   }))
   .filter((row) => row.branchId && row.academicYear);
 
+export const buildDefaultBranchInfrastructureRow = () => ({
+  branchId: undefined,
+  entityType: 'LECTURE_ROOMS',
+  numberOfRooms: undefined,
+  furnitureAvailable: undefined,
+  smartBoardsCount: undefined,
+});
+
+// Rows are sent with explicit nulls (cleared = "not filled in"); the server
+// replaces the institution's whole course-wise set.
+export const sanitizeBranchInfrastructureRows = (rows = []) => rows
+  .filter((row) => row && row.branchId && row.entityType)
+  .map((row) => ({
+    branchId: row.branchId,
+    entityType: row.entityType,
+    numberOfRooms: toNumberOrUndefined(row.numberOfRooms) ?? null,
+    furnitureAvailable: selectToBoolean(row.furnitureAvailable) ?? null,
+    smartBoardsCount: toNumberOrUndefined(row.smartBoardsCount) ?? null,
+  }));
+
 export const buildInstitutionFormValues = (institution) => {
   const existingCoveredArea = (institution?.coveredAreaDetails || []).reduce((acc, row) => {
     acc[row.entityType] = {
@@ -298,6 +346,13 @@ export const buildInstitutionFormValues = (institution) => {
       filledPosts: row.filledPosts ?? 0,
       guestFaculty: row.guestFaculty ?? 0,
       isActive: row.isActive !== false,
+    })),
+    branchInfrastructure: (institution?.branchInfrastructure || []).map((row) => ({
+      branchId: row.branchId,
+      entityType: row.entityType,
+      numberOfRooms: row.numberOfRooms ?? undefined,
+      furnitureAvailable: booleanToSelect(row.furnitureAvailable),
+      smartBoardsCount: row.smartBoardsCount ?? undefined,
     })),
   };
 };

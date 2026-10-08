@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Button, Tag, Avatar, Input, Select, Card, Modal, Space, Tooltip, Switch, InputNumber, theme } from 'antd';
+import { Button, Tag, Avatar, Input, Select, Card, Modal, Space, Tooltip, Switch, InputNumber, Dropdown, theme } from 'antd';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -27,11 +27,15 @@ import {
   TrophyOutlined,
   KeyOutlined,
   ReloadOutlined,
+  DownOutlined,
+  UserAddOutlined,
+  UploadOutlined,
 } from '@ant-design/icons';
 import { getStatusColor } from '../../../utils/format';
 import ProfileAvatar from '../../../components/common/ProfileAvatar';
 import DeactivationConfirmModal from '../../../components/common/DeactivationConfirmModal';
 import StudentModal from './StudentModal';
+import BulkUploadModal from '../bulk/BulkUploadModal';
 import { useLookup } from '../../shared/hooks/useLookup';
 
 const { Search } = Input;
@@ -85,6 +89,7 @@ const StudentList = () => {
     limit: 10,
   });
   const [modalOpen, setModalOpen] = useState(false);
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -411,13 +416,24 @@ const StudentList = () => {
           >
             Refresh
           </Button>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => handleOpenModal()}
-          >
-            Add Student
-          </Button>
+          <Space.Compact>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
+              Add Student
+            </Button>
+            <Dropdown
+              placement="bottomRight"
+              trigger={['click']}
+              menu={{
+                items: [
+                  { key: 'single', label: 'Add Single Student', icon: <UserAddOutlined /> },
+                  { key: 'bulk', label: 'Bulk Upload (Excel)', icon: <UploadOutlined /> },
+                ],
+                onClick: ({ key }) => (key === 'bulk' ? setBulkModalOpen(true) : handleOpenModal()),
+              }}
+            >
+              <Button type="primary" icon={<DownOutlined />} aria-label="More add options" />
+            </Dropdown>
+          </Space.Compact>
         </div>
       </div>
 
@@ -496,6 +512,13 @@ const StudentList = () => {
         onClose={handleCloseModal}
         studentId={editingStudentId}
         onSuccess={handleModalSuccess}
+      />
+
+      <BulkUploadModal
+        open={bulkModalOpen}
+        type="students"
+        onClose={() => setBulkModalOpen(false)}
+        onUploaded={handleModalSuccess}
       />
 
       {/* Deactivation confirmation modal - opened by clicking the Status tag */}

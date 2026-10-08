@@ -33,9 +33,11 @@ import {
   MailOutlined,
   TeamOutlined,
   IdcardOutlined,
+  UploadOutlined,
 } from '@ant-design/icons';
 import ProfileAvatar from '../../../components/common/ProfileAvatar';
 import StaffModal from './StaffModal';
+import BulkUploadModal from '../bulk/BulkUploadModal';
 import { useLookup } from '../../shared/hooks/useLookup';
 
 const { Search } = Input;
@@ -60,6 +62,7 @@ const StaffList = () => {
     limit: 10,
   });
   const [modalOpen, setModalOpen] = useState(false);
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [editingStaffId, setEditingStaffId] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -377,6 +380,13 @@ const StaffList = () => {
             />
           </Tooltip>
           <Button
+            icon={<UploadOutlined />}
+            onClick={() => setBulkModalOpen(true)}
+            className="border-border text-text-secondary hover:text-primary hover:border-primary"
+          >
+            Bulk Upload
+          </Button>
+          <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => handleOpenModal()}
@@ -472,6 +482,13 @@ const StaffList = () => {
         onClose={handleCloseModal}
         staffId={editingStaffId}
         onSuccess={handleModalSuccess}
+      />
+
+      <BulkUploadModal
+        open={bulkModalOpen}
+        type="staff"
+        onClose={() => setBulkModalOpen(false)}
+        onUploaded={handleModalSuccess}
       />
     </div>
   );

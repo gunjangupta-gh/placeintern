@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../core/database/prisma.service';
+import { calculateStudentProgress, getAcademicStartYear } from '../../common/utils/academic-progress.util';
 
 /**
  * Scheduler for updating student academic progress (currentYear and currentSemester)
@@ -44,14 +45,8 @@ export class StudentProgressScheduler {
    */
   async updateStudentProgress(semesterType: 'odd' | 'even'): Promise<{ updated: number; skipped: number }> {
     const now = new Date();
-    const currentMonth = now.getMonth() + 1; // 1-12
 
-    // Determine current academic year
-    // If month >= 7 (July), academic year = current year
-    // If month < 7, academic year = current year - 1
-    const currentAcademicYear = currentMonth >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-
-    this.logger.log(`Current academic year: ${currentAcademicYear}, Semester type: ${semesterType}`);
+    this.logger.log(`Current academic year: ${getAcademicStartYear(now)}, Semester type: ${semesterType}`);
 
     // Fetch all active students with admissionYear set
     const students = await this.prisma.student.findMany({
@@ -79,29 +74,14 @@ export class StudentProgressScheduler {
           continue;
         }
 
-        // Calculate current year (1-based)
-        // Year 1: admissionYear
-        // Year 2: admissionYear + 1
-        // Year 3: admissionYear + 2
-        const calculatedYear = currentAcademicYear - student.admissionYear + 1;
-
-        // Skip if student has completed their course (year > 3 for typical 3-year course)
-        // or if they haven't started yet (year < 1)
-        if (calculatedYear < 1 || calculatedYear > 4) {
+        // Skips students who have completed their course (year > 4) or have not
+        // started yet (year < 1); year is capped at 3 and semester at 6.
+        const progress = calculateStudentProgress(student.admissionYear, now, semesterType);
+        if (!progress) {
           skipped++;
           continue;
         }
-
-        // Calculate semester
-        // Year 1: Semesters 1, 2
-        // Year 2: Semesters 3, 4
-        // Year 3: Semesters 5, 6
-        const baseSemester = (calculatedYear - 1) * 2;
-        const calculatedSemester = semesterType === 'odd' ? baseSemester + 1 : baseSemester + 2;
-
-        // Cap semester at 6 (typical 3-year course)
-        const finalSemester = Math.min(calculatedSemester, 6);
-        const finalYear = Math.min(calculatedYear, 3);
+        const { currentYear: finalYear, currentSemester: finalSemester } = progress;
 
         // Only update if values have changed
         if (student.currentYear !== finalYear || student.currentSemester !== finalSemester) {

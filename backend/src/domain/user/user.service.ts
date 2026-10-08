@@ -4,10 +4,11 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { Role, AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
+import { Role, AuditAction, AuditCategory, AuditSeverity, Category, AdmissionType } from '../../generated/prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { calculateStudentProgress } from '../../common/utils/academic-progress.util';
 import * as bcrypt from 'bcrypt';
 import { BCRYPT_SALT_ROUNDS } from '../../core/auth/services/auth.service';
 
@@ -23,12 +24,15 @@ export interface CreateStudentData {
   semesterId?: string;
   dateOfBirth?: string;
   gender?: string;
+  category?: Category;
+  admissionType?: AdmissionType;
   address?: string;
   parentName?: string;
   parentContact?: string;
   tenthPercentage?: number;
   twelfthPercentage?: number;
   currentSemester?: number;
+  currentYear?: number;
   admissionYear?: number;
 }
 
@@ -223,6 +227,8 @@ export class UserService {
     // that load, round-trips to the DB occasionally exceed Prisma's default 5s interactive
     // transaction timeout (P2028), so a generous explicit timeout plus a retry keeps a row
     // from failing solely due to transient contention with its sibling rows.
+    const derivedProgress = calculateStudentProgress(data.admissionYear);
+
     const result = await this.prisma.executeWithRetry(() => this.prisma.$transaction(async (tx) => {
       // Create user account
       const user = await tx.user.create({
@@ -249,11 +255,16 @@ export class UserService {
           admissionNumber: data.admissionNumber,
           address: data.address,
           gender: data.gender,
+          category: data.category,
+          admissionType: data.admissionType,
           parentName: data.parentName,
           parentContact: data.parentContact,
           tenthper: data.tenthPercentage,
           twelthper: data.twelfthPercentage,
-          currentSemester: data.currentSemester,
+          // Explicit values win; otherwise derive from admissionYear so the
+          // student shows up in year-wise counts without waiting for the scheduler.
+          currentSemester: data.currentSemester ?? derivedProgress?.currentSemester,
+          currentYear: data.currentYear ?? derivedProgress?.currentYear,
           admissionYear: data.admissionYear,
           batchId: data.batchId,
           branchId: data.branchId,

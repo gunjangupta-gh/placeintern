@@ -5,6 +5,7 @@
 
 export * from './pagination.util';
 export * from './monthly-cycle.util';
+export * from './academic-progress.util';
 
 // Legacy export (DEPRECATED - use monthly-cycle.util instead)
 // Kept for backward compatibility during migration period

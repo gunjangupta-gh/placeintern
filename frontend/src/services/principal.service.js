@@ -408,6 +408,16 @@ export const principalService = {
     return response.data;
   },
 
+  async getInstitutionBranchInfrastructure() {
+    const response = await API.get('/principal/institution/branch-infrastructure');
+    return response.data;
+  },
+
+  async replaceInstitutionBranchInfrastructure(rows) {
+    const response = await API.put('/principal/institution/branch-infrastructure', { rows });
+    return response.data;
+  },
+
   async getOwnBranches() {
     const response = await API.get('/principal/branches');
     return response.data;

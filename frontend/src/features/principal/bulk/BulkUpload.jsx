@@ -11,13 +11,32 @@ import * as XLSX from 'xlsx';
 const { Step } = Steps;
 const { Dragger } = Upload;
 
-const BulkUpload = () => {
+const GENDERS = ['male', 'female', 'other'];
+const CATEGORIES = ['general', 'obc', 'sc', 'st'];
+const ADMISSION_TYPES = ['firstyear', 'leet', 'lateralentry', 'lateral'];
+const aliasKey = (v) => String(v ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const isValidPhone = (v) => {
+  let digits = String(v ?? '').replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
+  else if (digits.length === 11 && digits.startsWith('0')) digits = digits.slice(1);
+  return /^[6-9]\d{9}$/.test(digits);
+};
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const isBlank = (v) => v === undefined || v === null || String(v).trim() === '';
+
+/**
+ * Bulk upload for students / staff.
+ * - Standalone page: rendered with no props (user can switch between students and staff).
+ * - Embedded in a modal: pass `fixedType` ('students' | 'staff'), `embedded`, and optionally
+ *   `onUploaded` (called after at least one record was created).
+ */
+const BulkUpload = ({ fixedType, embedded = false, onUploaded }) => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const isStateDirectorate = user?.role === 'STATE_DIRECTORATE';
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [uploadType, setUploadType] = useState('students');
+  const [uploadType, setUploadType] = useState(fixedType || 'students');
   const [fileData, setFileData] = useState([]);
   const [originalFile, setOriginalFile] = useState(null);
   const [validationResults, setValidationResults] = useState({ valid: [], invalid: [] });
@@ -75,25 +94,47 @@ const BulkUpload = () => {
       // Normalize keys - match backend BulkStudentRowDto
       const rollNumber = row['Roll Number'] || row['rollNumber'] || row['Roll No'];
       const name = row['Name'] || row['name'] || row['Student Name'];
+      const email = row['Email'] || row['email'];
+      const phone = row['Contact Number'] || row['Contact'] || row['Phone'] || row['phone'];
+      const gender = row['Gender'] || row['gender'];
+      const category = row['Category'] || row['category'];
+      const admissionType = row['Admission Type'] || row['admissionType'];
       const admissionYear = row['Admission Year'] || row['admissionYear'];
       const batchName = row['Batch'] || row['batch'];
       const institutionName = row['College Name'] || row['Institution'] || row['institution'];
       const branchName = row['Course'] || row['Branch'] || row['branch'];
 
-      // Required field validations
-      if (!rollNumber || String(rollNumber).trim() === '') errors.push('Roll Number is required');
-      if (!name || String(name).trim() === '') errors.push('Name is required');
+      // Every field is required
+      if (isBlank(rollNumber)) errors.push('Roll Number is required');
+      if (isBlank(name)) errors.push('Name is required');
+      if (isBlank(email)) errors.push('Email is required');
+      else if (!EMAIL_REGEX.test(String(email).trim())) errors.push('Invalid email format');
+      if (isBlank(phone)) errors.push('Contact Number is required');
+      else if (!isValidPhone(phone)) errors.push('Contact Number must be a valid 10-digit mobile number');
+      if (isBlank(gender)) errors.push('Gender is required');
+      else if (!GENDERS.includes(aliasKey(gender))) errors.push('Gender must be Male, Female or Other');
+      if (isBlank(category)) errors.push('Category is required');
+      else if (!CATEGORIES.includes(aliasKey(category))) errors.push('Category must be General, OBC, SC or ST');
+      if (isBlank(admissionType)) errors.push('Admission Type is required');
+      else if (!ADMISSION_TYPES.includes(aliasKey(admissionType))) errors.push('Admission Type must be First Year or LEET');
       if (!admissionYear || isNaN(Number(admissionYear))) {
         errors.push('Admission Year is required');
       } else if (Number(admissionYear) < 2000 || Number(admissionYear) > 2100) {
         errors.push('Admission Year must be between 2000 and 2100');
       }
-      if (!batchName || String(batchName).trim() === '') errors.push('Batch is required');
+      if (isBlank(batchName)) errors.push('Batch is required');
+      if (isBlank(institutionName)) errors.push('College Name is required');
+      if (isBlank(branchName)) errors.push('Course is required (use the full course name)');
 
       const record = {
         ...row,
         rollNumber,
         name,
+        email,
+        phone,
+        gender,
+        category,
+        admissionType,
         admissionYear,
         batchName,
         institutionName,
@@ -125,7 +166,7 @@ const BulkUpload = () => {
       // User fields: name, email, phoneNo, role, designation
       const name = row['Name'] || row['name'] || row['Full Name'];
       const email = row['Email'] || row['email'];
-      const phone = row['Phone'] || row['phone'] || row['Contact'] || row['phoneNo'];
+      const phone = row['Phone'] || row['phone'] || row['Contact'] || row['Contact Number'] || row['phoneNo'];
       const role = row['Role'] || row['role'];
       const designation = row['Designation'] || row['designation'];
       const department = row['Department'] || row['department'];
@@ -134,6 +175,7 @@ const BulkUpload = () => {
       // Required field validations (matching backend BulkUserRowDto)
       if (!name || String(name).trim() === '') errors.push('Name is required');
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) errors.push('Valid email is required');
+      if (!phone || String(phone).replace(/\D/g, '').length < 4) errors.push('Contact number is required (min 4 digits)');
       if (!role || String(role).trim() === '') {
         errors.push('Role is required');
       } else if (!validRoles.includes(String(role).toUpperCase())) {
@@ -250,6 +292,7 @@ const BulkUpload = () => {
       // Refresh dashboard stats if any records were uploaded successfully
       if (result.success > 0) {
         dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
+        onUploaded?.(result);
       }
 
       // Always go to step 2 to show summary
@@ -275,8 +318,14 @@ const BulkUpload = () => {
     ...(uploadType === 'students'
       ? [
           { title: 'Roll Number', dataIndex: 'rollNumber', key: 'rollNumber' },
+          { title: 'Email', dataIndex: 'email', key: 'email', ellipsis: true },
+          { title: 'Contact', dataIndex: 'phone', key: 'phone' },
+          { title: 'Gender', dataIndex: 'gender', key: 'gender' },
+          { title: 'Category', dataIndex: 'category', key: 'category' },
+          { title: 'Admission Type', dataIndex: 'admissionType', key: 'admissionType' },
           { title: 'Admission Year', dataIndex: 'admissionYear', key: 'admissionYear' },
           { title: 'Batch', dataIndex: 'batchName', key: 'batchName' },
+          { title: 'Course', dataIndex: 'branchName', key: 'branchName', ellipsis: true },
         ]
       : [
           { title: 'Email', dataIndex: 'email', key: 'email' },
@@ -304,8 +353,8 @@ const BulkUpload = () => {
   ];
 
   return (
-    <div className="p-6">
-      <Card title="Bulk Upload" variant="borderless">
+    <div className={embedded ? '' : 'p-6'}>
+      <Card title={embedded ? undefined : 'Bulk Upload'} variant="borderless" styles={embedded ? { body: { padding: 0 } } : undefined}>
         <Steps current={currentStep} className="mb-6">
           <Step title="Upload File" description="Select and upload Excel file" />
           <Step title="Validate Data" description="Review and validate records" />
@@ -332,18 +381,20 @@ const BulkUpload = () => {
                   }))}
                 />
               )}
-              <Select
-                value={uploadType}
-                onChange={(value) => {
-                  setUploadType(value);
-                  resetUpload();
-                }}
-                style={{ width: 200 }}
-                options={[
-                  { value: 'students', label: 'Upload Students' },
-                  { value: 'staff', label: 'Upload Staff' },
-                ]}
-              />
+              {!fixedType && (
+                <Select
+                  value={uploadType}
+                  onChange={(value) => {
+                    setUploadType(value);
+                    resetUpload();
+                  }}
+                  style={{ width: 200 }}
+                  options={[
+                    { value: 'students', label: 'Upload Students' },
+                    { value: 'staff', label: 'Upload Staff' },
+                  ]}
+                />
+              )}
               <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
                 Download Template
               </Button>
@@ -366,7 +417,15 @@ const BulkUpload = () => {
                 <ul className="list-disc ml-4 mt-2">
                   <li>Download the template file first</li>
                   <li>Fill in the required information in the template</li>
-                  <li>Ensure all required fields are filled correctly</li>
+                  {uploadType === 'students' ? (
+                    <>
+                      <li><strong>All columns are required</strong>: Roll Number, Name, Email, Contact Number, Gender, Category, Admission Type, Admission Year, Batch, College Name and Course</li>
+                      <li>Write the <strong>full course name</strong> exactly as listed in the template's "Courses" sheet</li>
+                      <li>Gender: Male / Female / Other. Category: General / OBC / SC / ST. Admission Type: First Year / LEET</li>
+                    </>
+                  ) : (
+                    <li>Ensure all required fields are filled correctly</li>
+                  )}
                   <li>Upload the completed Excel file below</li>
                   <li>Supported formats: .xlsx, .xls</li>
                 </ul>
@@ -515,6 +574,7 @@ const BulkUpload = () => {
                           { title: 'Row', dataIndex: 'row', key: 'row', width: 60 },
                           { title: 'Name', dataIndex: 'name', key: 'name' },
                           { title: 'Roll Number', dataIndex: 'rollNumber', key: 'rollNumber' },
+                          { title: 'Email', dataIndex: 'email', key: 'email', ellipsis: true },
                           { title: 'Temporary Password', dataIndex: 'temporaryPassword', key: 'temporaryPassword' },
                         ]
                       : [

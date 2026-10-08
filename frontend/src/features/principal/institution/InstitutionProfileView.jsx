@@ -15,6 +15,7 @@ import {
 import dayjs from 'dayjs';
 import {
   COVERED_AREA_ENTITIES,
+  deriveCapacity,
   INSTITUTION_TYPES,
   LAND_OWNERSHIP_OPTIONS,
 } from '../../shared/institution/institutionFormUtils';
@@ -86,9 +87,10 @@ const TabLabel = ({ icon, text }) => (
 const formatDate = (value) => (value ? dayjs(value).format('DD-MM-YYYY') : null);
 const formatNumber = (value) => (value === null || value === undefined ? null : Number(value).toLocaleString());
 
-const InstitutionProfileView = ({ institution, intakes = [], staffCapacities = [] }) => {
+const InstitutionProfileView = ({ institution, intakes = [], staffCapacities = [], branchInfrastructure = [] }) => {
   const { token } = theme.useToken();
   const inst = institution || {};
+  const capacity = deriveCapacity(intakes, staffCapacities);
 
   const coveredAreas = COVERED_AREA_ENTITIES
     .map((entity) => (inst.coveredAreaDetails || []).find((row) => row.entityType === entity.value))
@@ -110,8 +112,8 @@ const InstitutionProfileView = ({ institution, intakes = [], staffCapacities = [
               { label: 'Institution Code', value: inst.code },
               { label: 'Institution Type', value: typeLabel },
               { label: 'Established Year', value: inst.establishedYear },
-              { label: 'Student Capacity', value: formatNumber(inst.totalStudentSeats) },
-              { label: 'Staff Capacity', value: formatNumber(inst.totalStaffSeats) },
+              { label: 'Student Capacity (Intake)', value: formatNumber(capacity.studentSeats) },
+              { label: 'Staff Capacity (Posts)', value: formatNumber(capacity.staffPosts) },
               { label: 'Affiliated To', value: inst.affiliatedTo },
               { label: 'Recognized By', value: inst.recognizedBy },
             ]}
@@ -205,6 +207,29 @@ const InstitutionProfileView = ({ institution, intakes = [], staffCapacities = [
         ) : (
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No covered area details added yet" />
         )}
+      </div>
+
+      <div>
+        <div className="mb-3 flex items-center gap-2">
+          <ApartmentOutlined style={{ color: token.colorPrimary }} />
+          <Text className="text-sm font-semibold" style={{ color: token.colorText }}>Course-wise Infrastructure</Text>
+        </div>
+        <Table
+          size="small"
+          bordered
+          pagination={false}
+          rowKey={(row) => row.id || `${row.branchId}-${row.entityType}`}
+          scroll={{ x: 700 }}
+          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No course-wise infrastructure added yet" /> }}
+          columns={[
+            { title: 'Course (Branch)', render: (_, row) => row.branch?.name || '-' },
+            { title: 'Entity', dataIndex: 'entityType', render: (v) => labelOf(COVERED_AREA_ENTITIES, v) },
+            { title: 'Total Rooms', dataIndex: 'numberOfRooms', align: 'center', render: (v) => v ?? '-' },
+            { title: 'Furniture', dataIndex: 'furnitureAvailable', align: 'center', render: (v) => yesNo(v) ?? '-' },
+            { title: 'Smart Boards / TVs', dataIndex: 'smartBoardsCount', align: 'center', render: (v) => v ?? '-' },
+          ]}
+          dataSource={branchInfrastructure}
+        />
       </div>
     </div>
   );

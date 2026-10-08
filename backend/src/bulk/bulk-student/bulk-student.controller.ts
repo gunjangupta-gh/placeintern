@@ -211,8 +211,10 @@ export class BulkStudentController {
       },
     },
   })
-  async downloadTemplate(@Res() res: Response) {
-    const template = await this.bulkStudentService.getTemplate();
+  async downloadTemplate(@Req() req: any, @Res() res: Response) {
+    // Principals get a template scoped to their own college; state/admin users see all colleges
+    const institutionId = req.user.role === Role.PRINCIPAL ? req.user.institutionId : null;
+    const template = await this.bulkStudentService.getTemplate(institutionId);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=bulk-student-upload-template.xlsx');

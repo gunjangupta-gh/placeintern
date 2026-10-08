@@ -29,6 +29,7 @@ import { ToggleStudentStatusDto } from '../../core/common/dto/toggle-student-sta
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { AssignMentorDto } from './dto/assign-mentor.dto';
 import { UpdatePrincipalInstitutionDto } from './dto/update-principal-institution.dto';
+import { ReplaceBranchInfrastructureDto } from '../state/dto/branch-infrastructure.dto';
 
 @ApiTags('Principal')
 @ApiBearerAuth()
@@ -140,6 +141,19 @@ export class PrincipalController {
     },
   ) {
     return this.principalService.replaceInstitutionBranchStaffCapacities(req.user.userId, body?.capacities || []);
+  }
+
+  @Get('institution/branch-infrastructure')
+  @ApiOperation({ summary: 'Get course-wise infrastructure records for own institution' })
+  async getInstitutionBranchInfrastructure(@Request() req) {
+    return this.principalService.getInstitutionBranchInfrastructure(req.user.userId);
+  }
+
+  @Put('institution/branch-infrastructure')
+  @Throttle({ default: THROTTLE_PRESETS.mutation })
+  @ApiOperation({ summary: 'Replace course-wise infrastructure records for own institution' })
+  async replaceInstitutionBranchInfrastructure(@Request() req, @Body() body: ReplaceBranchInfrastructureDto) {
+    return this.principalService.replaceInstitutionBranchInfrastructure(req.user.userId, body?.rows || []);
   }
 
   // Student Management

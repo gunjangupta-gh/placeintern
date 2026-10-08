@@ -21,7 +21,10 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import {
+  BRANCH_INFRA_ENTITIES,
+  buildDefaultBranchInfrastructureRow,
   COVERED_AREA_ENTITIES,
+  deriveCapacity,
   LAND_OWNERSHIP_OPTIONS,
   INSTITUTION_TYPES,
   YES_NO_OPTIONS,
@@ -72,6 +75,9 @@ const InstitutionFormTabs = ({
 }) => {
   const isPrincipalMode = mode === 'principal';
   const stateOnly = isPrincipalMode; // disable state-only fields for principals
+  const watchedIntakes = Form.useWatch('branchIntakes');
+  const watchedStaff = Form.useWatch('staffCapacities');
+  const derivedCapacity = deriveCapacity(watchedIntakes, watchedStaff);
 
   const tabs = [
     {
@@ -109,13 +115,13 @@ const InstitutionFormTabs = ({
             </Form.Item>
           </Col>
           <Col xs={24} md={8}>
-            <Form.Item name="totalStudentSeats" label="Student Capacity">
-              <Input type="number" placeholder="0" min={0} className="h-10 rounded-lg" disabled={stateOnly} />
+            <Form.Item label="Student Capacity" extra="From Intake tab (current year)">
+              <Input value={derivedCapacity.studentSeats} className="h-10 rounded-lg" disabled />
             </Form.Item>
           </Col>
           <Col xs={24} md={8}>
-            <Form.Item name="totalStaffSeats" label="Staff Capacity">
-              <Input type="number" placeholder="0" min={0} className="h-10 rounded-lg" disabled={stateOnly} />
+            <Form.Item label="Staff Capacity" extra="From Staff tab (current year)">
+              <Input value={derivedCapacity.staffPosts} className="h-10 rounded-lg" disabled />
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>
@@ -424,6 +430,88 @@ const InstitutionFormTabs = ({
                     </Button>
                   </div>
                   <Table size="small" bordered pagination={false} scroll={{ x: 800 }} columns={tableColumns} dataSource={fields.map((field) => ({ key: field.key }))} />
+                </div>
+              );
+            }}
+          </Form.List>
+        </div>
+      ),
+    },
+    {
+      key: 'branchInfra',
+      text: 'Course Infra',
+      children: (
+        <div className="space-y-3">
+          <Alert
+            type="info"
+            showIcon
+            className="rounded-lg border-info/20"
+            message="Course-wise rooms and facilities."
+            description="Add one row per course (branch) and entity type: rooms, labs, workshops and others. Common area is institution-wise only (Land tab)."
+          />
+          <Form.List name="branchInfrastructure">
+            {(fields, { add, remove }) => {
+              const tableColumns = [
+                {
+                  title: 'Course (Branch)',
+                  width: 220,
+                  render: (_, __, index) => (
+                    <Form.Item name={[index, 'branchId']} className="mb-0" rules={[{ required: true, message: 'Select a branch' }]}>
+                      <Select showSearch optionFilterProp="label" placeholder="Select branch" options={branchOptions} />
+                    </Form.Item>
+                  ),
+                },
+                {
+                  title: 'Entity',
+                  width: 150,
+                  render: (_, __, index) => (
+                    <Form.Item name={[index, 'entityType']} className="mb-0" rules={[{ required: true, message: 'Select entity' }]}>
+                      <Select options={BRANCH_INFRA_ENTITIES} />
+                    </Form.Item>
+                  ),
+                },
+                {
+                  title: 'Total Rooms',
+                  width: 110,
+                  render: (_, __, index) => (
+                    <Form.Item name={[index, 'numberOfRooms']} className="mb-0">
+                      <InputNumber min={0} precision={0} className="w-full" />
+                    </Form.Item>
+                  ),
+                },
+                {
+                  title: 'Furniture Available',
+                  width: 140,
+                  render: (_, __, index) => (
+                    <Form.Item name={[index, 'furnitureAvailable']} className="mb-0"><YesNoSelect /></Form.Item>
+                  ),
+                },
+                {
+                  title: 'Smart Boards / TVs',
+                  width: 140,
+                  render: (_, __, index) => (
+                    <Form.Item name={[index, 'smartBoardsCount']} className="mb-0">
+                      <InputNumber min={0} precision={0} className="w-full" />
+                    </Form.Item>
+                  ),
+                },
+                {
+                  title: '',
+                  width: 80,
+                  render: (_, __, index) => (
+                    <Button danger type="text" size="small" onClick={() => remove(index)}>Remove</Button>
+                  ),
+                },
+              ];
+
+              return (
+                <div className="space-y-2">
+                  <div className="flex justify-end">
+                    <Button type="dashed" icon={<PlusOutlined />} onClick={() => add(buildDefaultBranchInfrastructureRow())}>
+                      Add Row
+                    </Button>
+                  </div>
+                  <Table size="small" bordered pagination={false} scroll={{ x: 840 }} columns={tableColumns} dataSource={fields.map((field) => ({ key: field.key }))} />
                 </div>
               );
             }}

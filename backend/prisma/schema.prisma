@@ -470,7 +470,8 @@ model Institution {
   principalFeedbacks PrincipalFeedback[]
 
   // Infrastructure / covered area details
-  coveredAreaDetails InstitutionCoveredArea[]
+  coveredAreaDetails   InstitutionCoveredArea[]
+  branchInfrastructure BranchInfrastructure[]
 
   @@index([landOwnership])
 }
@@ -545,6 +546,34 @@ model InstitutionCoveredArea {
   @@map("institution_covered_areas")
 }
 
+// Course (Branch) wise infrastructure. Companion to InstitutionCoveredArea
+// (institution-wise): one current snapshot per branch + entity type.
+// COMMON_AREA is shared across courses so it is not captured here.
+model BranchInfrastructure {
+  id String @id @default(uuid())
+
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  entityType CoveredAreaEntityType
+
+  // nullable: null = not yet filled in
+  numberOfRooms      Int?
+  furnitureAvailable Boolean?
+  smartBoardsCount   Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([institutionId, branchId, entityType])
+  @@index([institutionId])
+  @@index([branchId])
+  @@map("branch_infrastructure")
+}
+
 // =============================================
 // ACADEMIC STRUCTURE
 // =============================================
@@ -565,6 +594,7 @@ model Branch {
   students        Student[] // Direct student relation (for backward compatibility)
   intakes         BranchIntake[]
   staffCapacities BranchStaffCapacity[]
+  infrastructure  BranchInfrastructure[]
 
   // Training Module - Target disciplines for trainings
   trainings               Training[]               @relation("TrainingBranches")

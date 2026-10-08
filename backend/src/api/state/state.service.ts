@@ -149,6 +149,18 @@ export class StateService {
     return this.institutionService.replaceInstitutionBranchStaffCapacities(institutionId, capacities, userId);
   }
 
+  async getInstitutionBranchInfrastructure(institutionId: string) {
+    return this.institutionService.getInstitutionBranchInfrastructure(institutionId);
+  }
+
+  async replaceInstitutionBranchInfrastructure(
+    institutionId: string,
+    rows: Parameters<StateInstitutionService['replaceInstitutionBranchInfrastructure']>[1],
+    userId?: string,
+  ) {
+    return this.institutionService.replaceInstitutionBranchInfrastructure(institutionId, rows, userId);
+  }
+
   async getInstitutionStudents(
     institutionId: string,
     params: {

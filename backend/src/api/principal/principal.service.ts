@@ -571,8 +571,14 @@ export class PrincipalService {
       throw new NotFoundException('Institution not found');
     }
 
+    // Branches with no institutionId are global (shared by every college), so they must be
+    // offered too - otherwise the intake / staff-capacity dropdowns are empty for colleges
+    // whose branches are not tied to a specific institution.
     const branches = await this.prisma.branch.findMany({
-      where: { institutionId: principal.institutionId, isActive: true },
+      where: {
+        OR: [{ institutionId: principal.institutionId }, { institutionId: null }],
+        isActive: true,
+      },
       select: {
         id: true,
         name: true,
@@ -674,7 +680,10 @@ export class PrincipalService {
   ) {
     const branches = [...new Set(branchIds.filter(Boolean))] as string[];
     if (branches.length) {
-      const count = await this.prisma.branch.count({ where: { id: { in: branches }, institutionId } });
+      // Global branches (no institutionId) are shared by every college and are allowed
+      const count = await this.prisma.branch.count({
+        where: { id: { in: branches }, OR: [{ institutionId }, { institutionId: null }] },
+      });
       if (count !== branches.length) {
         throw new BadRequestException('One or more branches do not belong to your institution');
       }
@@ -729,6 +738,25 @@ export class PrincipalService {
     return this.stateInstitutionService.replaceInstitutionBranchStaffCapacities(
       institutionId,
       capacities,
+      principalId,
+      Role.PRINCIPAL,
+    );
+  }
+
+  async getInstitutionBranchInfrastructure(principalId: string) {
+    const institutionId = await this.getOwnInstitutionId(principalId);
+    return this.stateInstitutionService.getInstitutionBranchInfrastructure(institutionId);
+  }
+
+  async replaceInstitutionBranchInfrastructure(
+    principalId: string,
+    rows: Parameters<StateInstitutionService['replaceInstitutionBranchInfrastructure']>[1],
+  ) {
+    const institutionId = await this.getOwnInstitutionId(principalId);
+    await this.assertOwnBranchesAndBatches(institutionId, (rows || []).map((r) => r.branchId));
+    return this.stateInstitutionService.replaceInstitutionBranchInfrastructure(
+      institutionId,
+      rows,
       principalId,
       Role.PRINCIPAL,
     );
