@@ -25,6 +25,7 @@ import {
   Category,
 } from "../../generated/prisma/client";
 import { AuditService } from "../../infrastructure/audit/audit.service";
+import { StudentSemesterStatusService } from "../../domain/academic/semester-status/student-semester-status.service";
 import {
   calculateExpectedMonths,
   MonthlyCycle,
@@ -68,8 +69,21 @@ export class StudentService {
     private readonly redisCache: CacheService,
     private readonly facultyVisitService: FacultyVisitService,
     private readonly auditService: AuditService,
-    private readonly expectedCycleService: ExpectedCycleService
+    private readonly expectedCycleService: ExpectedCycleService,
+    private readonly semesterStatusService: StudentSemesterStatusService,
   ) {}
+
+  /** Read-only semester-wise result status for the logged-in student (their own record only). */
+  async getOwnSemesterStatus(userId: string) {
+    const student = await this.prisma.student.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!student) {
+      throw new NotFoundException('Student profile not found');
+    }
+    return this.semesterStatusService.list(student.id);
+  }
 
   private isMonthlyReportUniqueConstraintError(error: unknown): boolean {
     if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {

@@ -14,6 +14,7 @@ import {
 } from "../../../utils/imageUtils";
 import ProfileAvatar from "../../../components/common/ProfileAvatar";
 import MaskedField from "../../../components/common/MaskedField";
+import { SEMESTER_STATUS_COLOR, SEMESTER_STATUS_OPTIONS } from "../../shared/students/SemesterStatusEditor";
 import { fetchStudentProfile, updateProfile } from "../store/studentSlice";
 import {
   Card,
@@ -199,6 +200,21 @@ export default function StudentProfile() {
     },
     [dispatch],
   );
+
+  // Semester-wise result status (read-only, set by principal / mentor)
+  const [semesterStatus, setSemesterStatus] = useState(null);
+  const hasStudentForStatus = !!student;
+  useEffect(() => {
+    if (!hasStudentForStatus) return;
+    let cancelled = false;
+    studentService
+      .getOwnSemesterStatus()
+      .then((data) => !cancelled && setSemesterStatus(data))
+      .catch(() => !cancelled && setSemesterStatus(null)); // card simply stays hidden
+    return () => {
+      cancelled = true;
+    };
+  }, [hasStudentForStatus]);
 
   // DOB arrives masked in the profile response; load the real value (own data only)
   const [ownDob, setOwnDob] = useState(null);
@@ -646,6 +662,38 @@ export default function StudentProfile() {
             </div>
           </div>
         </Card>
+
+        {/* Semester-wise result status (read-only) */}
+        {semesterStatus?.semesters?.length > 0 && (
+          <Card className="rounded-xl border-border shadow-sm" styles={{ body: { padding: 16 } }}>
+            <div className="flex items-center justify-between mb-3">
+              <Text strong>Semester Results</Text>
+              {semesterStatus.totalBacklogs > 0 && (
+                <Tag color="error" className="m-0">
+                  {semesterStatus.totalBacklogs} backlog{semesterStatus.totalBacklogs > 1 ? "s" : ""}
+                </Tag>
+              )}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+              {semesterStatus.semesters.map((sem) => (
+                <div
+                  key={sem.semester}
+                  className="rounded-lg border border-border px-3 py-2 flex flex-col gap-1"
+                >
+                  <span className="text-xs text-text-tertiary">Semester {sem.semester}</span>
+                  <Tag color={SEMESTER_STATUS_COLOR[sem.status]} className="m-0 w-fit">
+                    {SEMESTER_STATUS_OPTIONS.find((o) => o.value === sem.status)?.label || sem.status}
+                  </Tag>
+                  {sem.status === "FAILED" && sem.backlogCount > 0 && (
+                    <span className="text-xs text-text-tertiary">
+                      {sem.backlogCount} backlog{sem.backlogCount > 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
         {/* Quick Info Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

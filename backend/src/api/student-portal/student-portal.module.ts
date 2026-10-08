@@ -5,9 +5,10 @@ import { ReportModule } from '../../domain/report/report.module';
 import { AuditModule } from '../../infrastructure/audit/audit.module';
 import { FileStorageModule } from '../../infrastructure/file-storage/file-storage.module';
 import { InternshipModule } from '../../domain/internship/internship.module';
+import { AcademicModule } from '../../domain/academic/academic.module';
 
 @Module({
-  imports: [ReportModule, AuditModule, FileStorageModule, InternshipModule],
+  imports: [ReportModule, AuditModule, FileStorageModule, InternshipModule, AcademicModule],
   controllers: [StudentController],
   providers: [StudentService],
   exports: [StudentService],

@@ -4,6 +4,7 @@ import { SemesterService } from './semester/semester.service';
 import { SubjectService } from './subject/subject.service';
 import { ResultService } from './result/result.service';
 import { StudentProgressScheduler } from './student-progress.scheduler';
+import { StudentSemesterStatusService } from './semester-status/student-semester-status.service';
 
 @Module({
   providers: [
@@ -12,6 +13,7 @@ import { StudentProgressScheduler } from './student-progress.scheduler';
     SubjectService,
     ResultService,
     StudentProgressScheduler,
+    StudentSemesterStatusService,
   ],
   exports: [
     BatchService,
@@ -19,6 +21,7 @@ import { StudentProgressScheduler } from './student-progress.scheduler';
     SubjectService,
     ResultService,
     StudentProgressScheduler,
+    StudentSemesterStatusService,
   ],
 })
 export class AcademicModule {}

@@ -8,6 +8,7 @@ import dayjs from 'dayjs';
 import { useLookup } from '../../shared/hooks/useLookup';
 import { getImageUrl, getPresignedUrl } from '../../../utils/imageUtils';
 import principalService from '../../../services/principal.service';
+import SemesterStatusEditor from '../../shared/students/SemesterStatusEditor';
 import { stateDistrictTehsilData } from '../../../constants/stateDistrictTehsil.constants';
 
 const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
@@ -226,8 +227,6 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
   // Clearance status options - keep in sync with backend ClearanceStatus enum (schema.prisma)
   const clearanceStatusOptions = [
     { value: 'PENDING', label: 'Pending' },
-    { value: 'APPEARED', label: 'Appeared (Final Exam)' },
-    { value: 'PASSED', label: 'Passed (Final Exam)' },
     { value: 'CLEARED', label: 'Cleared' },
     { value: 'HOLD', label: 'Hold' },
     { value: 'REJECTED', label: 'Rejected' },
@@ -397,10 +396,21 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
               </Form.Item>
             </Col>
             <Col xs={24} sm={8}>
-              <Form.Item name="clearanceStatus" label="Clearance Status">
+              <Form.Item
+                name="clearanceStatus"
+                label="Clearance Status"
+                tooltip="Overall decision. Can be set to Cleared only after all earlier semesters are Passed."
+              >
                 <Select placeholder="Select status" options={clearanceStatusOptions} allowClear />
               </Form.Item>
             </Col>
+            {isEditMode && (
+              <Col xs={24}>
+                <Form.Item label="Semester-wise Result Status">
+                  <SemesterStatusEditor studentId={studentId} service={principalService} />
+                </Form.Item>
+              </Col>
+            )}
             <Col xs={24} sm={12}>
               <Form.Item name="scholarshipId" label="Scholarship">
                 <Select

@@ -105,6 +105,16 @@ export const principalService = {
     return response.data;
   },
 
+  async getStudentSemesterStatus(studentId) {
+    const response = await API.get(`/principal/students/${studentId}/semester-status`);
+    return response.data;
+  },
+
+  async setStudentSemesterStatus(studentId, semester, data) {
+    const response = await API.put(`/principal/students/${studentId}/semester-status/${semester}`, data);
+    return response.data;
+  },
+
   async toggleStudentStatus(studentId, data = {}) {
     const response = await API.patch(`/principal/students/${studentId}/toggle-status`, data);
     return response.data;

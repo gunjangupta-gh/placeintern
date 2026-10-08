@@ -296,6 +296,7 @@ model Student {
   principalFeedbacks     PrincipalFeedbackStudent[]
   placementInterest      StudentPlacementInterest?
   internshipReports      InternshipReport[]
+  semesterStatuses       StudentSemesterStatus[]
 
   // Performance Indexes
   @@index([institutionId])
@@ -316,6 +317,35 @@ enum ClearanceStatus {
   REJECTED
   APPEARED // student appeared for final exams
   PASSED // student passed final exams
+}
+
+// Semester-wise result outcome. Overall clearance (Student.clearanceStatus) stays a single
+// decision; this records what happened in each semester. See PLAN-semester-wise-clearance.md.
+model StudentSemesterStatus {
+  id        String  @id @default(uuid())
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  semester     Int // 1-6
+  academicYear String? // e.g. "2025-26"
+  status       SemesterResultStatus @default(PENDING)
+  backlogCount Int                  @default(0) // subjects still to clear after this semester
+  remarks      String?
+  updatedBy    String? // userId of principal / faculty who last changed it
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, semester])
+  @@index([semester, status])
+  @@map("student_semester_statuses")
+}
+
+enum SemesterResultStatus {
+  PENDING // semester not finished / not yet recorded
+  APPEARED // exam written, result awaited
+  PASSED // all subjects cleared
+  FAILED // one or more subjects failed (see backlogCount)
 }
 
 enum AdmissionType {

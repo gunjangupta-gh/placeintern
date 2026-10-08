@@ -4,6 +4,7 @@ import { FacultyService } from './faculty.service';
 import { AuditModule } from '../../infrastructure/audit/audit.module';
 import { FileStorageModule } from '../../infrastructure/file-storage/file-storage.module';
 import { InternshipModule } from '../../domain/internship/internship.module';
+import { AcademicModule } from '../../domain/academic/academic.module';
 
 // Training module
 import { FacultyTrainingModule } from './training/faculty-training.module';
@@ -13,6 +14,7 @@ import { FacultyTrainingModule } from './training/faculty-training.module';
     AuditModule,
     FileStorageModule,
     InternshipModule,
+    AcademicModule,
     // Training sub-module
     FacultyTrainingModule,
   ],

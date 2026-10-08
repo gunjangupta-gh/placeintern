@@ -7,6 +7,8 @@ import { AuditService } from '../../infrastructure/audit/audit.service';
 import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
 import { ExpectedCycleService } from '../../domain/internship/expected-cycle/expected-cycle.service';
 import { AuthService } from '../../core/auth/services/auth.service';
+import { StudentSemesterStatusService } from '../../domain/academic/semester-status/student-semester-status.service';
+import { SetSemesterStatusDto } from '../../core/common/dto/set-semester-status.dto';
 import {
   calculateExpectedMonths,
   getTotalExpectedCount,
@@ -26,6 +28,7 @@ export class FacultyService {
     private readonly auditService: AuditService,
     private readonly expectedCycleService: ExpectedCycleService,
     private readonly authService: AuthService,
+    private readonly semesterStatusService: StudentSemesterStatusService,
   ) {}
 
   private normalizeVisitType(visitType?: string): string | undefined {
@@ -3137,6 +3140,39 @@ export class FacultyService {
 
   // ==================== Student Management ====================
 
+  /** Faculty may only touch semester status of students they are the active mentor for. */
+  private async getAssignedMentorForSemesterStatus(studentId: string, facultyId: string) {
+    const assignment = await this.prisma.mentorAssignment.findFirst({
+      where: { studentId, mentorId: facultyId, isActive: true },
+      select: { id: true },
+    });
+    if (!assignment) {
+      throw new NotFoundException('Student not found or you are not the assigned mentor');
+    }
+    const faculty = await this.prisma.user.findUnique({
+      where: { id: facultyId },
+      select: { id: true, role: true, institutionId: true },
+    });
+    if (!faculty) {
+      throw new NotFoundException('User not found');
+    }
+    return faculty;
+  }
+
+  async getStudentSemesterStatus(studentId: string, facultyId: string) {
+    await this.getAssignedMentorForSemesterStatus(studentId, facultyId);
+    return this.semesterStatusService.list(studentId);
+  }
+
+  async setStudentSemesterStatus(studentId: string, semester: number, dto: SetSemesterStatusDto, facultyId: string) {
+    const faculty = await this.getAssignedMentorForSemesterStatus(studentId, facultyId);
+    return this.semesterStatusService.set(studentId, semester, dto, {
+      userId: faculty.id,
+      role: faculty.role,
+      institutionId: faculty.institutionId,
+    });
+  }
+
   /**
    * Update student profile
    * SECURITY: Requires facultyId to verify authorization via MentorAssignment
@@ -3162,6 +3198,12 @@ export class FacultyService {
 
     if (!student) {
       throw new NotFoundException('Student not found');
+    }
+
+    // Overall clearance can only become CLEARED once all earlier semesters are PASSED.
+    // Only checked on a real change so unrelated edits to an already-cleared student still save.
+    if (updateDto.clearanceStatus === 'CLEARED' && student.clearanceStatus !== 'CLEARED') {
+      await this.semesterStatusService.assertCanBeCleared(studentId);
     }
 
     const oldValues = {

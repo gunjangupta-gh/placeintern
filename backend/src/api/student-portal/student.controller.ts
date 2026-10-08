@@ -53,6 +53,13 @@ export class StudentController {
     return this.studentService.getProfile(req.user.userId);
   }
 
+  @Get('semester-status')
+  @Roles(Role.STUDENT)
+  @ApiOperation({ summary: 'Get own semester-wise result status (read-only)' })
+  async getOwnSemesterStatus(@Req() req) {
+    return this.studentService.getOwnSemesterStatus(req.user.userId);
+  }
+
   @Put('profile')
   @Roles(Role.STUDENT)
   @ApiOperation({ summary: 'Update student profile' })

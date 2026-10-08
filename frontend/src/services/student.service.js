@@ -246,6 +246,15 @@ export const studentService = {
     return response.data;
   },
 
+  /**
+   * Own semester-wise result status (read-only).
+   * @returns {Promise<{currentSemester: number|null, totalBacklogs: number, semesters: Array}>}
+   */
+  async getOwnSemesterStatus() {
+    const response = await API.get('/student/semester-status');
+    return response.data;
+  },
+
   // =====================
   // Unmasked Contact Details (for masked reveal feature)
   // =====================

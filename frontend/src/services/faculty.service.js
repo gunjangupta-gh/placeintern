@@ -71,6 +71,16 @@ export const facultyService = {
     return response.data;
   },
 
+  async getStudentSemesterStatus(studentId) {
+    const response = await API.get(`/faculty/students/${studentId}/semester-status`);
+    return response.data;
+  },
+
+  async setStudentSemesterStatus(studentId, semester, data) {
+    const response = await API.put(`/faculty/students/${studentId}/semester-status/${semester}`, data);
+    return response.data;
+  },
+
   async toggleStudentStatus(studentId, data = {}) {
     const response = await API.patch(`/faculty/students/${studentId}/toggle-status`, data);
     return response.data;

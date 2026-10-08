@@ -8,6 +8,7 @@ import dayjs from 'dayjs';
 import { useLookup } from '../../shared/hooks/useLookup';
 import { getImageUrl, getPresignedUrl } from '../../../utils/imageUtils';
 import { facultyService } from '../../../services/faculty.service';
+import SemesterStatusEditor from '../../shared/students/SemesterStatusEditor';
 
 const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStudentData, onSuccess }) => {
   const dispatch = useDispatch();
@@ -291,8 +292,6 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
   // Clearance status options - keep in sync with backend ClearanceStatus enum (schema.prisma)
   const clearanceStatusOptions = [
     { value: 'PENDING', label: 'Pending' },
-    { value: 'APPEARED', label: 'Appeared (Final Exam)' },
-    { value: 'PASSED', label: 'Passed (Final Exam)' },
     { value: 'CLEARED', label: 'Cleared' },
     { value: 'HOLD', label: 'Hold' },
     { value: 'REJECTED', label: 'Rejected' },
@@ -429,10 +428,21 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
               </Form.Item>
             </Col>
             <Col xs={24} sm={8}>
-              <Form.Item name="clearanceStatus" label="Clearance Status">
+              <Form.Item
+                name="clearanceStatus"
+                label="Clearance Status"
+                tooltip="Overall decision. Can be set to Cleared only after all earlier semesters are Passed."
+              >
                 <Select placeholder="Select status" options={clearanceStatusOptions} allowClear />
               </Form.Item>
             </Col>
+            {isEditMode && (
+              <Col xs={24}>
+                <Form.Item label="Semester-wise Result Status">
+                  <SemesterStatusEditor studentId={studentId} service={facultyService} />
+                </Form.Item>
+              </Col>
+            )}
             <Col xs={24} sm={12}>
               <Form.Item name="scholarshipId" label="Scholarship">
                 <Select

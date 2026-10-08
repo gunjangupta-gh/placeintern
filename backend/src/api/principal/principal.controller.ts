@@ -7,6 +7,7 @@ import {
   Delete,
   Body,
   Param,
+  ParseIntPipe,
   Query,
   UseGuards,
   Request,
@@ -26,6 +27,7 @@ import { Role } from '../../generated/prisma/client';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { ToggleStudentStatusDto } from '../../core/common/dto/toggle-student-status.dto';
+import { SetSemesterStatusDto } from '../../core/common/dto/set-semester-status.dto';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { AssignMentorDto } from './dto/assign-mentor.dto';
 import { UpdatePrincipalInstitutionDto } from './dto/update-principal-institution.dto';
@@ -197,6 +199,23 @@ export class PrincipalController {
     @Body() updateStudentDto: UpdateStudentDto,
   ) {
     return this.principalService.updateStudent(req.user.userId, id, updateStudentDto);
+  }
+
+  @Get('students/:id/semester-status')
+  @ApiOperation({ summary: 'Get semester-wise result status for a student' })
+  async getStudentSemesterStatus(@Request() req, @Param('id') id: string) {
+    return this.principalService.getStudentSemesterStatus(req.user.userId, id);
+  }
+
+  @Put('students/:id/semester-status/:semester')
+  @ApiOperation({ summary: 'Set result status for one semester of a student' })
+  async setStudentSemesterStatus(
+    @Request() req,
+    @Param('id') id: string,
+    @Param('semester', ParseIntPipe) semester: number,
+    @Body() dto: SetSemesterStatusDto,
+  ) {
+    return this.principalService.setStudentSemesterStatus(req.user.userId, id, semester, dto);
   }
 
   @Delete('students/:id')

@@ -10,6 +10,8 @@ import { AssignMentorDto } from './dto/assign-mentor.dto';
 import { UpdatePrincipalInstitutionDto } from './dto/update-principal-institution.dto';
 import { StateInstitutionService } from '../state/services/state-institution.service';
 import { UserService } from '../../domain/user/user.service';
+import { StudentSemesterStatusService } from '../../domain/academic/semester-status/student-semester-status.service';
+import { SetSemesterStatusDto } from '../../core/common/dto/set-semester-status.dto';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
 import { ExpectedCycleService } from '../../domain/internship/expected-cycle/expected-cycle.service';
@@ -44,6 +46,7 @@ export class PrincipalService {
     private readonly fileStorageService: FileStorageService,
     private readonly expectedCycleService: ExpectedCycleService,
     private readonly stateInstitutionService: StateInstitutionService,
+    private readonly semesterStatusService: StudentSemesterStatusService,
   ) {}
 
   /**
@@ -561,6 +564,44 @@ export class PrincipalService {
   /**
    * Get institution branches/departments
    */
+  /** Resolve a student of the principal's own institution (never trusts a client institution id). */
+  private async getOwnStudentForSemesterStatus(principalId: string, studentId: string) {
+    const principal = await this.prisma.user.findUnique({
+      where: { id: principalId },
+      select: { id: true, role: true, institutionId: true },
+    });
+    if (!principal?.institutionId) {
+      throw new NotFoundException('Institution not found');
+    }
+    const student = await this.prisma.student.findFirst({
+      where: { id: studentId, institutionId: principal.institutionId },
+      select: { id: true },
+    });
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+    return principal;
+  }
+
+  async getStudentSemesterStatus(principalId: string, studentId: string) {
+    await this.getOwnStudentForSemesterStatus(principalId, studentId);
+    return this.semesterStatusService.list(studentId);
+  }
+
+  async setStudentSemesterStatus(
+    principalId: string,
+    studentId: string,
+    semester: number,
+    dto: SetSemesterStatusDto,
+  ) {
+    const principal = await this.getOwnStudentForSemesterStatus(principalId, studentId);
+    return this.semesterStatusService.set(studentId, semester, dto, {
+      userId: principal.id,
+      role: principal.role,
+      institutionId: principal.institutionId,
+    });
+  }
+
   async getBranches(principalId: string) {
     const principal = await this.prisma.user.findUnique({
       where: { id: principalId },
@@ -1701,6 +1742,13 @@ export class PrincipalService {
       throw new NotFoundException('Institution not found');
     }
 
+    // A brand-new student has no semester results yet, so cannot already be Cleared
+    if (createStudentDto.clearanceStatus === 'CLEARED') {
+      throw new BadRequestException(
+        'A new student cannot be marked as Cleared. Record semester results first, then update clearance.',
+      );
+    }
+
     // Handle branchId/departmentId (departmentId is an alias for branchId)
     const branchId = createStudentDto.branchId || createStudentDto.departmentId;
     let branchName: string | undefined;
@@ -1822,6 +1870,12 @@ export class PrincipalService {
 
     if (!student) {
       throw new NotFoundException('Student not found');
+    }
+
+    // Overall clearance can only become CLEARED once all earlier semesters are PASSED.
+    // Only checked on a real change so unrelated edits to an already-cleared student still save.
+    if (updateStudentDto.clearanceStatus === 'CLEARED' && student.clearanceStatus !== 'CLEARED') {
+      await this.semesterStatusService.assertCanBeCleared(studentId);
     }
 
     // Prepare update data, handling branchId/departmentId mapping

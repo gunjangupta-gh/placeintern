@@ -7,6 +7,7 @@ import {
   Delete,
   Body,
   Param,
+  ParseIntPipe,
   Query,
   UseGuards,
   Req,
@@ -24,6 +25,7 @@ import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { Role } from '../../generated/prisma/client';
 import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
 import { ToggleStudentStatusDto } from '../../core/common/dto/toggle-student-status.dto';
+import { SetSemesterStatusDto } from '../../core/common/dto/set-semester-status.dto';
 import {
   CreateVisitLogDto,
   UpdateVisitLogDto,
@@ -574,6 +576,25 @@ export class FacultyController {
     @Req() req,
   ) {
     return this.facultyService.updateStudent(studentId, updateStudentDto, req.user.userId);
+  }
+
+  @Get('students/:id/semester-status')
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
+  @ApiOperation({ summary: 'Get semester-wise result status for an assigned student' })
+  async getStudentSemesterStatus(@Param('id') studentId: string, @Req() req) {
+    return this.facultyService.getStudentSemesterStatus(studentId, req.user.userId);
+  }
+
+  @Put('students/:id/semester-status/:semester')
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
+  @ApiOperation({ summary: 'Set result status for one semester of an assigned student' })
+  async setStudentSemesterStatus(
+    @Param('id') studentId: string,
+    @Param('semester', ParseIntPipe) semester: number,
+    @Body() dto: SetSemesterStatusDto,
+    @Req() req,
+  ) {
+    return this.facultyService.setStudentSemesterStatus(studentId, semester, dto, req.user.userId);
   }
 
   @Post('students/:id/documents')
