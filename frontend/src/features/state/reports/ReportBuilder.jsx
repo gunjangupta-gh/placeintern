@@ -49,6 +49,7 @@ import {
   StopOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import CmReportDownload from './CmReportDownload';
 import toast from 'react-hot-toast';
 import {
   fetchReportCatalog,
@@ -904,7 +905,7 @@ const ReportBuilder = () => {
 
   return (
     <div className="">
-      <Card title="Report Builder" variant="borderless">
+      <Card title="Report Builder" extra={<CmReportDownload />} variant="borderless">
         <Steps current={currentStep} className="mb-6" size="small">
         <Steps.Step title="Select Type" description="Choose report" />
         <Steps.Step title="Configure" description="Set columns & filters" />
