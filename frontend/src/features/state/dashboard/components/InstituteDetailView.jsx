@@ -2107,6 +2107,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
           </div>
         </div>
         <Space size={4}>
+          <CmReportDownload institutionId={selectedInstitute.id} size="small" />
           <Tooltip title="Files">
             <Button icon={<FolderOpenOutlined />} onClick={() => setFileExplorerOpen(true)} size="small" type="text" />
           </Tooltip>
