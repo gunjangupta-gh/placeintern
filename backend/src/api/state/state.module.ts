@@ -64,6 +64,7 @@ import { BotModule } from './bot/bot.module';
     StateRestoreService,
     StateComplianceService,
     StateStudentService,
+    StateCmReportService,
   ],
   exports: [StateService, StateInstitutionService],
 })
