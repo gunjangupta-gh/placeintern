@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { createStaff, updateStaff, fetchStaff } from '../store/principalSlice';
 import { SaveOutlined } from '@ant-design/icons';
 import { useBranches } from '../../shared/hooks/useLookup';
+import { getApiErrorMessage } from '../../../utils/apiHelpers';
 import { DESIGNATION_OPTIONS } from '../../shared/constants/designations';
 
 const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
@@ -108,7 +109,7 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
       handleClose();
       onSuccess?.();
     } catch (error) {
-      toast.error(error?.message || 'Operation failed');
+      toast.error(getApiErrorMessage(error, 'Operation failed'));
     } finally {
       setLoading(false);
     }

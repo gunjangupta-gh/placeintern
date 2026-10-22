@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { SaveOutlined } from '@ant-design/icons';
 import { createPrincipal, updatePrincipal, fetchPrincipalById, clearCurrentPrincipal } from '../store/stateSlice';
 import dayjs from 'dayjs';
+import { getApiErrorMessage } from '../../../utils/apiHelpers';
 import { useInstitutions } from '../../shared/hooks/useLookup';
 
 const PrincipalModal = ({ open, onClose, principalId, onSuccess }) => {
@@ -92,7 +93,7 @@ const PrincipalModal = ({ open, onClose, principalId, onSuccess }) => {
       handleClose();
       onSuccess?.();
     } catch (error) {
-      toast.error(error?.message || `Failed to ${isEdit ? 'update' : 'create'} principal`);
+      toast.error(getApiErrorMessage(error, `Failed to ${isEdit ? 'update' : 'create'} principal`));
     } finally {
       setLoading(false);
     }

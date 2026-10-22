@@ -6,6 +6,7 @@ import { SaveOutlined } from '@ant-design/icons';
 import { createStaff, updateStaff } from '../store/stateSlice';
 import stateService from '../../../services/state.service';
 import { useLookup } from '../../shared/hooks/useLookup';
+import { getApiErrorMessage } from '../../../utils/apiHelpers';
 import { DESIGNATION_OPTIONS } from '../../shared/constants/designations';
 
 // Role options matching Prisma Role enum (for staff management)
@@ -83,7 +84,7 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
       handleClose();
       onSuccess?.();
     } catch (error) {
-      toast.error(error?.message || `Failed to ${isEditMode ? 'update' : 'create'} staff member`);
+      toast.error(getApiErrorMessage(error, `Failed to ${isEditMode ? 'update' : 'create'} staff member`));
     } finally {
       setLoading(false);
     }

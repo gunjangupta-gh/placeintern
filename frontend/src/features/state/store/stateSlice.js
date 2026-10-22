@@ -4,6 +4,7 @@ import { API_ENDPOINTS } from '../../../utils/constants';
 import stateService from '../../../services/state.service';
 import reportService from '../../../services/report.service';
 import { CACHE_DURATIONS, isCacheValid } from '../../../utils/cacheConfig';
+import { getApiErrorMessage } from '../../../utils/apiHelpers';
 
 const initialState = {
   dashboard: {
@@ -442,7 +443,7 @@ export const createPrincipal = createAsyncThunk(
       const response = await stateService.createPrincipal(principalData);
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to create principal');
+      return rejectWithValue(getApiErrorMessage(error, 'Failed to create principal'));
     }
   }
 );
@@ -454,7 +455,7 @@ export const updatePrincipal = createAsyncThunk(
       const response = await stateService.updatePrincipal(id, data);
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to update principal');
+      return rejectWithValue(getApiErrorMessage(error, 'Failed to update principal'));
     }
   }
 );
@@ -566,7 +567,7 @@ export const createStaff = createAsyncThunk(
       const response = await stateService.createStaff(data);
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to create staff');
+      return rejectWithValue(getApiErrorMessage(error, 'Failed to create staff'));
     }
   }
 );
@@ -578,7 +579,7 @@ export const updateStaff = createAsyncThunk(
       const response = await stateService.updateStaff(id, data);
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to update staff');
+      return rejectWithValue(getApiErrorMessage(error, 'Failed to update staff'));
     }
   }
 );

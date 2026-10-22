@@ -134,3 +134,18 @@ export const createCleanupHandler = (...keys) => {
     keys.forEach((key) => cancelRequest(key));
   };
 };
+
+/**
+ * Pull a readable message out of whatever a failed request/thunk threw:
+ * a plain string (createAsyncThunk .unwrap() rethrows the rejectWithValue
+ * payload), an axios error (backend `message` may be a string or a
+ * class-validator array), or a regular Error.
+ */
+export const getApiErrorMessage = (error, fallback = 'Something went wrong') => {
+  const join = (m) => (Array.isArray(m) ? m.filter(Boolean).join(', ') : m);
+  if (!error) return fallback;
+  if (typeof error === 'string') return error;
+  const data = error.response?.data;
+  const fromBackend = join(data?.message) || join(data?.error?.message) || (typeof data?.error === 'string' ? data.error : undefined);
+  return fromBackend || join(error.message) || fallback;
+};

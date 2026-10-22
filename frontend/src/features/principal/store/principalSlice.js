@@ -3,6 +3,7 @@ import principalService from '../../../services/principal.service';
 import { bulkService } from '../../../services/bulk.service';
 import { credentialsService } from '../../../services/credentials.service';
 import { CACHE_DURATIONS, isCacheValid } from '../../../utils/cacheConfig';
+import { getApiErrorMessage } from '../../../utils/apiHelpers';
 
 const initialState = {
   dashboard: {
@@ -410,9 +411,7 @@ export const createStaff = createAsyncThunk(
       // Rollback on error
       dispatch(principalSlice.actions.rollbackStaffOperation({ list: previousList }));
 
-      const errorMessage = error.response?.data?.message ||
-                          error.message ||
-                          'Failed to create staff. Please check the form and try again.';
+      const errorMessage = getApiErrorMessage(error, 'Failed to create staff. Please check the form and try again.');
       console.error('Create staff error:', error);
       return rejectWithValue(errorMessage);
     }
@@ -436,9 +435,7 @@ export const updateStaff = createAsyncThunk(
       // Rollback on error
       dispatch(principalSlice.actions.rollbackStaffOperation({ list: previousList }));
 
-      const errorMessage = error.response?.data?.message ||
-                          error.message ||
-                          'Failed to update staff. Please try again.';
+      const errorMessage = getApiErrorMessage(error, 'Failed to update staff. Please try again.');
       console.error('Update staff error:', error);
       return rejectWithValue(errorMessage);
     }
