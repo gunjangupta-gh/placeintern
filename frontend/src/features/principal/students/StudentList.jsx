@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Button, Tag, Avatar, Input, Select, Card, Modal, Space, Tooltip, Switch, InputNumber, Dropdown, theme } from 'antd';
+import { Button, Tag, Avatar, Input, Select, Card, Modal, Space, Tooltip, Switch, InputNumber, theme } from 'antd';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -27,8 +27,6 @@ import {
   TrophyOutlined,
   KeyOutlined,
   ReloadOutlined,
-  DownOutlined,
-  UserAddOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
 import { getStatusColor } from '../../../utils/format';
@@ -416,24 +414,12 @@ const StudentList = () => {
           >
             Refresh
           </Button>
-          <Space.Compact>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
-              Add Student
-            </Button>
-            <Dropdown
-              placement="bottomRight"
-              trigger={['click']}
-              menu={{
-                items: [
-                  { key: 'single', label: 'Add Single Student', icon: <UserAddOutlined /> },
-                  { key: 'bulk', label: 'Bulk Upload (Excel)', icon: <UploadOutlined /> },
-                ],
-                onClick: ({ key }) => (key === 'bulk' ? setBulkModalOpen(true) : handleOpenModal()),
-              }}
-            >
-              <Button type="primary" icon={<DownOutlined />} aria-label="More add options" />
-            </Dropdown>
-          </Space.Compact>
+          <Button icon={<UploadOutlined />} onClick={() => setBulkModalOpen(true)}>
+            Bulk Upload
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
+            Add Student
+          </Button>
         </div>
       </div>
 

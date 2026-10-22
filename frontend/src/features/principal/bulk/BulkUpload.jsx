@@ -101,6 +101,7 @@ const BulkUpload = ({ fixedType, embedded = false, onUploaded }) => {
       const admissionType = row['Admission Type'] || row['admissionType'];
       const admissionYear = row['Admission Year'] || row['admissionYear'];
       const batchName = row['Batch'] || row['batch'];
+      const scholarship = row['Scholarship'] || row['scholarship']; // optional
       const institutionName = row['College Name'] || row['Institution'] || row['institution'];
       const branchName = row['Course'] || row['Branch'] || row['branch'];
 
@@ -137,6 +138,7 @@ const BulkUpload = ({ fixedType, embedded = false, onUploaded }) => {
         admissionType,
         admissionYear,
         batchName,
+        scholarship,
         institutionName,
         branchName,
         rowNumber: index + 2, // +2 because Excel starts at 1 and header is row 1
@@ -326,6 +328,7 @@ const BulkUpload = ({ fixedType, embedded = false, onUploaded }) => {
           { title: 'Admission Year', dataIndex: 'admissionYear', key: 'admissionYear' },
           { title: 'Batch', dataIndex: 'batchName', key: 'batchName' },
           { title: 'Course', dataIndex: 'branchName', key: 'branchName', ellipsis: true },
+          { title: 'Scholarship', dataIndex: 'scholarship', key: 'scholarship', render: (v) => v || '-' },
         ]
       : [
           { title: 'Email', dataIndex: 'email', key: 'email' },
@@ -422,6 +425,7 @@ const BulkUpload = ({ fixedType, embedded = false, onUploaded }) => {
                       <li><strong>All columns are required</strong>: Roll Number, Name, Email, Contact Number, Gender, Category, Admission Type, Admission Year, Batch, College Name and Course</li>
                       <li>Write the <strong>full course name</strong> exactly as listed in the template's "Courses" sheet</li>
                       <li>Gender: Male / Female / Other. Category: General / OBC / SC / ST. Admission Type: First Year / LEET</li>
+                      <li><strong>Scholarship is optional</strong>: use a code from the "Scholarships" sheet, or leave blank / "None"</li>
                     </>
                   ) : (
                     <li>Ensure all required fields are filled correctly</li>

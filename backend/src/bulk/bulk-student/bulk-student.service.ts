@@ -53,6 +53,9 @@ const ADMISSION_TYPE_ALIASES: Record<string, AdmissionType> = {
 };
 const ADMISSION_TYPE_OPTIONS = ['First Year', 'LEET'];
 
+/** Scholarship cell values meaning "no scholarship" (the column itself is optional) */
+const NO_SCHOLARSHIP_VALUES = new Set(['none', 'no', 'na', 'nil', 'notapplicable']);
+
 function aliasKey(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
@@ -92,6 +95,7 @@ interface ResolvedRow {
   gender: string;
   category: Category;
   admissionType: AdmissionType;
+  scholarshipId?: string;
   batchId: string;
   institutionId: string;
   institutionName: string | null;
@@ -105,6 +109,9 @@ interface RowContext {
   allBranches: MatchableBranch[];
   batchMap: Map<string, string>;
   batchNames: string[];
+  /** aliasKey(code) and aliasKey(name) -> scholarship id */
+  scholarshipMap: Map<string, string>;
+  scholarshipCodes: string[];
   defaultInstitutionId: string | null;
   existingRollNumbers: Set<string>;
   existingEmails: Set<string>;
@@ -148,6 +155,7 @@ export class BulkStudentService {
         ),
         admissionYear: this.parseNumber(row['Admission Year'] || row['admissionYear'] || row['Year of Admission']),
         batchName: this.cleanString(row['Batch'] || row['batch'] || row['Batch Name']),
+        scholarship: this.cleanString(row['Scholarship'] || row['scholarship'] || row['Scholarship Code']),
         institutionName: this.cleanString(
           row['Institution'] || row['institution'] || row['Institution Name'] ||
           row['Name of the College'] || row['College'] || row['College Name'] || row['Institute'] ||
@@ -184,6 +192,15 @@ export class BulkStudentService {
     });
     const batchMap = await this.userService.getBatchMap();
     const batches = await this.prisma.batch.findMany({ where: { isActive: true }, select: { name: true } });
+    const scholarships = await this.prisma.scholarship.findMany({
+      where: { isActive: true },
+      select: { id: true, code: true, name: true },
+    });
+    const scholarshipMap = new Map<string, string>();
+    for (const s of scholarships) {
+      scholarshipMap.set(aliasKey(s.code), s.id);
+      scholarshipMap.set(aliasKey(s.name), s.id);
+    }
 
     const sanitizedDefaultInstitutionId = resolveValidDefaultInstitutionId(defaultInstitutionId, allInstitutions);
     if (defaultInstitutionId && !sanitizedDefaultInstitutionId) {
@@ -208,6 +225,8 @@ export class BulkStudentService {
         allBranches: allBranches as MatchableBranch[],
         batchMap,
         batchNames: batches.map((b) => b.name),
+        scholarshipMap,
+        scholarshipCodes: scholarships.map((s) => s.code),
         defaultInstitutionId: sanitizedDefaultInstitutionId,
         existingRollNumbers: new Set(existingRollNumbers),
         existingEmails,
@@ -332,6 +351,20 @@ export class BulkStudentService {
       }
     }
 
+    // Scholarship (optional: blank or "None" means no scholarship)
+    let scholarshipId: string | undefined;
+    const scholarshipInput = student.scholarship?.trim();
+    if (scholarshipInput && !NO_SCHOLARSHIP_VALUES.has(aliasKey(scholarshipInput))) {
+      scholarshipId = ctx.scholarshipMap.get(aliasKey(scholarshipInput));
+      if (!scholarshipId) {
+        errors.push({
+          field: 'scholarship',
+          value: scholarshipInput,
+          error: `Scholarship "${scholarshipInput}" not found. Allowed codes: ${ctx.scholarshipCodes.join(', ') || 'none configured'} (or leave blank)`,
+        });
+      }
+    }
+
     // Admission year
     if (!student.admissionYear) {
       errors.push({ field: 'admissionYear', value: '', error: 'Admission year is required' });
@@ -417,6 +450,7 @@ export class BulkStudentService {
         gender: gender!,
         category: category!,
         admissionType: admissionType!,
+        scholarshipId,
         batchId: batchId!,
         institutionId: institution!.id,
         institutionName: institution!.name,
@@ -650,6 +684,7 @@ export class BulkStudentService {
       gender: resolved.gender,
       category: resolved.category,
       admissionType: resolved.admissionType,
+      scholarshipId: resolved.scholarshipId,
       batchId: resolved.batchId,
       branchId: resolved.branchId,
       branchName: resolved.branchName,
@@ -672,7 +707,7 @@ export class BulkStudentService {
    *   are scoped to that college. When null (state/admin), all colleges are listed.
    */
   async getTemplate(institutionId?: string | null): Promise<Buffer> {
-    const [institutions, branches, batches] = await Promise.all([
+    const [institutions, branches, batches, scholarships] = await Promise.all([
       this.prisma.institution.findMany({
         where: institutionId ? { id: institutionId } : undefined,
         select: { id: true, name: true, code: true },
@@ -684,6 +719,11 @@ export class BulkStudentService {
         orderBy: { name: 'asc' },
       }),
       this.prisma.batch.findMany({ where: { isActive: true }, select: { name: true }, orderBy: { name: 'asc' } }),
+      this.prisma.scholarship.findMany({
+        where: { isActive: true },
+        select: { code: true, name: true },
+        orderBy: [{ category: 'asc' }, { code: 'asc' }],
+      }),
     ]);
 
     // One reference row per college + course; global (institution-less) branches apply to every listed college
@@ -714,6 +754,7 @@ export class BulkStudentService {
         'Batch': exampleBatch,
         'College Name': exampleCollege,
         'Course': exampleCourses[0] || 'Computer Science and Engineering',
+        'Scholarship': scholarships[0]?.code || '',
       },
       {
         'Roll Number': 'R2023002',
@@ -727,6 +768,7 @@ export class BulkStudentService {
         'Batch': exampleBatch,
         'College Name': exampleCollege,
         'Course': exampleCourses[1] || exampleCourses[0] || 'Electronics and Communication Engineering',
+        'Scholarship': 'None',
       },
     ];
 
@@ -742,6 +784,7 @@ export class BulkStudentService {
       { Field: 'Batch', Required: 'Yes', Description: 'Batch name, must match an existing batch (see "Batches" sheet)', Example: exampleBatch },
       { Field: 'College Name', Required: 'Yes', Description: 'Full college name, auto-matches to the institution (see "Courses" sheet)', Example: exampleCollege },
       { Field: 'Course', Required: 'Yes', Description: 'FULL course name exactly as listed in the "Courses" sheet for that college', Example: exampleCourses[0] || 'Computer Science and Engineering' },
+      { Field: 'Scholarship', Required: 'No', Description: 'Scholarship code or name from the "Scholarships" sheet. Leave blank or write "None" if the student has no scholarship.', Example: scholarships[0]?.code || 'None' },
     ];
 
     const loginInfo = [
@@ -764,6 +807,14 @@ export class BulkStudentService {
         'Batches',
         batches.length ? batches.map((b) => ({ Batch: b.name })) : [{ Batch: exampleBatch }],
       );
+      ExcelUtils.addSheetFromJson(
+        workbook,
+        'Scholarships',
+        scholarships.length
+          ? scholarships.map((s) => ({ Code: s.code, Name: s.name }))
+          : [{ Code: '', Name: '' }],
+        { columnWidths: { Code: 16, Name: 50 } },
+      );
       ExcelUtils.addSheetFromJson(workbook, 'Login Info', loginInfo);
 
       // Dropdowns so users pick valid values instead of typing them
@@ -783,6 +834,17 @@ export class BulkStudentService {
       list('F', `"${CATEGORY_OPTIONS.join(',')}"`);
       list('G', `"${ADMISSION_TYPE_OPTIONS.join(',')}"`);
       if (batches.length) list('I', `Batches!$A$2:$A$${batches.length + 1}`);
+      // Scholarship is optional, so blanks stay allowed
+      if (scholarships.length) {
+        (students as any).dataValidations.add(`L2:L${lastRow}`, {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`"None,${scholarships.map((s) => s.code).join(',')}"`],
+          showErrorMessage: true,
+          errorTitle: 'Invalid value',
+          error: 'Please choose a scholarship code from the list, or leave blank.',
+        });
+      }
       // Course dropdown only when the list is unambiguous (single college)
       if (institutions.length === 1 && courseRows.length) {
         list('K', `Courses!$B$2:$B$${courseRows.length + 1}`);

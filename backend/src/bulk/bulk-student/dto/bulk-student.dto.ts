@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsArray, ValidateNested, IsInt, Min, Max } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsArray, ValidateNested, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class BulkStudentRowDto {
@@ -49,6 +49,14 @@ export class BulkStudentRowDto {
   @IsString()
   @IsNotEmpty({ message: 'Admission type is required' })
   admissionType: string;
+
+  @ApiProperty({
+    description: 'Scholarship code or name (see "Scholarships" sheet). Leave blank or "None" if not applicable.',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  scholarship?: string;
 
   @ApiProperty({
     description: 'College/Institution name. Auto-matched to an existing institution.',

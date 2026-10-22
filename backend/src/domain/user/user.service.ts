@@ -26,6 +26,7 @@ export interface CreateStudentData {
   gender?: string;
   category?: Category;
   admissionType?: AdmissionType;
+  scholarshipId?: string;
   address?: string;
   parentName?: string;
   parentContact?: string;
@@ -257,6 +258,7 @@ export class UserService {
           gender: data.gender,
           category: data.category,
           admissionType: data.admissionType,
+          scholarshipId: data.scholarshipId,
           parentName: data.parentName,
           parentContact: data.parentContact,
           tenthper: data.tenthPercentage,
