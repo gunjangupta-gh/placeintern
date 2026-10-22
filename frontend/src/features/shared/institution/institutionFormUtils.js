@@ -282,6 +282,16 @@ export const sanitizeStaffCapacityRows = (rows = []) => rows
   }))
   .filter((row) => row.branchId && row.academicYear);
 
+// Course Infra room counts roll up into the Land tab's institution-wise rooms.
+// Only entities with at least one filled course-wise count are included; the
+// rest stay manually editable on the Land tab.
+export const deriveRoomTotals = (rows = []) => (rows || []).reduce((acc, row) => {
+  if (row?.entityType && !isBlank(row.numberOfRooms)) {
+    acc[row.entityType] = (acc[row.entityType] || 0) + (Number(row.numberOfRooms) || 0);
+  }
+  return acc;
+}, {});
+
 export const buildDefaultBranchInfrastructureRow = () => ({
   branchId: undefined,
   entityType: 'LECTURE_ROOMS',

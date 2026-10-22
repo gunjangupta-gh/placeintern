@@ -599,6 +599,17 @@ export const stateService = {
     const response = await API.get(url);
     return response.data;
   },
+
+  // CM Dashboard / Complete Information (Courses) Excel downloads
+  async downloadCmDashboard(year) {
+    const response = await API.get(`/state/reports/cm-dashboard?year=${year}`, { responseType: 'blob' });
+    return response.data;
+  },
+
+  async downloadCollegeInfo(institutionId, year) {
+    const response = await API.get(`/state/reports/college-info/${institutionId}?year=${year}`, { responseType: 'blob' });
+    return response.data;
+  },
 };
 
 export default stateService;

@@ -17,6 +17,8 @@ import { Throttle } from '@nestjs/throttler';
 import { THROTTLE_PRESETS } from '../../core/config/throttle.config';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { StateService } from './state.service';
+import { StateCmReportService } from './services/state-cm-report.service';
+import { buildCmDashboardWorkbook, buildCollegeInfoWorkbook } from './services/cm-report-excel.builder';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
@@ -40,7 +42,10 @@ import {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.STATE_DIRECTORATE)
 export class StateController {
-  constructor(private readonly stateService: StateService) {}
+  constructor(
+    private readonly stateService: StateService,
+    private readonly cmReportService: StateCmReportService,
+  ) {}
 
   @Throttle({ default: THROTTLE_PRESETS.dashboard })
   @Get('dashboard')
@@ -604,6 +609,40 @@ export class StateController {
   ) {
     const unlockedBy = req.user?.userId || 'state-admin';
     return this.stateService.unlockUserAccount(id, unlockedBy);
+  }
+
+  private parseReportYear(raw?: string): number {
+    const year = raw ? Number(raw) : new Date().getFullYear();
+    if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+      throw new BadRequestException('year must be a 4-digit year, e.g. 2026');
+    }
+    return year;
+  }
+
+  private sendXlsx(res: any, buffer: Buffer, filename: string) {
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    res.send(buffer);
+  }
+
+  @Get('reports/cm-dashboard')
+  @ApiOperation({ summary: 'Download the CM Dashboard report (Excel) for a report year' })
+  async downloadCmDashboard(@Query('year') year: string | undefined, @Res() res) {
+    const y = this.parseReportYear(year);
+    const data = await this.cmReportService.getCmDashboard(y);
+    this.sendXlsx(res, await buildCmDashboardWorkbook(data), `CM-Dashboard-${y}.xlsx`);
+  }
+
+  @Get('reports/college-info/:institutionId')
+  @ApiOperation({ summary: 'Download Complete Information (Courses) for one college (Excel)' })
+  async downloadCollegeInfo(
+    @Param('institutionId') institutionId: string,
+    @Query('year') year: string | undefined,
+    @Res() res,
+  ) {
+    const y = this.parseReportYear(year);
+    const data = await this.cmReportService.getCollegeInfo(institutionId, y);
+    this.sendXlsx(res, await buildCollegeInfoWorkbook(data), `Course-Information-${y}.xlsx`);
   }
 
   @Get('reports/institutions')

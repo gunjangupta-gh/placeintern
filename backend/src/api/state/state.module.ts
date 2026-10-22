@@ -13,6 +13,7 @@ import { StateMentorService } from './services/state-mentor.service';
 import { StateRestoreService } from './services/state-restore.service';
 import { StateComplianceService } from './services/state-compliance.service';
 import { StateStudentService } from './services/state-student.service';
+import { StateCmReportService } from './services/state-cm-report.service';
 
 // Import domain modules for business logic reuse
 import { ReportModule } from '../../domain/report/report.module';

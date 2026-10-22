@@ -92,6 +92,7 @@ import { useDebounce } from "../../../../hooks/useDebounce";
 import DeactivationConfirmModal from "../../../../components/common/DeactivationConfirmModal";
 import { getImageUrl } from "../../../../utils/imageUtils";
 import { stateService } from "../../../../services/state.service";
+import CmReportDownload from "../../reports/CmReportDownload";
 import InstitutionDocumentsTab from "./InstitutionDocumentsTab";
 import InstitutionJoiningLettersTab from "./InstitutionJoiningLettersTab";
 import InstitutionFileExplorer from "./InstitutionFileExplorer";

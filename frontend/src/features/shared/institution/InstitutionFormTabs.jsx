@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Form,
   Input,
@@ -25,6 +25,7 @@ import {
   buildDefaultBranchInfrastructureRow,
   COVERED_AREA_ENTITIES,
   deriveCapacity,
+  deriveRoomTotals,
   LAND_OWNERSHIP_OPTIONS,
   INSTITUTION_TYPES,
   YES_NO_OPTIONS,
@@ -78,6 +79,30 @@ const InstitutionFormTabs = ({
   const watchedIntakes = Form.useWatch('branchIntakes');
   const watchedStaff = Form.useWatch('staffCapacities');
   const derivedCapacity = deriveCapacity(watchedIntakes, watchedStaff);
+
+  // Course Infra counts auto-fill the Land tab's room counts (watched at this
+  // level so it works even if the Land tab was never opened).
+  const form = Form.useFormInstance();
+  const watchedInfra = Form.useWatch('branchInfrastructure');
+  const watchedCoveredAreas = Form.useWatch('coveredAreaDetails');
+  const roomTotals = deriveRoomTotals(watchedInfra);
+  const roomTotalsKey = JSON.stringify(roomTotals);
+
+  useEffect(() => {
+    const areas = form.getFieldValue('coveredAreaDetails');
+    if (!Array.isArray(areas)) return;
+    let changed = false;
+    const next = areas.map((area) => {
+      const total = roomTotals[area?.entityType];
+      if (total !== undefined && area.numberOfRooms !== total) {
+        changed = true;
+        return { ...area, numberOfRooms: total };
+      }
+      return area;
+    });
+    if (changed) form.setFieldValue('coveredAreaDetails', next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomTotalsKey, watchedCoveredAreas?.length]);
 
   const tabs = [
     {
@@ -183,7 +208,24 @@ const InstitutionFormTabs = ({
             {(fields) => {
               const tableColumns = [
                 { title: 'Entity', width: 140, render: (_, __, index) => <Form.Item name={[index, 'entityType']} className="mb-0"><Select disabled options={COVERED_AREA_ENTITIES} /></Form.Item> },
-                { title: 'Rooms', width: 100, render: (_, __, index) => <Form.Item name={[index, 'numberOfRooms']} className="mb-0"><InputNumber min={0} precision={0} className="w-full" /></Form.Item> },
+                {
+                  title: 'Rooms',
+                  width: 100,
+                  render: (_, __, index) => {
+                    const fromCourseInfra = roomTotals[watchedCoveredAreas?.[index]?.entityType] !== undefined;
+                    return (
+                      <Form.Item name={[index, 'numberOfRooms']} className="mb-0">
+                        <InputNumber
+                          min={0}
+                          precision={0}
+                          className="w-full"
+                          disabled={fromCourseInfra}
+                          title={fromCourseInfra ? 'Auto-calculated from Course Infra' : undefined}
+                        />
+                      </Form.Item>
+                    );
+                  },
+                },
                 { title: 'Required', width: 110, render: (_, __, index) => <Form.Item name={[index, 'requiredAreaSqFt']} className="mb-0"><InputNumber min={0} step={0.01} className="w-full" /></Form.Item> },
                 { title: 'Available', width: 110, render: (_, __, index) => <Form.Item name={[index, 'availableAreaSqFt']} className="mb-0"><InputNumber min={0} step={0.01} className="w-full" /></Form.Item> },
                 { title: 'Additional', width: 120, render: (_, __, index) => <Form.Item name={[index, 'additionalRequirementSqFt']} className="mb-0"><InputNumber min={0} step={0.01} className="w-full" /></Form.Item> },
@@ -445,7 +487,7 @@ const InstitutionFormTabs = ({
             showIcon
             className="rounded-lg border-info/20"
             message="Course-wise rooms and facilities."
-            description="Add one row per course (branch) and entity type: rooms, labs, workshops and others. Common area is institution-wise only (Land tab)."
+            description="Add one row per course (branch) and entity type: rooms, labs, workshops and others. Room counts here are totalled automatically into the Land tab. Common area is institution-wise only (Land tab)."
           />
           <Form.List name="branchInfrastructure">
             {(fields, { add, remove }) => {
@@ -570,6 +612,9 @@ const InstitutionFormTabs = ({
         key: tab.key,
         label: <TabLabel active={activeFormTab === tab.key} number={index + 1} text={tab.text} />,
         children: tab.children,
+        // Land fields are auto-filled from Course Infra, so they must be
+        // registered (and submitted) even if the tab is never opened.
+        forceRender: tab.key === 'land',
       }))}
     />
   );

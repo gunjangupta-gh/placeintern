@@ -21,6 +21,7 @@ import {
   BarChartOutlined,
 } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
+import CmReportDownload from "./CmReportDownload";
 import {
   ReportCatalog,
   ReportHistoryTable,
@@ -404,6 +405,8 @@ const ReportBuilderDashboard = () => {
                 onReportFailed={handleReportFailed}
                 pausePolling={statusMonitorVisible}
               />
+
+              <CmReportDownload />
 
               <Tooltip title="Refresh Data">
                 <Button
