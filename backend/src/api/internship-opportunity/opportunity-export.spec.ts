@@ -48,6 +48,8 @@ describe('OpportunityService.deleteApplication', () => {
             : { id: 'a1', status: o.status ?? ApplicationStatus.APPLIED, _count: { monthlyReports: o.reports ?? 0, facultyVisitLogs: o.visits ?? 0 } }),
         delete: jest.fn().mockResolvedValue({}),
       },
+      student: { findUnique: jest.fn().mockResolvedValue({ branchId: 'b-me', user: { branchId: null } }) },
+      opportunityBranch: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
       internshipOpportunity: {
         findUnique: jest.fn().mockResolvedValue({ positions: o.positions ?? 10, approvedCount: o.approvedCount ?? 0, status: o.oppStatus ?? OpportunityStatus.OPEN }),
         update: jest.fn().mockResolvedValue({}),
@@ -74,6 +76,11 @@ describe('OpportunityService.deleteApplication', () => {
     const res = await svc.deleteApplication('a1', actor);
     expect(res.approvalUndone).toBe(true);
     expect(tx.internshipOpportunity.update.mock.calls[0][0].data).toEqual({ approvedCount: 9, status: OpportunityStatus.OPEN });
+    // the seat is released in the STUDENT'S branch, guarded so it never goes negative
+    expect(tx.opportunityBranch.updateMany).toHaveBeenCalledWith({
+      where: { opportunityId: 'o1', branchId: 'b-me', approvedCount: { gt: 0 } },
+      data: { approvedCount: { decrement: 1 } },
+    });
   });
 
   it('keeps the opportunity status when it was not full, and never goes below zero', async () => {
@@ -176,7 +183,11 @@ describe('OpportunityExportService', () => {
     const { wb } = await run([app(), app()], [{
       id: 'o1', title: 'Fitter', district: 'Mohali', positions: 10, approvedCount: 1, status: 'OPEN', durationMonths: 6, stipend: '8000',
       startDate: new Date('2027-01-14T18:30:00Z'), applicationDeadline: new Date('2026-12-15T18:29:59Z'),
-      contactName: 'HR', contactPhone: '1', contactEmail: 'h@x.in', company: { name: 'Godrej' }, branches: [{ branch: { code: 'ME' } }, { branch: { code: 'EE' } }],
+      contactName: 'HR', contactPhone: '1', contactEmail: 'h@x.in', company: { name: 'Godrej' },
+      branches: [
+        { positions: 6, approvedCount: 1, maxApplications: 12, branch: { code: 'ME' } },
+        { positions: 4, approvedCount: 0, maxApplications: null, branch: { code: 'EE' } },
+      ],
     }]);
     const ws = wb.getWorksheet('Opportunities')!;
     const header = (ws.getRow(1).values as any[]).slice(1);
@@ -184,8 +195,18 @@ describe('OpportunityExportService', () => {
     expect(row[header.indexOf('Positions')]).toBe(10);
     expect(row[header.indexOf('Applications (active)')]).toBe(2);
     expect(row[header.indexOf('Selected')]).toBe(1);
-    expect(row[header.indexOf('Seats Left')]).toBe(8);
-    expect(row[header.indexOf('Branches')]).toBe('ME, EE');
+    expect(row[header.indexOf('Seats Left')]).toBe(9); // 5 left in ME + 4 in EE
+    expect(row[header.indexOf('Branch-wise Positions (selected/positions, max applications)')]).toBe('ME: 1/6 (max 12); EE: 0/4 (max 4)');
+  });
+
+  it('shows the exact time the student applied (IST, to the second), right after the contact columns', async () => {
+    const { wb } = await run([app({ appliedDate: new Date('2026-11-02T10:00:07Z') })]);
+    const ws = wb.getWorksheet('Applications')!;
+    const header = (ws.getRow(1).values as any[]).slice(1);
+    const row = (ws.getRow(2).values as any[]).slice(1);
+    expect(row[header.indexOf('Applied At (IST)')]).toMatch(/02 Nov 2026.*3:30:07\s?pm/i);
+    expect(header.indexOf('Applied At (IST)')).toBe(header.indexOf('Phone') + 1);
+    expect(header.indexOf('Institution')).toBe(header.indexOf('Applied At (IST)') + 1);
   });
 
   it('records an audit entry without storing the search text', async () => {

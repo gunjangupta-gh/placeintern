@@ -66,9 +66,19 @@ const OpportunityTable = ({ refreshKey }) => {
     },
     { title: 'District', dataIndex: 'district' },
     {
-      title: 'Branches',
+      title: (
+        <Tooltip title="Branch: selected / positions. Hover a branch for its applications.">Branch-wise positions</Tooltip>
+      ),
       dataIndex: 'branches',
-      render: (b) => b.map((x) => <Tag key={x.id}>{x.code}</Tag>),
+      render: (b) =>
+        b.map((x) => (
+          <Tooltip
+            key={x.id}
+            title={`${x.name}: ${x.approvedCount} selected of ${x.positions} positions · ${x.appliedCount}/${x.applicationLimit} applications`}
+          >
+            <Tag color={x.seatsLeft === 0 ? 'red' : undefined}>{x.code} {x.approvedCount}/{x.positions}</Tag>
+          </Tooltip>
+        )),
     },
     {
       title: (

@@ -14,11 +14,13 @@ const iso = (c: { y: number; m: number; d: number }) => `${c.y}-${String(c.m).pa
 function setup(o: {
   deadlineOffset?: number; startOffset?: number; positions?: number; approvedCount?: number; applied?: number;
   holderBranches?: string[]; companyFound?: string | null; clash?: boolean; status?: OpportunityStatus;
+  existingBranches?: Array<{ branchId: string; positions: number; approvedCount: number }>;
 } = {}) {
   const existing = {
     id: 'o1', status: o.status ?? OpportunityStatus.OPEN, positions: o.positions ?? 10, approvedCount: o.approvedCount ?? 0,
     startDate: startOfDayIST(day(o.startOffset ?? 40)), applicationDeadline: endOfDayIST(day(o.deadlineOffset ?? 10)),
     companyId: 'c1', title: 'Fitter',
+    branches: o.existingBranches ?? [{ branchId: 'b1', positions: o.positions ?? 10, approvedCount: o.approvedCount ?? 0 }],
   };
   const txUpdate = jest.fn().mockResolvedValue({ id: 'o1' });
   const txCompanyCreate = jest.fn().mockResolvedValue({ id: 'c-new' });
@@ -36,12 +38,13 @@ function setup(o: {
     },
     internshipApplication: {
       groupBy: jest.fn().mockResolvedValue(o.applied ? [{ opportunityId: 'o1', _count: { _all: o.applied } }] : []),
-      findMany: jest.fn().mockResolvedValue((o.holderBranches ?? []).map((b) => ({ student: { branchId: b } }))),
+      // one row per seat-holding application: { opportunityId, student: { branchId } }
+      findMany: jest.fn().mockResolvedValue((o.holderBranches ?? []).map((b) => ({ opportunityId: 'o1', student: { branchId: b, user: null } }))),
     },
     company: { findFirst: jest.fn().mockResolvedValue(o.companyFound ? { id: o.companyFound } : null) },
     branch: {
       count: jest.fn().mockImplementation(async ({ where }: any) => where.id.in.length),
-      findMany: jest.fn().mockImplementation(async ({ where }: any) => where.id.in.map((id: string) => ({ name: `Branch ${id}` }))),
+      findMany: jest.fn().mockImplementation(async ({ where }: any) => where.id.in.map((id: string) => ({ id, name: `Branch ${id}` }))),
     },
     $transaction: jest.fn().mockImplementation(async (fn: any) => fn(tx)),
   };
@@ -111,41 +114,99 @@ describe('OpportunityService.update (all fields editable)', () => {
     expect(txUpdate).not.toHaveBeenCalled();
   });
 
-  describe('positions', () => {
-    it('cannot drop below current applications or approved students', async () => {
-      const { svc } = setup({ applied: 4, approvedCount: 2 });
-      await expect(svc.update('o1', { positions: 3 }, actor)).rejects.toThrow(/cannot be less than current applications \(4\)/);
-    });
-
-    it('raising positions on a FILLED opportunity reopens it', async () => {
-      const { svc, txUpdate } = setup({ positions: 10, approvedCount: 10, applied: 10, status: OpportunityStatus.FILLED });
-      await svc.update('o1', { positions: 15 }, actor);
-      expect(written(txUpdate)).toMatchObject({ positions: 15, status: OpportunityStatus.OPEN });
-    });
-  });
-
-  describe('eligible branches', () => {
-    it('can be changed freely while nobody has applied', async () => {
+  describe('branch-wise positions and application limits', () => {
+    it('saves each branch with its own positions and application limit, and totals the positions', async () => {
       const { svc, txUpdate } = setup({ applied: 0 });
-      await svc.update('o1', { branchIds: ['b1', 'b2'] }, actor);
-      expect(written(txUpdate).branches).toEqual({ deleteMany: {}, create: [{ branchId: 'b1' }, { branchId: 'b2' }] });
+      await svc.update('o1', {
+        branches: [
+          { branchId: 'b1', positions: 5, maxApplications: 12 },
+          { branchId: 'b2', positions: 3 },
+        ],
+      }, actor);
+      const data = written(txUpdate);
+      expect(data.positions).toBe(8);
+      expect(data.branches.deleteMany).toEqual({ branchId: { notIn: ['b1', 'b2'] } });
+      expect(data.branches.upsert).toHaveLength(2);
+      expect(data.branches.upsert[0]).toMatchObject({
+        create: { branchId: 'b1', positions: 5, maxApplications: 12 },
+        update: { positions: 5, maxApplications: 12 },
+      });
+      expect(data.branches.upsert[1].update).toEqual({ positions: 3, maxApplications: null });
     });
 
-    it('with applicants: adding branches is allowed, keeping all applicant branches', async () => {
-      const { svc, txUpdate } = setup({ applied: 2, holderBranches: ['b1', 'b2'] });
-      await svc.update('o1', { branchIds: ['b1', 'b2', 'b3'] }, actor);
-      expect(written(txUpdate).branches.create).toHaveLength(3);
+    it('keeps the selected-student counts of existing branches (they are never overwritten)', async () => {
+      const { svc, txUpdate } = setup({ existingBranches: [{ branchId: 'b1', positions: 5, approvedCount: 3 }] });
+      await svc.update('o1', { branches: [{ branchId: 'b1', positions: 6 }] }, actor);
+      const upsert = written(txUpdate).branches.upsert[0];
+      expect(upsert.update).not.toHaveProperty('approvedCount');
+      expect(written(txUpdate).approvedCount).toBe(3);
     });
 
-    it('with applicants: removing a branch that an applicant belongs to is refused and names it', async () => {
-      const { svc, txUpdate } = setup({ applied: 2, holderBranches: ['b1', 'b2'] });
-      await expect(svc.update('o1', { branchIds: ['b1', 'b3'] }, actor)).rejects.toThrow(/Cannot remove branch\(es\) Branch b2/);
+    it("cannot drop a branch's positions below its selected students", async () => {
+      const { svc, txUpdate } = setup({ existingBranches: [{ branchId: 'b1', positions: 5, approvedCount: 3 }] });
+      await expect(svc.update('o1', { branches: [{ branchId: 'b1', positions: 2 }] }, actor)).rejects.toThrow(/Branch b1: positions cannot be less than the 3 student\(s\) already selected/);
       expect(txUpdate).not.toHaveBeenCalled();
     });
 
-    it('with applicants: removing a branch nobody applied from is allowed', async () => {
-      const { svc } = setup({ applied: 1, holderBranches: ['b1'] });
-      await expect(svc.update('o1', { branchIds: ['b1'] }, actor)).resolves.toBeDefined();
+    it('the application limit cannot be below the positions', async () => {
+      const { svc } = setup();
+      await expect(svc.update('o1', { branches: [{ branchId: 'b1', positions: 5, maxApplications: 4 }] }, actor)).rejects.toThrow(/application limit cannot be less than the positions \(5\)/);
+    });
+
+    it("the limit (default = positions) cannot be below the branch's current applications", async () => {
+      const { svc } = setup({ applied: 3, holderBranches: ['b1', 'b1', 'b1'] });
+      await expect(svc.update('o1', { branches: [{ branchId: 'b1', positions: 2 }] }, actor)).rejects.toThrow(/below the 3 application\(s\) already received/);
+      // ...but a higher explicit limit is fine, and applications of another branch do not count
+      await expect(svc.update('o1', { branches: [{ branchId: 'b1', positions: 2, maxApplications: 5 }] }, actor)).resolves.toBeDefined();
+    });
+
+    it('a branch can only be listed once', async () => {
+      const { svc } = setup();
+      await expect(svc.update('o1', { branches: [{ branchId: 'b1', positions: 2 }, { branchId: 'b1', positions: 3 }] }, actor)).rejects.toThrow(/only be listed once/);
+    });
+
+    it('raising positions on a FILLED opportunity reopens it', async () => {
+      const { svc, txUpdate } = setup({ positions: 10, approvedCount: 10, status: OpportunityStatus.FILLED });
+      await svc.update('o1', { branches: [{ branchId: 'b1', positions: 15 }] }, actor);
+      expect(written(txUpdate)).toMatchObject({ positions: 15, status: OpportunityStatus.OPEN });
+    });
+
+    it('is FILLED only when every branch has taken all its positions', async () => {
+      const existingBranches = [
+        { branchId: 'b1', positions: 5, approvedCount: 5 },
+        { branchId: 'b2', positions: 3, approvedCount: 2 },
+      ];
+      const open = setup({ existingBranches });
+      await open.svc.update('o1', { title: 'Fitter II' }, actor);
+      expect(written(open.txUpdate).status).toBeUndefined(); // b2 still has a seat
+
+      const filled = setup({ existingBranches });
+      await filled.svc.update('o1', { branches: [{ branchId: 'b1', positions: 5 }, { branchId: 'b2', positions: 2 }] }, actor);
+      expect(written(filled.txUpdate).status).toBe(OpportunityStatus.FILLED);
+    });
+
+    it('adding a branch to an opportunity with applicants is allowed', async () => {
+      const { svc, txUpdate } = setup({ applied: 2, holderBranches: ['b1', 'b1'], existingBranches: [{ branchId: 'b1', positions: 5, approvedCount: 0 }] });
+      await svc.update('o1', { branches: [{ branchId: 'b1', positions: 5 }, { branchId: 'b3', positions: 2 }] }, actor);
+      expect(written(txUpdate).branches.upsert).toHaveLength(2);
+      expect(written(txUpdate).positions).toBe(7);
+    });
+
+    it('removing a branch whose students have applied is refused and names it', async () => {
+      const { svc, txUpdate } = setup({
+        applied: 2, holderBranches: ['b1', 'b2'],
+        existingBranches: [{ branchId: 'b1', positions: 5, approvedCount: 0 }, { branchId: 'b2', positions: 5, approvedCount: 0 }],
+      });
+      await expect(svc.update('o1', { branches: [{ branchId: 'b1', positions: 5 }, { branchId: 'b3', positions: 2 }] }, actor)).rejects.toThrow(/Cannot remove branch\(es\) Branch b2/);
+      expect(txUpdate).not.toHaveBeenCalled();
+    });
+
+    it('removing a branch nobody applied from is allowed', async () => {
+      const { svc } = setup({
+        applied: 1, holderBranches: ['b1'],
+        existingBranches: [{ branchId: 'b1', positions: 5, approvedCount: 0 }, { branchId: 'b2', positions: 5, approvedCount: 0 }],
+      });
+      await expect(svc.update('o1', { branches: [{ branchId: 'b1', positions: 5 }] }, actor)).resolves.toBeDefined();
     });
   });
 });
@@ -156,9 +217,9 @@ describe('UpdateOpportunityDto (production pipe settings)', () => {
 
   it('accepts every editable field at once', async () => {
     await expect(run({
-      companyName: 'Godrej', title: 'Fitter', description: 'd', district: 'Mohali', positions: 5, durationMonths: 6, stipend: '8000',
+      companyName: 'Godrej', title: 'Fitter', description: 'd', district: 'Mohali', durationMonths: 6, stipend: '8000',
       startDate: '2027-01-15', applicationDeadline: '2026-12-15', status: 'OPEN', eligibleYears: [2, 3],
-      branchIds: ['3f2b8c1e-5a4d-4e6f-9b7a-1c2d3e4f5a6b'], contactName: 'HR', contactPhone: '+91 98765 43210', contactEmail: 'hr@x.in',
+      branches: [{ branchId: '3f2b8c1e-5a4d-4e6f-9b7a-1c2d3e4f5a6b', positions: 5, maxApplications: 8 }], contactName: 'HR', contactPhone: '+91 98765 43210', contactEmail: 'hr@x.in',
     })).resolves.toBeDefined();
   });
 
@@ -166,6 +227,15 @@ describe('UpdateOpportunityDto (production pipe settings)', () => {
     await expect(run({ contactPhone: '', contactEmail: '', contactName: '', description: '', stipend: '' })).resolves.toBeDefined();
     await expect(run({ title: '' })).rejects.toBeInstanceOf(BadRequestException);
     await expect(run({ companyName: '' })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('validates each branch entry (positions >= 1, a real branch id, no unknown fields)', async () => {
+    const id = '3f2b8c1e-5a4d-4e6f-9b7a-1c2d3e4f5a6b';
+    await expect(run({ branches: [{ branchId: id, positions: 0 }] })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(run({ branches: [{ branchId: 'nope', positions: 2 }] })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(run({ branches: [{ branchId: id, positions: 2, bogus: 1 }] })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(run({ branches: [] })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(run({ branches: [{ branchId: id, positions: 2, maxApplications: null }] })).resolves.toBeDefined();
   });
 
   it('rejects a malformed phone or email', async () => {

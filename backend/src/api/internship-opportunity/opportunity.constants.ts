@@ -77,5 +77,6 @@ export const REQUIRED_PROFILE_FIELDS: ReadonlyArray<{ key: string; label: string
 
 export const MAX_IMPORT_ROWS = 500;
 export const MAX_POSITIONS_PER_ROW = 500;
+export const MAX_APPLICATIONS_PER_BRANCH = 2000;
 export const MAX_DURATION_MONTHS = 24;
 export const VALID_ELIGIBLE_YEARS = [1, 2, 3];

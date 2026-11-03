@@ -1,8 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { OpportunityStatus, Prisma, Role } from '../../generated/prisma/client';
-import { SEAT_HOLDING_STATUSES } from './opportunity.constants';
-import { computeMissingProfileFields, PROFILE_SELECT } from './eligibility.service';
+import { applicationCap, countBranchApplications, computeMissingProfileFields, PROFILE_SELECT } from './eligibility.service';
 import {
   IncompleteProfilesQueryDto,
   ListApplicationsQueryDto,
@@ -22,6 +21,7 @@ const PUBLIC_VIEW_SELECT = {
   description: true,
   district: true,
   positions: true,
+  approvedCount: true,
   eligibleYears: true,
   durationMonths: true,
   stipend: true,
@@ -29,7 +29,14 @@ const PUBLIC_VIEW_SELECT = {
   applicationDeadline: true,
   status: true,
   company: { select: { name: true } },
-  branches: { select: { branch: { select: { id: true, code: true, name: true } } } },
+  branches: {
+    select: {
+      positions: true,
+      approvedCount: true,
+      maxApplications: true,
+      branch: { select: { id: true, code: true, name: true } },
+    },
+  },
 } satisfies Prisma.InternshipOpportunitySelect;
 
 /**
@@ -81,19 +88,18 @@ export class InstitutionOpportunityService {
         take,
       }),
     ]);
-    const grouped = rows.length
-      ? await this.prisma.internshipApplication.groupBy({
-          by: ['opportunityId'],
-          where: { opportunityId: { in: rows.map((r) => r.id) }, isActive: true, status: { in: SEAT_HOLDING_STATUSES } },
-          _count: { _all: true },
-        })
-      : [];
-    const used = new Map(grouped.map((g) => [g.opportunityId as string, g._count._all]));
+    const byBranch = await countBranchApplications(this.prisma, rows.map((r) => r.id));
     return {
       data: rows.map(({ branches, ...r }) => ({
         ...r,
-        branches: branches.map((b) => b.branch),
-        seatsLeft: Math.max(r.positions - (used.get(r.id) ?? 0), 0),
+        branches: branches.map((b) => ({
+          ...b.branch,
+          positions: b.positions,
+          approvedCount: b.approvedCount,
+          applicationLimit: applicationCap(b),
+          appliedCount: byBranch.get(r.id)?.get(b.branch.id) ?? 0,
+        })),
+        seatsLeft: branches.reduce((n, b) => n + Math.max(b.positions - b.approvedCount, 0), 0),
       })),
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };

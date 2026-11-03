@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Card, Col, Empty, Input, Pagination, Popconfirm, Row, Skeleton, Tag, Tooltip, Typography, theme } from 'antd';
+import { Alert, Button, Card, Col, Empty, Input, Pagination, Popconfirm, Progress, Row, Skeleton, Tag, Tooltip, Typography, theme } from 'antd';
 import {
   BankOutlined,
   CalendarOutlined,
@@ -60,10 +60,16 @@ const Pill = ({ tone = 'info', icon, children, token }) => {
 const OpportunityCard = ({ item, applying, onApply }) => {
   const { token } = theme.useToken();
   const primaryReason = item.reasons?.[0]?.message;
+  const extraReasons = (item.reasons?.length || 0) - 1;
+  const allReasons = (item.reasons || []).map((r) => r.message);
+  const cap = item.applicationLimit || 0;
+  const received = item.applicationsReceived || 0;
+  const applicationsLow = cap > 0 && item.applicationsLeft > 0 && item.applicationsLeft / cap <= 0.2;
+  const hasWaitingList = cap > item.positions;
   const left = daysLeft(item.applicationDeadline);
   const urgent = left !== null && left <= 3;
-  const lowSeats = item.seatsLeft > 0 && item.seatsLeft / item.positions <= 0.2;
-  const hiring = left !== null && item.seatsLeft > 0;
+  const lowSeats = item.positions > 0 && item.seatsLeft > 0 && item.seatsLeft / item.positions <= 0.2;
+  const hiring = left !== null && item.seatsLeft > 0 && item.applicationsLeft > 0;
   const months = `${item.durationMonths} ${item.durationMonths > 1 ? 'Months' : 'Month'}`;
 
   const deadlineText =
@@ -135,26 +141,63 @@ const OpportunityCard = ({ item, applying, onApply }) => {
         </Text>
       )}
 
+      {/* Positions are set branch-wise: show every branch, highlight the student's own */}
+      {item.branches?.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+          <Text type="secondary" style={{ fontSize: 12 }}>Positions by branch:</Text>
+          {item.branches.map((b) => (
+            <Tooltip key={b.code} title={b.name}>
+              <Tag color={b.mine ? 'blue' : 'default'} style={{ margin: 0, fontSize: 11 }}>
+                {b.code} · {b.positions}{b.mine ? ' (yours)' : ''}
+              </Tag>
+            </Tooltip>
+          ))}
+        </div>
+      )}
+
+      {/* Applications received for the student's own branch vs its limit */}
+      {cap > 0 && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: token.colorTextSecondary }}>
+            <span>Applications for your branch{hasWaitingList ? ' (waiting list open)' : ''}</span>
+            <span>{received} / {cap}</span>
+          </div>
+          <Progress
+            percent={Math.min(Math.round((received / cap) * 100), 100)}
+            showInfo={false}
+            size="small"
+            status={item.applicationsLeft === 0 ? 'exception' : applicationsLow ? 'normal' : 'active'}
+            strokeColor={applicationsLow ? token.colorWarning : undefined}
+          />
+        </div>
+      )}
+
+      {item.applied && item.queuePosition && (
+        <Text style={{ fontSize: 12 }}>
+          <FieldTimeOutlined /> You applied <b>#{item.queuePosition}</b> among students of your branch. Applications are considered first come, first served.
+        </Text>
+      )}
+
       <div style={{ flex: 1 }} />
 
       {/* Pills + action */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <Pill token={token} tone={urgent || left === null ? 'error' : 'info'} icon={<FieldTimeOutlined />}>{deadlineText}</Pill>
         <Pill token={token} tone={item.seatsLeft === 0 || lowSeats ? 'error' : 'warning'} icon={<TeamOutlined />}>
-          {item.seatsLeft === 0 ? 'Full' : `${item.seatsLeft}/${item.positions} positions left`}
+          {item.seatsLeft === 0 ? 'Branch full' : `${item.seatsLeft}/${item.positions} positions left for your branch`}
         </Pill>
         <div style={{ marginLeft: 'auto' }}>
           {item.canApply ? (
             <Popconfirm
               title="Apply for this internship?"
-              description="You can apply to up to 2 internships. If one is approved, your other pending application is withdrawn automatically."
+              description="You can apply to up to 2 internships. Applications are considered in the order received. If one is approved, your other pending application is withdrawn automatically."
               okText="Apply"
               onConfirm={() => onApply(item)}
             >
               {applyButton}
             </Popconfirm>
           ) : (
-            <Tooltip title={primaryReason}>
+            <Tooltip title={allReasons.length > 1 ? <div>{allReasons.map((m) => <div key={m}>• {m}</div>)}</div> : primaryReason}>
               <span>{applyButton}</span>
             </Tooltip>
           )}
@@ -164,6 +207,7 @@ const OpportunityCard = ({ item, applying, onApply }) => {
       {!item.canApply && !item.applied && primaryReason && (
         <Text type="secondary" style={{ fontSize: 11, lineHeight: 1.3, marginTop: -4 }}>
           <InfoCircleOutlined /> {primaryReason}
+          {extraReasons > 0 && <> (+{extraReasons} more)</>}
         </Text>
       )}
     </Card>
@@ -223,7 +267,7 @@ const BrowseOpportunities = () => {
     <div style={{ padding: 16 }}>
       <Title level={3} style={{ marginBottom: 4 }}>Internship Opportunities</Title>
       <Paragraph type="secondary">
-        Internships open for your branch. You can apply to up to {applicationLimit} internships at a time.
+        Internships open for your branch. Positions and application limits are set branch-wise, so you only compete with students of your own branch, and applications are considered first come, first served. You can apply to up to {applicationLimit} internships at a time.
       </Paragraph>
 
       {profile && !profile.complete && (

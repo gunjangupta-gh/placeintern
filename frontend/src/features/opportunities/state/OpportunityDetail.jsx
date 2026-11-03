@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Col, Descriptions, Result, Row, Skeleton, Statistic, Tabs, Tag, Typography } from 'antd';
+import { Button, Card, Col, Descriptions, Result, Row, Skeleton, Statistic, Table, Tabs, Tag, Typography } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -73,12 +73,36 @@ const OpportunityDetail = () => {
           <Descriptions.Item label="Starts">{formatDate(opp.startDate)}</Descriptions.Item>
           <Descriptions.Item label="Apply by">{formatDate(opp.applicationDeadline)}</Descriptions.Item>
           <Descriptions.Item label="Eligible years">{opp.eligibleYears?.length ? opp.eligibleYears.join(', ') : 'All'}</Descriptions.Item>
-          <Descriptions.Item label="Branches" span={3}>{opp.branches?.map((b) => <Tag key={b.id}>{b.name}</Tag>)}</Descriptions.Item>
           <Descriptions.Item label="Industry contact (State only)" span={3}>
             {[opp.contactName, opp.contactPhone, opp.contactEmail].filter(Boolean).join(' · ') || 'Not provided'}
           </Descriptions.Item>
           {opp.description && <Descriptions.Item label="Description" span={3}>{opp.description}</Descriptions.Item>}
         </Descriptions>
+      </Card>
+
+      <Card size="small" title="Branch-wise positions" style={{ marginBottom: 12 }}>
+        <Table
+          size="small"
+          rowKey="id"
+          pagination={false}
+          dataSource={opp.branches || []}
+          scroll={{ x: 'max-content' }}
+          columns={[
+            { title: 'Branch', render: (_, b) => <span>{b.name} <Text type="secondary">({b.code})</Text></span> },
+            { title: 'Positions', dataIndex: 'positions' },
+            { title: 'Selected', dataIndex: 'approvedCount', render: (n) => <Text style={{ color: '#3f8600' }}>{n}</Text> },
+            { title: 'Seats left', dataIndex: 'seatsLeft', render: (n) => <Text type={n === 0 ? 'danger' : undefined}>{n}</Text> },
+            {
+              title: 'Applications',
+              render: (_, b) => (
+                <span>
+                  {b.appliedCount} / {b.applicationLimit}{' '}
+                  {b.applicationsLeft === 0 && <Tag color="red" style={{ marginLeft: 4 }}>Full</Tag>}
+                </span>
+              ),
+            },
+          ]}
+        />
       </Card>
 
       <Tabs

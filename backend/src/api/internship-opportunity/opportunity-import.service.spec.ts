@@ -105,6 +105,61 @@ describe('OpportunityImportService', () => {
       expect(errorsFor(res, 3).join(' ')).toContain('Ambiguous');
     });
 
+    describe('branch-wise positions', () => {
+      const one = async (over: any) => {
+        const res = await service.validate(await fileWith([good(over)]));
+        return { res, errors: errorsFor(res, 2).join(' | ') };
+      };
+
+      it('reads CODE:positions and CODE:positions/limit and totals the positions', async () => {
+        const { res } = await one({ positions: '', branches: 'ME:6, EE:4/10' });
+        expect(res.rows[0]).toMatchObject({ positions: 10, branchIds: ['b-me', 'b-ee'] });
+        expect(res.rows[0].branchSeats).toEqual([
+          { branchId: 'b-me', code: 'ME', positions: 6, maxApplications: null },
+          { branchId: 'b-ee', code: 'EE', positions: 4, maxApplications: 10 },
+        ]);
+      });
+
+      it('treats a limit equal to the positions as "no extra limit"', async () => {
+        const { res } = await one({ positions: '', branches: 'ME:5/5' });
+        expect(res.rows[0].branchSeats[0].maxApplications).toBeNull();
+      });
+
+      it('splits a total equally across branches, remainder to the first ones', async () => {
+        const { res } = await one({ positions: 7, branches: 'ME, EE' });
+        expect(res.rows[0].branchSeats.map((b: any) => b.positions)).toEqual([4, 3]);
+      });
+
+      it('a single branch takes the whole total', async () => {
+        const { res } = await one({ positions: 9, branches: 'ME' });
+        expect(res.rows[0].branchSeats[0].positions).toBe(9);
+      });
+
+      it('an explicit total must equal the branch-wise sum', async () => {
+        const { res, errors } = await one({ positions: 9, branches: 'ME:6, EE:4' });
+        expect(res.validRows).toBe(0);
+        expect(errors).toContain('does not match the branch-wise total (10)');
+      });
+
+      it.each([
+        ['ME:5, EE', 'Give positions for every branch'],
+        ['ME:five', 'must look like ME:5 or ME:5/12'],
+        ['ME:0', 'ME: positions must be between 1 and'],
+        ['ME:5/3', 'ME: the application limit (3) cannot be less than the positions (5)'],
+        ['ME:3, ME:2', 'listed more than once'],
+        ['ME:3, Plumbing:2', 'Unknown branch(es): Plumbing'],
+      ])('rejects %p', async (branches, msg) => {
+        const { res, errors } = await one({ positions: '', branches });
+        expect(res.validRows).toBe(0);
+        expect(errors).toContain(msg);
+      });
+
+      it('needs a total when no branch has its own count, and at least one position per branch', async () => {
+        expect((await one({ positions: '', branches: 'ME, EE' })).errors).toContain('No. of Positions is required');
+        expect((await one({ positions: 1, branches: 'ME, EE' })).errors).toContain('less than the number of branches');
+      });
+    });
+
     it('accepts a unique branch name or short name as well as the code', async () => {
       const res = await service.validate(await fileWith([good({ branches: 'Mechanical Engineering, Elect' })]));
       expect(res.rows[0].branchIds).toEqual(['b-me', 'b-ee']);
@@ -218,7 +273,22 @@ describe('OpportunityImportService', () => {
       expect(tx.company.create).toHaveBeenCalledTimes(1);
       const first = tx.internshipOpportunity.create.mock.calls[0][0].data;
       expect(first).toMatchObject({ positions: 10, status: 'OPEN', createdById: 'dir1', importBatchId: res.importBatchId });
-      expect(first.branches.create).toEqual([{ branchId: 'b-me' }, { branchId: 'b-ee' }]);
+      // total positions with no per-branch counts are split equally
+      expect(first.branches.create).toEqual([
+        { branchId: 'b-me', positions: 5, maxApplications: null },
+        { branchId: 'b-ee', positions: 5, maxApplications: null },
+      ]);
+    });
+
+    it('saves branch-wise positions and application limits', async () => {
+      const tx = mockTx();
+      await service.confirm(await fileWith([good({ positions: '', branches: 'ME:6, EE:4/10' })]), actor, false);
+      const data = tx.internshipOpportunity.create.mock.calls[0][0].data;
+      expect(data.positions).toBe(10);
+      expect(data.branches.create).toEqual([
+        { branchId: 'b-me', positions: 6, maxApplications: null },
+        { branchId: 'b-ee', positions: 4, maxApplications: 10 },
+      ]);
     });
 
     it('rejects when no valid rows remain', async () => {

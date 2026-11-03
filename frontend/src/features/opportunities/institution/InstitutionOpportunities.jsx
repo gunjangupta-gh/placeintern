@@ -63,7 +63,7 @@ const InstitutionOpportunities = () => {
     { title: 'Company', dataIndex: ['company', 'name'] },
     { title: 'Position', dataIndex: 'title' },
     { title: 'District', dataIndex: 'district' },
-    { title: 'Branches', dataIndex: 'branches', render: (b) => b.map((x) => <Tag key={x.id}>{x.code}</Tag>) },
+    { title: 'Branches', dataIndex: 'branches', render: (b) => b.map((x) => <Tag key={x.id} color={x.approvedCount >= x.positions ? 'red' : undefined}>{x.code} {x.approvedCount}/{x.positions}</Tag>) },
     { title: 'Seats left', render: (_, r) => `${r.seatsLeft} of ${r.positions}` },
     { title: 'Deadline', dataIndex: 'applicationDeadline', render: formatDate },
     { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{s}</Tag> },

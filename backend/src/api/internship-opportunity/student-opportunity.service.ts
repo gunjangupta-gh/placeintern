@@ -21,8 +21,11 @@ import {
   EligibilityReason,
   EligibilityService,
   StudentContext,
+  applicationCap,
   computeMissingProfileFields,
+  countBranchApplications,
   evaluateEligibility,
+  studentInBranch,
   summariseApplications,
 } from './eligibility.service';
 import { MAX_PENDING_APPLICATIONS, SEAT_HOLDING_STATUSES } from './opportunity.constants';
@@ -38,7 +41,6 @@ const STUDENT_VIEW_SELECT = {
   title: true,
   description: true,
   district: true,
-  positions: true,
   eligibleYears: true,
   durationMonths: true,
   stipend: true,
@@ -47,7 +49,14 @@ const STUDENT_VIEW_SELECT = {
   status: true,
   isDeleted: true,
   company: { select: { name: true } },
-  branches: { select: { branch: { select: { id: true, code: true, name: true } } } },
+  branches: {
+    select: {
+      positions: true,
+      approvedCount: true,
+      maxApplications: true,
+      branch: { select: { id: true, code: true, name: true } },
+    },
+  },
 } satisfies Prisma.InternshipOpportunitySelect;
 
 type StudentViewRow = Prisma.InternshipOpportunityGetPayload<{ select: typeof STUDENT_VIEW_SELECT }>;
@@ -67,53 +76,96 @@ export class StudentOpportunityService {
     return s.branchId ?? s.user?.branchId ?? null;
   }
 
-  private async seatsUsed(ids: string[]): Promise<Map<string, number>> {
-    if (!ids.length) return new Map();
-    const grouped = await this.prisma.internshipApplication.groupBy({
-      by: ['opportunityId'],
-      where: { opportunityId: { in: ids }, isActive: true, status: { in: SEAT_HOLDING_STATUSES } },
-      _count: { _all: true },
+  /**
+   * Queue position of the student's own application among the seat-holding applications of
+   * the same branch on the same opportunity (1 = applied first). Null if not applied / closed.
+   */
+  private async queuePosition(studentId: string, opportunityId: string, branchId: string | null) {
+    if (!branchId) return null;
+    const mine = await this.prisma.internshipApplication.findFirst({
+      where: { studentId, opportunityId, isActive: true, status: { in: SEAT_HOLDING_STATUSES } },
+      select: { appliedDate: true, id: true },
     });
-    return new Map(grouped.map((g) => [g.opportunityId as string, g._count._all]));
+    if (!mine) return null;
+    const ahead = await this.prisma.internshipApplication.count({
+      where: {
+        opportunityId,
+        isActive: true,
+        status: { in: SEAT_HOLDING_STATUSES },
+        student: studentInBranch(branchId),
+        OR: [
+          { appliedDate: { lt: mine.appliedDate } },
+          { appliedDate: mine.appliedDate, id: { lt: mine.id } },
+        ],
+      },
+    });
+    return ahead + 1;
   }
 
   private present(
     o: StudentViewRow,
     student: StudentContext,
-    used: number,
+    /** Seat-holding applications per branch on THIS opportunity. */
+    perBranch: Map<string, number>,
     /** The student's application to THIS opportunity, in any status (incl. rejected). */
     mine: { status: ApplicationStatus } | null,
     summary: { hasConfirmedInternship: boolean; pendingApplications: number },
+    queuePosition: number | null = null,
   ) {
     const appliedToThis = !!mine;
+    const branchId = this.branchOf(student);
+    const slots = o.branches.map((b) => ({
+      branchId: b.branch.id,
+      positions: b.positions,
+      approvedCount: b.approvedCount,
+      maxApplications: b.maxApplications,
+    }));
+    const mySlot = branchId ? slots.find((b) => b.branchId === branchId) : undefined;
+    const myApplications = branchId ? perBranch.get(branchId) ?? 0 : 0;
+
     const reasons: EligibilityReason[] = evaluateEligibility({
       student,
       opportunity: {
         status: o.status,
         isDeleted: o.isDeleted,
-        positions: o.positions,
         applicationDeadline: o.applicationDeadline,
         eligibleYears: o.eligibleYears,
-        branchIds: o.branches.map((b) => b.branch.id),
+        branches: slots,
       },
-      seatsUsed: used,
+      branchApplications: myApplications,
       appliedToThis,
       ...summary,
     });
+
+    // The numbers the student cares about are THEIR branch's: that is who they compete with.
+    const myCap = mySlot ? applicationCap(mySlot) : 0;
+    const myPositions = mySlot?.positions ?? 0;
+    const mySeatsLeft = mySlot ? Math.max(mySlot.positions - mySlot.approvedCount, 0) : 0;
     return {
       id: o.id,
       title: o.title,
       description: o.description,
       district: o.district,
       company: { name: o.company.name },
-      positions: o.positions,
-      seatsLeft: Math.max(o.positions - used, 0),
+      // Student's own branch (what they compete for)
+      positions: myPositions,
+      seatsLeft: mySeatsLeft,
+      applicationsReceived: myApplications,
+      applicationLimit: myCap,
+      applicationsLeft: Math.max(myCap - myApplications, 0),
+      queuePosition,
       eligibleYears: o.eligibleYears,
       durationMonths: o.durationMonths,
       stipend: o.stipend,
       startDate: o.startDate,
       applicationDeadline: o.applicationDeadline,
-      branches: o.branches.map((b) => ({ code: b.branch.code, name: b.branch.name })),
+      // Every branch the internship is open to, with its own positions
+      branches: o.branches.map((b) => ({
+        code: b.branch.code,
+        name: b.branch.name,
+        positions: b.positions,
+        mine: b.branch.id === branchId,
+      })),
       applied: appliedToThis,
       applicationStatus: appliedToThis ? mine!.status : null,
       canApply: reasons.length === 0,
@@ -185,17 +237,23 @@ export class StudentOpportunityService {
       }),
     ]);
     const ids = rows.map((r) => r.id);
-    const used = await this.seatsUsed(ids);
+    const used = await countBranchApplications(this.prisma, ids);
     const mineRows = await this.prisma.internshipApplication.findMany({
       where: { studentId: student.id, opportunityId: { in: ids } },
       select: { opportunityId: true, status: true },
     });
     const mineById = new Map(mineRows.map((m) => [m.opportunityId as string, { status: m.status }]));
+    const queueById = new Map<string, number | null>();
+    for (const m of mineRows) {
+      if (SEAT_HOLDING_STATUSES.includes(m.status)) {
+        queueById.set(m.opportunityId as string, await this.queuePosition(student.id, m.opportunityId as string, branchId));
+      }
+    }
 
     return {
       ...empty,
       data: rows.map((r) =>
-        this.present(r, student, used.get(r.id) ?? 0, mineById.get(r.id) ?? null, summary),
+        this.present(r, student, used.get(r.id) ?? new Map(), mineById.get(r.id) ?? null, summary, queueById.get(r.id) ?? null),
       ),
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
@@ -213,12 +271,13 @@ export class StudentOpportunityService {
     if (!row) throw new NotFoundException('Internship not found');
 
     const summary = summariseApplications(await this.eligibility.listHoldingApplications(student.id));
-    const used = (await this.seatsUsed([id])).get(id) ?? 0;
+    const used = (await countBranchApplications(this.prisma, [id])).get(id) ?? new Map();
     const mine = await this.prisma.internshipApplication.findFirst({
       where: { studentId: student.id, opportunityId: id },
       select: { status: true },
     });
-    return this.present(row, student, used, mine, summary);
+    const queue = mine && SEAT_HOLDING_STATUSES.includes(mine.status) ? await this.queuePosition(student.id, id, branchId) : null;
+    return this.present(row, student, used, mine, summary, queue);
   }
 
   /**
@@ -227,6 +286,8 @@ export class StudentOpportunityService {
    *  - the last seat can be taken by exactly one student, and
    *  - a student cannot exceed the pending-application limit through concurrent requests.
    * Lock order is always Student -> Opportunity (also used by approve) to avoid deadlocks.
+   * The opportunity row lock also serialises applicants, so each branch's application cap is exact
+   * and appliedDate (set at insert, under the lock) reflects the true first-come-first-served order.
    */
   async apply(userId: string, opportunityId: string) {
     const ctx = await this.eligibility.getStudentContext(userId);
@@ -248,19 +309,27 @@ export class StudentOpportunityService {
       const opp = await tx.internshipOpportunity.findFirst({
         where: { id: opportunityId, isDeleted: false },
         select: {
-          id: true, title: true, positions: true, status: true, isDeleted: true, eligibleYears: true,
+          id: true, title: true, status: true, isDeleted: true, eligibleYears: true,
           applicationDeadline: true, durationMonths: true, stipend: true, startDate: true,
           company: { select: { name: true, address: true } },
-          branches: { select: { branchId: true } },
+          branches: { select: { branchId: true, positions: true, approvedCount: true, maxApplications: true } },
         },
       });
       if (!student) throw new NotFoundException('Student not found');
       if (!opp) throw new NotFoundException('Internship not found');
 
-      const [seatsUsed, mine, holding] = await Promise.all([
-        tx.internshipApplication.count({
-          where: { opportunityId, isActive: true, status: { in: SEAT_HOLDING_STATUSES } },
-        }),
+      const studentBranchId = student.branchId ?? student.user?.branchId ?? null;
+      const [branchApplications, mine, holding] = await Promise.all([
+        studentBranchId
+          ? tx.internshipApplication.count({
+              where: {
+                opportunityId,
+                isActive: true,
+                status: { in: SEAT_HOLDING_STATUSES },
+                student: studentInBranch(studentBranchId),
+              },
+            })
+          : Promise.resolve(0),
         tx.internshipApplication.findFirst({
           where: { studentId: student.id, opportunityId },
           select: { id: true },
@@ -276,12 +345,11 @@ export class StudentOpportunityService {
         opportunity: {
           status: opp.status,
           isDeleted: opp.isDeleted,
-          positions: opp.positions,
           applicationDeadline: opp.applicationDeadline,
           eligibleYears: opp.eligibleYears,
-          branchIds: opp.branches.map((b) => b.branchId),
+          branches: opp.branches,
         },
-        seatsUsed,
+        branchApplications,
         appliedToThis: !!mine,
         ...summariseApplications(holding),
       });
@@ -300,6 +368,9 @@ export class StudentOpportunityService {
           isSelfIdentified: false,
           isActive: true,
           status: ApplicationStatus.APPLIED,
+          // Explicit (not the DB default, which is the transaction START time, i.e. before any lock
+          // wait) so this timestamp is the true first-come-first-served order.
+          appliedDate: new Date(),
           internshipPhase: InternshipPhase.NOT_STARTED,
           // Snapshot so existing reports/exports/mentor screens work unchanged
           companyName: opp.company.name,

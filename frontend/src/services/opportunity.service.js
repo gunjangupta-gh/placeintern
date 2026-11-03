@@ -117,3 +117,15 @@ export const formatDate = (value) =>
         timeZone: 'Asia/Kolkata',
       })
     : '-';
+
+/** Time of day in India to the second, e.g. "11:45:15 am". The exact moment decides first-come-first-served. */
+export const formatTime = (value) =>
+  value
+    ? new Date(value).toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Kolkata',
+      })
+    : '';

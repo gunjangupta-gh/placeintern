@@ -1,6 +1,7 @@
 import { OpportunityStatus } from '../../generated/prisma/client';
 import {
   computeMissingProfileFields,
+  applicationCap,
   evaluateEligibility,
   EvaluationInput,
   StudentContext,
@@ -35,12 +36,14 @@ const input = (over: Partial<EvaluationInput> = {}): EvaluationInput => ({
   opportunity: {
     status: OpportunityStatus.OPEN,
     isDeleted: false,
-    positions: 10,
     applicationDeadline: future,
     eligibleYears: [],
-    branchIds: ['b-me', 'b-ee'],
+    branches: [
+      { branchId: 'b-me', positions: 10, approvedCount: 0, maxApplications: null },
+      { branchId: 'b-ee', positions: 5, approvedCount: 0, maxApplications: null },
+    ],
   },
-  seatsUsed: 0,
+  branchApplications: 0,
   appliedToThis: false,
   hasConfirmedInternship: false,
   pendingApplications: 0,
@@ -96,9 +99,54 @@ describe('evaluateEligibility', () => {
     expect(codes(input({ opportunity: { ...base, applicationDeadline: new Date(Date.now() - 1000) } }))).toContain('DEADLINE_PASSED');
   });
 
-  it('caps applications at positions: 10 seats, 10 used -> the 11th is blocked', () => {
-    expect(codes(input({ seatsUsed: 9 }))).toEqual([]); // 10th can apply
-    expect(codes(input({ seatsUsed: 10 }))).toContain('APPLICATIONS_FULL'); // 11th cannot
+  describe('branch-wise positions and application limits', () => {
+    const withMe = (over: Partial<{ positions: number; approvedCount: number; maxApplications: number | null }>) => {
+      const base = input().opportunity;
+      return {
+        ...base,
+        branches: base.branches.map((b) => (b.branchId === 'b-me' ? { ...b, ...over } : b)),
+      };
+    };
+
+    it('without a limit, applications are capped at the positions: 10 positions, 10 used -> the 11th is blocked', () => {
+      expect(codes(input({ branchApplications: 9 }))).toEqual([]); // 10th can apply
+      expect(codes(input({ branchApplications: 10 }))).toContain('APPLICATIONS_FULL'); // 11th cannot
+    });
+
+    it('a higher application limit builds a waiting list: 10 positions, limit 15', () => {
+      const opportunity = withMe({ positions: 10, maxApplications: 15 });
+      expect(codes(input({ opportunity, branchApplications: 10 }))).toEqual([]);
+      expect(codes(input({ opportunity, branchApplications: 14 }))).toEqual([]);
+      expect(codes(input({ opportunity, branchApplications: 15 }))).toContain('APPLICATIONS_FULL');
+    });
+
+    it('closes the branch once every position is filled, even if the limit is not reached', () => {
+      const opportunity = withMe({ positions: 10, approvedCount: 10, maxApplications: 30 });
+      const c = codes(input({ opportunity, branchApplications: 12 }));
+      expect(c).toContain('POSITIONS_FILLED');
+      expect(c).not.toContain('APPLICATIONS_FULL');
+    });
+
+    it('only the student own branch counts: another branch being full does not block them', () => {
+      const base = input().opportunity;
+      const opportunity = {
+        ...base,
+        branches: base.branches.map((b) => (b.branchId === 'b-ee' ? { ...b, approvedCount: 5 } : b)),
+      };
+      expect(codes(input({ opportunity }))).toEqual([]);
+    });
+
+    it('a student of a branch that has no seats on this internship is not eligible', () => {
+      const base = input().opportunity;
+      const opportunity = { ...base, branches: base.branches.filter((b) => b.branchId !== 'b-me') };
+      expect(codes(input({ opportunity }))).toContain('BRANCH_NOT_ELIGIBLE');
+    });
+
+    it('applicationCap never goes below the positions', () => {
+      expect(applicationCap({ positions: 10, maxApplications: null })).toBe(10);
+      expect(applicationCap({ positions: 10, maxApplications: 25 })).toBe(25);
+      expect(applicationCap({ positions: 10, maxApplications: 4 })).toBe(10);
+    });
   });
 
   it('allows up to 2 pending applications: 0 and 1 pending can apply, 2 pending cannot', () => {
@@ -126,7 +174,7 @@ describe('evaluateEligibility', () => {
   });
 
   it('reports ALREADY_APPLIED (not FULL / limit / has-internship) for the student own opportunity', () => {
-    const c = codes(input({ appliedToThis: true, pendingApplications: 2, hasConfirmedInternship: true, seatsUsed: 10 }));
+    const c = codes(input({ appliedToThis: true, pendingApplications: 2, hasConfirmedInternship: true, branchApplications: 10 }));
     expect(c).toContain('ALREADY_APPLIED');
     expect(c).not.toContain('APPLICATIONS_FULL');
     expect(c).not.toContain('MAX_APPLICATIONS_REACHED');

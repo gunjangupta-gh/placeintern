@@ -2695,8 +2695,9 @@ model InternshipOpportunity {
   description String?
   district    String?
 
-  // Seats. Applications (APPLIED + APPROVED) are capped at `positions` at apply time;
-  // approvedCount tracks confirmed students and drives FILLED.
+  // Totals across all branches (denormalised from OpportunityBranch, the source of truth):
+  // positions = sum of branch positions, approvedCount = sum of branch approvedCount.
+  // FILLED when every branch has taken all its positions.
   positions     Int
   approvedCount Int @default(0)
 
@@ -2736,6 +2737,13 @@ model OpportunityBranch {
   opportunity   InternshipOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   branchId      String
   branch        Branch                @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  // Seats for THIS branch. Students compete only against their own branch.
+  positions     Int @default(1)
+  approvedCount Int @default(0)
+  // Applications (pending + confirmed) this branch accepts. null = same as positions.
+  // Set higher than positions for a waiting list; applications are first-come-first-served.
+  maxApplications Int?
 
   @@id([opportunityId, branchId])
   @@index([branchId])

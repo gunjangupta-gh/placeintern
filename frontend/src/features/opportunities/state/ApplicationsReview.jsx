@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Input, Modal, Popconfirm, Segmented, Space, Table, Tag, Tooltip, Typography } from 'antd';
-import { CheckOutlined, CloseOutlined, DeleteOutlined, DownloadOutlined } from '@ant-design/icons';
+import { Alert, Button, Input, Modal, Popconfirm, Segmented, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { CheckOutlined, CloseOutlined, DeleteOutlined, DownloadOutlined, WarningOutlined } from '@ant-design/icons';
 import { toast } from 'react-hot-toast';
-import { opportunityService, getErrorMessage, formatDate } from '../../../services/opportunity.service';
+import { opportunityService, getErrorMessage, formatDate, formatTime } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
 
 const { Text } = Typography;
@@ -16,8 +16,28 @@ const GROUP_OPTIONS = [
   { label: 'Rejected / Withdrawn', value: 'CLOSED' },
 ];
 
+/** Queue position: 1 = applied first among the students of the same branch for this internship. */
+const QueueTag = ({ r }) => {
+  if (!r.queue) return <Text type="secondary">-</Text>;
+  const { rank, pendingAhead } = r.queue;
+  const waiting = PENDING.includes(r.status);
+  if (waiting && pendingAhead === 0) {
+    return <Tooltip title="Applied before every other waiting student of this branch"><Tag color="green" style={{ margin: 0 }}>#{rank} · next</Tag></Tooltip>;
+  }
+  if (waiting) {
+    return (
+      <Tooltip title={`${pendingAhead} earlier applicant(s) of this branch are still waiting for a decision`}>
+        <Tag color="orange" style={{ margin: 0 }}>#{rank}</Tag>
+      </Tooltip>
+    );
+  }
+  return <Tag style={{ margin: 0 }}>#{rank}</Tag>;
+};
+
 /**
  * Applications made against State-published opportunities.
+ * Listed in the order students applied (first come, first served); the exact time is shown
+ * and "Priority" is each student's place in the queue of their own branch.
  *  - opportunityId: limit to one opportunity (used on the opportunity page)
  *  - fixedGroup:    lock the list to PENDING | SELECTED | CLOSED and hide the group switch
  * The group filter drives both the table and the Excel export, so they always match.
@@ -86,6 +106,10 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
     const verb = { APPROVE: 'approved', REJECT: 'rejected', DELETE: 'deleted' }[action];
     if (res.succeeded) toast.success(`${res.succeeded} application(s) ${verb}`);
     res.results.filter((r) => !r.ok).forEach((r) => toast.error(String(r.error)));
+    const skipped = res.results.filter((r) => r.ok && r.skippedEarlier > 0).length;
+    if (skipped) {
+      toast(`${skipped} approved student(s) applied after other students of their branch who are still waiting.`, { icon: '⚠️', duration: 6000 });
+    }
     return res;
   };
 
@@ -123,20 +147,53 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
       ? 'The approval will be undone and the seat released. Not possible once reports or visits exist.'
       : "The seat and the student's application slot are released, and the student can apply to this internship again.";
 
+  const earlierWaiting = (r) => r.queue?.pendingAhead || 0;
+  const decisionRows = rows.filter((r) => decision?.ids.includes(r.id));
+  const jumpsQueue = decision?.action === 'APPROVE' && decisionRows.some((r) => earlierWaiting(r) > 0);
+
   const columns = [
+    {
+      title: (
+        <Tooltip title="Place in the queue of the student's own branch for this internship. #1 applied first and has priority.">
+          Priority
+        </Tooltip>
+      ),
+      width: 100,
+      render: (_, r) => <QueueTag r={r} />,
+    },
     { title: 'Student', render: (_, r) => <div><div>{r.student?.user?.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.rollNumber}</Text></div> },
     ...(scoped
       ? [{ title: 'Contact', render: (_, r) => <div style={{ fontSize: 12 }}><div>{r.student?.user?.phoneNo}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.email}</Text></div> }]
       : []),
+    {
+      title: 'Applied at',
+      dataIndex: 'appliedDate',
+      render: (v) => (
+        <div style={{ whiteSpace: 'nowrap' }}>
+          <div>{formatDate(v)}</div>
+          <Text type="secondary" style={{ fontSize: 12 }}>{formatTime(v)}</Text>
+        </div>
+      ),
+    },
     { title: 'Institution', dataIndex: ['student', 'Institution', 'name'] },
-    { title: 'Branch', dataIndex: ['student', 'branch', 'name'] },
+    {
+      title: 'Branch',
+      render: (_, r) => (
+        <div>
+          <div>{r.student?.branch?.name}</div>
+          {r.branchSeat && (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {r.branchSeat.approvedCount}/{r.branchSeat.positions} selected
+            </Text>
+          )}
+        </div>
+      ),
+    },
     ...(scoped
       ? []
       : [
           { title: 'Position', render: (_, r) => <div><div>{r.opportunity?.title}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.opportunity?.company?.name}</Text></div> },
-          { title: 'Seats', render: (_, r) => (r.opportunity ? `${r.opportunity.approvedCount} / ${r.opportunity.positions} selected` : '-') },
         ]),
-    { title: 'Applied', dataIndex: 'appliedDate', render: formatDate },
     { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{s}</Tag> },
     {
       title: 'Actions',
@@ -144,8 +201,15 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
         <Space size={4}>
           {PENDING.includes(r.status) && (
             <>
-              <Tooltip title="Approve">
-                <Button size="small" type="text" aria-label="Approve" style={{ color: '#52c41a' }} icon={<CheckOutlined />} onClick={() => openDecision('APPROVE', [r.id])} />
+              <Tooltip title={earlierWaiting(r) > 0 ? `Approve (${earlierWaiting(r)} earlier applicant(s) of this branch are still waiting)` : 'Approve'}>
+                <Button
+                  size="small"
+                  type="text"
+                  aria-label="Approve"
+                  style={{ color: earlierWaiting(r) > 0 ? '#fa8c16' : '#52c41a' }}
+                  icon={earlierWaiting(r) > 0 ? <WarningOutlined /> : <CheckOutlined />}
+                  onClick={() => openDecision('APPROVE', [r.id])}
+                />
               </Tooltip>
               <Tooltip title="Reject">
                 <Button size="small" type="text" danger aria-label="Reject" icon={<CloseOutlined />} onClick={() => openDecision('REJECT', [r.id])} />
@@ -216,7 +280,16 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
         destroyOnHidden
       >
         {decision?.action === 'APPROVE' && (
-          <p>Confirm the student(s) have got this internship. Their internship starts on the opportunity's start date and enters the normal mentor, report and visit workflow. Any other pending application they have is withdrawn automatically.</p>
+          <p>Confirm the student(s) have got this internship. Their internship starts on the opportunity's start date and enters the normal mentor, report and visit workflow. Any other pending application they have is withdrawn automatically. Positions are per branch; when several students are approved together, the one who applied first gets the seat first.</p>
+        )}
+        {jumpsQueue && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="Earlier applicants are still waiting"
+            description="At least one selected student applied after other students of the same branch who have not been decided yet. Seats are first come, first served, so approve in application order unless you have a reason not to."
+          />
         )}
         <Input.TextArea
           rows={3}

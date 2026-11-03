@@ -13,7 +13,14 @@ const previewColumns = [
   { title: 'Position', dataIndex: 'title' },
   { title: 'District', dataIndex: 'district' },
   { title: 'Positions', dataIndex: 'positions', width: 90 },
-  { title: 'Branches', dataIndex: 'branchCodes', render: (codes) => codes.map((c) => <Tag key={c}>{c}</Tag>) },
+  {
+    title: 'Branch-wise positions',
+    dataIndex: 'branchSeats',
+    render: (seats) =>
+      (seats || []).map((s) => (
+        <Tag key={s.code}>{s.code}: {s.positions}{s.maxApplications ? ` (max ${s.maxApplications} applications)` : ''}</Tag>
+      )),
+  },
   { title: 'Years', dataIndex: 'eligibleYears', render: (y) => (y?.length ? y.join(', ') : 'All') },
   { title: 'Duration', dataIndex: 'durationMonths', render: (m) => `${m} mo` },
   { title: 'Deadline', dataIndex: 'applicationDeadline', render: formatDate },

@@ -10,6 +10,7 @@ import {
   IsString,
   IsUUID,
   Matches,
+  ValidateNested,
   Max,
   MaxLength,
   Min,
@@ -53,6 +54,14 @@ export class IncompleteProfilesQueryDto extends PageQueryDto {
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}/;
 
+/** One branch's seats and application limit. */
+export class BranchSeatDto {
+  @IsUUID() branchId!: string;
+  @Type(() => Number) @IsInt() @Min(1) @Max(500) positions!: number;
+  /** Applications this branch accepts (waiting list). Omit / null = same as positions. */
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(2000) maxApplications?: number | null;
+}
+
 /**
  * Every field of an opportunity is editable. Send only what changed.
  * An empty string on an optional text field clears it.
@@ -63,14 +72,15 @@ export class UpdateOpportunityDto {
   @IsOptional() @IsString() @MinLength(1) @MaxLength(120) title?: string;
   @IsOptional() @IsString() @MaxLength(2000) description?: string;
   @IsOptional() @IsString() @MaxLength(80) district?: string;
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(500) positions?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(24) durationMonths?: number;
   @IsOptional() @IsString() @MaxLength(50) stipend?: string;
   @IsOptional() @Matches(DATE_RE, { message: 'startDate must be yyyy-mm-dd' }) startDate?: string;
   @IsOptional() @Matches(DATE_RE, { message: 'applicationDeadline must be yyyy-mm-dd' }) applicationDeadline?: string;
   @IsOptional() @IsIn(['DRAFT', 'OPEN', 'CLOSED']) status?: string;
   @IsOptional() @IsArray() @ArrayMaxSize(3) @IsInt({ each: true }) @IsIn([1, 2, 3], { each: true }) eligibleYears?: number[];
-  @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(50) @IsUUID('all', { each: true }) branchIds?: string[];
+  /** Branch-wise positions and application limits. Replaces the whole list. */
+  @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(50) @ValidateNested({ each: true }) @Type(() => BranchSeatDto)
+  branches?: BranchSeatDto[];
   @IsOptional() @IsString() @MaxLength(100) contactName?: string;
   @IsOptional() @Matches(/^$|^[0-9+\-\s()]{7,20}$/, { message: 'contactPhone is not a valid phone number' }) contactPhone?: string;
   @IsOptional() @Matches(/^$|^[^\s@]{1,64}@[^\s@]+\.[^\s@]+$/, { message: 'contactEmail is not a valid email' }) @MaxLength(100) contactEmail?: string;

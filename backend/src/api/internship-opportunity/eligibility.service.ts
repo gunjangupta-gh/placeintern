@@ -49,6 +49,7 @@ export interface EligibilityReason {
     | 'NOT_OPEN'
     | 'DEADLINE_PASSED'
     | 'APPLICATIONS_FULL'
+    | 'POSITIONS_FILLED'
     | 'ALREADY_APPLIED'
     | 'HAS_INTERNSHIP'
     | 'MAX_APPLICATIONS_REACHED';
@@ -101,20 +102,33 @@ export function computeMissingProfileFields(
   }));
 }
 
+/** One branch's slice of an opportunity. */
+export interface BranchSlot {
+  branchId: string;
+  positions: number;
+  approvedCount: number;
+  /** null = same as positions */
+  maxApplications: number | null;
+}
+
+/** How many applications a branch accepts before it closes (waiting list included). */
+export function applicationCap(slot: Pick<BranchSlot, 'positions' | 'maxApplications'>): number {
+  return Math.max(slot.maxApplications ?? slot.positions, slot.positions);
+}
+
 export interface OpportunityForEvaluation {
   status: OpportunityStatus;
   isDeleted: boolean;
-  positions: number;
   applicationDeadline: Date;
   eligibleYears: number[];
-  branchIds: string[];
+  branches: BranchSlot[];
 }
 
 export interface EvaluationInput {
   student: StudentContext;
   opportunity: OpportunityForEvaluation;
-  /** Seat-holding applications currently on this opportunity. */
-  seatsUsed: number;
+  /** Seat-holding applications from the student's OWN branch on this opportunity. */
+  branchApplications: number;
   /** Student already has an application (any status, incl. rejected) on THIS opportunity. */
   appliedToThis: boolean;
   /** Student already has a confirmed internship (approved / selected / joined / completed). */
@@ -130,7 +144,7 @@ export interface EvaluationInput {
  * transaction.
  */
 export function evaluateEligibility(input: EvaluationInput): EligibilityReason[] {
-  const { student, opportunity, seatsUsed, appliedToThis, hasConfirmedInternship, pendingApplications } = input;
+  const { student, opportunity, branchApplications, appliedToThis, hasConfirmedInternship, pendingApplications } = input;
   const now = input.now ?? new Date();
   const reasons: EligibilityReason[] = [];
 
@@ -147,9 +161,10 @@ export function evaluateEligibility(input: EvaluationInput): EligibilityReason[]
   }
 
   const branchId = student.branchId ?? student.user?.branchId ?? null;
+  const slot = branchId ? opportunity.branches.find((b) => b.branchId === branchId) : undefined;
   if (!branchId) {
     reasons.push({ code: 'NO_BRANCH', message: 'No branch is assigned to your profile' });
-  } else if (!opportunity.branchIds.includes(branchId)) {
+  } else if (!slot) {
     reasons.push({
       code: 'BRANCH_NOT_ELIGIBLE',
       message: 'This internship is not open for your branch',
@@ -183,14 +198,51 @@ export function evaluateEligibility(input: EvaluationInput): EligibilityReason[]
     });
   }
 
-  if (!appliedToThis && seatsUsed >= opportunity.positions) {
-    reasons.push({
-      code: 'APPLICATIONS_FULL',
-      message: 'All positions for this internship have been taken',
-    });
+  // Branch-wise seats: a student only competes with students of the same branch
+  if (slot && !appliedToThis) {
+    if (slot.approvedCount >= slot.positions) {
+      reasons.push({
+        code: 'POSITIONS_FILLED',
+        message: 'All positions for your branch have been filled',
+      });
+    } else if (branchApplications >= applicationCap(slot)) {
+      reasons.push({
+        code: 'APPLICATIONS_FULL',
+        message: 'Applications for your branch are full',
+      });
+    }
   }
 
   return reasons;
+}
+
+/** Where-clause matching students of a branch (falls back to the user's branch like the apply flow). */
+export function studentInBranch(branchId: string): Prisma.StudentWhereInput {
+  return { OR: [{ branchId }, { branchId: null, user: { branchId } }] };
+}
+
+/**
+ * Seat-holding applications per opportunity per branch (oppId -> branchId -> count).
+ * Accepts the global client or a transaction client.
+ */
+export async function countBranchApplications(
+  db: Pick<PrismaService, 'internshipApplication'>,
+  opportunityIds: string[],
+): Promise<Map<string, Map<string, number>>> {
+  const out = new Map<string, Map<string, number>>();
+  if (!opportunityIds.length) return out;
+  const rows = await db.internshipApplication.findMany({
+    where: { opportunityId: { in: opportunityIds }, isActive: true, status: { in: SEAT_HOLDING_STATUSES } },
+    select: { opportunityId: true, student: { select: { branchId: true, user: { select: { branchId: true } } } } },
+  });
+  for (const r of rows) {
+    const branchId = r.student?.branchId ?? r.student?.user?.branchId;
+    if (!r.opportunityId || !branchId) continue;
+    const perBranch = out.get(r.opportunityId) ?? new Map<string, number>();
+    perBranch.set(branchId, (perBranch.get(branchId) ?? 0) + 1);
+    out.set(r.opportunityId, perBranch);
+  }
+  return out;
 }
 
 @Injectable()

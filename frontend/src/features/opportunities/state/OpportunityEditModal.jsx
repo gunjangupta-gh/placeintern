@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Col, DatePicker, Divider, Form, Input, InputNumber, Modal, Row, Select } from 'antd';
+import { Alert, Button, Col, DatePicker, Divider, Form, Input, InputNumber, Modal, Row, Select, Tooltip, Typography } from 'antd';
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage } from '../../../services/opportunity.service';
 import { lookupService } from '../../../services/lookup.service';
 
 const FIELD_KEYS = [
-  'companyName', 'title', 'district', 'description', 'positions', 'durationMonths', 'stipend',
-  'startDate', 'applicationDeadline', 'status', 'eligibleYears', 'branchIds',
+  'companyName', 'title', 'district', 'description', 'durationMonths', 'stipend',
+  'startDate', 'applicationDeadline', 'status', 'eligibleYears', 'branches',
   'contactName', 'contactPhone', 'contactEmail',
 ];
 
@@ -19,21 +20,28 @@ const toFormValues = (o) => ({
   title: o.title || '',
   district: o.district || '',
   description: o.description || '',
-  positions: o.positions,
   durationMonths: o.durationMonths,
   stipend: o.stipend || '',
   startDate: istDate(o.startDate),
   applicationDeadline: istDate(o.applicationDeadline),
   status: o.status === 'FILLED' ? undefined : o.status,
   eligibleYears: o.eligibleYears || [],
-  branchIds: (o.branches || []).map((b) => b.id),
+  branches: (o.branches || []).map((b) => ({ branchId: b.id, positions: b.positions, maxApplications: b.maxApplications ?? null })),
   contactName: o.contactName || '',
   contactPhone: o.contactPhone || '',
   contactEmail: o.contactEmail || '',
 });
 
 /** Comparable form of a value, so unchanged fields are not sent. */
+const normBranches = (list) =>
+  JSON.stringify(
+    (list || [])
+      .map((b) => ({ branchId: b.branchId, positions: Number(b.positions), maxApplications: b.maxApplications ?? null }))
+      .sort((a, b) => String(a.branchId).localeCompare(String(b.branchId)))
+  );
+
 const norm = (key, v) => {
+  if (key === 'branches') return normBranches(v);
   if (v && typeof v.format === 'function') return v.format('YYYY-MM-DD');
   if (Array.isArray(v)) return JSON.stringify([...v].sort());
   if (typeof v === 'string') return v.replace(/\s+/g, ' ').trim();
@@ -51,6 +59,7 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
   const [saving, setSaving] = useState(false);
   const [branches, setBranches] = useState([]);
   const [branchesLoading, setBranchesLoading] = useState(true);
+  const watchedBranches = Form.useWatch('branches', form) || [];
 
   useEffect(() => {
     let cancelled = false;
@@ -80,8 +89,10 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
 
   if (!opportunity) return null;
   const initial = toFormValues(opportunity);
-  const hasApplicants = opportunity.appliedCount > 0;
-  const minPositions = Math.max(opportunity.appliedCount || 0, opportunity.approvedCount || 0, 1);
+  // What each existing branch already has: selected students and applications received
+  const branchStats = new Map((opportunity.branches || []).map((b) => [b.id, b]));
+  const totalPositions = watchedBranches.reduce((n, b) => n + (Number(b?.positions) || 0), 0);
+  const totalLimit = watchedBranches.reduce((n, b) => n + (Number(b?.maxApplications) || Number(b?.positions) || 0), 0);
 
   const save = async () => {
     const values = await form.validateFields();
@@ -91,7 +102,13 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
       if (norm(key, values[key]) === norm(key, initial[key])) return;
       const v = values[key];
       if (v && typeof v.format === 'function') changed[key] = v.format('YYYY-MM-DD');
-      else if (typeof v === 'string') changed[key] = v.trim();
+      else if (key === 'branches') {
+        changed.branches = (v || []).map((b) => ({
+          branchId: b.branchId,
+          positions: Number(b.positions),
+          maxApplications: b.maxApplications ? Number(b.maxApplications) : null,
+        }));
+      } else if (typeof v === 'string') changed[key] = v.trim();
       else changed[key] = v;
     });
 
@@ -152,20 +169,14 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
           </Col>
         </Row>
 
-        <Divider orientation="left" plain>Seats and schedule</Divider>
+        <Divider orientation="left" plain>Schedule</Divider>
         <Row gutter={16}>
-          <Col xs={24} md={8}>
-            <Form.Item name="positions" label="Positions" rules={[{ required: true, message: 'Required' }]}
-              extra={hasApplicants || opportunity.approvedCount ? `At least ${minPositions} (current applications / selected).` : undefined}>
-              <InputNumber min={minPositions} max={500} precision={0} style={{ width: '100%' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={8}>
+          <Col xs={24} md={12}>
             <Form.Item name="durationMonths" label="Duration (months)" rules={[{ required: true, message: 'Required' }]}>
               <InputNumber min={1} max={24} precision={0} style={{ width: '100%' }} />
             </Form.Item>
           </Col>
-          <Col xs={24} md={8}>
+          <Col xs={24} md={12}>
             <Form.Item name="status" label="Status" extra={opportunity.status === 'FILLED' ? 'Filled automatically while all positions are taken.' : undefined}>
               <Select
                 disabled={opportunity.status === 'FILLED'}
@@ -203,28 +214,107 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
           </Col>
         </Row>
 
+        <Divider orientation="left" plain>Branch-wise positions and applications</Divider>
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 12 }}
+          message="Each branch has its own positions, and students only compete with their own branch."
+          description="Set the application limit above the positions to keep a waiting list (applications are first come, first served). Leave it empty to accept applications only up to the positions."
+        />
+        <Form.List
+          name="branches"
+          rules={[{ validator: async (_, list) => { if (!list || list.length < 1) throw new Error('Add at least one branch'); } }]}
+        >
+          {(fields, { add, remove }, { errors }) => (
+            <>
+              <Row gutter={8} style={{ marginBottom: 4 }}>
+                <Col xs={24} md={10}><Typography.Text type="secondary">Branch</Typography.Text></Col>
+                <Col xs={12} md={5}><Typography.Text type="secondary">Positions</Typography.Text></Col>
+                <Col xs={12} md={6}><Typography.Text type="secondary">Max applications</Typography.Text></Col>
+              </Row>
+              {fields.map(({ key, name }) => {
+                const row = watchedBranches[name] || {};
+                const stats = branchStats.get(row.branchId);
+                const selected = stats?.approvedCount || 0;
+                const received = stats?.appliedCount || 0;
+                const chosenElsewhere = new Set(watchedBranches.filter((_, i) => i !== name).map((b) => b?.branchId));
+                const locked = !!stats; // an existing branch cannot be swapped for another one
+                const cannotRemove = received > 0 || selected > 0;
+                return (
+                  <Row key={key} gutter={8} align="top">
+                    <Col xs={24} md={10}>
+                      <Form.Item name={[name, 'branchId']} rules={[{ required: true, message: 'Select a branch' }]}>
+                        <Select
+                          showSearch
+                          optionFilterProp="label"
+                          disabled={locked}
+                          loading={branchesLoading}
+                          placeholder="Select branch"
+                          options={branchOptions.filter((o) => !chosenElsewhere.has(o.value))}
+                          notFoundContent={branchesLoading ? 'Loading branches...' : 'No branches found'}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={12} md={5}>
+                      <Form.Item
+                        name={[name, 'positions']}
+                        rules={[{ required: true, message: 'Required' }]}
+                        extra={selected > 0 ? `${selected} selected` : undefined}
+                      >
+                        <InputNumber min={Math.max(selected, 1)} max={500} precision={0} style={{ width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={12} md={6}>
+                      <Form.Item
+                        name={[name, 'maxApplications']}
+                        dependencies={[['branches', name, 'positions']]}
+                        extra={received > 0 ? `${received} received` : undefined}
+                        rules={[
+                          ({ getFieldValue }) => ({
+                            validator(_, value) {
+                              const positions = Number(getFieldValue(['branches', name, 'positions'])) || 0;
+                              if (value && value < positions) return Promise.reject(new Error(`At least ${positions} (the positions)`));
+                              if (!value && received > positions) return Promise.reject(new Error(`Set at least ${received} (already received)`));
+                              if (value && value < received) return Promise.reject(new Error(`At least ${received} (already received)`));
+                              return Promise.resolve();
+                            },
+                          }),
+                        ]}
+                      >
+                        <InputNumber min={1} max={2000} precision={0} placeholder="= positions" style={{ width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={3}>
+                      <Tooltip title={cannotRemove ? 'Students of this branch have applied, so it cannot be removed' : 'Remove branch'}>
+                        <Button type="text" danger aria-label="Remove branch" icon={<DeleteOutlined />} disabled={cannotRemove} onClick={() => remove(name)} />
+                      </Tooltip>
+                    </Col>
+                  </Row>
+                );
+              })}
+              <Form.ErrorList errors={errors} />
+              <Button
+                type="dashed"
+                icon={<PlusOutlined />}
+                onClick={() => add({ branchId: undefined, positions: 1, maxApplications: null })}
+                disabled={fields.length >= branchOptions.length}
+                style={{ marginBottom: 8 }}
+              >
+                Add branch
+              </Button>
+              <div style={{ marginBottom: 16 }}>
+                <Typography.Text type="secondary">
+                  Total: {totalPositions} position(s) · up to {totalLimit} application(s)
+                </Typography.Text>
+              </div>
+            </>
+          )}
+        </Form.List>
+
         <Divider orientation="left" plain>Who can apply</Divider>
         <Row gutter={16}>
-          <Col xs={24} md={16}>
-            <Form.Item
-              name="branchIds"
-              label="Eligible branches"
-              rules={[{ required: true, type: 'array', min: 1, message: 'Select at least one branch' }]}
-              extra={hasApplicants ? "Branches can be added. A branch can't be removed once its students have applied." : undefined}
-            >
-              <Select
-                mode="multiple"
-                showSearch
-                optionFilterProp="label"
-                options={branchOptions}
-                loading={branchesLoading}
-                placeholder="Select branches"
-                maxTagCount="responsive"
-                notFoundContent={branchesLoading ? 'Loading branches...' : 'No branches found'}
-              />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={8}>
+          <Col xs={24} md={12}>
             <Form.Item name="eligibleYears" label="Eligible years" extra="Leave empty for all years.">
               <Select mode="multiple" placeholder="All years" options={[1, 2, 3].map((y) => ({ value: y, label: `Year ${y}` }))} />
             </Form.Item>

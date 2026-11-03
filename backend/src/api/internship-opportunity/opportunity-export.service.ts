@@ -22,6 +22,15 @@ const safe = (v: unknown): string | number => {
 const day = (d?: Date | null) =>
   d ? d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }) : '';
 
+/** Date + time in India, to the second: the exact moment the student applied. */
+const stamp = (d?: Date | null) =>
+  d
+    ? d.toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
+      })
+    : '';
+
 const SELECTED = new Set<string>(APPLICATION_STATUS_GROUPS.SELECTED);
 
 @Injectable()
@@ -53,7 +62,7 @@ export class OpportunityExportService {
     const apps = await this.prisma.internshipApplication.findMany({
       where,
       take: MAX_EXPORT_ROWS,
-      orderBy: [{ opportunity: { company: { name: 'asc' } } }, { appliedDate: 'asc' }],
+      orderBy: [{ opportunity: { company: { name: 'asc' } } }, { opportunityId: 'asc' }, { appliedDate: 'asc' }, { id: 'asc' }],
       select: {
         status: true,
         internshipPhase: true,
@@ -93,10 +102,10 @@ export class OpportunityExportService {
       { header: 'Roll No', key: 'roll', width: 16 },
       { header: 'Email', key: 'email', width: 28 },
       { header: 'Phone', key: 'phone', width: 15 },
+      { header: 'Applied At (IST)', key: 'applied', width: 24 },
       { header: 'Institution', key: 'institution', width: 32 },
       { header: 'Branch', key: 'branch', width: 24 },
       { header: 'Year', key: 'year', width: 7 },
-      { header: 'Applied On', key: 'applied', width: 14 },
       { header: 'Status', key: 'status', width: 13 },
       { header: 'Decision On', key: 'decided', width: 14 },
       { header: 'Remarks / Reason', key: 'remarks', width: 34 },
@@ -121,7 +130,7 @@ export class OpportunityExportService {
       institution: safe(a.student?.Institution?.name),
       branch: safe(a.student?.branch?.name),
       year: a.student?.currentYear ?? '',
-      applied: day(a.appliedDate),
+      applied: stamp(a.appliedDate),
       status: a.status,
       decided: day(a.reviewedAt),
       remarks: safe(a.rejectionReason || a.reviewRemarks),
@@ -153,7 +162,9 @@ export class OpportunityExportService {
         id: true, title: true, district: true, positions: true, approvedCount: true, status: true, durationMonths: true,
         stipend: true, startDate: true, applicationDeadline: true, contactName: true, contactPhone: true, contactEmail: true,
         company: { select: { name: true } },
-        branches: { select: { branch: { select: { code: true } } } },
+        branches: {
+          select: { positions: true, approvedCount: true, maxApplications: true, branch: { select: { code: true } } },
+        },
       },
     });
     const grouped = opps.length
@@ -171,7 +182,7 @@ export class OpportunityExportService {
       { header: 'Company', key: 'company', width: 28 },
       { header: 'Position', key: 'title', width: 26 },
       { header: 'District', key: 'district', width: 16 },
-      { header: 'Branches', key: 'branches', width: 22 },
+      { header: 'Branch-wise Positions (selected/positions, max applications)', key: 'branches', width: 46 },
       { header: 'Positions', key: 'positions', width: 10 },
       { header: 'Applications (active)', key: 'applied', width: 12 },
       { header: 'Selected', key: 'selected', width: 10 },
@@ -192,11 +203,13 @@ export class OpportunityExportService {
         company: safe(o.company.name),
         title: safe(o.title),
         district: safe(o.district),
-        branches: o.branches.map((b) => b.branch.code).join(', '),
+        branches: o.branches
+          .map((b) => `${b.branch.code}: ${b.approvedCount}/${b.positions} (max ${b.maxApplications ?? b.positions})`)
+          .join('; '),
         positions: o.positions,
         applied,
         selected: o.approvedCount,
-        left: Math.max(o.positions - applied, 0),
+        left: o.branches.reduce((n, b) => n + Math.max(b.positions - b.approvedCount, 0), 0),
         status: o.status,
         duration: o.durationMonths,
         stipend: safe(o.stipend),

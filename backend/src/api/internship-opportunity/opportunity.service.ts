@@ -31,6 +31,7 @@ import {
   todayStartIST,
 } from './opportunity-dates.util';
 import { buildApplicationWhere } from './application-filters';
+import { applicationCap, countBranchApplications, studentInBranch } from './eligibility.service';
 import {
   ApproveApplicationDto,
   ListApplicationsQueryDto,
@@ -64,7 +65,15 @@ const DIRECTOR_SELECT = {
   importBatchId: true,
   createdAt: true,
   company: { select: { id: true, name: true } },
-  branches: { select: { branch: { select: { id: true, code: true, name: true } } } },
+  branches: {
+    select: {
+      positions: true,
+      approvedCount: true,
+      maxApplications: true,
+      branch: { select: { id: true, code: true, name: true } },
+    },
+    orderBy: { branch: { name: 'asc' } },
+  },
 } satisfies Prisma.InternshipOpportunitySelect;
 
 @Injectable()
@@ -102,13 +111,30 @@ export class OpportunityService {
   private shape(
     o: Prisma.InternshipOpportunityGetPayload<{ select: typeof DIRECTOR_SELECT }>,
     applied: number,
+    /** Seat-holding applications per branch on this opportunity. */
+    perBranch: Map<string, number> = new Map(),
   ) {
     const { branches, ...rest } = o;
+    const shaped = branches.map((b) => {
+      const branchApplied = perBranch.get(b.branch.id) ?? 0;
+      const limit = applicationCap(b);
+      return {
+        ...b.branch,
+        positions: b.positions,
+        approvedCount: b.approvedCount,
+        maxApplications: b.maxApplications,
+        applicationLimit: limit,
+        appliedCount: branchApplied,
+        seatsLeft: Math.max(b.positions - b.approvedCount, 0),
+        applicationsLeft: Math.max(limit - branchApplied, 0),
+      };
+    });
     return {
       ...rest,
-      branches: branches.map((b) => b.branch),
+      branches: shaped,
       appliedCount: applied,
-      seatsLeft: Math.max(o.positions - applied, 0),
+      applicationLimit: shaped.reduce((n, b) => n + b.applicationLimit, 0),
+      seatsLeft: shaped.reduce((n, b) => n + b.seatsLeft, 0),
     };
   }
 
@@ -138,9 +164,11 @@ export class OpportunityService {
         take,
       }),
     ]);
-    const counts = await this.appliedCounts(items.map((i) => i.id));
+    const ids = items.map((i) => i.id);
+    const counts = await this.appliedCounts(ids);
+    const byBranch = await countBranchApplications(this.prisma, ids);
     return {
-      data: items.map((i) => this.shape(i, counts.get(i.id) ?? 0)),
+      data: items.map((i) => this.shape(i, counts.get(i.id) ?? 0, byBranch.get(i.id))),
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
@@ -152,14 +180,17 @@ export class OpportunityService {
     });
     if (!opp) throw new NotFoundException('Opportunity not found');
     const counts = await this.appliedCounts([id]);
-    return this.shape(opp, counts.get(id) ?? 0);
+    const byBranch = await countBranchApplications(this.prisma, [id]);
+    return this.shape(opp, counts.get(id) ?? 0, byBranch.get(id));
   }
 
   /**
    * Edit any field of an opportunity. Only the keys that are sent change.
    *  - Company: matched case-insensitively or created.
-   *  - Positions can never drop below current applications / approved students.
-   *  - Branches: may be added freely; a branch can only be removed if no applicant belongs to it.
+   *  - Branches carry their own positions and application limit (`branches` replaces the whole list).
+   *    A branch's positions can never drop below its selected students, and its application limit
+   *    (default = positions) never below its current applications.
+   *  - A branch can only be removed if none of its students have applied.
    *  - Deadline is only checked against "today" when it is actually changed, so an expired
    *    opportunity can still have its other fields (or status) edited.
    *  - Editing cannot create a duplicate (same company, position and start date) of another one.
@@ -169,13 +200,13 @@ export class OpportunityService {
     const existing = await this.prisma.internshipOpportunity.findFirst({
       where: { id, isDeleted: false },
       select: {
-        id: true, status: true, positions: true, approvedCount: true, startDate: true,
+        id: true, status: true, startDate: true,
         applicationDeadline: true, companyId: true, title: true,
+        branches: { select: { branchId: true, positions: true, approvedCount: true } },
       },
     });
     if (!existing) throw new NotFoundException('Opportunity not found');
 
-    const applied = (await this.appliedCounts([id])).get(id) ?? 0;
     const data: Prisma.InternshipOpportunityUpdateInput = {};
 
     // Plain text fields. '' clears the optional ones.
@@ -189,17 +220,6 @@ export class OpportunityService {
     }
     if (dto.durationMonths !== undefined) data.durationMonths = dto.durationMonths;
     if (dto.eligibleYears !== undefined) data.eligibleYears = Array.from(new Set(dto.eligibleYears)).sort();
-
-    // Seats can never drop below confirmed or pending applicants
-    const positions = dto.positions ?? existing.positions;
-    if (dto.positions !== undefined) {
-      if (dto.positions < Math.max(applied, existing.approvedCount)) {
-        throw new BadRequestException(
-          `Positions cannot be less than current applications (${applied}) / approved students (${existing.approvedCount})`,
-        );
-      }
-      data.positions = dto.positions;
-    }
 
     // Dates
     let start = existing.startDate;
@@ -259,36 +279,78 @@ export class OpportunityService {
       }
     }
 
-    // Eligible branches: add freely; only remove a branch if none of its students have applied
-    if (dto.branchIds) {
-      const wanted = Array.from(new Set(dto.branchIds));
-      const found = await this.prisma.branch.count({ where: { id: { in: wanted }, isActive: true } });
-      if (found !== wanted.length) throw new BadRequestException('One or more branches are invalid');
+    // Branch-wise positions + application limits
+    let slots = existing.branches.map((b) => ({ positions: b.positions, approvedCount: b.approvedCount }));
+    if (dto.branches) {
+      const wanted = dto.branches;
+      const wantedIds = wanted.map((w) => w.branchId);
+      if (new Set(wantedIds).size !== wantedIds.length) {
+        throw new BadRequestException('A branch can only be listed once');
+      }
+      const known = await this.prisma.branch.findMany({
+        where: { id: { in: wantedIds }, isActive: true },
+        select: { id: true, name: true },
+      });
+      if (known.length !== wantedIds.length) throw new BadRequestException('One or more branches are invalid');
+      const nameOf = new Map(known.map((b) => [b.id, b.name]));
 
-      if (applied > 0) {
-        const holders = await this.prisma.internshipApplication.findMany({
-          where: { opportunityId: id, isActive: true, status: { in: SEAT_HOLDING_STATUSES } },
-          select: { student: { select: { branchId: true } } },
-        });
-        const needed = new Set(holders.map((h) => h.student?.branchId).filter((b): b is string => !!b));
-        const missing = [...needed].filter((b) => !wanted.includes(b));
-        if (missing.length) {
-          const names = await this.prisma.branch.findMany({ where: { id: { in: missing } }, select: { name: true } });
+      const applicantsByBranch = (await countBranchApplications(this.prisma, [id])).get(id) ?? new Map<string, number>();
+      const current = new Map(existing.branches.map((b) => [b.branchId, b]));
+
+      for (const w of wanted) {
+        const name = nameOf.get(w.branchId);
+        const selected = current.get(w.branchId)?.approvedCount ?? 0;
+        const branchApplied = applicantsByBranch.get(w.branchId) ?? 0;
+        if (w.positions < selected) {
+          throw new BadRequestException(`${name}: positions cannot be less than the ${selected} student(s) already selected`);
+        }
+        if (w.maxApplications != null && w.maxApplications < w.positions) {
+          throw new BadRequestException(`${name}: the application limit cannot be less than the positions (${w.positions})`);
+        }
+        const limit = w.maxApplications ?? w.positions;
+        if (limit < branchApplied) {
           throw new BadRequestException(
-            `Cannot remove branch(es) ${names.map((n) => n.name).join(', ')}: students from them have already applied`,
+            `${name}: the application limit cannot be below the ${branchApplied} application(s) already received`,
           );
         }
       }
-      data.branches = { deleteMany: {}, create: wanted.map((branchId) => ({ branchId })) };
+
+      // A branch can only be removed if none of its students have applied
+      const removed = existing.branches.filter((b) => !wantedIds.includes(b.branchId));
+      const blocked = removed.filter((b) => (applicantsByBranch.get(b.branchId) ?? 0) > 0 || b.approvedCount > 0);
+      if (blocked.length) {
+        const names = await this.prisma.branch.findMany({
+          where: { id: { in: blocked.map((b) => b.branchId) } },
+          select: { name: true },
+        });
+        throw new BadRequestException(
+          `Cannot remove branch(es) ${names.map((n) => n.name).join(', ')}: students from them have already applied`,
+        );
+      }
+
+      data.branches = {
+        deleteMany: { branchId: { notIn: wantedIds } },
+        upsert: wanted.map((w) => ({
+          where: { opportunityId_branchId: { opportunityId: id, branchId: w.branchId } },
+          create: { branchId: w.branchId, positions: w.positions, maxApplications: w.maxApplications ?? null },
+          update: { positions: w.positions, maxApplications: w.maxApplications ?? null },
+        })),
+      };
+      slots = wanted.map((w) => ({
+        positions: w.positions,
+        approvedCount: current.get(w.branchId)?.approvedCount ?? 0,
+      }));
+      data.positions = slots.reduce((n, b) => n + b.positions, 0);
+      data.approvedCount = slots.reduce((n, b) => n + b.approvedCount, 0);
     }
 
-    // Status: FILLED is automatic; it follows positions vs approved students
+    // Status: FILLED is automatic (every branch has taken all its positions)
     if (dto.status) data.status = dto.status as OpportunityStatus;
     const finalStatus = (data.status as OpportunityStatus | undefined) ?? existing.status;
-    if (existing.approvedCount >= positions) {
+    if (slots.length > 0 && slots.every((b) => b.approvedCount >= b.positions)) {
       data.status = OpportunityStatus.FILLED;
     } else if (finalStatus === OpportunityStatus.FILLED) {
-      // positions were raised on a filled opportunity -> reopen
+      // positions were raised (or a branch added) on a filled opportunity -> reopen
       data.status = OpportunityStatus.OPEN;
     }
 
@@ -355,19 +417,88 @@ export class OpportunityService {
           student: {
             select: {
               id: true,
+              branchId: true,
               currentYear: true,
-              user: { select: { name: true, email: true, rollNumber: true, phoneNo: true } },
+              user: { select: { name: true, email: true, rollNumber: true, phoneNo: true, branchId: true } },
               Institution: { select: { id: true, name: true } },
               branch: { select: { id: true, name: true, code: true } },
             },
           },
         },
-        orderBy: { appliedDate: 'asc' },
+        // First come, first served; id breaks an exact timestamp tie so paging is stable
+        orderBy: [{ appliedDate: 'asc' }, { id: 'asc' }],
         skip,
         take,
       }),
     ]);
-    return { data: items, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+    return {
+      data: await this.withQueue(items),
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  /**
+   * Adds the first-come-first-served queue to each application:
+   *  - queue.rank:         1 = applied first among the (still active) applicants of the same
+   *                        branch on the same opportunity - the people it competes with
+   *  - queue.pendingAhead: earlier applicants of that branch still waiting for a decision
+   *  - branchSeat:         that branch's positions / selected / application limit
+   */
+  private async withQueue<
+    T extends {
+      id: string;
+      opportunity: { id: string } | null;
+      student: { branchId: string | null; user: { branchId: string | null } | null } | null;
+    },
+  >(items: T[]) {
+    const oppIds = Array.from(new Set(items.map((i) => i.opportunity?.id).filter((x): x is string => !!x)));
+    if (!oppIds.length) return items.map((i) => ({ ...i, queue: null, branchSeat: null }));
+
+    const [holders, seats] = await Promise.all([
+      this.prisma.internshipApplication.findMany({
+        where: { opportunityId: { in: oppIds }, isActive: true, status: { in: SEAT_HOLDING_STATUSES } },
+        select: {
+          id: true,
+          opportunityId: true,
+          status: true,
+          student: { select: { branchId: true, user: { select: { branchId: true } } } },
+        },
+        orderBy: [{ appliedDate: 'asc' }, { id: 'asc' }],
+      }),
+      this.prisma.opportunityBranch.findMany({
+        where: { opportunityId: { in: oppIds } },
+        select: { opportunityId: true, branchId: true, positions: true, approvedCount: true, maxApplications: true },
+      }),
+    ]);
+
+    const counters = new Map<string, { n: number; pending: number }>();
+    const queue = new Map<string, { rank: number; pendingAhead: number }>();
+    for (const h of holders) {
+      const branchId = h.student?.branchId ?? h.student?.user?.branchId;
+      const key = `${h.opportunityId}|${branchId}`;
+      const c = counters.get(key) ?? { n: 0, pending: 0 };
+      queue.set(h.id, { rank: c.n + 1, pendingAhead: c.pending });
+      c.n += 1;
+      if (PENDING_DECISION_STATUSES.includes(h.status)) c.pending += 1;
+      counters.set(key, c);
+    }
+    const seatOf = new Map(seats.map((b) => [`${b.opportunityId}|${b.branchId}`, b]));
+
+    return items.map((i) => {
+      const branchId = i.student?.branchId ?? i.student?.user?.branchId;
+      const seat = seatOf.get(`${i.opportunity?.id}|${branchId}`);
+      return {
+        ...i,
+        queue: queue.get(i.id) ?? null,
+        branchSeat: seat
+          ? {
+              positions: seat.positions,
+              approvedCount: seat.approvedCount,
+              applicationLimit: applicationCap(seat),
+            }
+          : null,
+      };
+    });
   }
 
   async approve(applicationId: string, dto: ApproveApplicationDto, actor: Actor) {
@@ -386,7 +517,7 @@ export class OpportunityService {
 
       const app = await tx.internshipApplication.findUnique({
         where: { id: applicationId },
-        select: { id: true, studentId: true, status: true, startDate: true, endDate: true },
+        select: { id: true, studentId: true, status: true, startDate: true, endDate: true, appliedDate: true },
       });
       const opp = await tx.internshipOpportunity.findUnique({
         where: { id: pre.opportunityId },
@@ -401,9 +532,42 @@ export class OpportunityService {
       if (!PENDING_DECISION_STATUSES.includes(app.status)) {
         throw new BadRequestException(`Application is already ${app.status}`);
       }
-      if (opp.approvedCount >= opp.positions) {
-        throw new BadRequestException('All positions for this opportunity are already filled');
+
+      // Positions are per branch: the student takes a seat in THEIR branch
+      const stu = await tx.student.findUnique({
+        where: { id: app.studentId },
+        select: { branchId: true, user: { select: { branchId: true } } },
+      });
+      const studentBranchId = stu?.branchId ?? stu?.user?.branchId ?? null;
+      const slot = studentBranchId
+        ? await tx.opportunityBranch.findUnique({
+            where: { opportunityId_branchId: { opportunityId: opp.id, branchId: studentBranchId } },
+            select: { positions: true, approvedCount: true, branch: { select: { name: true } } },
+          })
+        : null;
+      if (!slot || !studentBranchId) {
+        throw new BadRequestException("This student's branch is not eligible for this opportunity");
       }
+      if (slot.approvedCount >= slot.positions) {
+        throw new BadRequestException(
+          `All ${slot.positions} position(s) for ${slot.branch.name} are already filled`,
+        );
+      }
+
+      // Earlier applicants of the same branch who are still waiting (priority is first-come-first-served)
+      const skippedEarlier = await tx.internshipApplication.count({
+        where: {
+          opportunityId: opp.id,
+          isActive: true,
+          id: { not: applicationId },
+          status: { in: PENDING_DECISION_STATUSES },
+          student: studentInBranch(studentBranchId),
+          OR: [
+            { appliedDate: { lt: app.appliedDate } },
+            { appliedDate: app.appliedDate, id: { lt: app.id } },
+          ],
+        },
+      });
 
       // A student can only be placed once
       const alreadyPlaced = await tx.internshipApplication.findFirst({
@@ -459,12 +623,20 @@ export class OpportunityService {
         },
       });
 
-      const newCount = opp.approvedCount + 1;
+      await tx.opportunityBranch.update({
+        where: { opportunityId_branchId: { opportunityId: opp.id, branchId: studentBranchId } },
+        data: { approvedCount: { increment: 1 } },
+      });
+      // FILLED only when EVERY branch has taken all its positions
+      const allSlots = await tx.opportunityBranch.findMany({
+        where: { opportunityId: opp.id },
+        select: { positions: true, approvedCount: true },
+      });
       await tx.internshipOpportunity.update({
         where: { id: opp.id },
         data: {
-          approvedCount: newCount,
-          ...(newCount >= opp.positions ? { status: OpportunityStatus.FILLED } : {}),
+          approvedCount: { increment: 1 },
+          ...(allSlots.every((b) => b.approvedCount >= b.positions) ? { status: OpportunityStatus.FILLED } : {}),
         },
       });
 
@@ -490,6 +662,7 @@ export class OpportunityService {
         title: opp.title,
         company: opp.company.name,
         withdrawn: withdrawn.count,
+        skippedEarlier,
       };
     });
 
@@ -500,8 +673,14 @@ export class OpportunityService {
     this.logAudit(actor, AuditAction.APPLICATION_APPROVE, applicationId, `Approved internship at ${result.company} (${result.title})`, {
       remarks: dto.remarks,
       otherApplicationsWithdrawn: result.withdrawn,
+      skippedEarlierApplicants: result.skippedEarlier,
     });
-    return { success: true, applicationId, withdrawnOtherApplications: result.withdrawn };
+    return {
+      success: true,
+      applicationId,
+      withdrawnOtherApplications: result.withdrawn,
+      skippedEarlierApplicants: result.skippedEarlier,
+    };
   }
 
   async reject(applicationId: string, reason: string, actor: Actor) {
@@ -572,19 +751,29 @@ export class OpportunityService {
 
       const wasConfirmed = CONFIRMED_STATUSES.includes(app.status);
       if (wasConfirmed) {
+        const stu = await tx.student.findUnique({
+          where: { id: pre.studentId },
+          select: { branchId: true, user: { select: { branchId: true } } },
+        });
+        const studentBranchId = stu?.branchId ?? stu?.user?.branchId ?? null;
+        // Release the seat in the student's branch (guarded so the count never goes negative)
+        if (studentBranchId) {
+          await tx.opportunityBranch.updateMany({
+            where: { opportunityId: pre.opportunityId, branchId: studentBranchId, approvedCount: { gt: 0 } },
+            data: { approvedCount: { decrement: 1 } },
+          });
+        }
         const opp = await tx.internshipOpportunity.findUnique({
           where: { id: pre.opportunityId },
-          select: { positions: true, approvedCount: true, status: true },
+          select: { approvedCount: true, status: true },
         });
         if (opp) {
-          const newCount = Math.max(opp.approvedCount - 1, 0);
           await tx.internshipOpportunity.update({
             where: { id: pre.opportunityId },
             data: {
-              approvedCount: newCount,
-              ...(opp.status === OpportunityStatus.FILLED && newCount < opp.positions
-                ? { status: OpportunityStatus.OPEN }
-                : {}),
+              approvedCount: Math.max(opp.approvedCount - 1, 0),
+              // a seat just opened, so a FILLED opportunity is open again
+              ...(opp.status === OpportunityStatus.FILLED ? { status: OpportunityStatus.OPEN } : {}),
             },
           });
         }
@@ -614,14 +803,27 @@ export class OpportunityService {
     if (action === 'REJECT' && !remarks?.trim()) {
       throw new BadRequestException('A reason (remarks) is required to reject');
     }
-    const results: Array<{ applicationId: string; ok: boolean; error?: string }> = [];
+    const results: Array<{ applicationId: string; ok: boolean; error?: string; skippedEarlier?: number }> = [];
+    let ordered = Array.from(new Set(applicationIds));
+    if (action === 'APPROVE') {
+      // Earliest applicant first: when a branch has fewer seats than selected students,
+      // the seats go to whoever applied first (id breaks an exact tie).
+      const dates = await this.prisma.internshipApplication.findMany({
+        where: { id: { in: ordered } },
+        select: { id: true, appliedDate: true },
+      });
+      const at = new Map(dates.map((d) => [d.id, d.appliedDate.getTime()]));
+      ordered = ordered.sort((a, b) => (at.get(a) ?? 0) - (at.get(b) ?? 0) || a.localeCompare(b));
+    }
     // Sequential on purpose: approvals lock the opportunity row, and order keeps seat use predictable
-    for (const id of Array.from(new Set(applicationIds))) {
+    for (const id of ordered) {
       try {
-        if (action === 'APPROVE') await this.approve(id, { remarks }, actor);
-        else if (action === 'DELETE') await this.deleteApplication(id, actor);
+        let skippedEarlier: number | undefined;
+        if (action === 'APPROVE') {
+          skippedEarlier = (await this.approve(id, { remarks }, actor)).skippedEarlierApplicants;
+        } else if (action === 'DELETE') await this.deleteApplication(id, actor);
         else await this.reject(id, remarks!.trim(), actor);
-        results.push({ applicationId: id, ok: true });
+        results.push({ applicationId: id, ok: true, skippedEarlier });
       } catch (e: any) {
         results.push({ applicationId: id, ok: false, error: e?.response?.message ?? e?.message ?? 'Failed' });
       }

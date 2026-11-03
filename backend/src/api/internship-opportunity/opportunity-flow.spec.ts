@@ -14,13 +14,14 @@ const completeStudent = {
 };
 
 const opp = (over: any = {}) => ({
-  id: 'o1', title: 'Production Trainee', positions: 10, status: OpportunityStatus.OPEN, isDeleted: false,
+  id: 'o1', title: 'Production Trainee', status: OpportunityStatus.OPEN, isDeleted: false,
   eligibleYears: [], applicationDeadline: future, durationMonths: 6, stipend: '8000', startDate: start,
-  company: { name: 'Godrej', address: 'Mohali' }, branches: [{ branchId: 'b-me' }], ...over,
+  company: { name: 'Godrej', address: 'Mohali' },
+  branches: [{ branchId: 'b-me', positions: 10, approvedCount: 0, maxApplications: null }], ...over,
 });
 
 describe('StudentOpportunityService.apply', () => {
-  function setup(o: { seatsUsed?: number; holding?: Array<{ status: ApplicationStatus }>; mine?: any; opportunity?: any; student?: any } = {}) {
+  function setup(o: { /** applications already made by the student's own branch */ seatsUsed?: number; holding?: Array<{ status: ApplicationStatus }>; mine?: any; opportunity?: any; student?: any } = {}) {
     const lockOrder: string[] = [];
     const tx: any = {
       $queryRaw: jest.fn().mockImplementation(async (strings: TemplateStringsArray) => {
@@ -65,7 +66,46 @@ describe('StudentOpportunityService.apply', () => {
     expect(lockOrder).toEqual(['student', 'opportunity']);
   });
 
-  it('10 seats: 9 used -> allowed, 10 used -> blocked and nothing is created', async () => {
+  it('stamps appliedDate explicitly (true first-come-first-served order, set after the locks)', async () => {
+    const { svc, tx } = setup();
+    await svc.apply('u1', 'o1');
+    expect(tx.internshipApplication.create.mock.calls[0][0].data.appliedDate).toBeInstanceOf(Date);
+  });
+
+  it('counts applications of the student own branch only', async () => {
+    const { svc, tx } = setup();
+    await svc.apply('u1', 'o1');
+    const where = tx.internshipApplication.count.mock.calls[0][0].where;
+    expect(where.opportunityId).toBe('o1');
+    expect(JSON.stringify(where.student)).toContain('b-me');
+  });
+
+  it('a branch with a higher application limit keeps accepting applicants beyond its positions', async () => {
+    const o = opp({ branches: [{ branchId: 'b-me', positions: 10, approvedCount: 0, maxApplications: 15 }] });
+    await expect(setup({ seatsUsed: 14, opportunity: o }).svc.apply('u1', 'o1')).resolves.toBeDefined();
+    await expect(setup({ seatsUsed: 15, opportunity: o }).svc.apply('u1', 'o1')).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'APPLICATIONS_FULL' }),
+    });
+  });
+
+  it('rejects once every position of the branch is filled, whatever the application limit', async () => {
+    const o = opp({ branches: [{ branchId: 'b-me', positions: 2, approvedCount: 2, maxApplications: 50 }] });
+    await expect(setup({ seatsUsed: 3, opportunity: o }).svc.apply('u1', 'o1')).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'POSITIONS_FILLED' }),
+    });
+  });
+
+  it('a different branch being full does not block this branch', async () => {
+    const o = opp({
+      branches: [
+        { branchId: 'b-me', positions: 3, approvedCount: 0, maxApplications: null },
+        { branchId: 'b-ee', positions: 1, approvedCount: 1, maxApplications: null },
+      ],
+    });
+    await expect(setup({ seatsUsed: 0, opportunity: o }).svc.apply('u1', 'o1')).resolves.toBeDefined();
+  });
+
+  it('10 positions: 9 used -> allowed, 10 used -> blocked and nothing is created', async () => {
     const ok = setup({ seatsUsed: 9 });
     await expect(ok.svc.apply('u1', 'o1')).resolves.toBeDefined();
 
@@ -108,7 +148,7 @@ describe('StudentOpportunityService.apply', () => {
       response: expect.objectContaining({ code: 'PROFILE_INCOMPLETE' }),
     });
 
-    const wrongBranch = setup({ opportunity: opp({ branches: [{ branchId: 'b-civil' }] }) });
+    const wrongBranch = setup({ opportunity: opp({ branches: [{ branchId: 'b-civil', positions: 5, approvedCount: 0, maxApplications: null }] }) });
     await expect(wrongBranch.svc.apply('u1', 'o1')).rejects.toMatchObject({
       response: expect.objectContaining({ code: 'BRANCH_NOT_ELIGIBLE' }),
     });
@@ -123,7 +163,11 @@ describe('StudentOpportunityService.apply', () => {
 });
 
 describe('OpportunityService.approve', () => {
-  function setup(o: { approvedCount?: number; positions?: number; appStatus?: ApplicationStatus; alreadyPlaced?: boolean; withdrawn?: number } = {}) {
+  /** approvedCount / positions are those of the STUDENT'S branch; otherBranches are the other seats on the opportunity. */
+  function setup(o: {
+    approvedCount?: number; positions?: number; appStatus?: ApplicationStatus; alreadyPlaced?: boolean; withdrawn?: number;
+    otherBranches?: Array<{ positions: number; approvedCount: number }>; skippedEarlier?: number; studentBranch?: string | null;
+  } = {}) {
     const lockOrder: string[] = [];
     const tx: any = {
       $queryRaw: jest.fn().mockImplementation(async (strings: TemplateStringsArray) => {
@@ -134,10 +178,28 @@ describe('OpportunityService.approve', () => {
         findUnique: jest.fn().mockImplementation(async ({ select }: any) =>
           select.opportunityId
             ? { opportunityId: 'o1', studentId: 's1' }
-            : { id: 'a1', studentId: 's1', status: o.appStatus ?? ApplicationStatus.APPLIED, startDate: start, endDate: null }),
+            : { id: 'a1', studentId: 's1', status: o.appStatus ?? ApplicationStatus.APPLIED, startDate: start, endDate: null, appliedDate: new Date() }),
         update: jest.fn().mockResolvedValue({}),
         findFirst: jest.fn().mockResolvedValue(o.alreadyPlaced ? { id: 'other' } : null),
         updateMany: jest.fn().mockResolvedValue({ count: o.withdrawn ?? 0 }),
+        count: jest.fn().mockResolvedValue(o.skippedEarlier ?? 0),
+      },
+      student: {
+        findUnique: jest.fn().mockResolvedValue({
+          branchId: o.studentBranch === undefined ? 'b-me' : o.studentBranch,
+          user: { branchId: null },
+        }),
+      },
+      opportunityBranch: {
+        findUnique: jest.fn().mockResolvedValue({
+          positions: o.positions ?? 10, approvedCount: o.approvedCount ?? 0, branch: { name: 'Mechanical' },
+        }),
+        update: jest.fn().mockResolvedValue({}),
+        // state AFTER the increment
+        findMany: jest.fn().mockResolvedValue([
+          { positions: o.positions ?? 10, approvedCount: (o.approvedCount ?? 0) + 1 },
+          ...(o.otherBranches ?? []),
+        ]),
       },
       internshipOpportunity: {
         findUnique: jest.fn().mockResolvedValue({
@@ -153,7 +215,7 @@ describe('OpportunityService.approve', () => {
     const cache: any = { invalidateByTags: jest.fn().mockResolvedValue(undefined) };
     const audit: any = { log: jest.fn().mockResolvedValue(undefined) };
     const expected: any = { recalculateExpectedCounts: jest.fn().mockResolvedValue({}) };
-    return { svc: new OpportunityService(prisma, cache, audit, expected), tx, expected, lockOrder };
+    return { svc: new OpportunityService(prisma, cache, audit, expected), tx, prisma, expected, lockOrder };
   }
   const actor = { userId: 'dir', role: 'STATE_DIRECTORATE' };
 
@@ -166,22 +228,64 @@ describe('OpportunityService.approve', () => {
       hrName: 'HR', hrContact: '123', hrEmail: 'hr@x.in',
     });
     expect(data.endDate.getTime()).toBeGreaterThan(data.startDate.getTime());
-    expect(tx.internshipOpportunity.update.mock.calls[0][0].data).toEqual({ approvedCount: 4 });
+    expect(tx.internshipOpportunity.update.mock.calls[0][0].data).toEqual({ approvedCount: { increment: 1 } });
+    expect(tx.opportunityBranch.update.mock.calls[0][0]).toMatchObject({
+      where: { opportunityId_branchId: { opportunityId: 'o1', branchId: 'b-me' } },
+      data: { approvedCount: { increment: 1 } },
+    });
     expect(expected.recalculateExpectedCounts).toHaveBeenCalledWith('a1');
   });
 
-  it('marks the opportunity FILLED when the last position is approved', async () => {
+  it('marks the opportunity FILLED only when the last position of EVERY branch is approved', async () => {
     const { svc, tx } = setup({ approvedCount: 9, positions: 10 });
     await svc.approve('a1', {}, actor);
     expect(tx.internshipOpportunity.update.mock.calls[0][0].data).toEqual({
-      approvedCount: 10, status: OpportunityStatus.FILLED,
+      approvedCount: { increment: 1 }, status: OpportunityStatus.FILLED,
     });
   });
 
-  it('refuses to over-approve beyond positions', async () => {
-    const { svc, tx } = setup({ approvedCount: 10, positions: 10 });
-    await expect(svc.approve('a1', {}, actor)).rejects.toThrow(/already filled/);
+  it('stays OPEN when this branch is now full but another branch still has seats', async () => {
+    const { svc, tx } = setup({ approvedCount: 9, positions: 10, otherBranches: [{ positions: 4, approvedCount: 1 }] });
+    await svc.approve('a1', {}, actor);
+    expect(tx.internshipOpportunity.update.mock.calls[0][0].data).toEqual({ approvedCount: { increment: 1 } });
+  });
+
+  it("refuses to over-approve beyond the student's branch positions, even if other branches have seats", async () => {
+    const { svc, tx } = setup({ approvedCount: 10, positions: 10, otherBranches: [{ positions: 4, approvedCount: 0 }] });
+    await expect(svc.approve('a1', {}, actor)).rejects.toThrow(/All 10 position\(s\) for Mechanical are already filled/);
     expect(tx.internshipApplication.update).not.toHaveBeenCalled();
+  });
+
+  it('refuses a student whose branch has no seats on this opportunity', async () => {
+    const { svc, tx } = setup({ studentBranch: null });
+    await expect(svc.approve('a1', {}, actor)).rejects.toThrow(/branch is not eligible/);
+    expect(tx.internshipApplication.update).not.toHaveBeenCalled();
+  });
+
+  it('reports how many earlier applicants of the same branch were skipped (first come, first served)', async () => {
+    const { svc, tx } = setup({ skippedEarlier: 2 });
+    const res = await svc.approve('a1', {}, actor);
+    expect(res.skippedEarlierApplicants).toBe(2);
+    const where = tx.internshipApplication.count.mock.calls[0][0].where;
+    expect(where.OR).toEqual(expect.arrayContaining([expect.objectContaining({ appliedDate: { lt: expect.any(Date) } })]));
+  });
+
+  it('bulk approve processes the earliest applicant first', async () => {
+    const { svc, prisma } = setup();
+    prisma.internshipApplication = {
+      findMany: jest.fn().mockResolvedValue([
+        { id: 'late', appliedDate: new Date('2026-11-03T10:00:05Z') },
+        { id: 'early', appliedDate: new Date('2026-11-03T10:00:01Z') },
+        { id: 'mid', appliedDate: new Date('2026-11-03T10:00:03Z') },
+      ]),
+    };
+    const order: string[] = [];
+    jest.spyOn(svc, 'approve').mockImplementation(async (id: string) => {
+      order.push(id);
+      return { success: true, applicationId: id, withdrawnOtherApplications: 0, skippedEarlierApplicants: 0 };
+    });
+    await svc.bulkAction('APPROVE', ['late', 'early', 'mid'], undefined, actor);
+    expect(order).toEqual(['early', 'mid', 'late']);
   });
 
   it('refuses an already-decided application', async () => {
@@ -213,5 +317,69 @@ describe('OpportunityService.approve', () => {
     await expect(svc.approve('a1', {}, actor)).rejects.toThrow(/already has an approved internship/);
     expect(tx.internshipApplication.update).not.toHaveBeenCalled();
     expect(tx.internshipApplication.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('OpportunityService.listApplications (first-come-first-served queue)', () => {
+  const holder = (id: string, branchId: string, status: ApplicationStatus) => ({
+    id, opportunityId: 'o1', status, student: { branchId, user: { branchId } },
+  });
+
+  function setup(items: any[], holders: any[]) {
+    const prisma: any = {
+      internshipApplication: {
+        count: jest.fn().mockResolvedValue(items.length),
+        // 1st call = the page, 2nd = every seat-holding applicant (already ordered by appliedDate)
+        findMany: jest.fn().mockResolvedValueOnce(items).mockResolvedValueOnce(holders),
+      },
+      opportunityBranch: {
+        findMany: jest.fn().mockResolvedValue([
+          { opportunityId: 'o1', branchId: 'b-me', positions: 2, approvedCount: 1, maxApplications: 6 },
+          { opportunityId: 'o1', branchId: 'b-ee', positions: 3, approvedCount: 0, maxApplications: null },
+        ]),
+      },
+    };
+    return { svc: new OpportunityService(prisma, {} as any, {} as any, {} as any), prisma };
+  }
+  const row = (id: string, branchId: string) => ({
+    id, opportunity: { id: 'o1' }, student: { branchId, user: { branchId } },
+  });
+
+  it('ranks applicants per branch by application time and counts earlier pending ones', async () => {
+    const holders = [
+      holder('a1', 'b-me', ApplicationStatus.APPROVED), // first overall, ME, already selected
+      holder('a2', 'b-ee', ApplicationStatus.APPLIED), // first EE
+      holder('a3', 'b-me', ApplicationStatus.APPLIED), // 2nd ME, nobody pending ahead (a1 is approved)
+      holder('a4', 'b-me', ApplicationStatus.APPLIED), // 3rd ME, a3 pending ahead
+      holder('a5', 'b-ee', ApplicationStatus.SHORTLISTED), // 2nd EE, a2 pending ahead
+    ];
+    const items = ['a1', 'a2', 'a3', 'a4', 'a5'].map((id) => row(id, id === 'a2' || id === 'a5' ? 'b-ee' : 'b-me'));
+    const { svc } = setup(items, holders);
+    const res = await svc.listApplications({ opportunityId: 'o1' } as any);
+    const q = Object.fromEntries(res.data.map((d: any) => [d.id, d.queue]));
+    expect(q.a1).toEqual({ rank: 1, pendingAhead: 0 });
+    expect(q.a3).toEqual({ rank: 2, pendingAhead: 0 });
+    expect(q.a4).toEqual({ rank: 3, pendingAhead: 1 });
+    expect(q.a2).toEqual({ rank: 1, pendingAhead: 0 });
+    expect(q.a5).toEqual({ rank: 2, pendingAhead: 1 });
+  });
+
+  it("attaches the branch's own seats (positions / selected / application limit)", async () => {
+    const { svc } = setup([row('a1', 'b-me'), row('a2', 'b-ee')], []);
+    const res = await svc.listApplications({} as any);
+    expect(res.data[0].branchSeat).toEqual({ positions: 2, approvedCount: 1, applicationLimit: 6 });
+    expect(res.data[1].branchSeat).toEqual({ positions: 3, approvedCount: 0, applicationLimit: 3 });
+  });
+
+  it('rejected / withdrawn applications have no queue position', async () => {
+    const { svc } = setup([row('gone', 'b-me')], []);
+    const res = await svc.listApplications({} as any);
+    expect(res.data[0].queue).toBeNull();
+  });
+
+  it('orders the page by applied time, with id as the tie-break', async () => {
+    const { svc, prisma } = setup([], []);
+    await svc.listApplications({} as any);
+    expect(prisma.internshipApplication.findMany.mock.calls[0][0].orderBy).toEqual([{ appliedDate: 'asc' }, { id: 'asc' }]);
   });
 });
