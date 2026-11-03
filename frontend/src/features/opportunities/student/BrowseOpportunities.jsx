@@ -141,20 +141,6 @@ const OpportunityCard = ({ item, applying, onApply }) => {
         </Text>
       )}
 
-      {/* Positions are set branch-wise: show every branch, highlight the student's own */}
-      {item.branches?.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>Positions by branch:</Text>
-          {item.branches.map((b) => (
-            <Tooltip key={b.code} title={b.name}>
-              <Tag color={b.mine ? 'blue' : 'default'} style={{ margin: 0, fontSize: 11 }}>
-                {b.code} · {b.positions}{b.mine ? ' (yours)' : ''}
-              </Tag>
-            </Tooltip>
-          ))}
-        </div>
-      )}
-
       {/* Applications received for the student's own branch vs its limit */}
       {cap > 0 && (
         <div>
@@ -266,9 +252,6 @@ const BrowseOpportunities = () => {
   return (
     <div style={{ padding: 16 }}>
       <Title level={3} style={{ marginBottom: 4 }}>Internship Opportunities</Title>
-      <Paragraph type="secondary">
-        Internships open for your branch. Positions and application limits are set branch-wise, so you only compete with students of your own branch, and applications are considered first come, first served. You can apply to up to {applicationLimit} internships at a time.
-      </Paragraph>
 
       {profile && !profile.complete && (
         <Alert
