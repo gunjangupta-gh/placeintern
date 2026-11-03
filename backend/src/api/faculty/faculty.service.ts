@@ -1075,16 +1075,19 @@ export class FacultyService {
     const limit = Number(params.limit) || 10;
     const skip = (page - 1) * limit;
 
+    // Same rule as the dashboard: only visits of internships that are still active
+    // (student account active, application active, internship started), so completed /
+    // deactivated students no longer clutter this list.
     const where: Prisma.FacultyVisitLogWhereInput = {
       facultyId,
       isDeleted: false,
+      application: {
+        isActive: true,
+        student: { user: { active: true } },
+        startDate: { lte: new Date() },
+        ...(studentId ? { studentId } : {}),
+      },
     };
-
-    if (studentId) {
-      where.application = {
-        studentId,
-      };
-    }
 
     const [visitLogs, total] = await Promise.all([
       this.prisma.facultyVisitLog.findMany({
