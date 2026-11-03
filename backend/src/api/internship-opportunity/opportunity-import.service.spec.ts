@@ -20,6 +20,7 @@ const day = (offset: number) => {
 type Row = Partial<{
   company: any; district: any; title: any; positions: any; branches: any; years: any; duration: any;
   stipend: any; start: any; deadline: any; description: any; cName: any; cPhone: any; cEmail: any;
+  branchPositions: any; branchLimits: any;
 }>;
 
 const good = (over: Row = {}): Row => ({
@@ -47,10 +48,18 @@ describe('OpportunityImportService', () => {
     const ws = wb.getWorksheet(OPPORTUNITY_SHEET)!;
     rows.forEach((r, i) => {
       // Set by explicit column index (a dense [undefined, ...] array would shift everything left)
-      [r.company, r.district, r.title, r.positions, r.branches, r.years, r.duration,
-        r.stipend, r.start, r.deadline, r.description, r.cName, r.cPhone, r.cEmail,
-      ].forEach((v, c) => {
-        if (v !== undefined && v !== null) ws.getCell(i + 2, c + 1).value = v;
+      // Located by header text so inserting a template column never shifts the data
+      const byHeader: Record<string, any> = {
+        'company name': r.company, district: r.district, 'position title': r.title, 'no. of positions': r.positions,
+        'eligible branches': r.branches, 'branch-wise positions': r.branchPositions, 'max applications per branch': r.branchLimits,
+        'eligible years': r.years, 'duration (months)': r.duration, stipend: r.stipend, 'start date': r.start,
+        'application deadline': r.deadline, description: r.description, 'contact name': r.cName, 'contact phone': r.cPhone,
+        'contact email': r.cEmail,
+      };
+      ws.getRow(1).eachCell((cell, col) => {
+        const key = String(cell.value).replace(/\*/g, '').trim().toLowerCase();
+        const v = byHeader[key];
+        if (v !== undefined && v !== null) ws.getCell(i + 2, col).value = v;
       });
     });
     mutate?.(wb);
@@ -67,7 +76,7 @@ describe('OpportunityImportService', () => {
       expect(wb.getWorksheet('Branches')!.rowCount).toBe(BRANCHES.length + 1);
       const ws = wb.getWorksheet(OPPORTUNITY_SHEET)!;
       expect(ws.getCell('D2').dataValidation?.type).toBe('whole'); // positions
-      expect(ws.getCell('I2').dataValidation?.type).toBe('date'); // start date
+      expect(ws.getCell('K2').dataValidation?.type).toBe('date'); // start date (after the two new branch columns)
     });
   });
 
@@ -118,6 +127,33 @@ describe('OpportunityImportService', () => {
           { branchId: 'b-me', code: 'ME', positions: 6, maxApplications: null },
           { branchId: 'b-ee', code: 'EE', positions: 4, maxApplications: 10 },
         ]);
+      });
+
+      it('reads the dedicated Branch-wise Positions and Max Applications per Branch columns', async () => {
+        const { res } = await one({ positions: '', branches: 'ME, EE', branchPositions: 'ME:5, EE:3', branchLimits: 'ME:12' });
+        expect(res.rows[0].positions).toBe(8);
+        expect(res.rows[0].branchSeats).toEqual([
+          { branchId: 'b-me', code: 'ME', positions: 5, maxApplications: 12 },
+          { branchId: 'b-ee', code: 'EE', positions: 3, maxApplications: null },
+        ]);
+      });
+
+      it('an explicit total must match the Branch-wise Positions column too', async () => {
+        const { errors } = await one({ positions: 7, branches: 'ME, EE', branchPositions: 'ME:5, EE:3' });
+        expect(errors).toContain('does not match the branch-wise total (8)');
+      });
+
+      it.each([
+        [{ branchPositions: 'ME:5, EE:3', branches: 'ME:2, EE:3' }, 'positions given in both'],
+        [{ branchPositions: 'CS:5, ME:5', branches: 'ME, EE' }, 'unknown or ambiguous branch "CS"'],
+        [{ branchPositions: 'ME:5, EE:3', branches: 'ME' }, 'EE is not listed in Eligible Branches'],
+        [{ branchPositions: 'ME five', branches: 'ME' }, 'Branch-wise Positions must look like'],
+        [{ branchPositions: 'ME:5, EE:3', branchLimits: 'ME:4', branches: 'ME, EE' }, 'the application limit (4) cannot be less than the positions (5)'],
+        [{ branchPositions: 'ME:5, EE:3', branchLimits: 'ME:9, ME:10', branches: 'ME, EE' }, 'Max Applications per Branch: ME is listed more than once'],
+      ])('rejects bad dedicated-column input %#', async (over: any, msg) => {
+        const { res, errors } = await one({ positions: '', ...over });
+        expect(res.validRows).toBe(0);
+        expect(errors).toContain(msg);
       });
 
       it('treats a limit equal to the positions as "no extra limit"', async () => {

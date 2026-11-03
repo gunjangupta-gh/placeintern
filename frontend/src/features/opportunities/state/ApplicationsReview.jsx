@@ -161,10 +161,6 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
       width: 100,
       render: (_, r) => <QueueTag r={r} />,
     },
-    { title: 'Student', render: (_, r) => <div><div>{r.student?.user?.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.rollNumber}</Text></div> },
-    ...(scoped
-      ? [{ title: 'Contact', render: (_, r) => <div style={{ fontSize: 12 }}><div>{r.student?.user?.phoneNo}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.email}</Text></div> }]
-      : []),
     {
       title: 'Applied at',
       dataIndex: 'appliedDate',
@@ -176,6 +172,10 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
       ),
     },
     { title: 'Institution', dataIndex: ['student', 'Institution', 'name'] },
+    { title: 'Student', render: (_, r) => <div><div>{r.student?.user?.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.rollNumber}</Text></div> },
+    ...(scoped
+      ? [{ title: 'Contact', render: (_, r) => <div style={{ fontSize: 12 }}><div>{r.student?.user?.phoneNo}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.email}</Text></div> }]
+      : []),
     {
       title: 'Branch',
       render: (_, r) => (

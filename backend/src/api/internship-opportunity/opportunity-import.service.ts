@@ -32,7 +32,9 @@ const COLUMNS: ReadonlyArray<{ header: string; key: string; width: number }> = [
   { header: 'District*', key: 'district', width: 18 },
   { header: 'Position Title*', key: 'title', width: 28 },
   { header: 'No. of Positions', key: 'positions', width: 16 },
-  { header: 'Eligible Branches*', key: 'branches', width: 36 },
+  { header: 'Eligible Branches*', key: 'branches', width: 30 },
+  { header: 'Branch-wise Positions', key: 'branchPositions', width: 26 },
+  { header: 'Max Applications per Branch', key: 'branchLimits', width: 28 },
   { header: 'Eligible Years', key: 'years', width: 14 },
   { header: 'Duration (Months)*', key: 'duration', width: 18 },
   { header: 'Stipend', key: 'stipend', width: 14 },
@@ -161,6 +163,11 @@ export class OpportunityImportService {
     header.getCell(colIndex('branches')).note =
       'Branch CODES from the "Branches" sheet, comma separated. Give positions per branch as CODE:positions, ' +
       'and an optional application limit as CODE:positions/limit. Example: ME:5, EE:3/10, ECE:2';
+    header.getCell(colIndex('branchPositions')).note =
+      'Optional. Positions for each branch, as CODE:positions. Example: ME:5, EE:3. Leave blank to split "No. of Positions" equally.';
+    header.getCell(colIndex('branchLimits')).note =
+      'Optional. How many applications each branch accepts (a waiting list), as CODE:limit. Example: ME:12, EE:8. ' +
+      'Must be at least the branch positions. Leave blank to accept applications only up to the positions.';
     header.getCell(positionsCol).note =
       'Optional when every branch has its own count (ME:5, EE:3). Otherwise the total, split equally across the branches.';
     header.getCell(colIndex('years')).note =
@@ -191,8 +198,10 @@ export class OpportunityImportService {
       ['Position Title', 'Yes', 'e.g. Production Trainee. Max 120 characters.'],
       ['No. of Positions', 'Conditional', `Total positions, whole number 1 to ${MAX_POSITIONS_PER_ROW}. Split equally across the branches unless each branch has its own count. Optional when every branch has a count; if given it must equal their sum.`],
       ['Eligible Branches', 'Yes', 'Branch codes from the Branches sheet, comma separated. Unknown codes are rejected.'],
-      ['Branch-wise positions', 'No', 'CODE:positions, e.g. "ME:5, EE:3" = 5 Mechanical + 3 Electrical positions. Students only compete with students of their own branch.'],
-      ['Application limit per branch', 'No', 'CODE:positions/limit, e.g. "ME:5/12" = 5 positions, but accept up to 12 applications (first come, first served). Without a limit, applications are capped at the positions.'],
+      ['Branch-wise Positions', 'No', 'Column "Branch-wise Positions": CODE:positions, e.g. "ME:5, EE:3" = 5 Mechanical + 3 Electrical positions. Students only compete with students of their own branch. Every listed branch must be in Eligible Branches; give a count for all branches or none.'],
+      ['Max Applications per Branch', 'No', 'Column "Max Applications per Branch": CODE:limit, e.g. "ME:12, EE:8" = Mechanical accepts 12 applications for its positions (a waiting list, first come first served). Must be at least the positions of that branch. Blank = applications capped at the positions. A branch not listed keeps its default.'],
+      ['Shortcut', 'No', 'Both can also be written inside Eligible Branches as CODE:positions/limit, e.g. "ME:5/12, EE:3". Do not give the same branch in both places.'],
+      ['Example', '', 'Eligible Branches "ME, EE" | Branch-wise Positions "ME:5, EE:3" | Max Applications per Branch "ME:12" => ME: 5 positions / 12 applications, EE: 3 positions / 3 applications. Total 8 positions.'],
       ['Eligible Years', 'No', 'Subset of 1, 2, 3 comma separated. Blank = all years.'],
       ['Duration (Months)', 'Yes', `Whole number, 1 to ${MAX_DURATION_MONTHS}.`],
       ['Stipend', 'No', 'Free text, e.g. 8000 per month. Max 50 characters.'],
@@ -392,11 +401,54 @@ export class OpportunityImportService {
 
         if (!badTokens.length && !res.unknown.length && !res.ambiguous.length) {
           // resolveBranches keeps input order for matches, and nothing was dropped, so indexes line up
-          const resolved = parsedTokens.map((t, i) => ({ ref: res.ok[i], ...t }));
-          const ids = resolved.map((r) => r.ref.id);
+          const base = parsedTokens.map((t, i) => ({ ref: res.ok[i], ...t }));
+          const ids = base.map((r) => r.ref.id);
           if (new Set(ids).size !== ids.length) {
             msgs.push('A branch is listed more than once');
           } else {
+            // Optional dedicated columns: "ME:5, EE:3" (positions) and "ME:12" (application limits)
+            const extraMap = (key: string, label: string) => {
+              const out = new Map<string, number>();
+              for (const tok of text(key).split(/[,;\n]/).map((t) => t.trim()).filter(Boolean)) {
+                const cut = tok.lastIndexOf(':');
+                const m = cut >= 0 ? /^\d+$/.exec(tok.slice(cut + 1).trim()) : null;
+                if (!m) {
+                  msgs.push(`${label} must look like ME:5, EE:3`);
+                  continue;
+                }
+                const name = tok.slice(0, cut).trim();
+                const r = this.resolveBranches([name], refs);
+                if (r.ok.length !== 1) {
+                  msgs.push(`${label}: unknown or ambiguous branch "${name}"`);
+                  continue;
+                }
+                if (!ids.includes(r.ok[0].id)) {
+                  msgs.push(`${label}: ${r.ok[0].code} is not listed in Eligible Branches`);
+                  continue;
+                }
+                if (out.has(r.ok[0].id)) {
+                  msgs.push(`${label}: ${r.ok[0].code} is listed more than once`);
+                  continue;
+                }
+                out.set(r.ok[0].id, Number(m[0]));
+              }
+              return out;
+            };
+            const posMap = extraMap('branchPositions', 'Branch-wise Positions');
+            const limMap = extraMap('branchLimits', 'Max Applications per Branch');
+            const resolved = base.map((r) => {
+              if (r.positions !== null && posMap.has(r.ref.id)) {
+                msgs.push(`${r.ref.code}: positions given in both Eligible Branches and Branch-wise Positions`);
+              }
+              if (r.limit !== null && limMap.has(r.ref.id)) {
+                msgs.push(`${r.ref.code}: application limit given in both Eligible Branches and Max Applications per Branch`);
+              }
+              return {
+                ...r,
+                positions: r.positions ?? posMap.get(r.ref.id) ?? null,
+                limit: r.limit ?? limMap.get(r.ref.id) ?? null,
+              };
+            });
             const withCount = resolved.filter((r) => r.positions !== null).length;
             const totalText = text('positions');
             let total: number | null = null;
