@@ -41,6 +41,7 @@ import {
   selectLastFetched,
 } from '../store/facultySlice';
 import { openFileWithPresignedUrl } from '../../../utils/imageUtils';
+import InternshipTypeBadge from '../../../components/common/InternshipTypeBadge';
 
 const { Title, Text } = Typography;
 
@@ -542,7 +543,7 @@ const JoiningLettersPage = () => {
                     {selectedLetter.internship?.industry?.companyName || selectedLetter.companyName || 'Self-Identified'}
                   </Descriptions.Item>
                   <Descriptions.Item label="Internship Type">
-                    <Tag color="purple">Self-Identified</Tag>
+                    <InternshipTypeBadge isSelfIdentified={selectedLetter.isSelfIdentified} />
                   </Descriptions.Item>
                 </Descriptions>
               </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Table, Tag, Button, Space, Avatar, Typography, Tooltip, theme } from 'antd';
+import InternshipTypeBadge from '../../../../components/common/InternshipTypeBadge';
 import {
   EyeOutlined,
   BankOutlined,
@@ -58,6 +59,7 @@ const ApplicationsTable = ({
               <Text strong className="block truncate">
                 {company?.companyName || 'N/A'}
               </Text>
+              <InternshipTypeBadge isSelfIdentified={record.isSelfIdentified} className="text-[10px] rounded-full" />
               {!isSelfIdentified && (
                 <Text type="secondary" className="text-xs block truncate">
                   {record.internship?.title || 'Internship'}

@@ -334,7 +334,7 @@ const OverviewTab = memo(({ data, loading, error, staffCapacities, staffCapaciti
       {/* Two Column Layout for Main Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
         {/* Self-Identified Internships */}
-        <Card size="small" title={<span className="text-xs font-semibold">Self-Identified Internships</span>}
+        <Card size="small" title={<span className="text-xs font-semibold">Internship Applications</span>}
           extra={<Tag color="blue" className="text-[10px] m-0">{data.selfIdentifiedInternships?.rate || 0}%</Tag>}
           className="rounded-lg" bodyStyle={{ padding: "8px" }}>
           <div className="grid grid-cols-4 gap-2">

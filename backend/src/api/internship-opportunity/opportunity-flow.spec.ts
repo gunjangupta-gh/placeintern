@@ -20,7 +20,7 @@ const opp = (over: any = {}) => ({
 });
 
 describe('StudentOpportunityService.apply', () => {
-  function setup(o: { seatsUsed?: number; other?: any; mine?: any; opportunity?: any; student?: any } = {}) {
+  function setup(o: { seatsUsed?: number; holding?: Array<{ status: ApplicationStatus }>; mine?: any; opportunity?: any; student?: any } = {}) {
     const lockOrder: string[] = [];
     const tx: any = {
       $queryRaw: jest.fn().mockImplementation(async (strings: TemplateStringsArray) => {
@@ -31,8 +31,8 @@ describe('StudentOpportunityService.apply', () => {
       internshipOpportunity: { findFirst: jest.fn().mockResolvedValue(o.opportunity ?? opp()) },
       internshipApplication: {
         count: jest.fn().mockResolvedValue(o.seatsUsed ?? 0),
-        findFirst: jest.fn().mockImplementation(async ({ where }: any) =>
-          where.opportunityId ? (o.mine ?? null) : (o.other ?? null)),
+        findFirst: jest.fn().mockResolvedValue(o.mine ?? null),
+        findMany: jest.fn().mockResolvedValue(o.holding ?? []),
         create: jest.fn().mockResolvedValue({ id: 'app1', status: ApplicationStatus.APPLIED, opportunityId: 'o1' }),
       },
     };
@@ -76,10 +76,21 @@ describe('StudentOpportunityService.apply', () => {
     expect(full.tx.internshipApplication.create).not.toHaveBeenCalled();
   });
 
-  it('allows only one application per student', async () => {
-    const { svc, tx } = setup({ other: { id: 'x' } });
+  it('allows two applications per student: the 2nd succeeds, the 3rd is blocked', async () => {
+    const second = setup({ holding: [{ status: ApplicationStatus.APPLIED }] });
+    await expect(second.svc.apply('u1', 'o1')).resolves.toBeDefined();
+
+    const third = setup({ holding: [{ status: ApplicationStatus.APPLIED }, { status: ApplicationStatus.SHORTLISTED }] });
+    await expect(third.svc.apply('u1', 'o1')).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'MAX_APPLICATIONS_REACHED' }),
+    });
+    expect(third.tx.internshipApplication.create).not.toHaveBeenCalled();
+  });
+
+  it('blocks a student who already has an approved internship, even with no pending ones', async () => {
+    const { svc, tx } = setup({ holding: [{ status: ApplicationStatus.APPROVED }] });
     await expect(svc.apply('u1', 'o1')).rejects.toMatchObject({
-      response: expect.objectContaining({ code: 'HAS_ACTIVE_APPLICATION' }),
+      response: expect.objectContaining({ code: 'HAS_INTERNSHIP' }),
     });
     expect(tx.internshipApplication.create).not.toHaveBeenCalled();
   });
@@ -112,15 +123,21 @@ describe('StudentOpportunityService.apply', () => {
 });
 
 describe('OpportunityService.approve', () => {
-  function setup(o: { approvedCount?: number; positions?: number; appStatus?: ApplicationStatus } = {}) {
+  function setup(o: { approvedCount?: number; positions?: number; appStatus?: ApplicationStatus; alreadyPlaced?: boolean; withdrawn?: number } = {}) {
+    const lockOrder: string[] = [];
     const tx: any = {
-      $queryRaw: jest.fn().mockResolvedValue([]),
+      $queryRaw: jest.fn().mockImplementation(async (strings: TemplateStringsArray) => {
+        lockOrder.push(strings.join('?').includes('"Student"') ? 'student' : 'opportunity');
+        return [];
+      }),
       internshipApplication: {
         findUnique: jest.fn().mockImplementation(async ({ select }: any) =>
           select.opportunityId
-            ? { opportunityId: 'o1' }
+            ? { opportunityId: 'o1', studentId: 's1' }
             : { id: 'a1', studentId: 's1', status: o.appStatus ?? ApplicationStatus.APPLIED, startDate: start, endDate: null }),
         update: jest.fn().mockResolvedValue({}),
+        findFirst: jest.fn().mockResolvedValue(o.alreadyPlaced ? { id: 'other' } : null),
+        updateMany: jest.fn().mockResolvedValue({ count: o.withdrawn ?? 0 }),
       },
       internshipOpportunity: {
         findUnique: jest.fn().mockResolvedValue({
@@ -136,7 +153,7 @@ describe('OpportunityService.approve', () => {
     const cache: any = { invalidateByTags: jest.fn().mockResolvedValue(undefined) };
     const audit: any = { log: jest.fn().mockResolvedValue(undefined) };
     const expected: any = { recalculateExpectedCounts: jest.fn().mockResolvedValue({}) };
-    return { svc: new OpportunityService(prisma, cache, audit, expected), tx, expected };
+    return { svc: new OpportunityService(prisma, cache, audit, expected), tx, expected, lockOrder };
   }
   const actor = { userId: 'dir', role: 'STATE_DIRECTORATE' };
 
@@ -172,12 +189,29 @@ describe('OpportunityService.approve', () => {
     await expect(svc.approve('a1', {}, actor)).rejects.toThrow(/already APPROVED/);
   });
 
-  it('takes the opportunity row lock before reading the seat count', async () => {
-    const { svc, tx } = setup();
+  it('locks Student then Opportunity (same order as apply) before reading the seat count', async () => {
+    const { svc, tx, lockOrder } = setup();
     await svc.approve('a1', {}, actor);
-    expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
-    expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(lockOrder).toEqual(['student', 'opportunity']);
+    expect(tx.$queryRaw.mock.invocationCallOrder[1]).toBeLessThan(
       tx.internshipOpportunity.findUnique.mock.invocationCallOrder[0],
     );
+  });
+
+  it("withdraws the student's other pending applications when one is approved", async () => {
+    const { svc, tx } = setup({ withdrawn: 1 });
+    const res = await svc.approve('a1', {}, actor);
+    const call = tx.internshipApplication.updateMany.mock.calls[0][0];
+    expect(call.where).toMatchObject({ studentId: 's1', id: { not: 'a1' }, opportunityId: { not: null } });
+    expect(call.where.status.in).toEqual(['APPLIED', 'UNDER_REVIEW', 'SHORTLISTED']);
+    expect(call.data.status).toBe('WITHDRAWN');
+    expect(res.withdrawnOtherApplications).toBe(1);
+  });
+
+  it('refuses to approve a student who already has an approved internship', async () => {
+    const { svc, tx } = setup({ alreadyPlaced: true });
+    await expect(svc.approve('a1', {}, actor)).rejects.toThrow(/already has an approved internship/);
+    expect(tx.internshipApplication.update).not.toHaveBeenCalled();
+    expect(tx.internshipApplication.updateMany).not.toHaveBeenCalled();
   });
 });

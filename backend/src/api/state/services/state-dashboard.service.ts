@@ -15,6 +15,7 @@ import {
   getMonthCycle,
   MONTHLY_CYCLE,
 } from "../../../common/utils/monthly-cycle.util";
+import { INTERNSHIP_RECORD_WHERE } from '../../../core/common/utils/internship-record.filter';
 
 @Injectable()
 export class StateDashboardService {
@@ -200,7 +201,7 @@ export class StateDashboardService {
           // Count self-identified internships only (from ACTIVE institutions, active students with active users, active applications)
           this.prisma.internshipApplication.count({
             where: {
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               isActive: true,
               student: {
                 user: { active: true },
@@ -210,7 +211,7 @@ export class StateDashboardService {
           }),
           this.prisma.internshipApplication.count({
             where: {
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               isActive: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
               student: {
@@ -222,7 +223,7 @@ export class StateDashboardService {
           // All application counts are for self-identified only (from ACTIVE institutions, active students with active users, active applications)
           this.prisma.internshipApplication.count({
             where: {
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               isActive: true,
               student: {
                 user: { active: true },
@@ -232,7 +233,7 @@ export class StateDashboardService {
           }),
           this.prisma.internshipApplication.count({
             where: {
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               isActive: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
               student: {
@@ -265,7 +266,7 @@ export class StateDashboardService {
                 Institution: { isActive: true },
                 internshipApplications: {
                   some: {
-                    isSelfIdentified: true,
+                    ...INTERNSHIP_RECORD_WHERE,
                     isActive: true,
                     status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                   },
@@ -383,7 +384,7 @@ export class StateDashboardService {
           // Recent activity (ACTIVE institutions, active users, active applications)
           this.prisma.internshipApplication.count({
             where: {
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               isActive: true,
               createdAt: { gte: lastWeek },
               student: {
@@ -424,7 +425,7 @@ export class StateDashboardService {
         const internshipsInTraining =
           await this.prisma.internshipApplication.findMany({
             where: {
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               isActive: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
               startDate: { not: null, lte: endOfTargetMonth },
@@ -658,7 +659,7 @@ export class StateDashboardService {
               Institution: { select: { id: true, name: true, code: true } },
               internshipApplications: {
                 where: {
-                  isSelfIdentified: true,
+                  ...INTERNSHIP_RECORD_WHERE,
                   isActive: true,
                   status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                 },
@@ -680,7 +681,7 @@ export class StateDashboardService {
               Institution: { isActive: true },
               internshipApplications: {
                 some: {
-                  isSelfIdentified: true,
+                  ...INTERNSHIP_RECORD_WHERE,
                   isActive: true,
                   status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                   startDate: { lte: fiveDaysAgo },
@@ -864,7 +865,7 @@ export class StateDashboardService {
               Institution: { isActive: true },
               internshipApplications: {
                 some: {
-                  isSelfIdentified: true,
+                  ...INTERNSHIP_RECORD_WHERE,
                   isActive: true,
                   status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                   createdAt: { lte: fifteenDaysAgo },
@@ -996,7 +997,7 @@ export class StateDashboardService {
           }),
           this.prisma.internshipApplication.count({
             where: {
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               isActive: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
               student: {
@@ -1022,7 +1023,7 @@ export class StateDashboardService {
           // Count joining letters submitted (students with approved internships who have joining letter, active users, active applications)
           this.prisma.internshipApplication.count({
             where: {
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               isActive: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
               joiningLetterUrl: { not: null },
@@ -1388,7 +1389,7 @@ export class StateDashboardService {
               await this.prisma.internshipApplication.groupBy({
                 by: ["studentId"],
                 where: {
-                  isSelfIdentified: true,
+                  ...INTERNSHIP_RECORD_WHERE,
                   isActive: true,
                   status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                   student: {
@@ -1456,7 +1457,7 @@ export class StateDashboardService {
             const internshipsInTraining =
               await this.prisma.internshipApplication.findMany({
                 where: {
-                  isSelfIdentified: true,
+                  ...INTERNSHIP_RECORD_WHERE,
                   isActive: true,
                   status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                   startDate: { not: null, lte: endOfMonth },
@@ -1683,7 +1684,7 @@ export class StateDashboardService {
             const internshipsInTraining =
               await this.prisma.internshipApplication.findMany({
                 where: {
-                  isSelfIdentified: true,
+                  ...INTERNSHIP_RECORD_WHERE,
                   isActive: true,
                   status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                   startDate: { not: null, lte: endOfMonth },

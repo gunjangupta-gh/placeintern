@@ -133,7 +133,7 @@ const ApplicationsReview = ({ refreshKey, onChanged }) => {
         destroyOnHidden
       >
         {decision?.action === 'APPROVE' && (
-          <p>Confirm the student(s) have got this internship. Their internship starts on the opportunity's start date and enters the normal mentor, report and visit workflow.</p>
+          <p>Confirm the student(s) have got this internship. Their internship starts on the opportunity's start date and enters the normal mentor, report and visit workflow. Any other pending application they have is withdrawn automatically.</p>
         )}
         <Input.TextArea
           rows={3}

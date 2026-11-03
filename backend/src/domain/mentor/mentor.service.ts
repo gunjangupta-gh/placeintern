@@ -3,6 +3,7 @@ import { ApplicationStatus, MonthlyReportStatus, Role, AuditAction, AuditCategor
 import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { INTERNSHIP_RECORD_WHERE } from '../../core/common/utils/internship-record.filter';
 
 export interface AssignMentorDto {
   assignedDate?: Date;
@@ -334,14 +335,14 @@ export class MentorService {
             this.prisma.internshipApplication.count({
               where: {
                 mentorId,
-                isSelfIdentified: true,
+                ...INTERNSHIP_RECORD_WHERE,
                 status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
               },
             }),
             this.prisma.monthlyReport.count({
               where: {
                 isDeleted: false,
-                application: { mentorId, isSelfIdentified: true },
+                application: { mentorId, ...INTERNSHIP_RECORD_WHERE },
               },
             }),
             this.prisma.facultyVisitLog.count({
@@ -350,14 +351,14 @@ export class MentorService {
             this.prisma.monthlyReport.count({
               where: {
                 isDeleted: false,
-                application: { mentorId, isSelfIdentified: true },
+                application: { mentorId, ...INTERNSHIP_RECORD_WHERE },
                 status: { in: [MonthlyReportStatus.SUBMITTED, MonthlyReportStatus.UNDER_REVIEW, MonthlyReportStatus.REVISION_REQUIRED] },
               },
             }),
             this.prisma.monthlyReport.count({
               where: {
                 isDeleted: false,
-                application: { mentorId, isSelfIdentified: true },
+                application: { mentorId, ...INTERNSHIP_RECORD_WHERE },
                 status: MonthlyReportStatus.APPROVED,
               },
             }),

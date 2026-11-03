@@ -144,7 +144,7 @@ const InternshipCompaniesCard = () => {
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-2">
             <ShopOutlined className="text-purple-500" />
-            <span className="text-text-primary font-semibold">Self-Identified Internships</span>
+            <span className="text-text-primary font-semibold">Internship Applications</span>
           </div>
           <Tag color="purple" className="rounded-full text-[10px] uppercase font-bold">
             Student Sourced

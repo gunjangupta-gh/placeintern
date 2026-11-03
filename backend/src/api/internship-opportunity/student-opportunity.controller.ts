@@ -37,7 +37,7 @@ export class StudentOpportunityController {
   }
 
   @Post(':id/apply')
-  @ApiOperation({ summary: 'Apply (one application per student; seats enforced under lock)' })
+  @ApiOperation({ summary: 'Apply (up to 2 pending applications per student; seats enforced under lock)' })
   apply(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
     return this.service.apply(req.user.userId, id);
   }

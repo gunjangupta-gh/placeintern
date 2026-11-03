@@ -67,6 +67,7 @@ import {
 } from "../store/principalSlice";
 import { getTotalExpectedCount } from "../../../utils/monthlyCycle";
 import ProfileAvatar from "../../../components/common/ProfileAvatar";
+import InternshipTypeBadge from "../../../components/common/InternshipTypeBadge";
 
 dayjs.extend(relativeTime);
 
@@ -372,6 +373,7 @@ const SelfIdentifiedInternships = () => {
       "Batch": item.studentBatch || "",
       "Department": item.studentDepartment || "",
       "Company Name": item.companyName || "",
+      "Type": item.isSelfIdentified === false ? "State Opportunity" : "Self-Identified",
       "Company Address": item.companyAddress || "",
       "Job Profile": item.jobProfile || "",
       "Stipend": item.stipend ? `₹${item.stipend}/month` : "Unpaid",
@@ -401,7 +403,7 @@ const SelfIdentifiedInternships = () => {
 
     // Create workbook
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Self-Identified Internships");
+    XLSX.utils.book_append_sheet(wb, ws, "Internship Applications");
 
     // Generate filename with timestamp
     const fileName = `self_identified_internships_${dayjs().format("YYYY-MM-DD_HH-mm")}.xlsx`;
@@ -671,6 +673,7 @@ const SelfIdentifiedInternships = () => {
                   : record.companyName}
               </Text>
             </Tooltip>
+            <InternshipTypeBadge isSelfIdentified={record.isSelfIdentified} className="text-[10px] rounded-full" />
             {record.companyAddress && (
               <Tooltip title={record.companyAddress}>
                 <Text className="text-xs text-text-tertiary truncate block">
@@ -1043,10 +1046,10 @@ const SelfIdentifiedInternships = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold text-text-primary">
-            Self-Identified Internships
+            Internship Applications
           </h1>
           <Text className="text-text-tertiary text-sm">
-            Track student-sourced placements
+            Track student internships: self-identified and State-published opportunities
           </Text>
         </div>
         <Space wrap size="small">
@@ -1348,8 +1351,8 @@ const SelfIdentifiedInternships = () => {
                       No internships found
                     </Text>
                     <Text className="text-text-tertiary text-xs">
-                      Students will appear here once they submit self-identified
-                      internships
+                      Students will appear here once they add a self-identified
+                      internship or get approved for a State opportunity
                     </Text>
                   </div>
                 }
@@ -1367,9 +1370,10 @@ const SelfIdentifiedInternships = () => {
             <ShopOutlined className="text-purple-500" />
             <span>Internship Details</span>
             {selectedInternship && (
-              <Tag color="purple" className="ml-2 rounded-full">
-                Self-Identified
-              </Tag>
+              <InternshipTypeBadge
+                isSelfIdentified={selectedInternship.isSelfIdentified}
+                className="ml-2 rounded-full"
+              />
             )}
           </div>
         }

@@ -16,8 +16,8 @@ const StateOpportunities = () => {
     <div style={{ padding: 16 }}>
       <Title level={3} style={{ marginBottom: 4 }}>Internship Opportunities</Title>
       <Paragraph type="secondary">
-        Publish industry internship requirements. Students see only opportunities open to their branch and can hold one application.
-        Approve a student once they have got the internship.
+        Publish industry internship requirements. Students see only opportunities open to their branch and can apply to up to 2.
+        Approve a student once they have got the internship; their other pending application is then withdrawn automatically.
       </Paragraph>
       <Tabs
         activeKey={tab}

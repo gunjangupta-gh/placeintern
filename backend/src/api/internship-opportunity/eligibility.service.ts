@@ -1,7 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
-import { OpportunityStatus, Prisma } from '../../generated/prisma/client';
-import { REQUIRED_PROFILE_FIELDS, SEAT_HOLDING_STATUSES } from './opportunity.constants';
+import { ApplicationStatus, OpportunityStatus, Prisma } from '../../generated/prisma/client';
+import {
+  CONFIRMED_STATUSES,
+  MAX_PENDING_APPLICATIONS,
+  PENDING_DECISION_STATUSES,
+  REQUIRED_PROFILE_FIELDS,
+  SEAT_HOLDING_STATUSES,
+} from './opportunity.constants';
 
 /** Minimal student shape needed to judge profile completeness. */
 export const PROFILE_SELECT = {
@@ -44,13 +50,22 @@ export interface EligibilityReason {
     | 'DEADLINE_PASSED'
     | 'APPLICATIONS_FULL'
     | 'ALREADY_APPLIED'
-    | 'HAS_ACTIVE_APPLICATION';
+    | 'HAS_INTERNSHIP'
+    | 'MAX_APPLICATIONS_REACHED';
   message: string;
 }
 
 export interface MissingField {
   key: string;
   label: string;
+}
+
+/** Derive the two numbers evaluateEligibility needs from a student's seat-holding applications. */
+export function summariseApplications(holding: Array<{ status: ApplicationStatus }>) {
+  return {
+    hasConfirmedInternship: holding.some((a) => CONFIRMED_STATUSES.includes(a.status)),
+    pendingApplications: holding.filter((a) => PENDING_DECISION_STATUSES.includes(a.status)).length,
+  };
 }
 
 const isFilled = (v: unknown) => v !== null && v !== undefined && String(v).trim() !== '';
@@ -100,10 +115,12 @@ export interface EvaluationInput {
   opportunity: OpportunityForEvaluation;
   /** Seat-holding applications currently on this opportunity. */
   seatsUsed: number;
-  /** Student already has a seat-holding application on THIS opportunity. */
+  /** Student already has an application (any status, incl. rejected) on THIS opportunity. */
   appliedToThis: boolean;
-  /** Student has a seat-holding application on ANY opportunity / self-identified internship. */
-  hasOtherActiveApplication: boolean;
+  /** Student already has a confirmed internship (approved / selected / joined / completed). */
+  hasConfirmedInternship: boolean;
+  /** Student's pending applications (applied / under review / shortlisted), across all opportunities. */
+  pendingApplications: number;
   now?: Date;
 }
 
@@ -113,7 +130,7 @@ export interface EvaluationInput {
  * transaction.
  */
 export function evaluateEligibility(input: EvaluationInput): EligibilityReason[] {
-  const { student, opportunity, seatsUsed, appliedToThis, hasOtherActiveApplication } = input;
+  const { student, opportunity, seatsUsed, appliedToThis, hasConfirmedInternship, pendingApplications } = input;
   const now = input.now ?? new Date();
   const reasons: EligibilityReason[] = [];
 
@@ -157,10 +174,12 @@ export function evaluateEligibility(input: EvaluationInput): EligibilityReason[]
 
   if (appliedToThis) {
     reasons.push({ code: 'ALREADY_APPLIED', message: 'You have already applied to this internship' });
-  } else if (hasOtherActiveApplication) {
+  } else if (hasConfirmedInternship) {
+    reasons.push({ code: 'HAS_INTERNSHIP', message: 'You already have an internship' });
+  } else if (pendingApplications >= MAX_PENDING_APPLICATIONS) {
     reasons.push({
-      code: 'HAS_ACTIVE_APPLICATION',
-      message: 'You already have an active internship application',
+      code: 'MAX_APPLICATIONS_REACHED',
+      message: `You can apply to at most ${MAX_PENDING_APPLICATIONS} internships at a time`,
     });
   }
 
@@ -187,11 +206,12 @@ export class EligibilityService {
     return student;
   }
 
-  /** The student's seat-holding application on any opportunity or self-identified internship. */
-  async findBlockingApplication(studentId: string) {
-    return this.prisma.internshipApplication.findFirst({
+  /** All of the student's seat-holding applications (opportunity-based and self-identified). */
+  async listHoldingApplications(studentId: string) {
+    return this.prisma.internshipApplication.findMany({
       where: { studentId, isActive: true, status: { in: SEAT_HOLDING_STATUSES } },
       select: { id: true, opportunityId: true, status: true, isSelfIdentified: true },
+      orderBy: { appliedDate: 'asc' },
     });
   }
 

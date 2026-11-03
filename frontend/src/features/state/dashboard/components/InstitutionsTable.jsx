@@ -91,7 +91,7 @@ const InstitutionsTable = ({ institutions, loading, onViewAll, onViewDetails, mo
     },
     {
       title: (
-        <Tooltip title="Approved self-identified internship applications">
+        <Tooltip title="Approved internship applications (self-identified and State opportunities)">
           <Space size={4}>
             <BookOutlined />
             <span>Internships</span>

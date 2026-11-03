@@ -434,13 +434,13 @@ export class StudentService {
     return this.cache.getOrSet(
       cacheKey,
       async () => {
-        // OPTIMIZED: Get current self-identified internship with only necessary fields
+        // OPTIMIZED: Get current internship (self-identified OR State-published opportunity)
+        // with only necessary fields
         const currentInternship =
           await this.prisma.internshipApplication.findFirst({
             where: {
               studentId,
               isActive: true,
-              isSelfIdentified: true,
               status: {
                 in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED],
               },
@@ -491,12 +491,11 @@ export class StudentService {
         // Get available internships count - Internship model removed
         const availableInternships = 0;
 
-        // FIXED: Get total self-identified applications count - filter by appropriate status
+        // FIXED: Get total confirmed internships count (self-identified or opportunity-based)
         const totalApplications = await this.prisma.internshipApplication.count(
           {
             where: {
               studentId,
-              isSelfIdentified: true,
               status: {
                 in: [
                   ApplicationStatus.APPROVED,
@@ -530,7 +529,7 @@ export class StudentService {
         // OPTIMIZED: Get recent activities with only necessary fields
         const recentActivities =
           await this.prisma.internshipApplication.findMany({
-            where: { studentId, isActive: true, isSelfIdentified: true },
+            where: { studentId, isActive: true },
             take: 5,
             orderBy: { updatedAt: "desc" },
             select: {

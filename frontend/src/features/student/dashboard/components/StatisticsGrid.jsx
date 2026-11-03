@@ -41,7 +41,7 @@ const StatisticsGrid = ({ stats, counts }) => {
       suffix: 'Submitted'
     },
     {
-      title: 'Self-Identified',
+      title: 'Internships',
       value: safeStats.selfIdentifiedCount ?? 0,
       icon: <RocketOutlined />,
       bgClass: 'bg-amber-50',

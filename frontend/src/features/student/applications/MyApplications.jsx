@@ -18,7 +18,7 @@ import { useMonthlyReports, useFacultyVisits } from './hooks/useApplications';
 import { fetchApplications } from '../store/studentSlice';
 import {
   selectApplicationsLoading,
-  selectSelfIdentifiedApplications,
+  selectApplicationsList,
   selectApplicationsLastFetched,
 } from '../store/studentSelectors';
 
@@ -31,7 +31,8 @@ const MyApplications = () => {
 
   // Redux state
   const loading = useSelector(selectApplicationsLoading);
-  const selfIdentifiedApplications = useSelector(selectSelfIdentifiedApplications);
+  // All of the student's applications: self-identified and State opportunities
+  const selfIdentifiedApplications = useSelector(selectApplicationsList);
   const lastFetched = useSelector(selectApplicationsLastFetched);
 
   // Memoize derived data
@@ -39,9 +40,9 @@ const MyApplications = () => {
     const selfIdentifiedCount = selfIdentifiedApplications?.length || 0;
     const hasSelfIdentifiedApplications = selfIdentifiedCount > 0;
 
-    // Check if student has any active (non-withdrawn) application
+    // Check if student has any active application (withdrawn / rejected ones do not count)
     const hasActiveApplication = selfIdentifiedApplications?.some(
-      (app) => (app.status || '').toUpperCase() !== 'WITHDRAWN'
+      (app) => !['WITHDRAWN', 'REJECTED'].includes((app.status || '').toUpperCase())
     ) || false;
 
     return {
@@ -212,7 +213,7 @@ const MyApplications = () => {
         >
           <div className="flex items-center gap-2">
             <RocketOutlined style={{ color: token.colorPrimary }} />
-            <Text className="font-medium" style={{ color: token.colorText }}>Self-Identified Internships</Text>
+            <Text className="font-medium" style={{ color: token.colorText }}>Internship Applications</Text>
             <Tag 
               color="blue" 
               className="rounded-full text-xs ml-1 border-0"

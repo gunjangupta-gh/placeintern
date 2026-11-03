@@ -1,14 +1,28 @@
 import { ApplicationStatus } from '../../generated/prisma/client';
 
+/** A student may have at most this many pending applications at the same time. */
+export const MAX_PENDING_APPLICATIONS = 2;
+
 /**
- * Application statuses that occupy a seat on an opportunity AND block the student
- * from applying anywhere else (a student may hold only one application).
- * REJECTED / WITHDRAWN are intentionally absent: they free both the seat and the student.
+ * Application statuses that occupy a seat on an opportunity and count toward the student's
+ * applications. REJECTED / WITHDRAWN are intentionally absent: they free both the seat and
+ * the student's slot.
  */
 export const SEAT_HOLDING_STATUSES: ApplicationStatus[] = [
   ApplicationStatus.APPLIED,
   ApplicationStatus.UNDER_REVIEW,
   ApplicationStatus.SHORTLISTED,
+  ApplicationStatus.SELECTED,
+  ApplicationStatus.APPROVED,
+  ApplicationStatus.JOINED,
+  ApplicationStatus.COMPLETED,
+];
+
+/**
+ * The student has actually got an internship (approved, selected, joined or completed).
+ * Such a student cannot apply for more, and cannot be approved a second time.
+ */
+export const CONFIRMED_STATUSES: ApplicationStatus[] = [
   ApplicationStatus.SELECTED,
   ApplicationStatus.APPROVED,
   ApplicationStatus.JOINED,

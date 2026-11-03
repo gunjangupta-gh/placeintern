@@ -30,7 +30,7 @@ const OpportunityCard = ({ item, applying, onApply }) => {
           <Popconfirm
             key="apply"
             title="Apply for this internship?"
-            description="You can hold only one internship application at a time."
+            description="You can apply to up to 2 internships. If one is approved, your other pending application is withdrawn automatically."
             okText="Apply"
             onConfirm={() => onApply(item)}
           >
@@ -70,7 +70,10 @@ const OpportunityCard = ({ item, applying, onApply }) => {
 };
 
 const BrowseOpportunities = () => {
-  const [state, setState] = useState({ loading: true, data: [], meta: { total: 0 }, profile: null, activeApplication: null });
+  const [state, setState] = useState({
+    loading: true, data: [], meta: { total: 0 }, profile: null,
+    applications: [], applicationLimit: 2, pendingApplications: 0, hasConfirmedInternship: false,
+  });
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [applyingId, setApplyingId] = useState(null);
@@ -80,7 +83,16 @@ const BrowseOpportunities = () => {
     setState((s) => ({ ...s, loading: true }));
     try {
       const res = await opportunityService.listEligible({ page, limit: PAGE_SIZE, search: debounced });
-      setState({ loading: false, data: res.data || [], meta: res.meta || { total: 0 }, profile: res.profile, activeApplication: res.activeApplication });
+      setState({
+        loading: false,
+        data: res.data || [],
+        meta: res.meta || { total: 0 },
+        profile: res.profile,
+        applications: res.applications || [],
+        applicationLimit: res.applicationLimit ?? 2,
+        pendingApplications: res.pendingApplications ?? 0,
+        hasConfirmedInternship: !!res.hasConfirmedInternship,
+      });
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to load internships'));
       setState((s) => ({ ...s, loading: false }));
@@ -104,12 +116,14 @@ const BrowseOpportunities = () => {
     }
   };
 
-  const { loading, data, meta, profile, activeApplication } = state;
+  const { loading, data, meta, profile, applicationLimit, pendingApplications, hasConfirmedInternship } = state;
 
   return (
     <div style={{ padding: 16 }}>
       <Title level={3} style={{ marginBottom: 4 }}>Internship Opportunities</Title>
-      <Paragraph type="secondary">Internships open for your branch. You can apply to one internship.</Paragraph>
+      <Paragraph type="secondary">
+        Internships open for your branch. You can apply to up to {applicationLimit} internships at a time.
+      </Paragraph>
 
       {profile && !profile.complete && (
         <Alert
@@ -124,14 +138,28 @@ const BrowseOpportunities = () => {
           }
         />
       )}
-      {activeApplication && (
+      {hasConfirmedInternship ? (
         <Alert
-          type="info"
+          type="success"
           showIcon
           style={{ marginBottom: 12 }}
-          message={activeApplication.isSelfIdentified ? 'You have a self-identified internship' : `Your application is ${activeApplication.status}`}
+          message="You already have an internship, so you cannot apply for more."
           description={<Link to="/app/my-applications">View my internship</Link>}
         />
+      ) : (
+        pendingApplications > 0 && (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message={`You have applied to ${pendingApplications} of ${applicationLimit} internships`}
+            description={
+              pendingApplications >= applicationLimit
+                ? <>You have used all your applications. <Link to="/app/my-applications">View my applications</Link></>
+                : <>You can apply to {applicationLimit - pendingApplications} more. <Link to="/app/my-applications">View my applications</Link></>
+            }
+          />
+        )
       )}
 
       <Input.Search

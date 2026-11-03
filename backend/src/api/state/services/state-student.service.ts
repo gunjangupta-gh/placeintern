@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { Prisma, ApplicationStatus, InternshipPhase, MonthlyReportStatus } from '../../../generated/prisma/client';
+import { INTERNSHIP_RECORD_WHERE } from '../../../core/common/utils/internship-record.filter';
 
 export interface GetAllStudentsParams {
   page?: number;
@@ -88,7 +89,7 @@ export class StateStudentService {
     if (internshipStatus === 'with_internship') {
       where.internshipApplications = {
         some: {
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         },
@@ -96,7 +97,7 @@ export class StateStudentService {
     } else if (internshipStatus === 'without_internship') {
       where.internshipApplications = {
         none: {
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         },
@@ -199,7 +200,7 @@ export class StateStudentService {
           },
           internshipApplications: {
             where: {
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               isActive: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
             },
@@ -419,7 +420,7 @@ export class StateStudentService {
     if (internshipStatus === 'with_internship') {
       where.internshipApplications = {
         some: {
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         },
@@ -427,7 +428,7 @@ export class StateStudentService {
     } else if (internshipStatus === 'without_internship') {
       where.internshipApplications = {
         none: {
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         },
@@ -486,7 +487,7 @@ export class StateStudentService {
         },
         internshipApplications: {
           where: {
-            isSelfIdentified: true,
+            ...INTERNSHIP_RECORD_WHERE,
             isActive: true,
             status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           },
@@ -565,7 +566,7 @@ export class StateStudentService {
           user: { active: true },
           internshipApplications: {
             some: {
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               isActive: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
             },
@@ -593,7 +594,7 @@ export class StateStudentService {
       }).then((r) => r.length),
       this.prisma.internshipApplication.findMany({
         where: {
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           joiningLetterUrl: { not: null },

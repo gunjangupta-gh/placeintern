@@ -4,6 +4,7 @@ import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { FileStorageService } from '../../../infrastructure/file-storage/file-storage.service';
 import { ApplicationStatus } from '../../../generated/prisma/client';
 import { add } from 'winston';
+import { INTERNSHIP_RECORD_WHERE } from '../../../core/common/utils/internship-record.filter';
 
 export interface MonthlyComplianceParams {
   month: number;
@@ -205,7 +206,7 @@ export class StateComplianceService {
     // Must have startDate before endOfMonth and (endDate after startOfMonth OR no endDate)
     const internshipsInTraining = await this.prisma.internshipApplication.findMany({
       where: {
-        isSelfIdentified: true,
+        ...INTERNSHIP_RECORD_WHERE,
         isActive: true,
         status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         startDate: { not: null, lte: endOfMonth },
@@ -329,7 +330,7 @@ export class StateComplianceService {
         // Get all internships active during this month with student details
         const internshipsWithStudents = await this.prisma.internshipApplication.findMany({
           where: {
-            isSelfIdentified: true,
+            ...INTERNSHIP_RECORD_WHERE,
             isActive: true,
             status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
             startDate: { not: null, lte: endOfMonth },
@@ -550,7 +551,7 @@ export class StateComplianceService {
         // Get the date range of all active internships
         const dateRange = await this.prisma.internshipApplication.aggregate({
           where: {
-            isSelfIdentified: true,
+            ...INTERNSHIP_RECORD_WHERE,
             isActive: true,
             status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
             startDate: { not: null },
@@ -780,7 +781,7 @@ export class StateComplianceService {
               institutionId,
               user: { active: true },
             },
-            isSelfIdentified: true,
+            ...INTERNSHIP_RECORD_WHERE,
             isActive: true,
             status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
             joiningLetterUrl: { not: null },
@@ -932,7 +933,7 @@ export class StateComplianceService {
             where: {
               student: { id: { in: studentIds } },
               joiningLetterUrl: { not: null },
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               isActive: true,
             },
             select: {

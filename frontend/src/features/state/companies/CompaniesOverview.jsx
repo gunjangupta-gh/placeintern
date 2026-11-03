@@ -355,7 +355,7 @@ const CompaniesOverview = () => {
           <Col xs={12} sm={6}>
             <div className="bg-amber-50 rounded-lg p-3 text-center">
               <div className="text-xl font-bold text-amber-600">{summary?.totalSelfIdentified || 0}</div>
-              <div className="text-xs text-gray-500">Self-Identified</div>
+              <div className="text-xs text-gray-500">Internships</div>
             </div>
           </Col>
           <Col xs={12} sm={6}>

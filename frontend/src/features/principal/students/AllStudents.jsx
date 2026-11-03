@@ -77,6 +77,7 @@ import DeactivationConfirmModal from '../../../components/common/DeactivationCon
 import StudentModal from './StudentModal';
 import dayjs from 'dayjs';
 import { getPresignedUrl } from '../../../utils/imageUtils';
+import InternshipTypeBadge from '../../../components/common/InternshipTypeBadge';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -733,9 +734,7 @@ const AllStudents = () => {
                       } bordered={false}>
                         {app.internshipPhase || app.status}
                       </Tag>
-                      {app.isSelfIdentified && (
-                        <Tag color="purple" bordered={false}>Self Identified</Tag>
-                      )}
+                      <InternshipTypeBadge isSelfIdentified={app.isSelfIdentified} />
                     </div>
                   </div>
 

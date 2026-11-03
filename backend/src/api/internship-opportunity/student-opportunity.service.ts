@@ -23,8 +23,9 @@ import {
   StudentContext,
   computeMissingProfileFields,
   evaluateEligibility,
+  summariseApplications,
 } from './eligibility.service';
-import { SEAT_HOLDING_STATUSES } from './opportunity.constants';
+import { MAX_PENDING_APPLICATIONS, SEAT_HOLDING_STATUSES } from './opportunity.constants';
 import { addMonthsIST } from './opportunity-dates.util';
 import { PageQueryDto } from './dto/opportunity.dto';
 
@@ -82,7 +83,7 @@ export class StudentOpportunityService {
     used: number,
     /** The student's application to THIS opportunity, in any status (incl. rejected). */
     mine: { status: ApplicationStatus } | null,
-    hasOtherActive: boolean,
+    summary: { hasConfirmedInternship: boolean; pendingApplications: number },
   ) {
     const appliedToThis = !!mine;
     const reasons: EligibilityReason[] = evaluateEligibility({
@@ -97,7 +98,7 @@ export class StudentOpportunityService {
       },
       seatsUsed: used,
       appliedToThis,
-      hasOtherActiveApplication: hasOtherActive,
+      ...summary,
     });
     return {
       id: o.id,
@@ -125,14 +126,21 @@ export class StudentOpportunityService {
     const student = await this.eligibility.getStudentContext(userId);
     const branchId = this.branchOf(student);
     const missing = computeMissingProfileFields(student);
-    const blocking = await this.eligibility.findBlockingApplication(student.id);
+    const holding = await this.eligibility.listHoldingApplications(student.id);
+    const summary = summariseApplications(holding);
 
     const empty = {
       profile: { complete: missing.length === 0, missing },
-      activeApplication: blocking
-        ? { id: blocking.id, opportunityId: blocking.opportunityId, status: blocking.status, isSelfIdentified: blocking.isSelfIdentified }
-        : null,
-      data: [] as ReturnType<StudentOpportunityService['present']>[],
+      applicationLimit: MAX_PENDING_APPLICATIONS,
+      pendingApplications: summary.pendingApplications,
+      hasConfirmedInternship: summary.hasConfirmedInternship,
+      applications: holding.map((a) => ({
+        id: a.id,
+        opportunityId: a.opportunityId,
+        status: a.status,
+        isSelfIdentified: a.isSelfIdentified,
+      })),
+      data: [] as any[],
       meta: { page: q.page ?? 1, limit: q.limit ?? 20, total: 0, totalPages: 0 },
     };
     if (!branchId) return empty;
@@ -142,13 +150,14 @@ export class StudentOpportunityService {
     const now = new Date();
 
     // Visible = OPEN, not deleted, before deadline, and open to the student's branch.
-    // The student's own application stays visible even if it later fills/closes.
+    // The student's own applications stay visible even if the opportunity later fills/closes.
+    const myOpportunityIds = holding.map((a) => a.opportunityId).filter((id): id is string => !!id);
     const where: Prisma.InternshipOpportunityWhereInput = {
       isDeleted: false,
       branches: { some: { branchId } },
       OR: [
         { status: OpportunityStatus.OPEN, applicationDeadline: { gte: now } },
-        ...(blocking?.opportunityId ? [{ id: blocking.opportunityId }] : []),
+        ...(myOpportunityIds.length ? [{ id: { in: myOpportunityIds } }] : []),
       ],
       ...(q.search
         ? {
@@ -186,7 +195,7 @@ export class StudentOpportunityService {
     return {
       ...empty,
       data: rows.map((r) =>
-        this.present(r, student, used.get(r.id) ?? 0, mineById.get(r.id) ?? null, !!blocking),
+        this.present(r, student, used.get(r.id) ?? 0, mineById.get(r.id) ?? null, summary),
       ),
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
@@ -203,21 +212,21 @@ export class StudentOpportunityService {
     });
     if (!row) throw new NotFoundException('Internship not found');
 
-    const blocking = await this.eligibility.findBlockingApplication(student.id);
+    const summary = summariseApplications(await this.eligibility.listHoldingApplications(student.id));
     const used = (await this.seatsUsed([id])).get(id) ?? 0;
     const mine = await this.prisma.internshipApplication.findFirst({
       where: { studentId: student.id, opportunityId: id },
       select: { status: true },
     });
-    return this.present(row, student, used, mine, !!blocking);
+    return this.present(row, student, used, mine, summary);
   }
 
   /**
    * Apply. All eligibility rules are re-evaluated inside a transaction that holds row locks on
    * the student and the opportunity, so:
    *  - the last seat can be taken by exactly one student, and
-   *  - a student cannot end up with two applications through concurrent requests.
-   * Lock order is always Student -> Opportunity to avoid deadlocks.
+   *  - a student cannot exceed the pending-application limit through concurrent requests.
+   * Lock order is always Student -> Opportunity (also used by approve) to avoid deadlocks.
    */
   async apply(userId: string, opportunityId: string) {
     const ctx = await this.eligibility.getStudentContext(userId);
@@ -248,7 +257,7 @@ export class StudentOpportunityService {
       if (!student) throw new NotFoundException('Student not found');
       if (!opp) throw new NotFoundException('Internship not found');
 
-      const [seatsUsed, mine, other] = await Promise.all([
+      const [seatsUsed, mine, holding] = await Promise.all([
         tx.internshipApplication.count({
           where: { opportunityId, isActive: true, status: { in: SEAT_HOLDING_STATUSES } },
         }),
@@ -256,9 +265,9 @@ export class StudentOpportunityService {
           where: { studentId: student.id, opportunityId },
           select: { id: true },
         }),
-        tx.internshipApplication.findFirst({
+        tx.internshipApplication.findMany({
           where: { studentId: student.id, isActive: true, status: { in: SEAT_HOLDING_STATUSES } },
-          select: { id: true },
+          select: { status: true },
         }),
       ]);
 
@@ -274,7 +283,7 @@ export class StudentOpportunityService {
         },
         seatsUsed,
         appliedToThis: !!mine,
-        hasOtherActiveApplication: !!other,
+        ...summariseApplications(holding),
       });
       if (reasons.length > 0) {
         throw new BadRequestException({

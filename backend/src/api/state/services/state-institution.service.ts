@@ -11,6 +11,7 @@ import {
   getMonthCycle,
   MONTHLY_CYCLE,
 } from '../../../common/utils/monthly-cycle.util';
+import { CONFIRMED_INTERNSHIP_STATUSES, INTERNSHIP_RECORD_WHERE } from '../../../core/common/utils/internship-record.filter';
 
 // Same convention as the frontend getDefaultAcademicYear(): "2026-27"
 const getCurrentAcademicYear = (): string => {
@@ -248,7 +249,7 @@ export class StateInstitutionService {
         by: ['studentId'],
         where: {
           student: { institutionId: { in: institutionIds }, user: { active: true } },
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         },
@@ -274,7 +275,7 @@ export class StateInstitutionService {
       this.prisma.internshipApplication.findMany({
         where: {
           student: { institutionId: { in: institutionIds }, user: { active: true } },
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         },
@@ -294,7 +295,7 @@ export class StateInstitutionService {
       this.prisma.internshipApplication.findMany({
         where: {
           student: { institutionId: { in: institutionIds }, user: { active: true } },
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           joiningLetterUrl: { not: null },
@@ -399,7 +400,7 @@ export class StateInstitutionService {
       this.prisma.internshipApplication.findMany({
         where: {
           student: { institutionId: { in: institutionIds }, user: { active: true } },
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           startDate: { not: null, lte: effectiveDate },
@@ -1178,7 +1179,7 @@ export class StateInstitutionService {
       this.prisma.internshipApplication.count({
         where: {
           student: { institutionId: id, user: { active: true } },
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
         },
       }),
@@ -1187,7 +1188,7 @@ export class StateInstitutionService {
       this.prisma.internshipApplication.count({
         where: {
           student: { institutionId: id, user: { active: true } },
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         },
@@ -1197,7 +1198,7 @@ export class StateInstitutionService {
       this.prisma.internshipApplication.count({
         where: {
           student: { institutionId: id, user: { active: true } },
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: ApplicationStatus.APPLIED,
         },
@@ -1207,7 +1208,7 @@ export class StateInstitutionService {
       this.prisma.internshipApplication.count({
         where: {
           student: { institutionId: id, user: { active: true } },
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: ApplicationStatus.REJECTED,
         },
@@ -1218,7 +1219,7 @@ export class StateInstitutionService {
       this.prisma.internshipApplication.count({
         where: {
           student: { institutionId: id, user: { active: true } },
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           OR: [
@@ -1240,7 +1241,7 @@ export class StateInstitutionService {
       this.prisma.internshipApplication.count({
         where: {
           student: { institutionId: id, user: { active: true } },
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           joiningLetterUrl: { not: null },
@@ -1251,7 +1252,7 @@ export class StateInstitutionService {
       this.prisma.internshipApplication.count({
         where: {
           student: { institutionId: id, user: { active: true } },
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           joiningLetterUrl: null,
@@ -1262,7 +1263,7 @@ export class StateInstitutionService {
       this.prisma.internshipApplication.count({
         where: {
           student: { institutionId: id, user: { active: true } },
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           joiningLetterUrl: { not: null },
@@ -1274,7 +1275,7 @@ export class StateInstitutionService {
       this.prisma.internshipApplication.count({
         where: {
           student: { institutionId: id, user: { active: true } },
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           joiningLetterUrl: { not: null },
@@ -1293,7 +1294,7 @@ export class StateInstitutionService {
             user: { active: true },
             internshipApplications: {
               some: {
-                isSelfIdentified: true,
+                ...INTERNSHIP_RECORD_WHERE,
                 isActive: true,
                 status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                 OR: [
@@ -1322,7 +1323,7 @@ export class StateInstitutionService {
             user: { active: true },
             internshipApplications: {
               some: {
-                isSelfIdentified: true,
+                ...INTERNSHIP_RECORD_WHERE,
                 isActive: true,
                 status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                 OR: [
@@ -1351,7 +1352,7 @@ export class StateInstitutionService {
             user: { active: true },
             internshipApplications: {
               some: {
-                isSelfIdentified: true,
+                ...INTERNSHIP_RECORD_WHERE,
                 isActive: true,
                 status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                 OR: [
@@ -1380,7 +1381,7 @@ export class StateInstitutionService {
             user: { active: true },
             internshipApplications: {
               some: {
-                isSelfIdentified: true,
+                ...INTERNSHIP_RECORD_WHERE,
                 isActive: true,
                 status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                 OR: [
@@ -1414,7 +1415,7 @@ export class StateInstitutionService {
           internshipApplications: {
             some: {
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               isActive: true,
               OR: [
                 { startDate: null },
@@ -1525,7 +1526,7 @@ export class StateInstitutionService {
       this.prisma.internshipApplication.findMany({
         where: {
           student: { institutionId: id, user: { active: true } },
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
           companyName: { not: null },
@@ -1902,13 +1903,13 @@ export class StateInstitutionService {
         ...where.internshipApplications,
         some: {
           ...(where.internshipApplications as any)?.some,
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
         },
       };
     } else if (selfIdentified === 'no') {
       where.internshipApplications = {
         none: {
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
         },
       };
     }
@@ -1985,7 +1986,7 @@ export class StateInstitutionService {
             isActive: true,
             OR: [
               { status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED, ApplicationStatus.COMPLETED] } },
-              { isSelfIdentified: true },
+              { ...INTERNSHIP_RECORD_WHERE },
             ],
           },
           orderBy: { createdAt: 'desc' as const },
@@ -2073,7 +2074,12 @@ export class StateInstitutionService {
 
     const transformedStudents = students.map((student: any) => {
       const latestApp = student.internshipApplications?.[0];
-      const selfIdentifiedApp = latestApp?.isSelfIdentified ? latestApp : null;
+      // Company/internship details apply to self-identified internships and to confirmed
+      // State-opportunity internships (a merely-applied opportunity is not an internship yet)
+      const selfIdentifiedApp =
+        latestApp && (latestApp.isSelfIdentified || CONFIRMED_INTERNSHIP_STATUSES.includes(latestApp.status))
+          ? latestApp
+          : null;
       const latestReport = student.monthlyReports?.[0];
       const latestVisit = latestApp?.facultyVisitLogs?.[0];
       const activeAssignment = student.mentorAssignments?.find((ma: any) => ma.isActive);
@@ -2092,7 +2098,7 @@ export class StateInstitutionService {
           jobProfile: selfIdentifiedApp.jobProfile,
           stipend: selfIdentifiedApp.stipend,
           duration: selfIdentifiedApp.internshipDuration,
-          isSelfIdentified: true,
+          isSelfIdentified: selfIdentifiedApp.isSelfIdentified,
         };
       }
 
@@ -2164,7 +2170,7 @@ export class StateInstitutionService {
 
     // Get self-identified applications (active applications only)
     const selfIdWhere: Prisma.InternshipApplicationWhereInput = {
-      isSelfIdentified: true,
+      ...INTERNSHIP_RECORD_WHERE,
       isActive: true,
       status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
       student: { institutionId: id, user: { active: true } },
@@ -2234,7 +2240,7 @@ export class StateInstitutionService {
           rollNumber: app.student.user?.rollNumber,
           branch: app.student.user?.branchName,
           email: app.student.user?.email,
-          isSelfIdentified: true,
+          isSelfIdentified: app.isSelfIdentified,
           joiningLetterStatus: resolveJoiningLetterStatus(app),
           jobProfile: app.jobProfile,
           stipend: app.stipend,

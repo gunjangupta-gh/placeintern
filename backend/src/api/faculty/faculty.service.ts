@@ -19,6 +19,7 @@ import {
   MONTHLY_CYCLE,
   MonthlyCycle,
 } from '../../common/utils/monthly-cycle.util';
+import { INTERNSHIP_RECORD_WHERE } from '../../core/common/utils/internship-record.filter';
 
 @Injectable()
 export class FacultyService {
@@ -540,7 +541,7 @@ export class FacultyService {
               studentId: { in: studentIds },
               student: { user: { active: true } },
               isActive: true,
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
             },
           }),
@@ -553,7 +554,7 @@ export class FacultyService {
                 studentId: { in: studentIds },
                 student: { user: { active: true } },
                 isActive: true,
-                isSelfIdentified: true,
+                ...INTERNSHIP_RECORD_WHERE,
                 startDate: { lte: new Date() }, // Only count if internship has started
               },
               status: MonthlyReportStatus.SUBMITTED,
@@ -565,7 +566,7 @@ export class FacultyService {
               studentId: { in: studentIds },
               student: { user: { active: true } },
               isActive: true,
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               status: ApplicationStatus.APPLIED,
             },
           }),
@@ -613,7 +614,7 @@ export class FacultyService {
               studentId: { in: studentIds },
               student: { user: { active: true } },
               isActive: true,
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
               joiningLetterUrl: null,
             },
@@ -624,7 +625,7 @@ export class FacultyService {
               studentId: { in: studentIds },
               student: { user: { active: true } },
               isActive: true,
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
             },
           }),
@@ -717,7 +718,7 @@ export class FacultyService {
                 internshipApplications: {
                   where: {
                     isActive: true,
-                    isSelfIdentified: true,
+                    ...INTERNSHIP_RECORD_WHERE,
                     status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                   },
                   select: {
@@ -879,7 +880,7 @@ export class FacultyService {
               internshipApplications: {
                 where: {
                   isActive: true,
-                  isSelfIdentified: true,
+                  ...INTERNSHIP_RECORD_WHERE,
                   // Only show active/approved internships for assigned students
                   status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
                 },
@@ -954,7 +955,7 @@ export class FacultyService {
         internshipApplications: {
           where: {
             isActive: true,
-            isSelfIdentified: true,
+            ...INTERNSHIP_RECORD_WHERE,
           },
           include: {
             monthlyReports: {
@@ -973,9 +974,9 @@ export class FacultyService {
       throw new NotFoundException('Student not found');
     }
 
-    // Calculate overall progress (self-identified internships only)
+    // Calculate overall progress (confirmed internships: self-identified or State opportunity)
     const currentApplication = student.internshipApplications.find(
-      app => app.isSelfIdentified && (app.status === ApplicationStatus.JOINED || app.status === ApplicationStatus.APPROVED || app.status === ApplicationStatus.SELECTED || app.status === ApplicationStatus.COMPLETED)
+      app => (app.status === ApplicationStatus.JOINED || app.status === ApplicationStatus.APPROVED || app.status === ApplicationStatus.SELECTED || app.status === ApplicationStatus.COMPLETED)
     );
 
     let overallProgress = 0;
@@ -1760,7 +1761,7 @@ export class FacultyService {
 
     const where: Prisma.InternshipApplicationWhereInput = {
       mentorId: facultyId,
-      isSelfIdentified: true,
+      ...INTERNSHIP_RECORD_WHERE,
       isActive: true,
     };
 

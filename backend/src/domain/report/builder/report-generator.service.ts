@@ -11,6 +11,7 @@ import {
   profileFieldColumnId,
 } from "./constants/student-profile-fields";
 import { getMonthCycle } from "../../../common/utils/monthly-cycle.util";
+import { INTERNSHIP_RECORD_WHERE } from '../../../core/common/utils/internship-record.filter';
 
 /**
  * Pagination options for report generation
@@ -1729,7 +1730,7 @@ export class ReportGeneratorService {
       this.prisma.internshipApplication.count({
         where: {
           isActive: true,
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           internshipPhase: "ACTIVE" as any,
           student: { institutionId, user: { active: true } },
         },
@@ -1737,7 +1738,7 @@ export class ReportGeneratorService {
       this.prisma.internshipApplication.count({
         where: {
           isActive: true,
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           internshipPhase: "COMPLETED" as any,
           student: { institutionId, user: { active: true } },
         },
@@ -5156,7 +5157,7 @@ export class ReportGeneratorService {
 
     const internshipAppWhere: Record<string, unknown> = {
       isActive: true,
-      isSelfIdentified: true,
+      ...INTERNSHIP_RECORD_WHERE,
       status: { in: ["APPROVED", "JOINED", "SELECTED", "COMPLETED"] },
       startDate: { not: null },
     };
@@ -5393,7 +5394,7 @@ export class ReportGeneratorService {
 
     const internshipWhere: Record<string, unknown> = {
       isActive: true,
-      isSelfIdentified: true,
+      ...INTERNSHIP_RECORD_WHERE,
       status: { in: ["APPROVED", "JOINED", "SELECTED", "COMPLETED"] },
       startDate: { not: null },
     };

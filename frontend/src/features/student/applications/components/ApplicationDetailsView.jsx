@@ -17,6 +17,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { hasInternshipStarted } from '../utils/applicationUtils';
+import InternshipTypeBadge from '../../../../components/common/InternshipTypeBadge';
 import {
   ApplicationDetailsTab,
   ApplicationTimelineTab,
@@ -217,7 +218,7 @@ const ApplicationDetailsView = ({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
                 <Text strong className="text-base truncate" style={{ color: token.colorText }}>{company.companyName || 'Company'}</Text>
-                {isSelfIdentified && <Tag color="purple" className="text-[10px] rounded-full border-0 shrink-0">Self-Identified</Tag>}
+                <InternshipTypeBadge isSelfIdentified={application.isSelfIdentified} className="text-[10px] rounded-full shrink-0" />
               </div>
               <Text className="text-xs block truncate" style={{ color: token.colorTextTertiary }}>{application.jobProfile || internship?.title || 'Internship'}</Text>
             </div>

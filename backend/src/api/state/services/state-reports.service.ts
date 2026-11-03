@@ -4,6 +4,7 @@ import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { Prisma, ApplicationStatus, MonthlyReportStatus } from '../../../generated/prisma/client';
 import { StateReportService } from '../../../domain/report/state/state-report.service';
 import { getMonthCycle } from '../../../common/utils/monthly-cycle.util';
+import { INTERNSHIP_RECORD_WHERE } from '../../../core/common/utils/internship-record.filter';
 
 @Injectable()
 export class StateReportsService {
@@ -47,7 +48,7 @@ export class StateReportsService {
 
     const dateFilter: Prisma.InternshipApplicationWhereInput = {
       student: { institutionId, user: { active: true } },
-      isSelfIdentified: true,
+      ...INTERNSHIP_RECORD_WHERE,
     };
 
     if (fromDate || toDate) {
@@ -375,7 +376,7 @@ export class StateReportsService {
           this.prisma.internshipApplication.findMany({
             where: {
               student: { institutionId: { in: institutionIds }, user: { active: true } },
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               isActive: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
               startDate: { not: null, lte: effectiveDate },
@@ -573,7 +574,7 @@ export class StateReportsService {
 
         const applicationBaseWhere: Prisma.InternshipApplicationWhereInput = {
           createdAt: { gte: startDate, lte: endDate },
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           student: studentFilter,
         };
 
@@ -611,7 +612,7 @@ export class StateReportsService {
 
           const trendWhere: Prisma.InternshipApplicationWhereInput = {
             createdAt: { gte: trendMonthStart, lte: trendMonthEnd },
-            isSelfIdentified: true,
+            ...INTERNSHIP_RECORD_WHERE,
             student: studentFilter,
           };
 

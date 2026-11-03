@@ -18,7 +18,11 @@ import {
   OpportunityStatus,
   Prisma,
 } from '../../generated/prisma/client';
-import { PENDING_DECISION_STATUSES, SEAT_HOLDING_STATUSES } from './opportunity.constants';
+import {
+  CONFIRMED_STATUSES,
+  PENDING_DECISION_STATUSES,
+  SEAT_HOLDING_STATUSES,
+} from './opportunity.constants';
 import {
   addMonthsIST,
   endOfDayIST,
@@ -317,11 +321,14 @@ export class OpportunityService {
     const result = await this.prisma.$transaction(async (tx) => {
       const pre = await tx.internshipApplication.findUnique({
         where: { id: applicationId },
-        select: { opportunityId: true },
+        select: { opportunityId: true, studentId: true },
       });
       if (!pre?.opportunityId) throw new NotFoundException('Application not found');
 
-      // Serialise approvals per opportunity so positions can never be over-approved
+      // Lock Student -> Opportunity (same order as apply, so no deadlocks).
+      // Student lock: two approvals for the same student on different opportunities must not race.
+      // Opportunity lock: positions can never be over-approved.
+      await tx.$queryRaw`SELECT id FROM "Student" WHERE id = ${pre.studentId} FOR UPDATE`;
       await tx.$queryRaw`SELECT id FROM internship_opportunities WHERE id = ${pre.opportunityId} FOR UPDATE`;
 
       const app = await tx.internshipApplication.findUnique({
@@ -343,6 +350,20 @@ export class OpportunityService {
       }
       if (opp.approvedCount >= opp.positions) {
         throw new BadRequestException('All positions for this opportunity are already filled');
+      }
+
+      // A student can only be placed once
+      const alreadyPlaced = await tx.internshipApplication.findFirst({
+        where: {
+          studentId: app.studentId,
+          isActive: true,
+          id: { not: applicationId },
+          status: { in: CONFIRMED_STATUSES },
+        },
+        select: { id: true },
+      });
+      if (alreadyPlaced) {
+        throw new BadRequestException('This student already has an approved internship');
       }
 
       let start = app.startDate ?? opp.startDate;
@@ -394,7 +415,29 @@ export class OpportunityService {
         },
       });
 
-      return { studentId: app.studentId, title: opp.title, company: opp.company.name };
+      // The student now has an internship: release their other pending applications
+      // (frees those seats) so they can never be approved for a second one.
+      const withdrawn = await tx.internshipApplication.updateMany({
+        where: {
+          studentId: app.studentId,
+          id: { not: applicationId },
+          opportunityId: { not: null },
+          status: { in: PENDING_DECISION_STATUSES },
+        },
+        data: {
+          status: ApplicationStatus.WITHDRAWN,
+          reviewRemarks: 'Auto-withdrawn: student was approved for another internship',
+          reviewedAt: now,
+          reviewedDate: now,
+        },
+      });
+
+      return {
+        studentId: app.studentId,
+        title: opp.title,
+        company: opp.company.name,
+        withdrawn: withdrawn.count,
+      };
     });
 
     await this.expectedCycle
@@ -403,8 +446,9 @@ export class OpportunityService {
     await this.cache.invalidateByTags(['applications', `student:${result.studentId}`]).catch(() => undefined);
     this.logAudit(actor, AuditAction.APPLICATION_APPROVE, applicationId, `Approved internship at ${result.company} (${result.title})`, {
       remarks: dto.remarks,
+      otherApplicationsWithdrawn: result.withdrawn,
     });
-    return { success: true, applicationId };
+    return { success: true, applicationId, withdrawnOtherApplications: result.withdrawn };
   }
 
   async reject(applicationId: string, reason: string, actor: Actor) {

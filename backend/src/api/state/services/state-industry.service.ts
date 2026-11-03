@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { ApplicationStatus } from '../../../generated/prisma/client';
+import { INTERNSHIP_RECORD_WHERE } from '../../../core/common/utils/internship-record.filter';
 
 @Injectable()
 export class StateIndustryService {
@@ -47,7 +48,7 @@ export class StateIndustryService {
     // Get all approved self-identified applications with company info (active students with active users only)
     const applications = await this.prisma.internshipApplication.findMany({
       where: {
-        isSelfIdentified: true,
+        ...INTERNSHIP_RECORD_WHERE,
         status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
         companyName: { not: '' },
         student: { user: { active: true } },
@@ -167,7 +168,7 @@ export class StateIndustryService {
     }
 
     const selfIdWhere: any = {
-      isSelfIdentified: true,
+      ...INTERNSHIP_RECORD_WHERE,
       student: { user: { active: true } },
     };
     if (search) {
@@ -267,7 +268,7 @@ export class StateIndustryService {
           stipend: app.stipend,
           status: app.status,
           hasJoiningLetter: !!app.joiningLetterUrl,
-          isSelfIdentified: true,
+          isSelfIdentified: app.isSelfIdentified,
         });
 
         const branch = student.user?.branchName || 'Unknown';
@@ -373,7 +374,7 @@ export class StateIndustryService {
 
     const allSelfIdApps = await this.prisma.internshipApplication.findMany({
       where: {
-        isSelfIdentified: true,
+        ...INTERNSHIP_RECORD_WHERE,
         companyName: { not: '' },
         student: { user: { active: true } },
       },

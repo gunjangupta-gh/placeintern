@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
 import { LruCacheService } from '../cache/lru-cache.service';
+import { INTERNSHIP_RECORD_WHERE } from '../common/utils/internship-record.filter';
 
 @Injectable()
 export class PrismaCacheService extends PrismaService {
@@ -106,7 +107,7 @@ export class PrismaCacheService extends PrismaService {
       `internships:student:${studentId}`,
       async () => {
         return this.internshipApplication.findMany({
-          where: { studentId, isSelfIdentified: true, isActive: true },
+          where: { studentId, ...INTERNSHIP_RECORD_WHERE, isActive: true },
           include: {
             mentor: true,
           },

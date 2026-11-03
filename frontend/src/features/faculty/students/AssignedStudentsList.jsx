@@ -74,6 +74,7 @@ import UnifiedVisitLogModal from '../visits/UnifiedVisitLogModal';
 import FacultyStudentModal from './FacultyStudentModal';
 import MaskedField from '../../../components/common/MaskedField';
 import { facultyService } from '../../../services/faculty.service';
+import InternshipTypeBadge from '../../../components/common/InternshipTypeBadge';
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -714,9 +715,7 @@ const AssignedStudentsList = () => {
                       } bordered={false}>
                         {app.internshipPhase || app.status}
                       </Tag>
-                      {app.isSelfIdentified && (
-                        <Tag color="purple" icon={<BankOutlined />} bordered={false}>Self Identified</Tag>
-                      )}
+                      <InternshipTypeBadge isSelfIdentified={app.isSelfIdentified} />
                     </div>
                   </div>
 

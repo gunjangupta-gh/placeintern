@@ -18,6 +18,7 @@ import {
   SendSystemAnnouncementDto,
   NotificationTarget,
 } from './dto';
+import { INTERNSHIP_RECORD_WHERE } from '../../core/common/utils/internship-record.filter';
 
 interface PaginationParams {
   page?: number;
@@ -726,7 +727,7 @@ export class NotificationsService {
       this.prisma.internshipApplication.count({
         where: {
           student: { institutionId, user: { active: true } },
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
         },
@@ -734,7 +735,7 @@ export class NotificationsService {
       this.prisma.internshipApplication.count({
         where: {
           student: { institutionId, user: { active: true } },
-          isSelfIdentified: true,
+          ...INTERNSHIP_RECORD_WHERE,
           isActive: true,
           status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
           joiningLetterUrl: { not: null, notIn: [''] },
@@ -746,7 +747,7 @@ export class NotificationsService {
           user: { active: true },
           internshipApplications: {
             some: {
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               status: ApplicationStatus.JOINED,
               internshipPhase: InternshipPhase.ACTIVE,
               startDate: { lt: startOfCurrentMonth },
@@ -767,7 +768,7 @@ export class NotificationsService {
           user: { active: true },
           internshipApplications: {
             some: {
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               status: ApplicationStatus.JOINED,
               internshipPhase: InternshipPhase.ACTIVE,
               startDate: { lte: thirtyDaysAgo },

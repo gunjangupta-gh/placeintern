@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ApplicationStatus, InternshipPhase, MonthlyReportStatus, Role } from '../../../generated/prisma/client';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { CacheService } from '../../../core/cache/cache.service';
+import { INTERNSHIP_RECORD_WHERE } from '../../../core/common/utils/internship-record.filter';
 
 @Injectable()
 export class StateReportService {
@@ -31,7 +32,7 @@ export class StateReportService {
             // Only count self-identified internships (active students with active users, active applications only)
             this.prisma.internshipApplication.count({
               where: {
-                isSelfIdentified: true,
+                ...INTERNSHIP_RECORD_WHERE,
                 isActive: true,
                 status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
                 student: { user: { active: true } },
@@ -102,7 +103,7 @@ export class StateReportService {
                 user: { active: true },
                 internshipApplications: {
                   some: {
-                    isSelfIdentified: true,
+                    ...INTERNSHIP_RECORD_WHERE,
                     isActive: true,
                     status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
                   },
@@ -117,7 +118,7 @@ export class StateReportService {
                 user: { active: true },
                 internshipApplications: {
                   some: {
-                    isSelfIdentified: true,
+                    ...INTERNSHIP_RECORD_WHERE,
                     isActive: true,
                     status: ApplicationStatus.COMPLETED,
                   },
@@ -296,7 +297,7 @@ export class StateReportService {
           const topCompanies = await this.prisma.internshipApplication.groupBy({
             by: ['companyName'],
             where: {
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               isActive: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
               student: { user: { active: true } },
@@ -337,7 +338,7 @@ export class StateReportService {
           // Get only APPROVED self-identified applications - these are expected to upload joining letters (active students with active users, active applications only)
           const applications = await this.prisma.internshipApplication.findMany({
             where: {
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               isActive: true,
               status: ApplicationStatus.APPROVED,
               student: { user: { active: true } },
@@ -427,7 +428,7 @@ export class StateReportService {
           // Get recent activity (last 10 verifications/rejections) - active students with active users, active applications only
           const recentActivityRaw = await this.prisma.internshipApplication.findMany({
             where: {
-              isSelfIdentified: true,
+              ...INTERNSHIP_RECORD_WHERE,
               isActive: true,
               joiningLetterUrl: { not: '' },
               student: { user: { active: true } },

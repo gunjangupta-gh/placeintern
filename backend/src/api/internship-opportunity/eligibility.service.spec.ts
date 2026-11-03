@@ -4,6 +4,7 @@ import {
   evaluateEligibility,
   EvaluationInput,
   StudentContext,
+  summariseApplications,
 } from './eligibility.service';
 
 const completeStudent = (over: Partial<StudentContext> = {}): StudentContext =>
@@ -41,7 +42,8 @@ const input = (over: Partial<EvaluationInput> = {}): EvaluationInput => ({
   },
   seatsUsed: 0,
   appliedToThis: false,
-  hasOtherActiveApplication: false,
+  hasConfirmedInternship: false,
+  pendingApplications: 0,
   ...over,
 });
 const codes = (i: EvaluationInput) => evaluateEligibility(i).map((r) => r.code);
@@ -99,15 +101,36 @@ describe('evaluateEligibility', () => {
     expect(codes(input({ seatsUsed: 10 }))).toContain('APPLICATIONS_FULL'); // 11th cannot
   });
 
-  it('allows one application only', () => {
-    expect(codes(input({ hasOtherActiveApplication: true }))).toContain('HAS_ACTIVE_APPLICATION');
+  it('allows up to 2 pending applications: 0 and 1 pending can apply, 2 pending cannot', () => {
+    expect(codes(input({ pendingApplications: 0 }))).toEqual([]);
+    expect(codes(input({ pendingApplications: 1 }))).toEqual([]); // the 2nd application
+    expect(codes(input({ pendingApplications: 2 }))).toContain('MAX_APPLICATIONS_REACHED'); // a 3rd
   });
 
-  it('reports ALREADY_APPLIED (not FULL / other-active) for the student own opportunity', () => {
-    const c = codes(input({ appliedToThis: true, hasOtherActiveApplication: true, seatsUsed: 10 }));
+  it('blocks everything once the student already has an internship', () => {
+    const c = codes(input({ hasConfirmedInternship: true, pendingApplications: 0 }));
+    expect(c).toContain('HAS_INTERNSHIP');
+    expect(c).not.toContain('MAX_APPLICATIONS_REACHED');
+  });
+
+  it('summariseApplications counts pending and detects a confirmed internship', () => {
+    expect(summariseApplications([{ status: 'APPLIED' }, { status: 'SHORTLISTED' }] as any)).toEqual({
+      hasConfirmedInternship: false,
+      pendingApplications: 2,
+    });
+    expect(summariseApplications([{ status: 'APPROVED' }] as any)).toEqual({
+      hasConfirmedInternship: true,
+      pendingApplications: 0,
+    });
+    expect(summariseApplications([])).toEqual({ hasConfirmedInternship: false, pendingApplications: 0 });
+  });
+
+  it('reports ALREADY_APPLIED (not FULL / limit / has-internship) for the student own opportunity', () => {
+    const c = codes(input({ appliedToThis: true, pendingApplications: 2, hasConfirmedInternship: true, seatsUsed: 10 }));
     expect(c).toContain('ALREADY_APPLIED');
     expect(c).not.toContain('APPLICATIONS_FULL');
-    expect(c).not.toContain('HAS_ACTIVE_APPLICATION');
+    expect(c).not.toContain('MAX_APPLICATIONS_REACHED');
+    expect(c).not.toContain('HAS_INTERNSHIP');
   });
 
   it('blocks inactive accounts', () => {
