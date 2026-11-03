@@ -144,7 +144,7 @@ export class InstitutionOpportunityService {
             },
           },
         },
-        orderBy: { appliedDate: 'desc' },
+        orderBy: [{ appliedDate: 'asc' }, { id: 'asc' }],
         skip,
         take,
       }),

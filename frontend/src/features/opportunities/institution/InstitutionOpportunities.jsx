@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Input, Table, Tabs, Tag, Typography } from 'antd';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
-import { opportunityService, getErrorMessage, formatDate } from '../../../services/opportunity.service';
+import { opportunityService, getErrorMessage, formatDate, formatTime } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
 
 const { Title, Paragraph, Text } = Typography;
@@ -73,7 +73,7 @@ const InstitutionOpportunities = () => {
     { title: 'Student', render: (_, r) => <div><div>{r.student?.user?.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.rollNumber}</Text></div> },
     { title: 'Branch', dataIndex: ['student', 'branch', 'name'] },
     { title: 'Position', render: (_, r) => <div><div>{r.opportunity?.title}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.opportunity?.company?.name}</Text></div> },
-    { title: 'Applied', dataIndex: 'appliedDate', render: formatDate },
+    { title: 'Applied at', dataIndex: 'appliedDate', render: (v) => <div style={{ whiteSpace: 'nowrap' }}><div>{formatDate(v)}</div><Text type="secondary" style={{ fontSize: 12 }}>{formatTime(v)}</Text></div> },
     { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{s}</Tag> },
   ];
 
