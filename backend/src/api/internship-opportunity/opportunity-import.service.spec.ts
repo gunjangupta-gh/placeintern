@@ -46,6 +46,8 @@ describe('OpportunityImportService', () => {
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load((await service.getTemplate()) as any);
     const ws = wb.getWorksheet(OPPORTUNITY_SHEET)!;
+    // The template ships an example on row 2; clear it so test rows start there as before
+    ws.getRow(2).eachCell({ includeEmpty: true }, (cell) => { cell.value = null; });
     rows.forEach((r, i) => {
       // Set by explicit column index (a dense [undefined, ...] array would shift everything left)
       // Located by header text so inserting a template column never shifts the data
@@ -77,6 +79,48 @@ describe('OpportunityImportService', () => {
       const ws = wb.getWorksheet(OPPORTUNITY_SHEET)!;
       expect(ws.getCell('D2').dataValidation?.type).toBe('whole'); // positions
       expect(ws.getCell('L2').dataValidation?.type).toBe('date'); // start date (after the three branch columns)
+    });
+  });
+
+  describe('example row', () => {
+    const exampleOf = async () => {
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load((await service.getTemplate()) as any);
+      return { wb, ws: wb.getWorksheet(OPPORTUNITY_SHEET)! };
+    };
+
+    it('the template has a filled-in example on row 2, shown in every column', async () => {
+      const { ws } = await exampleOf();
+      expect(String(ws.getCell('A2').value)).toMatch(/^EXAMPLE/);
+      const header = (ws.getRow(1).values as any[]).slice(1);
+      const row = (ws.getRow(2).values as any[]).slice(1);
+      header.forEach((h, i) => expect([h, row[i] !== undefined && row[i] !== null && row[i] !== '']).toEqual([h, true]));
+    });
+
+    it('is ignored on upload: an untouched template has no data rows, and the example never errors', async () => {
+      const { wb } = await exampleOf();
+      const buf = Buffer.from(await wb.xlsx.writeBuffer());
+      await expect(service.validate(buf)).rejects.toThrow(/No data rows found/);
+    });
+
+    it('is ignored when real rows follow it', async () => {
+      const { wb, ws } = await exampleOf();
+      const real = ws.getRow(3);
+      ws.getRow(2).eachCell({ includeEmpty: false }, (cell, col) => { real.getCell(col).value = cell.value; });
+      real.getCell(1).value = 'Godrej';
+      const res = await service.validate(Buffer.from(await wb.xlsx.writeBuffer()));
+      expect(res).toMatchObject({ totalRows: 1, validRows: 1, invalidRows: 0 });
+    });
+
+    it('is a valid row: with a real company name the example itself imports cleanly', async () => {
+      const { wb, ws } = await exampleOf();
+      ws.getCell('A2').value = 'Godrej';
+      const res = await service.validate(Buffer.from(await wb.xlsx.writeBuffer()));
+      expect(res.errors).toEqual([]);
+      expect(res.rows[0].branchSeats.map((b) => [b.code, b.positions, b.maxApplications, b.stipend])).toEqual([
+        ['ME', 5, 12, '8000 per month'],
+        ['EE', 3, null, '7000 per month'],
+      ]);
     });
   });
 

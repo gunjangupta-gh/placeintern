@@ -26,6 +26,13 @@ import {
 
 export const OPPORTUNITY_SHEET = 'Opportunities';
 
+/**
+ * The template ships with a filled-in example on row 2. A row whose Company Name starts with
+ * this word is never imported (and never reported as an error), so an unedited template is safe.
+ */
+export const EXAMPLE_ROW_MARKER = 'EXAMPLE';
+const isExampleRow = (company: string) => company.trim().toUpperCase().startsWith(EXAMPLE_ROW_MARKER);
+
 /** Header text (as shown in the template) -> internal key. Matching ignores case and the `*`. */
 const COLUMNS: ReadonlyArray<{ header: string; key: string; width: number }> = [
   { header: 'Company Name*', key: 'company', width: 30 },
@@ -168,6 +175,34 @@ export class OpportunityImportService {
       }
     }
 
+    // --- Example row (row 2): shows how every column is filled. Ignored on upload. ---
+    const [b1, b2] = branches.length >= 2 ? [branches[0].code, branches[1].code] : ['ME', 'EE'];
+    const plusDays = (n: number) => new Date(Date.now() + n * 86400000);
+    const example = ws.getRow(2);
+    example.values = {
+      company: `${EXAMPLE_ROW_MARKER} - Godrej Industries (delete this row)`,
+      district: 'Mohali',
+      title: 'Production Trainee',
+      positions: 8,
+      branches: `${b1}, ${b2}`,
+      branchPositions: `${b1}:5, ${b2}:3`,
+      branchLimits: `${b1}:12`,
+      branchStipends: `${b1}:8000 per month, ${b2}:7000 per month`,
+      years: '2, 3',
+      duration: 6,
+      stipend: '6000 per month',
+      startDate: plusDays(60),
+      deadline: plusDays(30),
+      description: 'Shop-floor training in the production line. This row is only an example.',
+      contactName: 'Mr. Sharma (HR)',
+      contactPhone: '9876543210',
+      contactEmail: 'hr@example.com',
+    };
+    example.font = { italic: true, color: { argb: 'FF7F7F7F' } };
+    example.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } };
+    example.getCell(1).note =
+      'EXAMPLE ROW - shows how to fill each column. It is ignored on upload. Overwrite it with your first real row or delete it.';
+
     header.getCell(colIndex('branches')).note =
       'Branch CODES from the "Branches" sheet, comma separated. Give positions per branch as CODE:positions, ' +
       'and an optional application limit as CODE:positions/limit. Example: ME:5, EE:3/10, ECE:2';
@@ -203,6 +238,7 @@ export class OpportunityImportService {
     ];
     is.getRow(1).font = { bold: true };
     [
+      ['Example row', '', 'Row 2 of the Opportunities sheet is a filled-in example (its Company Name starts with EXAMPLE). It is ignored on upload: replace it with your own data or delete it.'],
       ['One row = one position', '', 'Create one row per internship position/role. Do not merge cells or add blank header rows.'],
       ['Company Name', 'Yes', 'Matched to an existing company (case-insensitive); created if new.'],
       ['District', 'Yes', 'Where the internship is located.'],
@@ -290,7 +326,7 @@ export class OpportunityImportService {
         raw[key] = value;
         if (this.cellText(value as ExcelJS.CellValue) !== '' || value instanceof Date) any = true;
       });
-      if (any) out.push({ row: r, raw });
+      if (any && !isExampleRow(this.cellText(raw.company as ExcelJS.CellValue))) out.push({ row: r, raw });
     }
     if (out.length === 0) throw new BadRequestException('No data rows found in the file');
     if (out.length > MAX_IMPORT_ROWS) {
