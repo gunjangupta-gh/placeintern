@@ -30,6 +30,7 @@ import {
   startOfDayIST,
   todayStartIST,
 } from './opportunity-dates.util';
+import { buildApplicationWhere } from './application-filters';
 import {
   ApproveApplicationDto,
   ListApplicationsQueryDto,
@@ -154,19 +155,39 @@ export class OpportunityService {
     return this.shape(opp, counts.get(id) ?? 0);
   }
 
+  /**
+   * Edit any field of an opportunity. Only the keys that are sent change.
+   *  - Company: matched case-insensitively or created.
+   *  - Positions can never drop below current applications / approved students.
+   *  - Branches: may be added freely; a branch can only be removed if no applicant belongs to it.
+   *  - Deadline is only checked against "today" when it is actually changed, so an expired
+   *    opportunity can still have its other fields (or status) edited.
+   *  - Editing cannot create a duplicate (same company, position and start date) of another one.
+   *  - An empty string clears an optional text field.
+   */
   async update(id: string, dto: UpdateOpportunityDto, actor: Actor) {
     const existing = await this.prisma.internshipOpportunity.findFirst({
       where: { id, isDeleted: false },
-      select: { id: true, status: true, positions: true, approvedCount: true, startDate: true, applicationDeadline: true },
+      select: {
+        id: true, status: true, positions: true, approvedCount: true, startDate: true,
+        applicationDeadline: true, companyId: true, title: true,
+      },
     });
     if (!existing) throw new NotFoundException('Opportunity not found');
 
     const applied = (await this.appliedCounts([id])).get(id) ?? 0;
     const data: Prisma.InternshipOpportunityUpdateInput = {};
 
-    for (const key of ['title', 'description', 'district', 'stipend', 'contactName', 'contactPhone', 'contactEmail', 'durationMonths'] as const) {
-      if (dto[key] !== undefined) (data as any)[key] = dto[key];
+    // Plain text fields. '' clears the optional ones.
+    if (dto.title !== undefined) {
+      const title = dto.title.replace(/\s+/g, ' ').trim();
+      if (!title) throw new BadRequestException('Position title cannot be empty');
+      data.title = title;
     }
+    for (const key of ['description', 'district', 'stipend', 'contactName', 'contactPhone', 'contactEmail'] as const) {
+      if (dto[key] !== undefined) (data as any)[key] = dto[key].trim() === '' ? null : dto[key].trim();
+    }
+    if (dto.durationMonths !== undefined) data.durationMonths = dto.durationMonths;
     if (dto.eligibleYears !== undefined) data.eligibleYears = Array.from(new Set(dto.eligibleYears)).sort();
 
     // Seats can never drop below confirmed or pending applicants
@@ -192,33 +213,77 @@ export class OpportunityService {
     if (dto.applicationDeadline) {
       const c = parseApiDate(dto.applicationDeadline);
       if (!c) throw new BadRequestException('applicationDeadline is not a valid date');
-      if (startOfDayIST(c) < todayStartIST()) {
+      const next = endOfDayIST(c);
+      // Only a *changed* deadline must be today or later
+      if (next.getTime() !== existing.applicationDeadline.getTime() && startOfDayIST(c) < todayStartIST()) {
         throw new BadRequestException('applicationDeadline cannot be in the past');
       }
-      deadline = endOfDayIST(c);
+      deadline = next;
       data.applicationDeadline = deadline;
     }
     if ((dto.startDate || dto.applicationDeadline) && start.getTime() <= deadline.getTime()) {
       throw new BadRequestException('Start date must be after the application deadline');
     }
 
-    // Eligible branches can only be changed while nobody has applied
-    if (dto.branchIds) {
-      if (applied > 0) {
-        throw new BadRequestException('Branches cannot be changed after students have applied');
+    // Company: link to an existing one now, create a new one only when saving
+    let newCompanyName: string | null = null;
+    let companyId = existing.companyId;
+    if (dto.companyName !== undefined) {
+      const name = dto.companyName.replace(/\s+/g, ' ').trim();
+      if (!name) throw new BadRequestException('Company name cannot be empty');
+      const found = await this.prisma.company.findFirst({
+        where: { name: { equals: name, mode: 'insensitive' } },
+        select: { id: true },
+      });
+      if (found) {
+        companyId = found.id;
+        if (found.id !== existing.companyId) data.company = { connect: { id: found.id } };
+      } else {
+        newCompanyName = name;
+        companyId = '';
       }
-      const found = await this.prisma.branch.count({ where: { id: { in: dto.branchIds }, isActive: true } });
-      if (found !== new Set(dto.branchIds).size) throw new BadRequestException('One or more branches are invalid');
-      data.branches = {
-        deleteMany: {},
-        create: Array.from(new Set(dto.branchIds)).map((branchId) => ({ branchId })),
-      };
     }
 
-    // Status: FILLED is automatic; OPEN is not allowed if it is actually full
-    if (dto.status) {
-      data.status = dto.status as OpportunityStatus;
+    // No duplicate of another opportunity (same company + position + start date)
+    const finalTitle = (data.title as string | undefined) ?? existing.title;
+    if (companyId && (dto.title !== undefined || dto.startDate || dto.companyName !== undefined)) {
+      const clash = await this.prisma.internshipOpportunity.findFirst({
+        where: {
+          id: { not: id }, isDeleted: false, companyId,
+          title: { equals: finalTitle, mode: 'insensitive' }, startDate: start,
+        },
+        select: { id: true },
+      });
+      if (clash) {
+        throw new ConflictException('Another opportunity with the same company, position and start date already exists');
+      }
     }
+
+    // Eligible branches: add freely; only remove a branch if none of its students have applied
+    if (dto.branchIds) {
+      const wanted = Array.from(new Set(dto.branchIds));
+      const found = await this.prisma.branch.count({ where: { id: { in: wanted }, isActive: true } });
+      if (found !== wanted.length) throw new BadRequestException('One or more branches are invalid');
+
+      if (applied > 0) {
+        const holders = await this.prisma.internshipApplication.findMany({
+          where: { opportunityId: id, isActive: true, status: { in: SEAT_HOLDING_STATUSES } },
+          select: { student: { select: { branchId: true } } },
+        });
+        const needed = new Set(holders.map((h) => h.student?.branchId).filter((b): b is string => !!b));
+        const missing = [...needed].filter((b) => !wanted.includes(b));
+        if (missing.length) {
+          const names = await this.prisma.branch.findMany({ where: { id: { in: missing } }, select: { name: true } });
+          throw new BadRequestException(
+            `Cannot remove branch(es) ${names.map((n) => n.name).join(', ')}: students from them have already applied`,
+          );
+        }
+      }
+      data.branches = { deleteMany: {}, create: wanted.map((branchId) => ({ branchId })) };
+    }
+
+    // Status: FILLED is automatic; it follows positions vs approved students
+    if (dto.status) data.status = dto.status as OpportunityStatus;
     const finalStatus = (data.status as OpportunityStatus | undefined) ?? existing.status;
     if (existing.approvedCount >= positions) {
       data.status = OpportunityStatus.FILLED;
@@ -227,17 +292,19 @@ export class OpportunityService {
       data.status = OpportunityStatus.OPEN;
     }
 
-    const updated = await this.prisma.internshipOpportunity.update({
-      where: { id },
-      data,
-      select: { id: true },
+    await this.prisma.$transaction(async (tx) => {
+      if (newCompanyName) {
+        const company = await tx.company.create({ data: { name: newCompanyName }, select: { id: true } });
+        data.company = { connect: { id: company.id } };
+      }
+      await tx.internshipOpportunity.update({ where: { id }, data, select: { id: true } });
     });
 
-    this.logAudit(actor, AuditAction.INTERNSHIP_UPDATE, id, `Updated internship opportunity`, {
+    this.logAudit(actor, AuditAction.INTERNSHIP_UPDATE, id, 'Updated internship opportunity', {
       fields: Object.keys(dto),
     });
     await this.cache.invalidateByTags(['applications']).catch(() => undefined);
-    return this.getOne(updated.id);
+    return this.getOne(id);
   }
 
   async remove(id: string, actor: Actor) {
@@ -267,22 +334,7 @@ export class OpportunityService {
 
   async listApplications(q: ListApplicationsQueryDto) {
     const { page, limit, skip, take } = this.paging(q);
-    const studentWhere: Prisma.StudentWhereInput = {};
-    if (q.institutionId) studentWhere.institutionId = q.institutionId;
-    if (q.branchId) studentWhere.branchId = q.branchId;
-    if (q.search) {
-      studentWhere.user = {
-        OR: [
-          { name: { contains: q.search, mode: 'insensitive' } },
-          { rollNumber: { contains: q.search, mode: 'insensitive' } },
-        ],
-      };
-    }
-    const where: Prisma.InternshipApplicationWhereInput = {
-      opportunityId: q.opportunityId ?? { not: null },
-      student: studentWhere,
-      ...(q.status ? { status: q.status } : {}),
-    };
+    const where = buildApplicationWhere(q);
     const [total, items] = await Promise.all([
       this.prisma.internshipApplication.count({ where }),
       this.prisma.internshipApplication.findMany({
@@ -290,6 +342,7 @@ export class OpportunityService {
         select: {
           id: true,
           status: true,
+          internshipPhase: true,
           appliedDate: true,
           reviewedAt: true,
           reviewRemarks: true,
@@ -303,7 +356,7 @@ export class OpportunityService {
             select: {
               id: true,
               currentYear: true,
-              user: { select: { name: true, email: true, rollNumber: true } },
+              user: { select: { name: true, email: true, rollNumber: true, phoneNo: true } },
               Institution: { select: { id: true, name: true } },
               branch: { select: { id: true, name: true, code: true } },
             },
@@ -480,8 +533,80 @@ export class OpportunityService {
     return { success: true, applicationId };
   }
 
+  /**
+   * Permanently delete an application (director only).
+   *  - Pending / rejected / withdrawn: simply removed. The student's slot and the seat are freed,
+   *    and the student may apply to that opportunity again.
+   *  - Confirmed (approved / selected / joined / completed): this is an UNDO of the approval.
+   *    The opportunity's approved count is reduced (and it reopens if it was FILLED).
+   *  - Refused when monthly reports or faculty visits already exist, because they are deleted
+   *    together with the application and that would destroy records.
+   * Locks Student -> Opportunity like apply and approve.
+   */
+  async deleteApplication(applicationId: string, actor: Actor) {
+    const result = await this.prisma.$transaction(async (tx) => {
+      const pre = await tx.internshipApplication.findUnique({
+        where: { id: applicationId },
+        select: { opportunityId: true, studentId: true },
+      });
+      if (!pre?.opportunityId) throw new NotFoundException('Application not found');
+
+      await tx.$queryRaw`SELECT id FROM "Student" WHERE id = ${pre.studentId} FOR UPDATE`;
+      await tx.$queryRaw`SELECT id FROM internship_opportunities WHERE id = ${pre.opportunityId} FOR UPDATE`;
+
+      const app = await tx.internshipApplication.findUnique({
+        where: { id: applicationId },
+        select: {
+          id: true,
+          status: true,
+          _count: { select: { monthlyReports: true, facultyVisitLogs: true } },
+        },
+      });
+      if (!app) throw new NotFoundException('Application not found');
+
+      if (app._count.monthlyReports > 0 || app._count.facultyVisitLogs > 0) {
+        throw new BadRequestException(
+          `Cannot delete: this internship already has ${app._count.monthlyReports} monthly report(s) and ${app._count.facultyVisitLogs} visit(s) recorded.`,
+        );
+      }
+
+      const wasConfirmed = CONFIRMED_STATUSES.includes(app.status);
+      if (wasConfirmed) {
+        const opp = await tx.internshipOpportunity.findUnique({
+          where: { id: pre.opportunityId },
+          select: { positions: true, approvedCount: true, status: true },
+        });
+        if (opp) {
+          const newCount = Math.max(opp.approvedCount - 1, 0);
+          await tx.internshipOpportunity.update({
+            where: { id: pre.opportunityId },
+            data: {
+              approvedCount: newCount,
+              ...(opp.status === OpportunityStatus.FILLED && newCount < opp.positions
+                ? { status: OpportunityStatus.OPEN }
+                : {}),
+            },
+          });
+        }
+      }
+
+      await tx.internshipApplication.delete({ where: { id: applicationId } });
+      return { studentId: pre.studentId, wasConfirmed, status: app.status };
+    });
+
+    await this.cache.invalidateByTags(['applications', `student:${result.studentId}`]).catch(() => undefined);
+    this.logAudit(
+      actor,
+      AuditAction.INTERNSHIP_DELETE,
+      applicationId,
+      result.wasConfirmed ? 'Deleted a confirmed internship application (approval undone)' : 'Deleted an internship application',
+      { previousStatus: result.status },
+    );
+    return { success: true, applicationId, approvalUndone: result.wasConfirmed };
+  }
+
   async bulkAction(
-    action: 'APPROVE' | 'REJECT',
+    action: 'APPROVE' | 'REJECT' | 'DELETE',
     applicationIds: string[],
     remarks: string | undefined,
     actor: Actor,
@@ -494,6 +619,7 @@ export class OpportunityService {
     for (const id of Array.from(new Set(applicationIds))) {
       try {
         if (action === 'APPROVE') await this.approve(id, { remarks }, actor);
+        else if (action === 'DELETE') await this.deleteApplication(id, actor);
         else await this.reject(id, remarks!.trim(), actor);
         results.push({ applicationId: id, ok: true });
       } catch (e: any) {

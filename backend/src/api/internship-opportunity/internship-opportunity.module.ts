@@ -3,6 +3,7 @@ import { InternshipModule } from '../../domain/internship/internship.module';
 import { EligibilityService } from './eligibility.service';
 import { InstitutionOpportunityController } from './institution-opportunity.controller';
 import { InstitutionOpportunityService } from './institution-opportunity.service';
+import { OpportunityExportService } from './opportunity-export.service';
 import { OpportunityImportService } from './opportunity-import.service';
 import { OpportunityService } from './opportunity.service';
 import { StateOpportunityController } from './state-opportunity.controller';
@@ -21,6 +22,7 @@ import { StudentOpportunityService } from './student-opportunity.service';
   providers: [
     EligibilityService,
     OpportunityImportService,
+    OpportunityExportService,
     OpportunityService,
     StudentOpportunityService,
     InstitutionOpportunityService,

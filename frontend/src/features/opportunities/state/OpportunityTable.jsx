@@ -1,13 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Tooltip } from 'antd';
-import dayjs from 'dayjs';
+import { Button, Input, Popconfirm, Select, Space, Table, Tag, Tooltip } from 'antd';
+import { DeleteOutlined, EditOutlined, EyeOutlined, PauseCircleOutlined, PlayCircleOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
+import OpportunityEditModal from './OpportunityEditModal';
 
 const STATUS_COLOR = { OPEN: 'green', CLOSED: 'default', DRAFT: 'orange', FILLED: 'blue' };
 
 const OpportunityTable = ({ refreshKey }) => {
+  const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [meta, setMeta] = useState({ total: 0 });
   const [page, setPage] = useState(1);
@@ -15,8 +18,6 @@ const OpportunityTable = ({ refreshKey }) => {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [form] = Form.useForm();
   const debounced = useDebounce(search, 300);
 
   const load = useCallback(async () => {
@@ -35,37 +36,7 @@ const OpportunityTable = ({ refreshKey }) => {
   useEffect(() => { load(); }, [load, refreshKey]);
   useEffect(() => { setPage(1); }, [status, debounced]);
 
-  const openEdit = (row) => {
-    setEditing(row);
-    form.setFieldsValue({
-      positions: row.positions,
-      stipend: row.stipend,
-      status: row.status === 'FILLED' ? undefined : row.status,
-      applicationDeadline: dayjs(row.applicationDeadline),
-      startDate: dayjs(row.startDate),
-    });
-  };
-
-  const save = async () => {
-    const v = await form.validateFields();
-    setSaving(true);
-    try {
-      await opportunityService.update(editing.id, {
-        positions: v.positions,
-        stipend: v.stipend || undefined,
-        ...(v.status ? { status: v.status } : {}),
-        applicationDeadline: v.applicationDeadline.format('YYYY-MM-DD'),
-        startDate: v.startDate.format('YYYY-MM-DD'),
-      });
-      toast.success('Opportunity updated');
-      setEditing(null);
-      load();
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Update failed'));
-    } finally {
-      setSaving(false);
-    }
-  };
+  const openEdit = (row) => setEditing(row);
 
   const toggle = async (row) => {
     try {
@@ -88,7 +59,11 @@ const OpportunityTable = ({ refreshKey }) => {
 
   const columns = [
     { title: 'Company', dataIndex: ['company', 'name'] },
-    { title: 'Position', dataIndex: 'title' },
+    {
+      title: 'Position',
+      dataIndex: 'title',
+      render: (t, r) => <a onClick={() => navigate(`/app/internship-opportunities/${r.id}`)}>{t}</a>,
+    },
     { title: 'District', dataIndex: 'district' },
     {
       title: 'Branches',
@@ -106,13 +81,28 @@ const OpportunityTable = ({ refreshKey }) => {
     {
       title: 'Actions',
       render: (_, r) => (
-        <Space>
-          <Button size="small" onClick={() => openEdit(r)}>Edit</Button>
+        <Space size={4}>
+          <Tooltip title="View applicants and selected students">
+            <Button size="small" type="text" aria-label="View" icon={<EyeOutlined />} onClick={() => navigate(`/app/internship-opportunities/${r.id}`)} />
+          </Tooltip>
+          <Tooltip title="Edit">
+            <Button size="small" type="text" aria-label="Edit" icon={<EditOutlined />} onClick={() => openEdit(r)} />
+          </Tooltip>
           {r.status !== 'FILLED' && (
-            <Button size="small" onClick={() => toggle(r)}>{r.status === 'OPEN' ? 'Close' : 'Reopen'}</Button>
+            <Tooltip title={r.status === 'OPEN' ? 'Close applications' : 'Reopen applications'}>
+              <Button
+                size="small"
+                type="text"
+                aria-label={r.status === 'OPEN' ? 'Close applications' : 'Reopen applications'}
+                icon={r.status === 'OPEN' ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
+                onClick={() => toggle(r)}
+              />
+            </Tooltip>
           )}
           <Popconfirm title="Delete this opportunity?" description="Not possible once students have applied." onConfirm={() => remove(r)}>
-            <Button size="small" danger>Delete</Button>
+            <Tooltip title="Delete">
+              <Button size="small" type="text" danger aria-label="Delete" icon={<DeleteOutlined />} />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),
@@ -151,23 +141,13 @@ const OpportunityTable = ({ refreshKey }) => {
         pagination={{ current: page, pageSize: 20, total: meta.total, onChange: setPage, showSizeChanger: false }}
       />
 
-      <Modal title="Edit opportunity" open={!!editing} onCancel={() => setEditing(null)} onOk={save} confirmLoading={saving} destroyOnHidden>
-        <Form form={form} layout="vertical">
-          <Form.Item name="positions" label="Number of positions" rules={[{ required: true }]} extra={editing ? `Cannot go below current applications/approvals (${editing.appliedCount}).` : null}>
-            <InputNumber min={1} max={500} precision={0} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name="applicationDeadline" label="Application deadline" rules={[{ required: true }]}>
-            <DatePicker style={{ width: '100%' }} format="DD-MMM-YYYY" />
-          </Form.Item>
-          <Form.Item name="startDate" label="Start date" rules={[{ required: true }]}>
-            <DatePicker style={{ width: '100%' }} format="DD-MMM-YYYY" />
-          </Form.Item>
-          <Form.Item name="stipend" label="Stipend"><Input maxLength={50} /></Form.Item>
-          <Form.Item name="status" label="Status">
-            <Select options={['OPEN', 'CLOSED', 'DRAFT'].map((s) => ({ value: s, label: s }))} placeholder="Auto (filled when positions are taken)" allowClear />
-          </Form.Item>
-        </Form>
-      </Modal>
+      {editing && (
+        <OpportunityEditModal
+          opportunity={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); load(); }}
+        />
+      )}
     </>
   );
 };

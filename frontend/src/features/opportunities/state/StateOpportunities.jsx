@@ -4,7 +4,7 @@ import OpportunityUpload from './OpportunityUpload';
 import OpportunityTable from './OpportunityTable';
 import ApplicationsReview from './ApplicationsReview';
 
-const { Title, Paragraph } = Typography;
+const { Title } = Typography;
 
 /** State Directorate: publish internship opportunities (Excel), manage them, review applications. */
 const StateOpportunities = () => {
@@ -14,11 +14,7 @@ const StateOpportunities = () => {
 
   return (
     <div style={{ padding: 16 }}>
-      <Title level={3} style={{ marginBottom: 4 }}>Internship Opportunities</Title>
-      <Paragraph type="secondary">
-        Publish industry internship requirements. Students see only opportunities open to their branch and can apply to up to 2.
-        Approve a student once they have got the internship; their other pending application is then withdrawn automatically.
-      </Paragraph>
+      <Title level={3} style={{ marginBottom: 16 }}>Internship Opportunities</Title>
       <Tabs
         activeKey={tab}
         onChange={setTab}

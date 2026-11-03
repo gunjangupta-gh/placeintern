@@ -55,6 +55,7 @@ import BulkStudentUpload from '../../features/state/students/BulkStudentUpload';
 import CredentialsReset from '../../features/state/users/CredentialsReset';
 import CompaniesOverview from '../../features/state/companies/CompaniesOverview';
 import StateOpportunities from '../../features/opportunities/state/StateOpportunities';
+import OpportunityDetail from '../../features/opportunities/state/OpportunityDetail';
 import InstitutionOpportunities from '../../features/opportunities/institution/InstitutionOpportunities';
 import BrowseOpportunities from '../../features/opportunities/student/BrowseOpportunities';
 import RestoreCenter from '../../features/state/restore/RestoreCenter';
@@ -300,6 +301,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE]}>
               <StateOpportunities />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="internship-opportunities/:id"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <OpportunityDetail />
             </ProtectedRoute>
           }
         />

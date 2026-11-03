@@ -29,6 +29,22 @@ export const CONFIRMED_STATUSES: ApplicationStatus[] = [
   ApplicationStatus.COMPLETED,
 ];
 
+/**
+ * Filter groups for application lists. SELECTED covers every status a confirmed student passes
+ * through (the daily job moves APPROVED -> JOINED -> COMPLETED), so "selected students" never
+ * disappears from the list after the start date.
+ */
+export const APPLICATION_STATUS_GROUPS: Record<string, ApplicationStatus[]> = {
+  PENDING: [ApplicationStatus.APPLIED, ApplicationStatus.UNDER_REVIEW, ApplicationStatus.SHORTLISTED],
+  SELECTED: [
+    ApplicationStatus.SELECTED,
+    ApplicationStatus.APPROVED,
+    ApplicationStatus.JOINED,
+    ApplicationStatus.COMPLETED,
+  ],
+  CLOSED: [ApplicationStatus.REJECTED, ApplicationStatus.WITHDRAWN],
+};
+
 /** Statuses the director may still approve/reject (i.e. not yet decided). */
 export const PENDING_DECISION_STATUSES: ApplicationStatus[] = [
   ApplicationStatus.APPLIED,

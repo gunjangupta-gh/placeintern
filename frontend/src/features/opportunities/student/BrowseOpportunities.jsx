@@ -1,20 +1,76 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Card, Col, Empty, Input, Pagination, Popconfirm, Row, Skeleton, Space, Tag, Tooltip, Typography } from 'antd';
-import { CalendarOutlined, EnvironmentOutlined, TeamOutlined, ClockCircleOutlined, WalletOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Col, Empty, Input, Pagination, Popconfirm, Row, Skeleton, Tag, Tooltip, Typography, theme } from 'antd';
+import {
+  BankOutlined,
+  CalendarOutlined,
+  CheckCircleFilled,
+  ClockCircleOutlined,
+  EnvironmentOutlined,
+  FieldTimeOutlined,
+  FileTextOutlined,
+  InfoCircleOutlined,
+  TeamOutlined,
+  WalletOutlined,
+} from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
 
 const { Title, Text, Paragraph } = Typography;
-const PAGE_SIZE = 9;
+const PAGE_SIZE = 12;
 
 const STATUS_COLOR = { APPLIED: 'blue', UNDER_REVIEW: 'blue', SHORTLISTED: 'cyan', SELECTED: 'green', APPROVED: 'green', REJECTED: 'red', JOINED: 'green', COMPLETED: 'default' };
 
+/** Whole days left until the deadline (0 = closes today). Null if already past. */
+const daysLeft = (deadline) => {
+  const ms = new Date(deadline).getTime() - Date.now();
+  return ms < 0 ? null : Math.ceil(ms / 86400000) - 1;
+};
+
+/** Inline icon + text (location, stipend, duration...). */
+const Meta = ({ icon, children, token }) => (
+  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: token.colorTextSecondary, minWidth: 0 }}>
+    <span style={{ display: 'flex', fontSize: 14 }}>{icon}</span>
+    <span style={{ whiteSpace: 'nowrap' }}>{children}</span>
+  </span>
+);
+
+/** Rounded coloured chip. tone: info | warning | error | success */
+const Pill = ({ tone = 'info', icon, children, token }) => {
+  const palette = {
+    info: [token.colorInfoBg, token.colorInfo],
+    warning: [token.colorWarningBg, token.colorWarningText],
+    error: [token.colorErrorBg, token.colorError],
+    success: [token.colorSuccessBg, token.colorSuccess],
+  }[tone];
+  return (
+    <span
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 999,
+        background: palette[0], color: palette[1], fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
+      }}
+    >
+      {icon}
+      {children}
+    </span>
+  );
+};
+
 const OpportunityCard = ({ item, applying, onApply }) => {
+  const { token } = theme.useToken();
   const primaryReason = item.reasons?.[0]?.message;
-  const button = (
-    <Button type="primary" disabled={!item.canApply} loading={applying} block>
+  const left = daysLeft(item.applicationDeadline);
+  const urgent = left !== null && left <= 3;
+  const lowSeats = item.seatsLeft > 0 && item.seatsLeft / item.positions <= 0.2;
+  const hiring = left !== null && item.seatsLeft > 0;
+  const months = `${item.durationMonths} ${item.durationMonths > 1 ? 'Months' : 'Month'}`;
+
+  const deadlineText =
+    left === null ? 'Closed' : left === 0 ? 'Closes today' : urgent ? `${left} day${left > 1 ? 's' : ''} left` : `Apply by ${formatDate(item.applicationDeadline)}`;
+
+  const applyButton = (
+    <Button type="primary" size="small" disabled={!item.canApply} loading={applying}>
       {item.applied ? 'Applied' : 'Apply'}
     </Button>
   );
@@ -22,49 +78,94 @@ const OpportunityCard = ({ item, applying, onApply }) => {
   return (
     <Card
       hoverable
-      style={{ height: '100%' }}
-      title={<span style={{ whiteSpace: 'normal' }}>{item.title}</span>}
-      extra={item.applied ? <Tag color={STATUS_COLOR[item.applicationStatus] || 'blue'}>{item.applicationStatus}</Tag> : null}
-      actions={[
-        item.canApply ? (
-          <Popconfirm
-            key="apply"
-            title="Apply for this internship?"
-            description="You can apply to up to 2 internships. If one is approved, your other pending application is withdrawn automatically."
-            okText="Apply"
-            onConfirm={() => onApply(item)}
-          >
-            {button}
-          </Popconfirm>
-        ) : (
-          <Tooltip key="apply" title={primaryReason}>
-            <span style={{ display: 'block', padding: '0 16px' }}>{button}</span>
-          </Tooltip>
-        ),
-      ]}
+      style={{ height: '100%', borderRadius: 12, borderColor: token.colorBorderSecondary }}
+      styles={{ body: { display: 'flex', flexDirection: 'column', height: '100%', padding: 16, gap: 12 } }}
     >
-      <Space direction="vertical" size={6} style={{ width: '100%' }}>
-        <Text strong>{item.company?.name}</Text>
-        {item.district && (
-          <Text type="secondary"><EnvironmentOutlined /> {item.district}</Text>
-        )}
-        <Text><ClockCircleOutlined /> {item.durationMonths} month{item.durationMonths > 1 ? 's' : ''} &middot; starts {formatDate(item.startDate)}</Text>
-        {item.stipend && <Text><WalletOutlined /> Stipend: {item.stipend}</Text>}
-        <Text><TeamOutlined /> {item.seatsLeft} of {item.positions} position{item.positions > 1 ? 's' : ''} left</Text>
-        <Text type={item.canApply ? undefined : 'secondary'}><CalendarOutlined /> Apply by {formatDate(item.applicationDeadline)}</Text>
-        {item.description && (
-          <Paragraph type="secondary" ellipsis={{ rows: 2, tooltip: item.description }} style={{ marginBottom: 0 }}>
-            {item.description}
-          </Paragraph>
-        )}
-        <div>
-          {item.branches?.map((b) => <Tag key={b.code}>{b.name}</Tag>)}
-          {item.eligibleYears?.length > 0 && <Tag color="purple">Year {item.eligibleYears.join(', ')}</Tag>}
+      {/* Title, company + hiring badge, logo */}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <Text strong style={{ fontSize: 16, display: 'block', lineHeight: 1.3 }} ellipsis={{ tooltip: item.title }}>
+            {item.title}
+          </Text>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
+            <Text type="secondary" strong style={{ fontSize: 13 }} ellipsis={{ tooltip: item.company?.name }}>
+              {item.company?.name}
+            </Text>
+            {item.applied ? (
+              <Tag color={STATUS_COLOR[item.applicationStatus] || 'blue'} icon={<CheckCircleFilled />} style={{ margin: 0, fontSize: 11 }}>
+                {item.applicationStatus?.replace('_', ' ')}
+              </Tag>
+            ) : (
+              hiring && (
+                <Tag color="blue" variant="outlined" style={{ margin: 0, fontSize: 11, borderRadius: 999, background: 'transparent' }}>
+                  Actively hiring
+                </Tag>
+              )
+            )}
+          </div>
         </div>
-        {!item.canApply && !item.applied && primaryReason && (
-          <Text type="danger" style={{ fontSize: 12 }}>{primaryReason}</Text>
-        )}
-      </Space>
+        <div
+          style={{
+            width: 44, height: 44, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: token.colorPrimaryBg, color: token.colorPrimary, fontSize: 20,
+          }}
+        >
+          <BankOutlined />
+        </div>
+      </div>
+
+      {/* Location, stipend, duration, start */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 18px' }}>
+        {item.district && <Meta token={token} icon={<EnvironmentOutlined />}>{item.district}</Meta>}
+        <Meta token={token} icon={<WalletOutlined />}>{item.stipend || 'Not specified'}</Meta>
+        <Meta token={token} icon={<ClockCircleOutlined />}>{months}</Meta>
+        <Meta token={token} icon={<CalendarOutlined />}>Starts {formatDate(item.startDate)}</Meta>
+      </div>
+
+      {item.description && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: token.colorTextSecondary, fontSize: 13, minWidth: 0 }}>
+          <FileTextOutlined />
+          <Text type="secondary" style={{ fontSize: 13 }} ellipsis={{ tooltip: item.description }}>{item.description}</Text>
+        </div>
+      )}
+
+      {item.eligibleYears?.length > 0 && (
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          Open to: {item.eligibleYears.map((y) => `Year ${y}`).join(' • ')}
+        </Text>
+      )}
+
+      <div style={{ flex: 1 }} />
+
+      {/* Pills + action */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <Pill token={token} tone={urgent || left === null ? 'error' : 'info'} icon={<FieldTimeOutlined />}>{deadlineText}</Pill>
+        <Pill token={token} tone={item.seatsLeft === 0 || lowSeats ? 'error' : 'warning'} icon={<TeamOutlined />}>
+          {item.seatsLeft === 0 ? 'Full' : `${item.seatsLeft}/${item.positions} positions left`}
+        </Pill>
+        <div style={{ marginLeft: 'auto' }}>
+          {item.canApply ? (
+            <Popconfirm
+              title="Apply for this internship?"
+              description="You can apply to up to 2 internships. If one is approved, your other pending application is withdrawn automatically."
+              okText="Apply"
+              onConfirm={() => onApply(item)}
+            >
+              {applyButton}
+            </Popconfirm>
+          ) : (
+            <Tooltip title={primaryReason}>
+              <span>{applyButton}</span>
+            </Tooltip>
+          )}
+        </div>
+      </div>
+
+      {!item.canApply && !item.applied && primaryReason && (
+        <Text type="secondary" style={{ fontSize: 11, lineHeight: 1.3, marginTop: -4 }}>
+          <InfoCircleOutlined /> {primaryReason}
+        </Text>
+      )}
     </Card>
   );
 };
@@ -176,9 +277,9 @@ const BrowseOpportunities = () => {
         <Empty description="No internships are open for your branch right now" />
       ) : (
         <>
-          <Row gutter={[16, 16]}>
+          <Row gutter={[12, 12]}>
             {data.map((item) => (
-              <Col key={item.id} xs={24} md={12} xl={8}>
+              <Col key={item.id} xs={24} md={12} xl={8} xxl={6}>
                 <OpportunityCard item={item} applying={applyingId === item.id} onApply={handleApply} />
               </Col>
             ))}

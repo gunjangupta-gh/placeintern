@@ -60,6 +60,20 @@ export const opportunityService = {
     const response = await API.get('/state/opportunities/applications', { params: clean(params) });
     return response.data;
   },
+  async getOne(id) {
+    const response = await API.get(`/state/opportunities/${id}`);
+    return response.data;
+  },
+  /** Excel with Applications, Selected Students and Opportunities sheets (same filters as the list). */
+  async exportApplications(params) {
+    const response = await API.get('/state/opportunities/applications/export', {
+      params: clean(params),
+      responseType: 'blob',
+      timeout: 120000,
+    });
+    return response.data;
+  },
+  /** action: APPROVE | REJECT | DELETE */
   async decideApplications(action, applicationIds, remarks) {
     const response = await API.post('/state/opportunities/applications/bulk', {
       action,

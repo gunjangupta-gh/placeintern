@@ -13,6 +13,7 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
 } from 'class-validator';
 import { ApplicationStatus } from '../../../generated/prisma/client';
 
@@ -32,6 +33,18 @@ export class ListApplicationsQueryDto extends PageQueryDto {
   @IsOptional() @IsUUID() institutionId?: string;
   @IsOptional() @IsUUID() branchId?: string;
   @IsOptional() @IsEnum(ApplicationStatus) status?: ApplicationStatus;
+  /** PENDING | SELECTED | CLOSED. Takes precedence over `status` when both are sent. */
+  @IsOptional() @IsIn(['PENDING', 'SELECTED', 'CLOSED']) group?: string;
+}
+
+/** Same filters as the list, for the Excel export (no paging). */
+export class ExportApplicationsQueryDto {
+  @IsOptional() @IsUUID() opportunityId?: string;
+  @IsOptional() @IsUUID() institutionId?: string;
+  @IsOptional() @IsUUID() branchId?: string;
+  @IsOptional() @IsEnum(ApplicationStatus) status?: ApplicationStatus;
+  @IsOptional() @IsIn(['PENDING', 'SELECTED', 'CLOSED']) group?: string;
+  @IsOptional() @IsString() @MaxLength(100) search?: string;
 }
 
 export class IncompleteProfilesQueryDto extends PageQueryDto {
@@ -40,8 +53,14 @@ export class IncompleteProfilesQueryDto extends PageQueryDto {
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}/;
 
+/**
+ * Every field of an opportunity is editable. Send only what changed.
+ * An empty string on an optional text field clears it.
+ */
 export class UpdateOpportunityDto {
-  @IsOptional() @IsString() @MaxLength(120) title?: string;
+  /** Matched to an existing company (case-insensitive) or created. */
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(150) companyName?: string;
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(120) title?: string;
   @IsOptional() @IsString() @MaxLength(2000) description?: string;
   @IsOptional() @IsString() @MaxLength(80) district?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(500) positions?: number;
@@ -53,8 +72,8 @@ export class UpdateOpportunityDto {
   @IsOptional() @IsArray() @ArrayMaxSize(3) @IsInt({ each: true }) @IsIn([1, 2, 3], { each: true }) eligibleYears?: number[];
   @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(50) @IsUUID('all', { each: true }) branchIds?: string[];
   @IsOptional() @IsString() @MaxLength(100) contactName?: string;
-  @IsOptional() @IsString() @MaxLength(20) contactPhone?: string;
-  @IsOptional() @IsString() @MaxLength(100) contactEmail?: string;
+  @IsOptional() @Matches(/^$|^[0-9+\-\s()]{7,20}$/, { message: 'contactPhone is not a valid phone number' }) contactPhone?: string;
+  @IsOptional() @Matches(/^$|^[^\s@]{1,64}@[^\s@]+\.[^\s@]+$/, { message: 'contactEmail is not a valid email' }) @MaxLength(100) contactEmail?: string;
 }
 
 export class ApproveApplicationDto {
@@ -68,7 +87,7 @@ export class RejectApplicationDto {
 }
 
 export class BulkApplicationActionDto {
-  @IsIn(['APPROVE', 'REJECT']) action!: 'APPROVE' | 'REJECT';
+  @IsIn(['APPROVE', 'REJECT', 'DELETE']) action!: 'APPROVE' | 'REJECT' | 'DELETE';
   @IsArray() @ArrayMinSize(1) @ArrayMaxSize(200) @IsUUID('all', { each: true }) applicationIds!: string[];
   @IsOptional() @IsString() @MaxLength(500) remarks?: string;
 }

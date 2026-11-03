@@ -22,11 +22,13 @@ import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { Role } from '../../generated/prisma/client';
+import { OpportunityExportService } from './opportunity-export.service';
 import { OpportunityImportService } from './opportunity-import.service';
 import { OpportunityService } from './opportunity.service';
 import {
   ApproveApplicationDto,
   BulkApplicationActionDto,
+  ExportApplicationsQueryDto,
   ListApplicationsQueryDto,
   ListOpportunitiesQueryDto,
   RejectApplicationDto,
@@ -56,6 +58,7 @@ export class StateOpportunityController {
   constructor(
     private readonly importService: OpportunityImportService,
     private readonly service: OpportunityService,
+    private readonly exportService: OpportunityExportService,
   ) {}
 
   private actor(req: any) {
@@ -103,8 +106,24 @@ export class StateOpportunityController {
     return this.service.listApplications(q);
   }
 
+  @Get('applications/export')
+  @ApiOperation({ summary: 'Export applications (with the same filters as the list) to Excel' })
+  async exportApplications(@Query() q: ExportApplicationsQueryDto, @Req() req: any, @Res() res: Response) {
+    const buf = await this.exportService.buildWorkbook(q, this.actor(req));
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', XLSX_MIME);
+    res.setHeader('Content-Disposition', `attachment; filename=internship-applications-${stamp}.xlsx`);
+    res.send(buf);
+  }
+
+  @Delete('applications/:applicationId')
+  @ApiOperation({ summary: 'Delete an application (undoes the approval if it was confirmed)' })
+  deleteApplication(@Param('applicationId', ParseUUIDPipe) applicationId: string, @Req() req: any) {
+    return this.service.deleteApplication(applicationId, this.actor(req));
+  }
+
   @Post('applications/bulk')
-  @ApiOperation({ summary: 'Approve or reject several applications' })
+  @ApiOperation({ summary: 'Approve, reject or delete several applications' })
   bulk(@Body() dto: BulkApplicationActionDto, @Req() req: any) {
     return this.service.bulkAction(dto.action, dto.applicationIds, dto.remarks, this.actor(req));
   }

@@ -112,17 +112,10 @@ export const menuConfig = {
     ],
   },
   STATE_OPPORTUNITIES: {
-    key: "state-opportunities",
+    key: "internship-opportunities",
     title: "Internship Opportunities",
     icon: <LaptopOutlined />,
-    items: [
-      {
-        key: "internship-opportunities",
-        label: "Manage Opportunities",
-        icon: <LaptopOutlined />,
-        path: "/app/internship-opportunities",
-      },
-    ],
+    path: "/app/internship-opportunities",
   },
   STATE_BULK: {
     key: "state-bulk",
