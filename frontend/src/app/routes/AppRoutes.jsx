@@ -915,7 +915,7 @@ const AppRoutes = () => {
           }
         />
         <Route
-          path="internships"
+          path="browse-internships"
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <BrowseOpportunities />

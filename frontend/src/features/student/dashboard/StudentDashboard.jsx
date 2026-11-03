@@ -1212,7 +1212,7 @@ const StudentDashboard = () => {
               >
                 <Button
                   type="primary"
-                  onClick={() => navigate("/app/internships")}
+                  onClick={() => navigate("/app/browse-internships")}
                   className="rounded-lg"
                 >
                   Add Internships

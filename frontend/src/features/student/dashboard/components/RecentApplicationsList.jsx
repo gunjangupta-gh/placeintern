@@ -35,7 +35,7 @@ const RecentApplicationsList = ({ applications = [], loading, onViewAll }) => {
         </div>
       }
       extra={
-        <Button type="link" onClick={onViewAll || (() => navigate('/app/internships'))}>
+        <Button type="link" onClick={onViewAll || (() => navigate('/app/my-applications'))}>
           View All <RightOutlined />
         </Button>
       }
@@ -91,7 +91,7 @@ const RecentApplicationsList = ({ applications = [], loading, onViewAll }) => {
           image={Empty.PRESENTED_IMAGE_SIMPLE}
           description="No applications yet"
         >
-          <Button type="primary" onClick={() => navigate('/app/internships')}>
+          <Button type="primary" onClick={() => navigate('/app/browse-internships')}>
             Browse Internships
           </Button>
         </Empty>

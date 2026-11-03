@@ -706,7 +706,7 @@ export const menuConfig = {
         key: "browse-internships",
         label: "Browse Internships",
         icon: <ShopOutlined />,
-        path: "/app/internships",
+        path: "/app/browse-internships",
       },
       {
         key: "my-applications",
