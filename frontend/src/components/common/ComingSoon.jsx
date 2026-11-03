@@ -57,7 +57,7 @@ const ComingSoon = ({ feature = 'This feature' }) => {
             type="primary"
             size="large"
             icon={<ArrowRightOutlined />}
-            onClick={() => navigate('/student/self-identified-internship')}
+            onClick={() => navigate('/app/self-identified-internship')}
             className="rounded-lg w-full sm:w-auto"
           >
             Go to Self-Identified Internships
@@ -65,7 +65,7 @@ const ComingSoon = ({ feature = 'This feature' }) => {
           <Button
             size="large"
             icon={<HomeOutlined />}
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/app/dashboard')}
             className="rounded-lg w-full sm:w-auto"
           >
             Back to Dashboard
