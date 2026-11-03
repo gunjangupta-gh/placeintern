@@ -60,6 +60,29 @@ export class BranchSeatDto {
   @Type(() => Number) @IsInt() @Min(1) @Max(500) positions!: number;
   /** Applications this branch accepts (waiting list). Omit / null = same as positions. */
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(2000) maxApplications?: number | null;
+  /** Stipend for this branch (e.g. "8000 per month"). Empty / null = the opportunity stipend. */
+  @IsOptional() @IsString() @MaxLength(50) stipend?: string | null;
+}
+
+/** Add one opportunity through the form (the Excel upload is the bulk way). */
+export class CreateOpportunityDto {
+  /** Matched to an existing company (case-insensitive) or created. */
+  @IsString() @MinLength(1) @MaxLength(150) companyName!: string;
+  @IsString() @MinLength(1) @MaxLength(120) title!: string;
+  @IsOptional() @IsString() @MaxLength(2000) description?: string;
+  @IsOptional() @IsString() @MaxLength(80) district?: string;
+  @Type(() => Number) @IsInt() @Min(1) @Max(24) durationMonths!: number;
+  /** Default stipend; a branch can override it. */
+  @IsOptional() @IsString() @MaxLength(50) stipend?: string;
+  @Matches(DATE_RE, { message: 'startDate must be yyyy-mm-dd' }) startDate!: string;
+  @Matches(DATE_RE, { message: 'applicationDeadline must be yyyy-mm-dd' }) applicationDeadline!: string;
+  @IsOptional() @IsIn(['DRAFT', 'OPEN']) status?: string;
+  @IsOptional() @IsArray() @ArrayMaxSize(3) @IsInt({ each: true }) @IsIn([1, 2, 3], { each: true }) eligibleYears?: number[];
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(50) @ValidateNested({ each: true }) @Type(() => BranchSeatDto)
+  branches!: BranchSeatDto[];
+  @IsOptional() @IsString() @MaxLength(100) contactName?: string;
+  @IsOptional() @Matches(/^$|^[0-9+\-\s()]{7,20}$/, { message: 'contactPhone is not a valid phone number' }) contactPhone?: string;
+  @IsOptional() @Matches(/^$|^[^\s@]{1,64}@[^\s@]+\.[^\s@]+$/, { message: 'contactEmail is not a valid email' }) @MaxLength(100) contactEmail?: string;
 }
 
 /**

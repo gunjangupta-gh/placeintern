@@ -28,6 +28,7 @@ import { OpportunityService } from './opportunity.service';
 import {
   ApproveApplicationDto,
   BulkApplicationActionDto,
+  CreateOpportunityDto,
   ExportApplicationsQueryDto,
   ListApplicationsQueryDto,
   ListOpportunitiesQueryDto,
@@ -149,6 +150,12 @@ export class StateOpportunityController {
   }
 
   // ---- Opportunities ----
+
+  @Post()
+  @ApiOperation({ summary: 'Add one internship opportunity through the form' })
+  create(@Body() dto: CreateOpportunityDto, @Req() req: any) {
+    return this.service.create(dto, this.actor(req));
+  }
 
   @Get()
   @ApiOperation({ summary: 'List internship opportunities' })

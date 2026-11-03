@@ -54,6 +54,7 @@ const STUDENT_VIEW_SELECT = {
       positions: true,
       approvedCount: true,
       maxApplications: true,
+      stipend: true,
       branch: { select: { id: true, code: true, name: true } },
     },
   },
@@ -156,7 +157,8 @@ export class StudentOpportunityService {
       queuePosition,
       eligibleYears: o.eligibleYears,
       durationMonths: o.durationMonths,
-      stipend: o.stipend,
+      // The student's own branch stipend, falling back to the opportunity's
+      stipend: o.branches.find((b) => b.branch.id === branchId)?.stipend ?? o.stipend,
       startDate: o.startDate,
       applicationDeadline: o.applicationDeadline,
       // Every branch the internship is open to, with its own positions
@@ -164,6 +166,7 @@ export class StudentOpportunityService {
         code: b.branch.code,
         name: b.branch.name,
         positions: b.positions,
+        stipend: b.stipend ?? o.stipend,
         mine: b.branch.id === branchId,
       })),
       applied: appliedToThis,
@@ -312,7 +315,7 @@ export class StudentOpportunityService {
           id: true, title: true, status: true, isDeleted: true, eligibleYears: true,
           applicationDeadline: true, durationMonths: true, stipend: true, startDate: true,
           company: { select: { name: true, address: true } },
-          branches: { select: { branchId: true, positions: true, approvedCount: true, maxApplications: true } },
+          branches: { select: { branchId: true, positions: true, approvedCount: true, maxApplications: true, stipend: true } },
         },
       });
       if (!student) throw new NotFoundException('Student not found');
@@ -376,7 +379,8 @@ export class StudentOpportunityService {
           companyName: opp.company.name,
           companyAddress: opp.company.address ?? undefined,
           jobProfile: opp.title,
-          stipend: opp.stipend ?? undefined,
+          // branch-wise stipend if the student's branch has its own, else the opportunity's
+          stipend: opp.branches.find((b) => b.branchId === studentBranchId)?.stipend ?? opp.stipend ?? undefined,
           internshipDuration: `${opp.durationMonths} month${opp.durationMonths > 1 ? 's' : ''}`,
           startDate: opp.startDate,
           endDate: addMonthsIST(opp.startDate, opp.durationMonths),

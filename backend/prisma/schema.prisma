@@ -2744,6 +2744,8 @@ model OpportunityBranch {
   // Applications (pending + confirmed) this branch accepts. null = same as positions.
   // Set higher than positions for a waiting list; applications are first-come-first-served.
   maxApplications Int?
+  // Stipend for students of THIS branch. null = use the opportunity stipend.
+  stipend         String?
 
   @@id([opportunityId, branchId])
   @@index([branchId])

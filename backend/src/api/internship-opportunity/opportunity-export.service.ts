@@ -163,7 +163,7 @@ export class OpportunityExportService {
         stipend: true, startDate: true, applicationDeadline: true, contactName: true, contactPhone: true, contactEmail: true,
         company: { select: { name: true } },
         branches: {
-          select: { positions: true, approvedCount: true, maxApplications: true, branch: { select: { code: true } } },
+          select: { positions: true, approvedCount: true, maxApplications: true, stipend: true, branch: { select: { code: true } } },
         },
       },
     });
@@ -204,7 +204,7 @@ export class OpportunityExportService {
         title: safe(o.title),
         district: safe(o.district),
         branches: o.branches
-          .map((b) => `${b.branch.code}: ${b.approvedCount}/${b.positions} (max ${b.maxApplications ?? b.positions})`)
+          .map((b) => `${b.branch.code}: ${b.approvedCount}/${b.positions} (max ${b.maxApplications ?? b.positions})${b.stipend ? ` @ ${b.stipend}` : ''}`)
           .join('; '),
         positions: o.positions,
         applied,

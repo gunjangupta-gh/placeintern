@@ -48,6 +48,10 @@ export const opportunityService = {
     const response = await API.get('/state/opportunities', { params: clean(params) });
     return response.data;
   },
+  async create(body) {
+    const response = await API.post('/state/opportunities', body);
+    return response.data;
+  },
   async update(id, body) {
     const response = await API.patch(`/state/opportunities/${id}`, body);
     return response.data;

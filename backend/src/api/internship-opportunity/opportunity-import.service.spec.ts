@@ -20,7 +20,7 @@ const day = (offset: number) => {
 type Row = Partial<{
   company: any; district: any; title: any; positions: any; branches: any; years: any; duration: any;
   stipend: any; start: any; deadline: any; description: any; cName: any; cPhone: any; cEmail: any;
-  branchPositions: any; branchLimits: any;
+  branchPositions: any; branchLimits: any; branchStipends: any;
 }>;
 
 const good = (over: Row = {}): Row => ({
@@ -54,7 +54,7 @@ describe('OpportunityImportService', () => {
         'eligible branches': r.branches, 'branch-wise positions': r.branchPositions, 'max applications per branch': r.branchLimits,
         'eligible years': r.years, 'duration (months)': r.duration, stipend: r.stipend, 'start date': r.start,
         'application deadline': r.deadline, description: r.description, 'contact name': r.cName, 'contact phone': r.cPhone,
-        'contact email': r.cEmail,
+        'contact email': r.cEmail, 'branch-wise stipend': r.branchStipends,
       };
       ws.getRow(1).eachCell((cell, col) => {
         const key = String(cell.value).replace(/\*/g, '').trim().toLowerCase();
@@ -76,7 +76,7 @@ describe('OpportunityImportService', () => {
       expect(wb.getWorksheet('Branches')!.rowCount).toBe(BRANCHES.length + 1);
       const ws = wb.getWorksheet(OPPORTUNITY_SHEET)!;
       expect(ws.getCell('D2').dataValidation?.type).toBe('whole'); // positions
-      expect(ws.getCell('K2').dataValidation?.type).toBe('date'); // start date (after the two new branch columns)
+      expect(ws.getCell('L2').dataValidation?.type).toBe('date'); // start date (after the three branch columns)
     });
   });
 
@@ -124,8 +124,8 @@ describe('OpportunityImportService', () => {
         const { res } = await one({ positions: '', branches: 'ME:6, EE:4/10' });
         expect(res.rows[0]).toMatchObject({ positions: 10, branchIds: ['b-me', 'b-ee'] });
         expect(res.rows[0].branchSeats).toEqual([
-          { branchId: 'b-me', code: 'ME', positions: 6, maxApplications: null },
-          { branchId: 'b-ee', code: 'EE', positions: 4, maxApplications: 10 },
+          { branchId: 'b-me', code: 'ME', positions: 6, maxApplications: null, stipend: null },
+          { branchId: 'b-ee', code: 'EE', positions: 4, maxApplications: 10, stipend: null },
         ]);
       });
 
@@ -133,8 +133,8 @@ describe('OpportunityImportService', () => {
         const { res } = await one({ positions: '', branches: 'ME, EE', branchPositions: 'ME:5, EE:3', branchLimits: 'ME:12' });
         expect(res.rows[0].positions).toBe(8);
         expect(res.rows[0].branchSeats).toEqual([
-          { branchId: 'b-me', code: 'ME', positions: 5, maxApplications: 12 },
-          { branchId: 'b-ee', code: 'EE', positions: 3, maxApplications: null },
+          { branchId: 'b-me', code: 'ME', positions: 5, maxApplications: 12, stipend: null },
+          { branchId: 'b-ee', code: 'EE', positions: 3, maxApplications: null, stipend: null },
         ]);
       });
 
@@ -152,6 +152,17 @@ describe('OpportunityImportService', () => {
         [{ branchPositions: 'ME:5, EE:3', branchLimits: 'ME:9, ME:10', branches: 'ME, EE' }, 'Max Applications per Branch: ME is listed more than once'],
       ])('rejects bad dedicated-column input %#', async (over: any, msg) => {
         const { res, errors } = await one({ positions: '', ...over });
+        expect(res.validRows).toBe(0);
+        expect(errors).toContain(msg);
+      });
+
+      it.each([
+        [{ branchStipends: 'ME 8000', branches: 'ME' }, 'Branch-wise Stipend must look like'],
+        [{ branchStipends: 'CS:8000', branches: 'ME' }, 'unknown or ambiguous branch "CS"'],
+        [{ branchStipends: 'EE:8000', branches: 'ME' }, 'EE is not listed in Eligible Branches'],
+        [{ branchStipends: 'ME:1, ME:2', branches: 'ME' }, 'ME is listed more than once'],
+      ])('rejects bad Branch-wise Stipend input %#', async (over: any, msg) => {
+        const { res, errors } = await one({ positions: 4, ...over });
         expect(res.validRows).toBe(0);
         expect(errors).toContain(msg);
       });
@@ -311,8 +322,8 @@ describe('OpportunityImportService', () => {
       expect(first).toMatchObject({ positions: 10, status: 'OPEN', createdById: 'dir1', importBatchId: res.importBatchId });
       // total positions with no per-branch counts are split equally
       expect(first.branches.create).toEqual([
-        { branchId: 'b-me', positions: 5, maxApplications: null },
-        { branchId: 'b-ee', positions: 5, maxApplications: null },
+        { branchId: 'b-me', positions: 5, maxApplications: null, stipend: null },
+        { branchId: 'b-ee', positions: 5, maxApplications: null, stipend: null },
       ]);
     });
 
@@ -322,9 +333,20 @@ describe('OpportunityImportService', () => {
       const data = tx.internshipOpportunity.create.mock.calls[0][0].data;
       expect(data.positions).toBe(10);
       expect(data.branches.create).toEqual([
-        { branchId: 'b-me', positions: 6, maxApplications: null },
-        { branchId: 'b-ee', positions: 4, maxApplications: 10 },
+        { branchId: 'b-me', positions: 6, maxApplications: null, stipend: null },
+        { branchId: 'b-ee', positions: 4, maxApplications: 10, stipend: null },
       ]);
+    });
+
+    it('saves branch-wise stipends from the dedicated column', async () => {
+      const tx = mockTx();
+      await service.confirm(
+        await fileWith([good({ positions: '', branches: 'ME:6, EE:4', branchStipends: 'ME:8000 per month, EE:7000' })]),
+        actor,
+        false,
+      );
+      const data = tx.internshipOpportunity.create.mock.calls[0][0].data;
+      expect(data.branches.create.map((b: any) => b.stipend)).toEqual(['8000 per month', '7000']);
     });
 
     it('rejects when no valid rows remain', async () => {

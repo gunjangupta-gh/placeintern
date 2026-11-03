@@ -119,7 +119,7 @@ describe('OpportunityService.update (all fields editable)', () => {
       const { svc, txUpdate } = setup({ applied: 0 });
       await svc.update('o1', {
         branches: [
-          { branchId: 'b1', positions: 5, maxApplications: 12 },
+          { branchId: 'b1', positions: 5, maxApplications: 12, stipend: ' 9000 ' },
           { branchId: 'b2', positions: 3 },
         ],
       }, actor);
@@ -128,10 +128,10 @@ describe('OpportunityService.update (all fields editable)', () => {
       expect(data.branches.deleteMany).toEqual({ branchId: { notIn: ['b1', 'b2'] } });
       expect(data.branches.upsert).toHaveLength(2);
       expect(data.branches.upsert[0]).toMatchObject({
-        create: { branchId: 'b1', positions: 5, maxApplications: 12 },
-        update: { positions: 5, maxApplications: 12 },
+        create: { branchId: 'b1', positions: 5, maxApplications: 12, stipend: '9000' },
+        update: { positions: 5, maxApplications: 12, stipend: '9000' },
       });
-      expect(data.branches.upsert[1].update).toEqual({ positions: 3, maxApplications: null });
+      expect(data.branches.upsert[1].update).toEqual({ positions: 3, maxApplications: null, stipend: null });
     });
 
     it('keeps the selected-student counts of existing branches (they are never overwritten)', async () => {

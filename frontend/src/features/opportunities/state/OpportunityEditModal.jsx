@@ -26,7 +26,7 @@ const toFormValues = (o) => ({
   applicationDeadline: istDate(o.applicationDeadline),
   status: o.status === 'FILLED' ? undefined : o.status,
   eligibleYears: o.eligibleYears || [],
-  branches: (o.branches || []).map((b) => ({ branchId: b.id, positions: b.positions, maxApplications: b.maxApplications ?? null })),
+  branches: (o.branches || []).map((b) => ({ branchId: b.id, positions: b.positions, maxApplications: b.maxApplications ?? null, stipend: b.stipend || '' })),
   contactName: o.contactName || '',
   contactPhone: o.contactPhone || '',
   contactEmail: o.contactEmail || '',
@@ -36,7 +36,7 @@ const toFormValues = (o) => ({
 const normBranches = (list) =>
   JSON.stringify(
     (list || [])
-      .map((b) => ({ branchId: b.branchId, positions: Number(b.positions), maxApplications: b.maxApplications ?? null }))
+      .map((b) => ({ branchId: b.branchId, positions: Number(b.positions), maxApplications: b.maxApplications ?? null, stipend: (b.stipend || '').trim() }))
       .sort((a, b) => String(a.branchId).localeCompare(String(b.branchId)))
   );
 
@@ -48,13 +48,22 @@ const norm = (key, v) => {
   return v ?? '';
 };
 
+/** Empty form for "Add opportunity". */
+const CREATE_DEFAULTS = {
+  companyName: '', title: '', district: '', description: '', durationMonths: undefined, stipend: '',
+  startDate: null, applicationDeadline: null, status: 'OPEN', eligibleYears: [],
+  branches: [{ branchId: undefined, positions: 1, maxApplications: null, stipend: '' }],
+  contactName: '', contactPhone: '', contactEmail: '',
+};
+
 const PHONE_RE = /^[0-9+\-\s()]{7,20}$/;
 
 /**
- * Edit every field of an opportunity. Only the fields that changed are sent, so e.g. an
+ * Add (no `opportunity` given) or edit an opportunity. Edit every field of an opportunity. Only the fields that changed are sent, so e.g. an
  * expired opportunity can be edited without having to touch (or re-validate) its deadline.
  */
 const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
+  const isCreate = !opportunity;
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const [branches, setBranches] = useState([]);
@@ -87,14 +96,45 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
     return [...map].map(([value, label]) => ({ value, label }));
   }, [branches, opportunity]);
 
-  if (!opportunity) return null;
-  const initial = toFormValues(opportunity);
+  const initial = isCreate ? CREATE_DEFAULTS : toFormValues(opportunity);
   // What each existing branch already has: selected students and applications received
-  const branchStats = new Map((opportunity.branches || []).map((b) => [b.id, b]));
+  const branchStats = new Map((opportunity?.branches || []).map((b) => [b.id, b]));
   const totalPositions = watchedBranches.reduce((n, b) => n + (Number(b?.positions) || 0), 0);
   const totalLimit = watchedBranches.reduce((n, b) => n + (Number(b?.maxApplications) || Number(b?.positions) || 0), 0);
 
+  const cleanBranches = (list) =>
+    (list || []).map((b) => ({
+      branchId: b.branchId,
+      positions: Number(b.positions),
+      maxApplications: b.maxApplications ? Number(b.maxApplications) : null,
+      stipend: (b.stipend || '').trim() || null,
+    }));
+
+  const create = async () => {
+    const values = await form.validateFields();
+    const payload = { branches: cleanBranches(values.branches) };
+    FIELD_KEYS.forEach((key) => {
+      if (key === 'branches') return;
+      const v = values[key];
+      if (v && typeof v.format === 'function') payload[key] = v.format('YYYY-MM-DD');
+      else if (typeof v === 'string') { if (v.trim()) payload[key] = v.trim(); }
+      else if (Array.isArray(v)) { if (v.length) payload[key] = v; }
+      else if (v !== undefined && v !== null) payload[key] = v;
+    });
+    setSaving(true);
+    try {
+      await opportunityService.create(payload);
+      toast.success('Opportunity created');
+      onSaved?.();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not create the opportunity'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const save = async () => {
+    if (isCreate) return create();
     const values = await form.validateFields();
     const changed = {};
     FIELD_KEYS.forEach((key) => {
@@ -103,11 +143,7 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
       const v = values[key];
       if (v && typeof v.format === 'function') changed[key] = v.format('YYYY-MM-DD');
       else if (key === 'branches') {
-        changed.branches = (v || []).map((b) => ({
-          branchId: b.branchId,
-          positions: Number(b.positions),
-          maxApplications: b.maxApplications ? Number(b.maxApplications) : null,
-        }));
+        changed.branches = cleanBranches(v);
       } else if (typeof v === 'string') changed[key] = v.trim();
       else changed[key] = v;
     });
@@ -131,10 +167,10 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
 
   return (
     <Modal
-      title={`Edit: ${opportunity.title}`}
+      title={isCreate ? 'Add internship opportunity' : `Edit: ${opportunity.title}`}
       open
-      width={780}
-      okText="Save changes"
+      width={900}
+      okText={isCreate ? 'Create opportunity' : 'Save changes'}
       onOk={save}
       onCancel={onClose}
       confirmLoading={saving}
@@ -160,7 +196,7 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
             <Form.Item name="district" label="District" rules={[{ max: 80 }]}><Input /></Form.Item>
           </Col>
           <Col xs={24} md={12}>
-            <Form.Item name="stipend" label="Stipend" rules={[{ max: 50 }]}><Input placeholder="e.g. 8000 per month" /></Form.Item>
+            <Form.Item name="stipend" label="Stipend (default)" rules={[{ max: 50 }]} extra="Used for every branch that has no stipend of its own below."><Input placeholder="e.g. 8000 per month" /></Form.Item>
           </Col>
           <Col span={24}>
             <Form.Item name="description" label="Description" rules={[{ max: 2000 }]}>
@@ -177,11 +213,11 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>
-            <Form.Item name="status" label="Status" extra={opportunity.status === 'FILLED' ? 'Filled automatically while all positions are taken.' : undefined}>
+            <Form.Item name="status" label="Status" extra={opportunity?.status === 'FILLED' ? 'Filled automatically while all positions are taken.' : undefined}>
               <Select
-                disabled={opportunity.status === 'FILLED'}
+                disabled={opportunity?.status === 'FILLED'}
                 placeholder="Filled"
-                options={['OPEN', 'CLOSED', 'DRAFT'].map((s) => ({ value: s, label: s }))}
+                options={(isCreate ? ['OPEN', 'DRAFT'] : ['OPEN', 'CLOSED', 'DRAFT']).map((s) => ({ value: s, label: s }))}
               />
             </Form.Item>
           </Col>
@@ -229,9 +265,10 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
           {(fields, { add, remove }, { errors }) => (
             <>
               <Row gutter={8} style={{ marginBottom: 4 }}>
-                <Col xs={24} md={10}><Typography.Text type="secondary">Branch</Typography.Text></Col>
-                <Col xs={12} md={5}><Typography.Text type="secondary">Positions</Typography.Text></Col>
-                <Col xs={12} md={6}><Typography.Text type="secondary">Max applications</Typography.Text></Col>
+                <Col xs={24} md={7}><Typography.Text type="secondary">Branch</Typography.Text></Col>
+                <Col xs={12} md={4}><Typography.Text type="secondary">Positions</Typography.Text></Col>
+                <Col xs={12} md={5}><Typography.Text type="secondary">Max applications</Typography.Text></Col>
+                <Col xs={24} md={5}><Typography.Text type="secondary">Stipend (optional)</Typography.Text></Col>
               </Row>
               {fields.map(({ key, name }) => {
                 const row = watchedBranches[name] || {};
@@ -243,7 +280,7 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
                 const cannotRemove = received > 0 || selected > 0;
                 return (
                   <Row key={key} gutter={8} align="top">
-                    <Col xs={24} md={10}>
+                    <Col xs={24} md={7}>
                       <Form.Item name={[name, 'branchId']} rules={[{ required: true, message: 'Select a branch' }]}>
                         <Select
                           showSearch
@@ -256,7 +293,7 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
                         />
                       </Form.Item>
                     </Col>
-                    <Col xs={12} md={5}>
+                    <Col xs={12} md={4}>
                       <Form.Item
                         name={[name, 'positions']}
                         rules={[{ required: true, message: 'Required' }]}
@@ -265,7 +302,7 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
                         <InputNumber min={Math.max(selected, 1)} max={500} precision={0} style={{ width: '100%' }} />
                       </Form.Item>
                     </Col>
-                    <Col xs={12} md={6}>
+                    <Col xs={12} md={5}>
                       <Form.Item
                         name={[name, 'maxApplications']}
                         dependencies={[['branches', name, 'positions']]}
@@ -285,6 +322,11 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
                         <InputNumber min={1} max={2000} precision={0} placeholder="= positions" style={{ width: '100%' }} />
                       </Form.Item>
                     </Col>
+                    <Col xs={24} md={5}>
+                      <Form.Item name={[name, 'stipend']} rules={[{ max: 50, message: 'Max 50 characters' }]}>
+                        <Input placeholder="= default stipend" />
+                      </Form.Item>
+                    </Col>
                     <Col xs={24} md={3}>
                       <Tooltip title={cannotRemove ? 'Students of this branch have applied, so it cannot be removed' : 'Remove branch'}>
                         <Button type="text" danger aria-label="Remove branch" icon={<DeleteOutlined />} disabled={cannotRemove} onClick={() => remove(name)} />
@@ -297,7 +339,7 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
               <Button
                 type="dashed"
                 icon={<PlusOutlined />}
-                onClick={() => add({ branchId: undefined, positions: 1, maxApplications: null })}
+                onClick={() => add({ branchId: undefined, positions: 1, maxApplications: null, stipend: '' })}
                 disabled={fields.length >= branchOptions.length}
                 style={{ marginBottom: 8 }}
               >

@@ -34,6 +34,7 @@ import { buildApplicationWhere } from './application-filters';
 import { applicationCap, countBranchApplications, studentInBranch } from './eligibility.service';
 import {
   ApproveApplicationDto,
+  CreateOpportunityDto,
   ListApplicationsQueryDto,
   ListOpportunitiesQueryDto,
   UpdateOpportunityDto,
@@ -70,6 +71,7 @@ const DIRECTOR_SELECT = {
       positions: true,
       approvedCount: true,
       maxApplications: true,
+      stipend: true,
       branch: { select: { id: true, code: true, name: true } },
     },
     orderBy: { branch: { name: 'asc' } },
@@ -123,6 +125,7 @@ export class OpportunityService {
         positions: b.positions,
         approvedCount: b.approvedCount,
         maxApplications: b.maxApplications,
+        stipend: b.stipend,
         applicationLimit: limit,
         appliedCount: branchApplied,
         seatsLeft: Math.max(b.positions - b.approvedCount, 0),
@@ -182,6 +185,101 @@ export class OpportunityService {
     const counts = await this.appliedCounts([id]);
     const byBranch = await countBranchApplications(this.prisma, [id]);
     return this.shape(opp, counts.get(id) ?? 0, byBranch.get(id));
+  }
+
+  /**
+   * Add one opportunity through the form. Same rules as the Excel upload: company matched
+   * case-insensitively or created, deadline today or later, start after the deadline,
+   * branch-wise positions / application limits / stipend, no duplicate (company + position + start date).
+   */
+  async create(dto: CreateOpportunityDto, actor: Actor) {
+    const title = dto.title.replace(/\s+/g, ' ').trim();
+    const companyName = dto.companyName.replace(/\s+/g, ' ').trim();
+    if (!title) throw new BadRequestException('Position title cannot be empty');
+    if (!companyName) throw new BadRequestException('Company name cannot be empty');
+
+    const startCal = parseApiDate(dto.startDate);
+    const deadlineCal = parseApiDate(dto.applicationDeadline);
+    if (!startCal) throw new BadRequestException('startDate is not a valid date');
+    if (!deadlineCal) throw new BadRequestException('applicationDeadline is not a valid date');
+    const startDate = startOfDayIST(startCal);
+    const deadline = endOfDayIST(deadlineCal);
+    if (startOfDayIST(deadlineCal) < todayStartIST()) {
+      throw new BadRequestException('applicationDeadline cannot be in the past');
+    }
+    if (startDate.getTime() <= deadline.getTime()) {
+      throw new BadRequestException('Start date must be after the application deadline');
+    }
+
+    const ids = dto.branches.map((b) => b.branchId);
+    if (new Set(ids).size !== ids.length) throw new BadRequestException('A branch can only be listed once');
+    const known = await this.prisma.branch.findMany({
+      where: { id: { in: ids }, isActive: true },
+      select: { id: true, name: true },
+    });
+    if (known.length !== ids.length) throw new BadRequestException('One or more branches are invalid');
+    const nameOf = new Map(known.map((b) => [b.id, b.name]));
+    for (const b of dto.branches) {
+      if (b.maxApplications != null && b.maxApplications < b.positions) {
+        throw new BadRequestException(
+          `${nameOf.get(b.branchId)}: the application limit cannot be less than the positions (${b.positions})`,
+        );
+      }
+    }
+
+    const found = await this.prisma.company.findFirst({
+      where: { name: { equals: companyName, mode: 'insensitive' } },
+      select: { id: true },
+    });
+    if (found) {
+      const clash = await this.prisma.internshipOpportunity.findFirst({
+        where: { isDeleted: false, companyId: found.id, title: { equals: title, mode: 'insensitive' }, startDate },
+        select: { id: true },
+      });
+      if (clash) {
+        throw new ConflictException('This opportunity already exists (same company, position and start date)');
+      }
+    }
+
+    const text = (v?: string) => (v && v.trim() ? v.trim() : null);
+    const id = await this.prisma.$transaction(async (tx) => {
+      const companyId = found
+        ? found.id
+        : (await tx.company.create({ data: { name: companyName }, select: { id: true } })).id;
+      const created = await tx.internshipOpportunity.create({
+        data: {
+          companyId,
+          title,
+          description: text(dto.description),
+          district: text(dto.district),
+          positions: dto.branches.reduce((n, b) => n + b.positions, 0),
+          eligibleYears: Array.from(new Set(dto.eligibleYears ?? [])).sort(),
+          durationMonths: dto.durationMonths,
+          stipend: text(dto.stipend),
+          startDate,
+          applicationDeadline: deadline,
+          status: (dto.status as OpportunityStatus) ?? OpportunityStatus.OPEN,
+          contactName: text(dto.contactName),
+          contactPhone: text(dto.contactPhone),
+          contactEmail: text(dto.contactEmail),
+          createdById: actor.userId,
+          branches: {
+            create: dto.branches.map((b) => ({
+              branchId: b.branchId,
+              positions: b.positions,
+              maxApplications: b.maxApplications ?? null,
+              stipend: text(b.stipend ?? undefined),
+            })),
+          },
+        },
+        select: { id: true },
+      });
+      return created.id;
+    });
+
+    this.logAudit(actor, AuditAction.INTERNSHIP_CREATE, id, `Created internship opportunity: ${title} at ${companyName}`);
+    await this.cache.invalidateByTags(['applications']).catch(() => undefined);
+    return this.getOne(id);
   }
 
   /**
@@ -332,8 +430,8 @@ export class OpportunityService {
         deleteMany: { branchId: { notIn: wantedIds } },
         upsert: wanted.map((w) => ({
           where: { opportunityId_branchId: { opportunityId: id, branchId: w.branchId } },
-          create: { branchId: w.branchId, positions: w.positions, maxApplications: w.maxApplications ?? null },
-          update: { positions: w.positions, maxApplications: w.maxApplications ?? null },
+          create: { branchId: w.branchId, positions: w.positions, maxApplications: w.maxApplications ?? null, stipend: w.stipend?.trim() || null },
+          update: { positions: w.positions, maxApplications: w.maxApplications ?? null, stipend: w.stipend?.trim() || null },
         })),
       };
       slots = wanted.map((w) => ({

@@ -35,6 +35,7 @@ const COLUMNS: ReadonlyArray<{ header: string; key: string; width: number }> = [
   { header: 'Eligible Branches*', key: 'branches', width: 30 },
   { header: 'Branch-wise Positions', key: 'branchPositions', width: 26 },
   { header: 'Max Applications per Branch', key: 'branchLimits', width: 28 },
+  { header: 'Branch-wise Stipend', key: 'branchStipends', width: 28 },
   { header: 'Eligible Years', key: 'years', width: 14 },
   { header: 'Duration (Months)*', key: 'duration', width: 18 },
   { header: 'Stipend', key: 'stipend', width: 14 },
@@ -58,7 +59,14 @@ export interface ParsedOpportunityRow {
   branchCodes: string[];
   branchIds: string[];
   /** Branch-wise seats. positions = sum of these. maxApplications null = same as positions. */
-  branchSeats: Array<{ branchId: string; code: string; positions: number; maxApplications: number | null }>;
+  branchSeats: Array<{
+    branchId: string;
+    code: string;
+    positions: number;
+    maxApplications: number | null;
+    /** null = use the opportunity stipend */
+    stipend: string | null;
+  }>;
   eligibleYears: number[];
   durationMonths: number;
   stipend: string | null;
@@ -168,6 +176,9 @@ export class OpportunityImportService {
     header.getCell(colIndex('branchLimits')).note =
       'Optional. How many applications each branch accepts (a waiting list), as CODE:limit. Example: ME:12, EE:8. ' +
       'Must be at least the branch positions. Leave blank to accept applications only up to the positions.';
+    header.getCell(colIndex('branchStipends')).note =
+      'Optional. Stipend for each branch, as CODE:amount. Example: ME:8000 per month, EE:7000 per month. ' +
+      'A branch not listed gets the "Stipend" column value.';
     header.getCell(positionsCol).note =
       'Optional when every branch has its own count (ME:5, EE:3). Otherwise the total, split equally across the branches.';
     header.getCell(colIndex('years')).note =
@@ -200,6 +211,7 @@ export class OpportunityImportService {
       ['Eligible Branches', 'Yes', 'Branch codes from the Branches sheet, comma separated. Unknown codes are rejected.'],
       ['Branch-wise Positions', 'No', 'Column "Branch-wise Positions": CODE:positions, e.g. "ME:5, EE:3" = 5 Mechanical + 3 Electrical positions. Students only compete with students of their own branch. Every listed branch must be in Eligible Branches; give a count for all branches or none.'],
       ['Max Applications per Branch', 'No', 'Column "Max Applications per Branch": CODE:limit, e.g. "ME:12, EE:8" = Mechanical accepts 12 applications for its positions (a waiting list, first come first served). Must be at least the positions of that branch. Blank = applications capped at the positions. A branch not listed keeps its default.'],
+      ['Branch-wise Stipend', 'No', 'Column "Branch-wise Stipend": CODE:amount, comma separated, e.g. "ME:8000 per month, EE:7000 per month". Max 50 characters each. A branch not listed gets the general Stipend column.'],
       ['Shortcut', 'No', 'Both can also be written inside Eligible Branches as CODE:positions/limit, e.g. "ME:5/12, EE:3". Do not give the same branch in both places.'],
       ['Example', '', 'Eligible Branches "ME, EE" | Branch-wise Positions "ME:5, EE:3" | Max Applications per Branch "ME:12" => ME: 5 positions / 12 applications, EE: 3 positions / 3 applications. Total 8 positions.'],
       ['Eligible Years', 'No', 'Subset of 1, 2, 3 comma separated. Blank = all years.'],
@@ -434,6 +446,29 @@ export class OpportunityImportService {
               }
               return out;
             };
+            // "ME:8000 per month, EE:7000": free text after the colon
+            const stipendMap = new Map<string, string>();
+            for (const tok of text('branchStipends').split(/[,;\n]/).map((t) => t.trim()).filter(Boolean)) {
+              const cut = tok.indexOf(':');
+              const name = cut >= 0 ? tok.slice(0, cut).trim() : '';
+              const value = cut >= 0 ? tok.slice(cut + 1).trim() : '';
+              if (!name || !value) {
+                msgs.push('Branch-wise Stipend must look like ME:8000, EE:7000');
+                continue;
+              }
+              const r = this.resolveBranches([name], refs);
+              if (r.ok.length !== 1) {
+                msgs.push(`Branch-wise Stipend: unknown or ambiguous branch "${name}"`);
+              } else if (!ids.includes(r.ok[0].id)) {
+                msgs.push(`Branch-wise Stipend: ${r.ok[0].code} is not listed in Eligible Branches`);
+              } else if (stipendMap.has(r.ok[0].id)) {
+                msgs.push(`Branch-wise Stipend: ${r.ok[0].code} is listed more than once`);
+              } else if (value.length > 50) {
+                msgs.push(`Branch-wise Stipend: ${r.ok[0].code} must be at most 50 characters`);
+              } else {
+                stipendMap.set(r.ok[0].id, value);
+              }
+            }
             const posMap = extraMap('branchPositions', 'Branch-wise Positions');
             const limMap = extraMap('branchLimits', 'Max Applications per Branch');
             const resolved = base.map((r) => {
@@ -447,6 +482,7 @@ export class OpportunityImportService {
                 ...r,
                 positions: r.positions ?? posMap.get(r.ref.id) ?? null,
                 limit: r.limit ?? limMap.get(r.ref.id) ?? null,
+                stipend: stipendMap.get(r.ref.id) ?? null,
               };
             });
             const withCount = resolved.filter((r) => r.positions !== null).length;
@@ -463,7 +499,7 @@ export class OpportunityImportService {
               }
             }
 
-            let seats: Array<{ ref: BranchRef; positions: number; limit: number | null }> = [];
+            let seats: Array<{ ref: BranchRef; positions: number; limit: number | null; stipend: string | null }> = [];
             if (withCount === 0) {
               // Total only: split equally (remainder to the first branches)
               if (!totalText) msgs.push('No. of Positions is required (or give positions per branch, e.g. ME:5, EE:3)');
@@ -473,13 +509,13 @@ export class OpportunityImportService {
                 } else {
                   const base = Math.floor(total / resolved.length);
                   const extra = total % resolved.length;
-                  seats = resolved.map((r, i) => ({ ref: r.ref, positions: base + (i < extra ? 1 : 0), limit: r.limit }));
+                  seats = resolved.map((r, i) => ({ ref: r.ref, positions: base + (i < extra ? 1 : 0), limit: r.limit, stipend: r.stipend }));
                 }
               }
             } else if (withCount < resolved.length) {
               msgs.push('Give positions for every branch (ME:5, EE:3) or for none of them');
             } else {
-              seats = resolved.map((r) => ({ ref: r.ref, positions: r.positions as number, limit: r.limit }));
+              seats = resolved.map((r) => ({ ref: r.ref, positions: r.positions as number, limit: r.limit, stipend: r.stipend }));
               const sum = seats.reduce((n, x) => n + x.positions, 0);
               if (totalText && total !== null && total !== sum) {
                 msgs.push(`No. of Positions (${total}) does not match the branch-wise total (${sum})`);
@@ -511,6 +547,7 @@ export class OpportunityImportService {
                 positions: x.positions,
                 // a limit equal to the positions is the default, so store it as "none"
                 maxApplications: x.limit !== null && x.limit > x.positions ? x.limit : null,
+                stipend: x.stipend,
               }));
               positions = branchSeats.reduce((n, x) => n + x.positions, 0);
             }
@@ -691,6 +728,7 @@ export class OpportunityImportService {
                   branchId: b.branchId,
                   positions: b.positions,
                   maxApplications: b.maxApplications,
+                  stipend: b.stipend,
                 })),
               },
             },

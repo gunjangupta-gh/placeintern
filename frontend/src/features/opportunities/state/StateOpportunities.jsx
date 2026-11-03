@@ -1,20 +1,26 @@
 import React, { useState } from 'react';
-import { Tabs, Typography } from 'antd';
+import { Button, Tabs, Typography } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import OpportunityUpload from './OpportunityUpload';
 import OpportunityTable from './OpportunityTable';
 import ApplicationsReview from './ApplicationsReview';
+import OpportunityEditModal from './OpportunityEditModal';
 
 const { Title } = Typography;
 
-/** State Directorate: publish internship opportunities (Excel), manage them, review applications. */
+/** State Directorate: publish internship opportunities (form or Excel), manage them, review applications. */
 const StateOpportunities = () => {
   const [tab, setTab] = useState('opportunities');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [adding, setAdding] = useState(false);
   const bump = () => setRefreshKey((k) => k + 1);
 
   return (
     <div style={{ padding: 16 }}>
-      <Title level={3} style={{ marginBottom: 16 }}>Internship Opportunities</Title>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+        <Title level={3} style={{ margin: 0 }}>Internship Opportunities</Title>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setAdding(true)}>Add opportunity</Button>
+      </div>
       <Tabs
         activeKey={tab}
         onChange={setTab}
@@ -29,6 +35,12 @@ const StateOpportunities = () => {
           },
         ]}
       />
+      {adding && (
+        <OpportunityEditModal
+          onClose={() => setAdding(false)}
+          onSaved={() => { setAdding(false); setTab('opportunities'); bump(); }}
+        />
+      )}
     </div>
   );
 };

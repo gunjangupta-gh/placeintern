@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Button, Card, Col, Descriptions, Result, Row, Skeleton, Statistic, Table, Tabs, Tag, Typography } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, EditOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate } from '../../../services/opportunity.service';
 import ApplicationsReview from './ApplicationsReview';
+import OpportunityEditModal from './OpportunityEditModal';
 
 const { Title, Text } = Typography;
 const STATUS_COLOR = { OPEN: 'green', CLOSED: 'default', DRAFT: 'orange', FILLED: 'blue' };
@@ -17,6 +18,7 @@ const OpportunityDetail = () => {
   const [loading, setLoading] = useState(true);
   const [missing, setMissing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [editing, setEditing] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -56,6 +58,7 @@ const OpportunityDetail = () => {
         <Title level={3} style={{ margin: 0 }}>{opp.title}</Title>
         <Tag color={STATUS_COLOR[opp.status]}>{opp.status}</Tag>
         <Text type="secondary" strong>{opp.company?.name}</Text>
+        <Button type="primary" icon={<EditOutlined />} style={{ marginLeft: 'auto' }} onClick={() => setEditing(true)}>Edit</Button>
       </div>
 
       <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
@@ -90,6 +93,7 @@ const OpportunityDetail = () => {
           columns={[
             { title: 'Branch', render: (_, b) => <span>{b.name} <Text type="secondary">({b.code})</Text></span> },
             { title: 'Positions', dataIndex: 'positions' },
+            { title: 'Stipend', dataIndex: 'stipend', render: (v) => v || opp.stipend || '-' },
             { title: 'Selected', dataIndex: 'approvedCount', render: (n) => <Text style={{ color: '#3f8600' }}>{n}</Text> },
             { title: 'Seats left', dataIndex: 'seatsLeft', render: (n) => <Text type={n === 0 ? 'danger' : undefined}>{n}</Text> },
             {
@@ -121,6 +125,14 @@ const OpportunityDetail = () => {
           },
         ]}
       />
+      {editing && (
+        <OpportunityEditModal
+          opportunity={opp}
+          onClose={() => setEditing(false)}
+          // positions / branches / status may all have changed, so reload the page data and the lists
+          onSaved={() => { setEditing(false); onChanged(); }}
+        />
+      )}
     </div>
   );
 };
