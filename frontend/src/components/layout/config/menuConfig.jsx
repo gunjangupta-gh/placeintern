@@ -111,6 +111,19 @@ export const menuConfig = {
       },
     ],
   },
+  STATE_OPPORTUNITIES: {
+    key: "state-opportunities",
+    title: "Internship Opportunities",
+    icon: <LaptopOutlined />,
+    items: [
+      {
+        key: "internship-opportunities",
+        label: "Manage Opportunities",
+        icon: <LaptopOutlined />,
+        path: "/app/internship-opportunities",
+      },
+    ],
+  },
   STATE_BULK: {
     key: "state-bulk",
     title: "Bulk Operations",
@@ -269,6 +282,12 @@ export const menuConfig = {
     icon: <LaptopOutlined />,
     items: [
       {
+        key: "internship-opportunities",
+        label: "Internship Opportunities",
+        icon: <ShopOutlined />,
+        path: "/app/opportunities",
+      },
+      {
         key: "all-students",
         label: "All Students",
         icon: <UsergroupAddOutlined />,
@@ -399,6 +418,12 @@ export const menuConfig = {
     icon: <SolutionOutlined />,
     items: [
       {
+        key: "internship-opportunities",
+        label: "Internship Opportunities",
+        icon: <ShopOutlined />,
+        path: "/app/opportunities",
+      },
+      {
         key: "visit-logs",
         label: "Visit Logs",
         icon: <FileDoneOutlined />,
@@ -503,6 +528,12 @@ export const menuConfig = {
     title: "Supervision",
     icon: <SolutionOutlined />,
     items: [
+      {
+        key: "internship-opportunities",
+        label: "Internship Opportunities",
+        icon: <ShopOutlined />,
+        path: "/app/opportunities",
+      },
       {
         key: "visit-logs",
         label: "Visit Logs",
@@ -671,6 +702,12 @@ export const menuConfig = {
     title: "Internship",
     icon: <LaptopOutlined />,
     items: [
+      {
+        key: "browse-internships",
+        label: "Browse Internships",
+        icon: <ShopOutlined />,
+        path: "/app/internships",
+      },
       {
         key: "my-applications",
         label: "My Internship",
@@ -904,6 +941,7 @@ export const getMenuSectionsForRole = (role) => {
       sections.push(menuConfig.STATE_INSTITUTION_OVERVIEW);
       sections.push(menuConfig.STATE_INSTITUTIONS);
       sections.push(menuConfig.STATE_COMPANIES);
+      sections.push(menuConfig.STATE_OPPORTUNITIES);
       sections.push(menuConfig.STATE_REPORT_BUILDER);
       sections.push(menuConfig.STATE_TRAINING);
       sections.push(menuConfig.STATE_BULK);

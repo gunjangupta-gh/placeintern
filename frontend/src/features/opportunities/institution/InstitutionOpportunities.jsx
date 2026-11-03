@@ -1,0 +1,117 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, Input, Table, Tabs, Tag, Typography } from 'antd';
+import { useSelector } from 'react-redux';
+import { toast } from 'react-hot-toast';
+import { opportunityService, getErrorMessage, formatDate } from '../../../services/opportunity.service';
+import { useDebounce } from '../../../hooks/useDebounce';
+
+const { Title, Paragraph, Text } = Typography;
+const STATUS_COLOR = { APPLIED: 'blue', UNDER_REVIEW: 'blue', SHORTLISTED: 'cyan', APPROVED: 'green', JOINED: 'green', SELECTED: 'green', COMPLETED: 'default', REJECTED: 'red', OPEN: 'green', FILLED: 'blue' };
+
+/** Generic paginated, searchable, read-only table. */
+const DataTab = ({ fetcher, columns, searchPlaceholder, rowKey = 'id' }) => {
+  const [rows, setRows] = useState([]);
+  const [meta, setMeta] = useState({ total: 0 });
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(false);
+  const debounced = useDebounce(search, 300);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetcher({ page, limit: 20, search: debounced });
+      setRows(res.data || []);
+      setMeta(res.meta || { total: 0 });
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to load data'));
+    } finally {
+      setLoading(false);
+    }
+  }, [fetcher, page, debounced]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setPage(1); }, [debounced]);
+
+  return (
+    <>
+      <Input.Search allowClear placeholder={searchPlaceholder} style={{ width: 300, marginBottom: 12 }} value={search} onChange={(e) => setSearch(e.target.value)} />
+      <Table
+        rowKey={rowKey}
+        size="middle"
+        loading={loading}
+        dataSource={rows}
+        columns={columns}
+        scroll={{ x: 'max-content' }}
+        pagination={{ current: page, pageSize: 20, total: meta.total, onChange: setPage, showSizeChanger: false }}
+      />
+    </>
+  );
+};
+
+const InstitutionOpportunities = () => {
+  const role = useSelector((s) => s.auth.user?.role);
+  const isPrincipal = role === 'PRINCIPAL';
+  const base = isPrincipal ? 'principal' : 'faculty';
+  const scopeText = isPrincipal ? 'students of your institution' : 'your assigned mentees';
+
+  const fetchOpportunities = useCallback((p) => opportunityService.institutionList(base, p), [base]);
+  const fetchApplications = useCallback((p) => opportunityService.institutionApplications(base, p), [base]);
+  const fetchIncomplete = useCallback((p) => opportunityService.institutionIncompleteProfiles(base, p), [base]);
+
+  const opportunityColumns = [
+    { title: 'Company', dataIndex: ['company', 'name'] },
+    { title: 'Position', dataIndex: 'title' },
+    { title: 'District', dataIndex: 'district' },
+    { title: 'Branches', dataIndex: 'branches', render: (b) => b.map((x) => <Tag key={x.id}>{x.code}</Tag>) },
+    { title: 'Seats left', render: (_, r) => `${r.seatsLeft} of ${r.positions}` },
+    { title: 'Deadline', dataIndex: 'applicationDeadline', render: formatDate },
+    { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{s}</Tag> },
+  ];
+
+  const applicationColumns = [
+    { title: 'Student', render: (_, r) => <div><div>{r.student?.user?.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.rollNumber}</Text></div> },
+    { title: 'Branch', dataIndex: ['student', 'branch', 'name'] },
+    { title: 'Position', render: (_, r) => <div><div>{r.opportunity?.title}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.opportunity?.company?.name}</Text></div> },
+    { title: 'Applied', dataIndex: 'appliedDate', render: formatDate },
+    { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{s}</Tag> },
+  ];
+
+  const incompleteColumns = [
+    { title: 'Student', render: (_, r) => <div><div>{r.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.rollNumber}</Text></div> },
+    { title: 'Branch', dataIndex: ['branch', 'name'] },
+    { title: 'Year', dataIndex: 'currentYear' },
+    { title: 'Missing profile fields', dataIndex: 'missing', render: (m) => m.map((f) => <Tag key={f.key} color="orange">{f.label}</Tag>) },
+  ];
+
+  return (
+    <div style={{ padding: 16 }}>
+      <Title level={3} style={{ marginBottom: 4 }}>Internship Opportunities</Title>
+      <Paragraph type="secondary">Read-only view of published internships and applications by {scopeText}.</Paragraph>
+      <Tabs
+        destroyOnHidden
+        items={[
+          { key: 'opportunities', label: 'Opportunities', children: <DataTab fetcher={fetchOpportunities} columns={opportunityColumns} searchPlaceholder="Search company or position" /> },
+          { key: 'applications', label: 'Applications', children: <DataTab fetcher={fetchApplications} columns={applicationColumns} searchPlaceholder="Search student name or roll no." /> },
+          {
+            key: 'incomplete',
+            label: 'Incomplete profiles',
+            children: (
+              <>
+                <Alert
+                  type="warning"
+                  showIcon
+                  style={{ marginBottom: 12 }}
+                  message="These students cannot apply for internships until their profile is complete. Please ask them to update My Profile."
+                />
+                <DataTab fetcher={fetchIncomplete} columns={incompleteColumns} rowKey="studentId" searchPlaceholder="Search student name or roll no." />
+              </>
+            ),
+          },
+        ]}
+      />
+    </div>
+  );
+};
+
+export default InstitutionOpportunities;

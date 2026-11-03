@@ -626,6 +626,9 @@ model Branch {
   staffCapacities BranchStaffCapacity[]
   infrastructure  BranchInfrastructure[]
 
+  // Internship opportunities this branch is eligible for
+  opportunityBranches OpportunityBranch[]
+
   // Training Module - Target disciplines for trainings
   trainings               Training[]               @relation("TrainingBranches")
   trainingRecommendations TrainingRecommendation[] @relation("RecommendationBranches")
@@ -986,6 +989,10 @@ model InternshipApplication {
   mentorAssignedAt DateTime?
   mentorAssignedBy String? // Principal/Admin who assigned
 
+  // Director-published opportunity this application was made against (null for self-identified)
+  opportunityId String?
+  opportunity   InternshipOpportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+
   // Self-Identified Internship Fields
   isSelfIdentified Boolean @default(false)
   companyName      String?
@@ -1037,6 +1044,8 @@ model InternshipApplication {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // One application per student per opportunity (NULLs are distinct, so self-identified rows are unaffected)
+  @@unique([studentId, opportunityId])
   // Performance Indexes
   @@index([studentId])
   @@index([status])
@@ -1053,6 +1062,7 @@ model InternshipApplication {
   @@index([internshipPhase, isActive])
   @@index([studentId, internshipPhase])
   @@index([status, internshipPhase])
+  @@index([opportunityId, status])
   @@map("internship_applications")
 }
 
@@ -2651,6 +2661,8 @@ model Company {
   // Status
   isActive Boolean @default(true)
 
+  opportunities InternshipOpportunity[]
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2660,6 +2672,74 @@ model Company {
   @@index([city])
   @@index([state])
   @@map("companies")
+}
+
+// =============================================
+// INTERNSHIP OPPORTUNITIES (published by State Directorate via Excel upload)
+// =============================================
+
+enum OpportunityStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  FILLED
+}
+
+model InternshipOpportunity {
+  id String @id @default(uuid())
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  title       String
+  description String?
+  district    String?
+
+  // Seats. Applications (APPLIED + APPROVED) are capped at `positions` at apply time;
+  // approvedCount tracks confirmed students and drives FILLED.
+  positions     Int
+  approvedCount Int @default(0)
+
+  eligibleYears       Int[]    @default([]) // empty = all years
+  durationMonths      Int
+  stipend             String?
+  startDate           DateTime
+  applicationDeadline DateTime
+
+  status OpportunityStatus @default(OPEN)
+
+  // Director-only industry contact (never returned to students/principals/faculty)
+  contactName  String?
+  contactPhone String?
+  contactEmail String?
+
+  importBatchId String?
+  createdById   String
+  isDeleted     Boolean   @default(false)
+  deletedAt     DateTime?
+
+  branches     OpportunityBranch[]
+  applications InternshipApplication[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, applicationDeadline])
+  @@index([companyId])
+  @@index([importBatchId])
+  @@index([isDeleted, status])
+  @@map("internship_opportunities")
+}
+
+model OpportunityBranch {
+  opportunityId String
+  opportunity   InternshipOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  branchId      String
+  branch        Branch                @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@id([opportunityId, branchId])
+  @@index([branchId])
+  @@map("opportunity_branches")
 }
 
 // =============================================

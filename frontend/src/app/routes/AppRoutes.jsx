@@ -54,6 +54,9 @@ import BulkUserCreate from '../../features/state/users/BulkUserCreate';
 import BulkStudentUpload from '../../features/state/students/BulkStudentUpload';
 import CredentialsReset from '../../features/state/users/CredentialsReset';
 import CompaniesOverview from '../../features/state/companies/CompaniesOverview';
+import StateOpportunities from '../../features/opportunities/state/StateOpportunities';
+import InstitutionOpportunities from '../../features/opportunities/institution/InstitutionOpportunities';
+import BrowseOpportunities from '../../features/opportunities/student/BrowseOpportunities';
 import RestoreCenter from '../../features/state/restore/RestoreCenter';
 import MasterData from '../../features/state/master-data/MasterData';
 import { MonthlyCompliancePage } from '../../features/state/compliance';
@@ -288,6 +291,24 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE]}>
               <CompaniesOverview />
+            </ProtectedRoute>
+          }
+        />
+        {/* Internship opportunities: State Directorate manages (ADMIN_STAFF intentionally excluded) */}
+        <Route
+          path="internship-opportunities"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <StateOpportunities />
+            </ProtectedRoute>
+          }
+        />
+        {/* Read-only view for principal / teacher / faculty coordinator */}
+        <Route
+          path="opportunities"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL, 'TEACHER', ROLES.COORDINATOR]}>
+              <InstitutionOpportunities />
             </ProtectedRoute>
           }
         />
@@ -897,10 +918,7 @@ const AppRoutes = () => {
           path="internships"
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <ComingSoon
-                title="Internship Browsing"
-                description="Browse and search for available internships. This feature is currently under development and will be available soon."
-              />
+              <BrowseOpportunities />
             </ProtectedRoute>
           }
         />

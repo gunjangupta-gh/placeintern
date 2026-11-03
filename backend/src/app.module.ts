@@ -25,6 +25,7 @@ import { StudentPortalModule } from './api/student-portal/student-portal.module'
 import { SharedModule } from './api/shared/shared.module';
 import { SystemAdminModule } from './api/system-admin/system-admin.module';
 import { InternshipReportModule } from './api/internship-report/internship-report.module';
+import { InternshipOpportunityModule } from './api/internship-opportunity/internship-opportunity.module';
 
 // Infrastructure modules
 import { MailModule } from './infrastructure/mail/mail.module';
@@ -83,6 +84,7 @@ import { BulkModule } from './bulk/bulk.module';
     SharedModule,
     SystemAdminModule,
     InternshipReportModule,
+    InternshipOpportunityModule,
 
     // ===== DOMAIN MODULES =====
     ReportModule,
