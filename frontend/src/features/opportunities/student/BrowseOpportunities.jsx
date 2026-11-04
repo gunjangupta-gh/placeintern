@@ -18,7 +18,8 @@ import { opportunityService, getErrorMessage, formatDate } from '../../../servic
 import { useDebounce } from '../../../hooks/useDebounce';
 
 const { Title, Text, Paragraph } = Typography;
-const PAGE_SIZE = 12;
+const PAGE_SIZE_DEFAULT = 12;
+const PAGE_SIZE_OPTIONS = ['12', '24', '48'];
 
 const STATUS_COLOR = { APPLIED: 'blue', UNDER_REVIEW: 'blue', SHORTLISTED: 'cyan', SELECTED: 'green', APPROVED: 'green', REJECTED: 'red', JOINED: 'green', COMPLETED: 'default' };
 
@@ -201,6 +202,7 @@ const BrowseOpportunities = () => {
     applications: [], applicationLimit: 2, pendingApplications: 0, hasConfirmedInternship: false,
   });
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT);
   const [search, setSearch] = useState('');
   const [applyingId, setApplyingId] = useState(null);
   const debounced = useDebounce(search, 300);
@@ -208,7 +210,7 @@ const BrowseOpportunities = () => {
   const load = useCallback(async () => {
     setState((s) => ({ ...s, loading: true }));
     try {
-      const res = await opportunityService.listEligible({ page, limit: PAGE_SIZE, search: debounced });
+      const res = await opportunityService.listEligible({ page, limit: pageSize, search: debounced });
       setState({
         loading: false,
         data: res.data || [],
@@ -223,7 +225,7 @@ const BrowseOpportunities = () => {
       toast.error(getErrorMessage(err, 'Failed to load internships'));
       setState((s) => ({ ...s, loading: false }));
     }
-  }, [page, debounced]);
+  }, [page, pageSize, debounced]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setPage(1); }, [debounced]);
@@ -309,11 +311,12 @@ const BrowseOpportunities = () => {
           <Pagination
             style={{ marginTop: 16, textAlign: 'center' }}
             current={page}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             total={meta.total}
-            showSizeChanger={false}
-            onChange={setPage}
-            hideOnSinglePage
+            showSizeChanger
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            showTotal={(t, range) => `${range[0]}-${range[1]} of ${t} internships`}
+            onChange={(p, ps) => { setPage(ps !== pageSize ? 1 : p); setPageSize(ps); }}
           />
         </>
       )}

@@ -4,6 +4,7 @@ import { CheckOutlined, CloseOutlined, DeleteOutlined, DownloadOutlined, Warning
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate, formatTime } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
+import { DEFAULT_PAGE_SIZE, tablePagination } from '../pagination';
 
 const { Text } = Typography;
 const PENDING = ['APPLIED', 'UNDER_REVIEW', 'SHORTLISTED'];
@@ -22,7 +23,7 @@ const QueueTag = ({ r }) => {
   const { rank, pendingAhead } = r.queue;
   const waiting = PENDING.includes(r.status);
   if (waiting && pendingAhead === 0) {
-    return <Tooltip title="Applied before every other waiting student of this branch"><Tag color="green" style={{ margin: 0 }}>#{rank} · next</Tag></Tooltip>;
+    return <Tooltip title="Applied before every other waiting student of this branch"><Tag color="green" style={{ margin: 0 }}>#{rank}</Tag></Tooltip>;
   }
   if (waiting) {
     return (
@@ -46,6 +47,7 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
   const [rows, setRows] = useState([]);
   const [meta, setMeta] = useState({ total: 0 });
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [group, setGroup] = useState(fixedGroup || 'ALL');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
@@ -66,7 +68,9 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await opportunityService.listApplications({ ...filters(), page, limit: 20 });
+      const res = await opportunityService.listApplications({ ...filters(), page, limit: pageSize });
+      // the last row of the last page was removed: step back instead of showing an empty page
+      if (page > 1 && (res.data || []).length === 0 && res.meta?.total > 0) { setPage(page - 1); return; }
       setRows(res.data || []);
       setMeta(res.meta || { total: 0 });
       setSelected([]);
@@ -75,7 +79,7 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
     } finally {
       setLoading(false);
     }
-  }, [filters, page]);
+  }, [filters, page, pageSize]);
 
   useEffect(() => { load(); }, [load, refreshKey]);
   useEffect(() => { setPage(1); }, [activeGroup, debounced, opportunityId]);
@@ -266,7 +270,7 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
         columns={columns}
         scroll={{ x: 'max-content' }}
         rowSelection={{ selectedRowKeys: selected, onChange: setSelected }}
-        pagination={{ current: page, pageSize: 20, total: meta.total, onChange: setPage, showSizeChanger: false, showTotal: (t) => `${t} application(s)` }}
+        pagination={tablePagination({ page, pageSize, total: meta.total, label: 'applications', onChange: (p, ps) => { setPage(p); setPageSize(ps); } })}
       />
 
       <Modal

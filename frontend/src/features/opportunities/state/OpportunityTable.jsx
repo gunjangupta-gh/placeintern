@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
 import OpportunityEditModal from './OpportunityEditModal';
+import { DEFAULT_PAGE_SIZE, tablePagination } from '../pagination';
 
 const STATUS_COLOR = { OPEN: 'green', CLOSED: 'default', DRAFT: 'orange', FILLED: 'blue' };
 
@@ -14,6 +15,7 @@ const OpportunityTable = ({ refreshKey }) => {
   const [rows, setRows] = useState([]);
   const [meta, setMeta] = useState({ total: 0 });
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [status, setStatus] = useState();
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,7 +25,9 @@ const OpportunityTable = ({ refreshKey }) => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await opportunityService.list({ page, limit: 20, status, search: debounced });
+      const res = await opportunityService.list({ page, limit: pageSize, status, search: debounced });
+      // the last row of the last page was removed: step back instead of showing an empty page
+      if (page > 1 && (res.data || []).length === 0 && res.meta?.total > 0) { setPage(page - 1); return; }
       setRows(res.data || []);
       setMeta(res.meta || { total: 0 });
     } catch (err) {
@@ -31,7 +35,7 @@ const OpportunityTable = ({ refreshKey }) => {
     } finally {
       setLoading(false);
     }
-  }, [page, status, debounced]);
+  }, [page, pageSize, status, debounced]);
 
   useEffect(() => { load(); }, [load, refreshKey]);
   useEffect(() => { setPage(1); }, [status, debounced]);
@@ -148,7 +152,7 @@ const OpportunityTable = ({ refreshKey }) => {
             </div>
           ),
         }}
-        pagination={{ current: page, pageSize: 20, total: meta.total, onChange: setPage, showSizeChanger: false }}
+        pagination={tablePagination({ page, pageSize, total: meta.total, label: 'opportunities', onChange: (p, ps) => { setPage(p); setPageSize(ps); } })}
       />
 
       {editing && (

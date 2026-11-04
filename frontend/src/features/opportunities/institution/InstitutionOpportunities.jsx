@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate, formatTime } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
+import { DEFAULT_PAGE_SIZE, tablePagination } from '../pagination';
 
 const { Title, Paragraph, Text } = Typography;
 const PENDING = ['APPLIED', 'UNDER_REVIEW', 'SHORTLISTED'];
@@ -15,6 +16,7 @@ const DataTab = ({ fetcher, columns, searchPlaceholder, rowKey = 'id', reloadKey
   const [rows, setRows] = useState([]);
   const [meta, setMeta] = useState({ total: 0 });
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const debounced = useDebounce(search, 300);
@@ -22,7 +24,8 @@ const DataTab = ({ fetcher, columns, searchPlaceholder, rowKey = 'id', reloadKey
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetcher({ page, limit: 20, search: debounced });
+      const res = await fetcher({ page, limit: pageSize, search: debounced });
+      if (page > 1 && (res.data || []).length === 0 && res.meta?.total > 0) { setPage(page - 1); return; }
       setRows(res.data || []);
       setMeta(res.meta || { total: 0 });
     } catch (err) {
@@ -30,7 +33,7 @@ const DataTab = ({ fetcher, columns, searchPlaceholder, rowKey = 'id', reloadKey
     } finally {
       setLoading(false);
     }
-  }, [fetcher, page, debounced]);
+  }, [fetcher, page, pageSize, debounced]);
 
   useEffect(() => { load(); }, [load, reloadKey]);
   useEffect(() => { setPage(1); }, [debounced]);
@@ -45,7 +48,7 @@ const DataTab = ({ fetcher, columns, searchPlaceholder, rowKey = 'id', reloadKey
         dataSource={rows}
         columns={columns}
         scroll={{ x: 'max-content' }}
-        pagination={{ current: page, pageSize: 20, total: meta.total, onChange: setPage, showSizeChanger: false }}
+        pagination={tablePagination({ page, pageSize, total: meta.total, onChange: (p, ps) => { setPage(p); setPageSize(ps); } })}
       />
     </>
   );
