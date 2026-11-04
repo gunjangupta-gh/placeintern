@@ -236,7 +236,6 @@ const FacultyMentorCard = memo(({ mentor, visitCount = 0, onAddMentor }) => {
         className="flex items-center gap-2 px-4 py-3 border-b"
         style={{ borderColor: token.colorBorderSecondary }}
       >
-        <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#a855f7' }} />
         <Text className="text-sm font-semibold" style={{ color: token.colorText }}>
           Faculty Mentor
         </Text>
@@ -320,7 +319,6 @@ const IndustrySupervisorCard = memo(({ supervisor, onAddSupervisor }) => {
         className="flex items-center gap-2 px-4 py-3 border-b"
         style={{ borderColor: token.colorBorderSecondary }}
       >
-        <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#f97316' }} />
         <Text className="text-sm font-semibold" style={{ color: token.colorText }}>
           Industry Supervisor
         </Text>
@@ -996,7 +994,6 @@ const StudentDashboard = () => {
           <div className="mb-4">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-2">
               <div className="flex items-center">
-                <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full mr-3" />
                 <Title level={4} className="!mb-0">
                   Current Internship Status
                 </Title>

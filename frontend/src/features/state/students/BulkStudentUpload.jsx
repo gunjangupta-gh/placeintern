@@ -235,8 +235,8 @@ const BulkStudentUpload = () => {
   ];
 
   return (
-    <div className="p-6">
-      <Card title="Bulk Student Upload" variant="borderless">
+    <div style={{ padding: 16 }}>
+      <Title level={3} style={{ marginBottom: 16 }}>Bulk Student Upload</Title>
         <Steps current={currentStep} style={{ marginBottom: '24px' }}>
           <Step title="Upload File" description="Select Excel file" />
           <Step title="Validate" description="Review records" />
@@ -463,7 +463,6 @@ const BulkStudentUpload = () => {
             </div>
           </div>
         )}
-      </Card>
     </div>
   );
 };

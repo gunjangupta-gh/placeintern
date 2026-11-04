@@ -516,7 +516,6 @@ const StudentReportSubmit = () => {
     return (
       <div className="p-4 md:p-6 min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-1 h-8 rounded-full" style={{ backgroundColor: token.colorPrimary }} />
           <div>
             <h1 className="text-xl font-bold m-0" style={{ color: token.colorText }}>Monthly Reports</h1>
             <Text className="text-xs" style={{ color: token.colorTextTertiary }}>Track your internship progress</Text>
@@ -547,7 +546,6 @@ const StudentReportSubmit = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
-          <div className="w-1 h-8 rounded-full" style={{ backgroundColor: token.colorPrimary }} />
           <div>
             <h1 className="text-xl font-bold m-0" style={{ color: token.colorText }}>Monthly Reports</h1>
             <Text className="text-xs" style={{ color: token.colorTextTertiary }}>

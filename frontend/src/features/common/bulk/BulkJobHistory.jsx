@@ -15,6 +15,7 @@ import {
   Statistic,
   Row,
   Col,
+  Typography,
 } from 'antd';
 import { toast } from 'react-hot-toast';
 import {
@@ -36,6 +37,7 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
 
 const { RangePicker } = DatePicker;
+const { Title } = Typography;
 
 const JOB_TYPE_LABELS = {
   STUDENTS: 'Students',
@@ -334,7 +336,7 @@ const BulkJobHistory = () => {
   ];
 
   return (
-    <div className="p-6">
+    <div style={{ padding: 16 }}>
       {/* Stats Cards */}
       {stats && (
         <Row gutter={16} className="mb-6">
@@ -373,14 +375,12 @@ const BulkJobHistory = () => {
         </Row>
       )}
 
-      <Card
-        title="Bulk Operation History"
-        extra={
-          <Button icon={<ReloadOutlined />} onClick={fetchJobs} loading={loading}>
-            Refresh
-          </Button>
-        }
-      >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+        <Title level={3} style={{ margin: 0 }}>Bulk Operation History</Title>
+        <Button icon={<ReloadOutlined />} onClick={fetchJobs} loading={loading}>
+          Refresh
+        </Button>
+      </div>
         {/* Filters */}
         <Space className="mb-4" wrap>
           <Select
@@ -421,7 +421,6 @@ const BulkJobHistory = () => {
           }}
           onChange={handleTableChange}
         />
-      </Card>
 
       {/* Job Detail Modal */}
       <Modal

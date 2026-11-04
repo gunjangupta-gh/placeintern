@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Card,
   Table,
   Button,
   DatePicker,
@@ -619,10 +618,10 @@ const AuditLogs = () => {
   };
 
   return (
-    <div className="">
-      <Card
-        title="Audit Logs"
-        extra={
+    <div style={{ padding: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <Title level={3} style={{ margin: 0 }}>Audit Logs</Title>
+        {
           <Space>
             <Button
               icon={<ReloadOutlined />}
@@ -641,8 +640,8 @@ const AuditLogs = () => {
             </Button>
           </Space>
         }
-        variant="borderless"
-      >
+      </div>
+      <div style={{ marginTop: 16 }}>
         {/* Statistics Cards */}
         <Spin spinning={statsLoading}>
           <Row gutter={[16, 16]} className="mb-4">
@@ -674,7 +673,7 @@ const AuditLogs = () => {
         </Spin>
 
         {/* Filters */}
-        <div className="mb-4 p-4 bg-gray-50 rounded">
+        <div className="mb-4 p-4 bg-background-secondary rounded">
           <Row gutter={[16, 16]} align="bottom">
             <Col xs={24} sm={12} md={6}>
               <RangePicker
@@ -835,7 +834,7 @@ const AuditLogs = () => {
 
                       {record.oldValues && (
                         <Descriptions.Item label="Old Values" span={3}>
-                          <pre className="bg-gray-50 p-3 text-sm overflow-auto max-h-40 rounded">
+                          <pre className="bg-background-secondary text-text-primary p-3 text-sm overflow-auto max-h-40 rounded">
                             {JSON.stringify(record.oldValues, null, 2)}
                           </pre>
                         </Descriptions.Item>
@@ -843,7 +842,7 @@ const AuditLogs = () => {
 
                       {record.newValues && (
                         <Descriptions.Item label="New Values" span={3}>
-                          <pre className="bg-gray-50 p-3 text-sm overflow-auto max-h-40 rounded">
+                          <pre className="bg-background-secondary text-text-primary p-3 text-sm overflow-auto max-h-40 rounded">
                             {JSON.stringify(record.newValues, null, 2)}
                           </pre>
                         </Descriptions.Item>
@@ -867,7 +866,7 @@ const AuditLogs = () => {
             }}
           />
         </div>
-      </Card>
+      </div>
     </div>
   );
 };

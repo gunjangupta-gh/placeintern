@@ -10,23 +10,23 @@ const IndustryRow = ({ rank, item }) => {
     if (rank === 1) return 'bg-yellow-400';
     if (rank === 2) return 'bg-gray-400';
     if (rank === 3) return 'bg-amber-600';
-    return 'bg-gray-200';
+    return 'bg-background-tertiary';
   };
 
   return (
-    <div className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
+    <div className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <div className={`w-6 h-6 rounded-full ${getRankBg(rank)} flex items-center justify-center shrink-0`}>
-          <span className={`text-xs font-bold ${rank <= 3 ? 'text-white' : 'text-gray-600'}`}>{rank}</span>
+          <span className={`text-xs font-bold ${rank <= 3 ? 'text-white' : 'text-text-secondary'}`}>{rank}</span>
         </div>
         <div className="min-w-0">
-          <Text className="text-sm font-medium text-gray-800 block truncate">{item.name}</Text>
-          <Text className="text-xs text-gray-400">
+          <Text className="text-sm font-medium text-text-primary block truncate">{item.name}</Text>
+          <Text className="text-xs text-text-tertiary">
             Total: {item.internsHired || item.total || 0}  Active: {item.activeInterns || item.active || item.internsHired || 0}
           </Text>
         </div>
       </div>
-      <Tag className="m-0 bg-green-50 text-green-600 border-0 text-xs px-2 rounded">
+      <Tag className="m-0 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-0 text-xs px-2 rounded">
         Active
       </Tag>
     </div>
@@ -38,16 +38,16 @@ const TopIndustriesList = ({ industries = [], loading }) => {
 
   return (
     <Card
-      className="rounded-xl border border-gray-100 shadow-sm bg-white h-full"
+      className="rounded-xl border border-border/50 shadow-sm bg-background h-full"
       styles={{ body: { padding: '0', height: '100%', display: 'flex', flexDirection: 'column' } }}
       loading={loading}
     >
-      <div className="flex items-center justify-between p-4 border-b border-gray-100 shrink-0">
+      <div className="flex items-center justify-between p-4 border-b border-border/50 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
             <ShopOutlined className="text-blue-500" />
           </div>
-          <Text className="font-semibold text-gray-800">Top Industries</Text>
+          <Text className="font-semibold text-text-primary">Top Industries</Text>
         </div>
         <Badge
           count={totalCount}

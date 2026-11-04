@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Table, Button, Tag, Space, Input, Avatar, Dropdown, App } from 'antd';
+import { Table, Button, Tag, Space, Input, Avatar, Dropdown, App, Typography } from 'antd';
 import { toast } from 'react-hot-toast';
 import { PlusOutlined, EditOutlined, StopOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { fetchPrincipals, togglePrincipalStatus, resetPrincipalPassword } from '../store/stateSlice';
@@ -230,21 +230,19 @@ const PrincipalList = () => {
   ];
 
   return (
-    <div className="">
-      <Card
-        title="Principals"
-        extra={
-          <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => loadPrincipals({ forceRefresh: true })}>
-              Refresh
-            </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
-              Add Principal
-            </Button>
-          </Space>
-        }
-        variant="borderless"
-      >
+    <div style={{ padding: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+        <Typography.Title level={3} style={{ margin: 0 }}>Principals</Typography.Title>
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={() => loadPrincipals({ forceRefresh: true })}>
+            Refresh
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
+            Add Principal
+          </Button>
+        </Space>
+      </div>
+      <div>
         <div className="mb-4">
           <Input.Search
             placeholder="Search by name or email..."
@@ -277,7 +275,7 @@ const PrincipalList = () => {
             }}
           />
         </div>
-      </Card>
+      </div>
 
       <PrincipalModal
         open={modalOpen}

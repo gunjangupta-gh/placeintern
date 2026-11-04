@@ -370,7 +370,8 @@ export class StudentOpportunityService {
           opportunityId: opp.id,
           isSelfIdentified: false,
           isActive: true,
-          status: ApplicationStatus.APPLIED,
+          // Moves straight to "under review" once submitted
+          status: ApplicationStatus.UNDER_REVIEW,
           // Explicit (not the DB default, which is the transaction START time, i.e. before any lock
           // wait) so this timestamp is the true first-come-first-served order.
           appliedDate: new Date(),

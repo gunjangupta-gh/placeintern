@@ -16,3 +16,17 @@ export const tablePagination = ({ page, pageSize, total, onChange, label = 'item
   showTotal: (t, range) => (t ? `${range[0]}-${range[1]} of ${t} ${label}` : ''),
   onChange: (p, ps) => onChange(ps !== pageSize ? 1 : p, ps),
 });
+
+/** "S.No" column that keeps counting across pages. */
+export const serialColumn = (page, pageSize) => ({
+  title: 'S.No',
+  key: 'sno',
+  width: 64,
+  render: (_v, _r, index) => (page - 1) * pageSize + index + 1,
+});
+
+/** UNDER_REVIEW -> "Under review" */
+export const statusLabel = (s) => {
+  const text = String(s || '').replace(/_/g, ' ').toLowerCase();
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};

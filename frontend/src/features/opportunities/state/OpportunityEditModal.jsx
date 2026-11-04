@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Col, DatePicker, Divider, Form, Input, InputNumber, Modal, Row, Select, Tooltip, Typography } from 'antd';
+import { Button, Col, DatePicker, Divider, Form, Input, InputNumber, Modal, Row, Select, Tooltip, Typography } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { toast } from 'react-hot-toast';
@@ -8,7 +8,7 @@ import { lookupService } from '../../../services/lookup.service';
 
 const FIELD_KEYS = [
   'companyName', 'title', 'district', 'description', 'durationMonths', 'stipend',
-  'startDate', 'applicationDeadline', 'status', 'eligibleYears', 'branches',
+  'startDate', 'applicationDeadline', 'status', 'branches',
   'contactName', 'contactPhone', 'contactEmail',
 ];
 
@@ -25,7 +25,6 @@ const toFormValues = (o) => ({
   startDate: istDate(o.startDate),
   applicationDeadline: istDate(o.applicationDeadline),
   status: o.status === 'FILLED' ? undefined : o.status,
-  eligibleYears: o.eligibleYears || [],
   branches: (o.branches || []).map((b) => ({ branchId: b.id, positions: b.positions, maxApplications: b.maxApplications ?? null, stipend: b.stipend || '' })),
   contactName: o.contactName || '',
   contactPhone: o.contactPhone || '',
@@ -51,7 +50,7 @@ const norm = (key, v) => {
 /** Empty form for "Add opportunity". */
 const CREATE_DEFAULTS = {
   companyName: '', title: '', district: '', description: '', durationMonths: undefined, stipend: '',
-  startDate: null, applicationDeadline: null, status: 'OPEN', eligibleYears: [],
+  startDate: null, applicationDeadline: null, status: 'OPEN',
   branches: [{ branchId: undefined, positions: 1, maxApplications: null, stipend: '' }],
   contactName: '', contactPhone: '', contactEmail: '',
 };
@@ -182,8 +181,7 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
         <Divider orientation="left" plain>Internship</Divider>
         <Row gutter={16}>
           <Col xs={24} md={12}>
-            <Form.Item name="companyName" label="Company" rules={[{ required: true, whitespace: true, message: 'Company is required' }, { max: 150 }]}
-              extra="An existing company is matched by name; a new name creates a new company.">
+            <Form.Item name="companyName" label="Company" rules={[{ required: true, whitespace: true, message: 'Company is required' }, { max: 150 }]}>
               <Input />
             </Form.Item>
           </Col>
@@ -196,7 +194,7 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
             <Form.Item name="district" label="District" rules={[{ max: 80 }]}><Input /></Form.Item>
           </Col>
           <Col xs={24} md={12}>
-            <Form.Item name="stipend" label="Stipend (default)" rules={[{ max: 50 }]} extra="Used for every branch that has no stipend of its own below."><Input placeholder="e.g. 8000 per month" /></Form.Item>
+            <Form.Item name="stipend" label="Stipend" rules={[{ max: 50 }]}><Input placeholder="e.g. 8000 per month" /></Form.Item>
           </Col>
           <Col span={24}>
             <Form.Item name="description" label="Description" rules={[{ max: 2000 }]}>
@@ -213,7 +211,7 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>
-            <Form.Item name="status" label="Status" extra={opportunity?.status === 'FILLED' ? 'Filled automatically while all positions are taken.' : undefined}>
+            <Form.Item name="status" label="Status">
               <Select
                 disabled={opportunity?.status === 'FILLED'}
                 placeholder="Filled"
@@ -251,13 +249,6 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
         </Row>
 
         <Divider orientation="left" plain>Branch-wise positions and applications</Divider>
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 12 }}
-          message="Each branch has its own positions, and students only compete with their own branch."
-          description="Set the application limit above the positions to keep a waiting list (applications are first come, first served). Leave it empty to accept applications only up to the positions."
-        />
         <Form.List
           name="branches"
           rules={[{ validator: async (_, list) => { if (!list || list.length < 1) throw new Error('Add at least one branch'); } }]}
@@ -354,16 +345,7 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
           )}
         </Form.List>
 
-        <Divider orientation="left" plain>Who can apply</Divider>
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <Form.Item name="eligibleYears" label="Eligible years" extra="Leave empty for all years.">
-              <Select mode="multiple" placeholder="All years" options={[1, 2, 3].map((y) => ({ value: y, label: `Year ${y}` }))} />
-            </Form.Item>
-          </Col>
-        </Row>
-
-        <Divider orientation="left" plain>Industry contact (visible to State only)</Divider>
+        <Divider orientation="left" plain>Industry contact</Divider>
         <Row gutter={16}>
           <Col xs={24} md={8}>
             <Form.Item name="contactName" label="Contact name" rules={[{ max: 100 }]}><Input /></Form.Item>

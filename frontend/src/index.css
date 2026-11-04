@@ -71,7 +71,7 @@
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  background-color: rgb(var(--color-background-secondary));
+  background-color: rgb(var(--color-background));
   color: rgb(var(--color-text-primary));
   user-select: text;
   -webkit-user-select: text;
@@ -2163,4 +2163,9 @@ body {
 @keyframes skeleton-shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* Full-page wrappers use the plain page background (white in light mode) instead of the grey tint */
+.min-h-screen.bg-background-secondary {
+  background-color: rgb(var(--color-background));
 }

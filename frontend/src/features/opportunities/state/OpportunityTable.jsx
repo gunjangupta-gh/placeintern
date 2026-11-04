@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
 import OpportunityEditModal from './OpportunityEditModal';
-import { DEFAULT_PAGE_SIZE, tablePagination } from '../pagination';
+import { DEFAULT_PAGE_SIZE, tablePagination, serialColumn, statusLabel } from '../pagination';
 
 const STATUS_COLOR = { OPEN: 'green', CLOSED: 'default', DRAFT: 'orange', FILLED: 'blue' };
 
@@ -64,13 +64,14 @@ const OpportunityTable = ({ refreshKey, onChanged }) => {
   };
 
   const columns = [
-    { title: 'Company', dataIndex: ['company', 'name'] },
+    serialColumn(page, pageSize),
     {
-      title: 'Position',
-      dataIndex: 'title',
+      title: 'Company',
+      dataIndex: ['company', 'name'],
       render: (t, r) => <a onClick={() => navigate(`/app/internship-opportunities/${r.id}`)}>{t}</a>,
     },
     { title: 'District', dataIndex: 'district' },
+    { title: 'Stipend', dataIndex: 'stipend', render: (v) => v || '-' },
     {
       title: (
         <Tooltip title="Branch: selected / positions. Hover a branch for its applications.">Branch-wise positions</Tooltip>
@@ -93,7 +94,7 @@ const OpportunityTable = ({ refreshKey, onChanged }) => {
       render: (_, r) => `${r.approvedCount} / ${r.appliedCount} / ${r.positions}`,
     },
     { title: 'Deadline', dataIndex: 'applicationDeadline', render: formatDate },
-    { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{s}</Tag> },
+    { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
     {
       title: 'Actions',
       render: (_, r) => (
@@ -128,7 +129,7 @@ const OpportunityTable = ({ refreshKey, onChanged }) => {
   return (
     <>
       <Space style={{ marginBottom: 12 }} wrap>
-        <Input.Search allowClear placeholder="Search company, position, district" style={{ width: 300 }} value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Input.Search allowClear placeholder="Search company, district" style={{ width: 300 }} value={search} onChange={(e) => setSearch(e.target.value)} />
         <Select
           allowClear
           placeholder="Status"

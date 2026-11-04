@@ -370,34 +370,32 @@ const StudentsList = () => {
   const studentsList = Array.isArray(students) ? students : [];
 
   return (
-    <div className="">
-      <Card
-        title="Students Directory"
-        extra={
-          <Space>
-            <Button
-              icon={<FilterOutlined />}
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              Filters
-            </Button>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => loadStudents({ forceRefresh: true })}
-            >
-              Refresh
-            </Button>
-            <Button
-              icon={<DownloadOutlined />}
-              onClick={handleExportToExcel}
-              loading={exporting}
-            >
-              {exporting ? "Exporting..." : "Export to Excel"}
-            </Button>
-          </Space>
-        }
-        variant="borderless"
-      >
+    <div style={{ padding: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+        <Title level={3} style={{ margin: 0 }}>Students Directory</Title>
+        <Space>
+          <Button
+            icon={<FilterOutlined />}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            Filters
+          </Button>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => loadStudents({ forceRefresh: true })}
+          >
+            Refresh
+          </Button>
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={handleExportToExcel}
+            loading={exporting}
+          >
+            {exporting ? "Exporting..." : "Export to Excel"}
+          </Button>
+        </Space>
+      </div>
+      <div>
         {/* Search */}
         <div className="mb-4">
           <Input.Search
@@ -414,7 +412,7 @@ const StudentsList = () => {
 
         {/* Filters */}
         {showFilters && (
-          <div className="mb-4 p-4 bg-gray-50 rounded">
+          <div className="mb-4 p-4 bg-background-secondary rounded">
             <Row gutter={[16, 16]}>
               <Col xs={24} sm={12} md={6} lg={4}>
                 <Select
@@ -535,7 +533,7 @@ const StudentsList = () => {
             }}
           />
         </div>
-      </Card>
+      </div>
 
       {/* Student Details Drawer */}
       <Drawer

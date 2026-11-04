@@ -1,15 +1,20 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Input, Modal, Popconfirm, Segmented, Space, Table, Tag, Tooltip, Typography } from 'antd';
-import { CheckOutlined, CloseOutlined, DeleteOutlined, DownloadOutlined, WarningOutlined } from '@ant-design/icons';
+import { Alert, Button, Dropdown, Input, Modal, Popconfirm, Segmented, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { CheckOutlined, CloseOutlined, DeleteOutlined, DownloadOutlined, DownOutlined, WarningOutlined } from '@ant-design/icons';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate, formatTime } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
-import { DEFAULT_PAGE_SIZE, tablePagination } from '../pagination';
+import { DEFAULT_PAGE_SIZE, tablePagination, serialColumn, statusLabel } from '../pagination';
 
 const { Text } = Typography;
 const PENDING = ['APPLIED', 'UNDER_REVIEW', 'SHORTLISTED'];
 const CONFIRMED = ['SELECTED', 'APPROVED', 'JOINED', 'COMPLETED'];
 const STATUS_COLOR = { APPLIED: 'blue', UNDER_REVIEW: 'blue', SHORTLISTED: 'cyan', APPROVED: 'green', JOINED: 'green', SELECTED: 'green', COMPLETED: 'default', REJECTED: 'red', WITHDRAWN: 'default' };
+// Non-final statuses the director can move a pending application to
+const MARK_OPTIONS = [
+  { key: 'UNDER_REVIEW', label: 'Under review' },
+  { key: 'SHORTLISTED', label: 'Shortlisted' },
+];
 const GROUP_OPTIONS = [
   { label: 'All', value: 'ALL' },
   { label: 'Pending', value: 'PENDING' },
@@ -107,7 +112,7 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
 
   const runBulk = async (action, ids, text) => {
     const res = await opportunityService.decideApplications(action, ids, text);
-    const verb = { APPROVE: 'approved', REJECT: 'rejected', DELETE: 'deleted' }[action];
+    const verb = { APPROVE: 'approved', REJECT: 'rejected', DELETE: 'deleted', UNDER_REVIEW: 'marked as under review', SHORTLISTED: 'marked as shortlisted' }[action];
     if (res.succeeded) toast.success(`${res.succeeded} application(s) ${verb}`);
     res.results.filter((r) => !r.ok).forEach((r) => toast.error(String(r.error)));
     const skipped = res.results.filter((r) => r.ok && r.skippedEarlier > 0).length;
@@ -134,6 +139,20 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
     }
   };
 
+  const markApplications = async (status, ids) => {
+    try {
+      await runBulk(status, ids);
+      await done();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Action failed'));
+    }
+  };
+
+  const markMenu = (ids, current) => ({
+    items: MARK_OPTIONS.filter((o) => o.key !== current),
+    onClick: ({ key }) => markApplications(key, ids),
+  });
+
   const deleteApplications = async (ids) => {
     try {
       await runBulk('DELETE', ids);
@@ -156,6 +175,7 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
   const jumpsQueue = decision?.action === 'APPROVE' && decisionRows.some((r) => earlierWaiting(r) > 0);
 
   const columns = [
+    serialColumn(page, pageSize),
     {
       title: (
         <Tooltip title="Place in the queue of the student's own branch for this internship. #1 applied first and has priority.">
@@ -198,7 +218,7 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
       : [
           { title: 'Position', render: (_, r) => <div><div>{r.opportunity?.title}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.opportunity?.company?.name}</Text></div> },
         ]),
-    { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{s}</Tag> },
+    { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
     {
       title: 'Actions',
       render: (_, r) => (
@@ -218,6 +238,9 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
               <Tooltip title="Reject">
                 <Button size="small" type="text" danger aria-label="Reject" icon={<CloseOutlined />} onClick={() => openDecision('REJECT', [r.id])} />
               </Tooltip>
+              <Dropdown menu={markMenu([r.id], r.status)} trigger={['click']}>
+                <Button size="small" type="text" aria-label="Mark as">Mark as <DownOutlined /></Button>
+              </Dropdown>
             </>
           )}
           <Popconfirm title="Delete this application?" description={deleteText(r)} okText="Delete" okButtonProps={{ danger: true }} onConfirm={() => deleteApplications([r.id])}>
@@ -249,6 +272,9 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
             <Button danger icon={<CloseOutlined />} disabled={!selectedPending.length} onClick={() => openDecision('REJECT', selectedPending)}>
               Reject ({selectedPending.length})
             </Button>
+            <Dropdown menu={markMenu(selectedPending)} trigger={['click']} disabled={!selectedPending.length}>
+              <Button disabled={!selectedPending.length}>Mark as ({selectedPending.length}) <DownOutlined /></Button>
+            </Dropdown>
             <Popconfirm
               title={`Delete ${selected.length} application(s)?`}
               description="Seats and student slots are released. Approvals are undone. Refused where reports or visits exist."

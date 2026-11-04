@@ -3,7 +3,6 @@ import { Card, Empty, Spin, Button, Typography, Tag, theme, Row, Col, Space } fr
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  RocketOutlined,
   PlusOutlined,
   ReloadOutlined,
   LaptopOutlined,
@@ -212,7 +211,6 @@ const MyApplications = () => {
           style={{ borderColor: token.colorBorderSecondary }}
         >
           <div className="flex items-center gap-2">
-            <RocketOutlined style={{ color: token.colorPrimary }} />
             <Text className="font-medium" style={{ color: token.colorText }}>Internship Applications</Text>
             <Tag 
               color="blue" 
@@ -234,8 +232,7 @@ const MyApplications = () => {
             />
           ) : (
             <Empty
-              image={<RocketOutlined style={{ fontSize: '48px', color: token.colorTextQuaternary }} />}
-              imageStyle={{ height: 60 }}
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
               description={
                 <div className="text-center py-2">
                   <Text className="text-sm block mb-1" style={{ color: token.colorTextSecondary }}>No internships yet</Text>

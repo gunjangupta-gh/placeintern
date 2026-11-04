@@ -174,7 +174,7 @@ const InstitutionsTable = ({ institutions, loading, onViewAll, onViewDetails, mo
         const percentage = expected > 0 ? Math.round((completed / expected) * 100) : 0;
 
         // Determine color based on completion percentage
-        let textColor = 'text-green-600';
+        let textColor = 'text-green-600 dark:text-green-400';
         if (expected > 0 && percentage < 50) textColor = 'text-red-500';
         else if (expected > 0 && percentage < 80) textColor = 'text-amber-500';
 
@@ -206,7 +206,7 @@ const InstitutionsTable = ({ institutions, loading, onViewAll, onViewDetails, mo
         const percentage = expected > 0 ? Math.round((submitted / expected) * 100) : 0;
 
         // Determine color based on submission percentage
-        let textColor = 'text-green-600';
+        let textColor = 'text-green-600 dark:text-green-400';
         if (expected > 0 && percentage < 50) textColor = 'text-red-500';
         else if (expected > 0 && percentage < 80) textColor = 'text-amber-500';
 

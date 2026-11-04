@@ -17,7 +17,7 @@ import {
   AutoComplete,
   Alert,
 } from "antd";
-import { UploadOutlined, PlusOutlined, SearchOutlined, WarningOutlined } from "@ant-design/icons";
+import { UploadOutlined, SearchOutlined, WarningOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -42,11 +42,12 @@ const SelfIdentifiedInternship = () => {
   const instituteLoading = useSelector(selectInstituteLoading);
   const applications = useSelector(selectApplicationsList);
 
-  // Check if student already has an active internship
+  // A student who has applied to (or got) an internship cannot add one manually.
+  // Rejected and withdrawn applications do not count, so the page opens up again after them.
   const hasActiveInternship = useMemo(() => {
     if (!applications || applications.length === 0) return false;
     return applications.some(
-      (app) => (app.status || "").toUpperCase() !== "WITHDRAWN"
+      (app) => !["WITHDRAWN", "REJECTED"].includes((app.status || "").toUpperCase())
     );
   }, [applications]);
 
@@ -62,7 +63,7 @@ const SelfIdentifiedInternship = () => {
   // Fetch institute data, applications, and companies on mount
   useEffect(() => {
     dispatch(fetchInstituteAsync());
-    dispatch(fetchApplications({}));
+    dispatch(fetchApplications({ forceRefresh: true }));
     fetchCompanies();
   }, [dispatch]);
 
@@ -193,10 +194,12 @@ const SelfIdentifiedInternship = () => {
       // an active application. Only applications with status === 'WITHDRAWN'
       // are allowed to be replaced.
       const apps = Array.isArray(applications) ? applications : [];
-      const hasActive = apps.some((a) => (a.status || "").toUpperCase() !== "WITHDRAWN");
+      const hasActive = apps.some(
+        (a) => !["WITHDRAWN", "REJECTED"].includes((a.status || "").toUpperCase())
+      );
       if (hasActive) {
         toast.error(
-          "You already have an active internship application. Ask your mentor to deactivate it before adding another."
+          "You already have an active internship application, so you cannot add another."
         );
         setLoading(false);
         return;
@@ -313,9 +316,6 @@ const SelfIdentifiedInternship = () => {
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
           <div className="flex items-center">
-            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-primary shadow-sm mr-3">
-              <PlusOutlined className="text-lg" />
-            </div>
             <div>
               <Title level={2} className="mb-0 text-text-primary text-2xl">
                 Submit Internship Details
@@ -330,11 +330,11 @@ const SelfIdentifiedInternship = () => {
         {/* Alert for existing internship */}
         {hasActiveInternship && (
           <Alert
-            message="You Already Have an Active Internship"
+            message="You Already Have an Internship Application"
             description={
               <div>
                 <p className="mb-2">
-                  You already have an active internship registered. Students can only have one active internship at a time.
+                  You have already applied to or registered an internship, so you cannot add another one manually. If your application is rejected or withdrawn, you can add one here.
                 </p>
                 <Button
                   type="primary"

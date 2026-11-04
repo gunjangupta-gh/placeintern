@@ -21,24 +21,24 @@ const { Text } = Typography;
 
 const STAT_VARIANTS = {
   primary: {
-    iconWrap: 'bg-blue-100',
-    iconColor: 'text-blue-700',
+    iconWrap: 'bg-blue-100 dark:bg-blue-900/30',
+    iconColor: 'text-blue-700 dark:text-blue-400',
   },
   warning: {
-    iconWrap: 'bg-amber-100',
-    iconColor: 'text-amber-700',
+    iconWrap: 'bg-amber-100 dark:bg-amber-900/30',
+    iconColor: 'text-amber-700 dark:text-amber-400',
   },
   purple: {
-    iconWrap: 'bg-purple-100',
-    iconColor: 'text-purple-700',
+    iconWrap: 'bg-purple-100 dark:bg-purple-900/30',
+    iconColor: 'text-purple-700 dark:text-purple-400',
   },
   success: {
-    iconWrap: 'bg-emerald-100',
-    iconColor: 'text-emerald-700',
+    iconWrap: 'bg-emerald-100 dark:bg-emerald-900/30',
+    iconColor: 'text-emerald-700 dark:text-emerald-400',
   },
   rose: {
-    iconWrap: 'bg-rose-100',
-    iconColor: 'text-rose-700',
+    iconWrap: 'bg-rose-100 dark:bg-rose-900/30',
+    iconColor: 'text-rose-700 dark:text-rose-400',
   },
 };
 
@@ -72,7 +72,7 @@ const StatCard = ({ icon: Icon, title, lines = [], onClick, onView, infoTooltip,
 
   return (
     <div
-      className={`rounded-xl p-3 h-full border border-slate-200 bg-slate-50 ${onClick ? 'cursor-pointer hover:shadow-sm transition-all' : ''}`}
+      className={`rounded-xl p-3 h-full border border-border bg-background-secondary ${onClick ? 'cursor-pointer hover:shadow-sm transition-all' : ''}`}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
@@ -88,12 +88,12 @@ const StatCard = ({ icon: Icon, title, lines = [], onClick, onView, infoTooltip,
           <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md ${styles.iconWrap}`}>
             <Icon className={`text-xs ${styles.iconColor}`} />
           </span>
-          <Text className="text-[11px] text-slate-600 font-medium leading-tight line-clamp-1">
+          <Text className="text-[11px] text-text-secondary font-medium leading-tight line-clamp-1">
             {title}
           </Text>
           {infoTooltip ? (
             <Tooltip title={infoTooltip}>
-              <InfoCircleOutlined className="text-[11px] text-slate-400" />
+              <InfoCircleOutlined className="text-[11px] text-text-tertiary" />
             </Tooltip>
           ) : null}
         </div>
@@ -101,7 +101,7 @@ const StatCard = ({ icon: Icon, title, lines = [], onClick, onView, infoTooltip,
           <button
             type="button"
             aria-label={`View ${title}`}
-            className="inline-flex items-center justify-center w-6 h-6 rounded-full text-slate-400 hover:bg-slate-200/70 transition-colors"
+            className="inline-flex items-center justify-center w-6 h-6 rounded-full text-text-tertiary hover:bg-background-tertiary transition-colors"
             onClick={(event) => {
               event.stopPropagation();
               onView();
@@ -113,7 +113,7 @@ const StatCard = ({ icon: Icon, title, lines = [], onClick, onView, infoTooltip,
           <button
             type="button"
             aria-label={`View ${title}`}
-            className="inline-flex items-center justify-center w-6 h-6 rounded-full text-slate-400 hover:bg-slate-200/70 transition-colors"
+            className="inline-flex items-center justify-center w-6 h-6 rounded-full text-text-tertiary hover:bg-background-tertiary transition-colors"
             onClick={(event) => {
               event.stopPropagation();
               onClick();
@@ -125,16 +125,16 @@ const StatCard = ({ icon: Icon, title, lines = [], onClick, onView, infoTooltip,
       </div>
       <div className="space-y-1 mt-1">
         {lines.map((line) => (
-          <Text key={String(line.label || '')} className="block text-[12px] leading-snug text-slate-600">
+          <Text key={String(line.label || '')} className="block text-[12px] leading-snug text-text-secondary">
             {String(line.label || '')}:{" "}
             {line.tooltip ? (
               <Tooltip title={line.tooltip}>
-                <span className="font-semibold text-slate-800 border-b border-dashed border-slate-400 cursor-help">
+                <span className="font-semibold text-text-primary border-b border-dashed border-slate-400 cursor-help">
                   {String(line.value ?? '-')}
                 </span>
               </Tooltip>
             ) : (
-              <span className="font-semibold text-slate-800">{String(line.value ?? '-')}</span>
+              <span className="font-semibold text-text-primary">{String(line.value ?? '-')}</span>
             )}
           </Text>
         ))}
@@ -306,34 +306,34 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
       case 'students':
         return [...baseColumns,
           { title: 'Total', dataIndex: 'totalStudents', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
-          { title: 'Active', dataIndex: 'activeStudents', align: 'center', render: (val) => <Text className="font-semibold text-green-600">{safeLocaleString(val)}</Text> },
+          { title: 'Active', dataIndex: 'activeStudents', align: 'center', render: (val) => <Text className="font-semibold text-green-600 dark:text-green-400">{safeLocaleString(val)}</Text> },
         ];
       case 'mentors':
         return [...baseColumns,
           { title: 'Mentors', dataIndex: 'totalMentors', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
-          { title: 'Students Assigned', dataIndex: 'assignedStudents', align: 'center', render: (val) => <Text className="font-semibold text-blue-600">{safeLocaleString(val)}</Text> },
+          { title: 'Students Assigned', dataIndex: 'assignedStudents', align: 'center', render: (val) => <Text className="font-semibold text-blue-600 dark:text-blue-400">{safeLocaleString(val)}</Text> },
         ];
       case 'teachingStaff':
         return [...baseColumns,
-          { title: 'Mentors/Coordinators', dataIndex: 'mentorsAndCoordinators', align: 'center', render: (val) => <Text className="font-semibold text-blue-600">{safeLocaleString(val)}</Text> },
+          { title: 'Mentors/Coordinators', dataIndex: 'mentorsAndCoordinators', align: 'center', render: (val) => <Text className="font-semibold text-blue-600 dark:text-blue-400">{safeLocaleString(val)}</Text> },
           { title: 'Teachers', dataIndex: 'teachers', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
           { title: 'Coordinators', dataIndex: 'coordinators', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
         ];
       case 'adminStaff':
         return [...baseColumns,
-          { title: 'Mentors/Coordinators', dataIndex: 'mentorsAndCoordinators', align: 'center', render: (val) => <Text className="font-semibold text-blue-600">{safeLocaleString(val)}</Text> },
+          { title: 'Mentors/Coordinators', dataIndex: 'mentorsAndCoordinators', align: 'center', render: (val) => <Text className="font-semibold text-blue-600 dark:text-blue-400">{safeLocaleString(val)}</Text> },
           { title: 'Teachers (No Assignment)', dataIndex: 'teachers', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
           { title: 'Coordinators', dataIndex: 'coordinators', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
           { title: 'Admin Staff', dataIndex: 'adminStaff', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
         ];
       case 'reports':
         return [...baseColumns,
-          { title: 'Submitted', dataIndex: 'submitted', align: 'center', render: (val) => <Text className="font-semibold text-green-600">{safeLocaleString(val)}</Text> },
+          { title: 'Submitted', dataIndex: 'submitted', align: 'center', render: (val) => <Text className="font-semibold text-green-600 dark:text-green-400">{safeLocaleString(val)}</Text> },
           { title: 'Expected', dataIndex: 'expected', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
         ];
       case 'visits':
         return [...baseColumns,
-          { title: 'Completed', dataIndex: 'completed', align: 'center', render: (val) => <Text className="font-semibold text-green-600">{safeLocaleString(val)}</Text> },
+          { title: 'Completed', dataIndex: 'completed', align: 'center', render: (val) => <Text className="font-semibold text-green-600 dark:text-green-400">{safeLocaleString(val)}</Text> },
           { title: 'Expected', dataIndex: 'expected', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
         ];
       default:
@@ -631,13 +631,13 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
       </Row>
 
       <div className="mt-4">
-        <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">
+        <Text className="text-xs font-semibold text-text-tertiary uppercase tracking-wider block mb-2">
           Training Statistics
         </Text>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {trainingLoading
             ? Array.from({ length: 5 }).map((_, idx) => (
-                <div key={`training-loading-${idx}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3 h-full">
+                <div key={`training-loading-${idx}`} className="rounded-xl border border-border bg-background-secondary p-3 h-full">
                   <Spin size="small" />
                 </div>
               ))

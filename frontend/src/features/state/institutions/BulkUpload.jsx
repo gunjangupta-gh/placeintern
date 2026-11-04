@@ -230,26 +230,24 @@ const BulkUpload = () => {
   ];
 
   return (
-    <div className="p-6">
-      <Card
-        title="Bulk Institution Upload"
-        extra={
-          <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
-            Download Template
-          </Button>
-        }
-        variant="borderless"
-      >
+    <div style={{ padding: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+        <Title level={3} style={{ margin: 0 }}>Bulk Institution Upload</Title>
+        <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
+          Download Template
+        </Button>
+      </div>
+      <div>
 
         <Steps 
           current={currentStep} 
           items={steps} 
-          className="mb-10 max-w-4xl mx-auto" 
+          className="mb-8" 
         />
 
         {/* Step 0: Upload File */}
         {currentStep === 0 && (
-          <div className="max-w-2xl mx-auto animate-fade-in">
+          <div className="animate-fade-in">
             <Dragger
               name="file"
               multiple={false}
@@ -257,7 +255,6 @@ const BulkUpload = () => {
               onChange={handleFileChange}
               accept=".csv,.xlsx,.xls"
               maxCount={1}
-              className="bg-surface hover:bg-surface-hover border-2 border-dashed border-border rounded-2xl p-8"
             >
               <p className="ant-upload-drag-icon text-primary mb-4">
                 <InboxOutlined className="text-5xl" />
@@ -375,7 +372,7 @@ const BulkUpload = () => {
 
         {/* Step 2: Upload Progress */}
         {currentStep === 2 && (
-          <div className="text-center py-12 animate-fade-in max-w-xl mx-auto">
+          <div className="text-center py-12 animate-fade-in">
             <Title level={3} className="text-text-primary mb-8">Uploading Institutions...</Title>
             <Progress
               percent={uploadProgress}
@@ -404,7 +401,7 @@ const BulkUpload = () => {
               </Paragraph>
             </div>
 
-            <Row gutter={[16, 16]} className="mt-6 mb-8 max-w-2xl mx-auto">
+            <Row gutter={[16, 16]} className="mt-6 mb-8">
               <Col span={12}>
                 <Card className="rounded-xl border-border bg-surface shadow-sm text-center">
                   <Statistic
@@ -464,7 +461,7 @@ const BulkUpload = () => {
             </div>
           </div>
         )}
-      </Card>
+      </div>
     </div>
   );
 };

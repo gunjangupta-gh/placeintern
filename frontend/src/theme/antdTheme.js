@@ -14,7 +14,7 @@ export const lightTheme = {
     colorSuccess: '#22c55e',
     colorWarning: '#f59e0b',
     colorError: '#ef4444',
-    colorBgLayout: '#f1f5f9',
+    colorBgLayout: '#ffffff',
     colorBgContainer: '#ffffff',
     colorTextBase: '#0f172a',
     colorTextSecondary: '#475569',
@@ -92,7 +92,7 @@ export const lightTheme = {
     },
     Tabs: {
       horizontalItemPadding: '10px 0',
-      horizontalMargin: '0 24px 0 0',
+      horizontalMargin: '0 0 16px 0',
     },
     Menu: {
       itemMarginInline: 8,
@@ -270,7 +270,7 @@ export const darkTheme = {
     },
     Tabs: {
       horizontalItemPadding: '10px 0',
-      horizontalMargin: '0 24px 0 0',
+      horizontalMargin: '0 0 16px 0',
     },
     Menu: {
       // Dark sidebar menu styling

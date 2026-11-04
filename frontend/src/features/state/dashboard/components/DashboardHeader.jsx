@@ -12,10 +12,10 @@ const DashboardHeader = ({
   return (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
       <div>
-        <Title level={3} className="!mb-0 text-gray-900 !text-xl font-bold">
+        <Title level={3} className="!mb-0 text-text-primary !text-xl font-bold">
           State Directorate Dashboard
         </Title>
-        <Text className="text-gray-500 text-sm">
+        <Text className="text-text-tertiary text-sm">
           Comprehensive analytics and monitoring for statewide educational programs
         </Text>
       </div>

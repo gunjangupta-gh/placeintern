@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Table, Button, Tag, Space, Input, Avatar, Dropdown, App, Select, Row, Col } from 'antd';
+import { Table, Typography, Button, Tag, Space, Input, Avatar, Dropdown, App, Select, Row, Col } from 'antd';
 import { toast } from 'react-hot-toast';
 import { PlusOutlined, EditOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined, FilterOutlined, ClearOutlined, StopOutlined, CheckCircleOutlined, DownloadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
@@ -9,6 +9,8 @@ import StaffModal from './StaffModal';
 import { getImageUrl } from '../../../utils/imageUtils';
 import { useLookup } from '../../shared/hooks/useLookup';
 import stateService from '../../../services/state.service';
+
+const { Title } = Typography;
 
 // Designation options for filter
 const DESIGNATION_OPTIONS = [
@@ -492,10 +494,10 @@ const StaffList = () => {
   ];
 
   return (
-    <div className="">
-      <Card
-        title="Staff Management"
-        extra={
+    <div style={{ padding: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <Title level={3} style={{ margin: 0 }}>Staff Management</Title>
+        {
           <Space>
             <Button
               icon={<FilterOutlined />}
@@ -525,8 +527,8 @@ const StaffList = () => {
             </Button>
           </Space>
         }
-        variant="borderless"
-      >
+      </div>
+      <div style={{ marginTop: 16 }}>
         {/* Search and Filters */}
         <div className="mb-4">
           <Input.Search
@@ -542,7 +544,7 @@ const StaffList = () => {
         </div>
 
         {showFilters && (
-          <div className="mb-4 p-4 bg-gray-50 rounded">
+          <div className="mb-4 p-4 bg-background-secondary rounded">
             <Row gutter={[16, 16]}>
               <Col xs={24} sm={12} md={6}>
                 <Select
@@ -661,7 +663,7 @@ const StaffList = () => {
             }}
           />
         </div>
-      </Card>
+      </div>
 
       <StaffModal
         open={modalOpen}

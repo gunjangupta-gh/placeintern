@@ -19,28 +19,28 @@ const ReportsPerformanceRow = ({ rank, item, isBottom }) => {
 
   const getRankColor = (rank) => {
     if (rank === 1) return 'text-yellow-500 font-bold';
-    if (rank === 2) return 'text-gray-400 font-bold';
-    if (rank === 3) return 'text-amber-600 font-bold';
-    return isBottom ? 'text-red-500' : 'text-gray-500';
+    if (rank === 2) return 'text-text-tertiary font-bold';
+    if (rank === 3) return 'text-amber-600 dark:text-amber-400 font-bold';
+    return isBottom ? 'text-red-500' : 'text-text-tertiary';
   };
 
   return (
-    <div className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+    <div className="flex items-center justify-between py-2.5 border-b border-border/50 last:border-0">
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <span className={`w-5 text-sm ${getRankColor(rank)}`}>{rank}</span>
-        <Text className="text-sm text-gray-700 truncate" title={item.name}>
+        <Text className="text-sm text-text-secondary truncate" title={item.name}>
           {item.shortName || item.name || item.institutionName || 'Unknown Institution'}
         </Text>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <Text className="text-sm text-gray-500">
+        <Text className="text-sm text-text-tertiary">
           {reportsSubmitted}/{reportsExpected}
         </Text>
         <Tag
           className={`m-0 text-xs px-2 py-0 rounded border-0 min-w-[40px] text-center ${
-            reportsRate >= 80 ? 'bg-green-50 text-green-600' :
-            reportsRate >= 50 ? 'bg-amber-50 text-amber-600' :
-            'bg-red-50 text-red-500'
+            reportsRate >= 80 ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' :
+            reportsRate >= 50 ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400' :
+            'bg-red-50 dark:bg-red-900/20 text-red-500'
           }`}
         >
           {reportsRate}%
@@ -65,28 +65,28 @@ const VisitsPerformanceRow = ({ rank, item, isBottom }) => {
 
   const getRankColor = (rank) => {
     if (rank === 1) return 'text-yellow-500 font-bold';
-    if (rank === 2) return 'text-gray-400 font-bold';
-    if (rank === 3) return 'text-amber-600 font-bold';
-    return isBottom ? 'text-red-500' : 'text-gray-500';
+    if (rank === 2) return 'text-text-tertiary font-bold';
+    if (rank === 3) return 'text-amber-600 dark:text-amber-400 font-bold';
+    return isBottom ? 'text-red-500' : 'text-text-tertiary';
   };
 
   return (
-    <div className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+    <div className="flex items-center justify-between py-2.5 border-b border-border/50 last:border-0">
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <span className={`w-5 text-sm ${getRankColor(rank)}`}>{rank}</span>
-        <Text className="text-sm text-gray-700 truncate" title={item.name}>
+        <Text className="text-sm text-text-secondary truncate" title={item.name}>
           {item.shortName || item.name || item.institutionName || 'Unknown Institution'}
         </Text>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <Text className="text-sm text-gray-500">
+        <Text className="text-sm text-text-tertiary">
           {facultyVisits}/{visitsExpected}
         </Text>
         <Tag
           className={`m-0 text-xs px-2 py-0 rounded border-0 min-w-[40px] text-center ${
-            visitsRate >= 80 ? 'bg-green-50 text-green-600' :
-            visitsRate >= 50 ? 'bg-amber-50 text-amber-600' :
-            'bg-red-50 text-red-500'
+            visitsRate >= 80 ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' :
+            visitsRate >= 50 ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400' :
+            'bg-red-50 dark:bg-red-900/20 text-red-500'
           }`}
         >
           {visitsRate}%
@@ -98,25 +98,25 @@ const VisitsPerformanceRow = ({ rank, item, isBottom }) => {
 
 // Section header
 const SectionHeader = ({ children }) => (
-  <Text className="text-xs text-gray-400 font-medium block mt-4 mb-2">{children}</Text>
+  <Text className="text-xs text-text-tertiary font-medium block mt-4 mb-2">{children}</Text>
 );
 
 // Performance card component
 const PerformanceCard = ({ title, icon, topPerformers, bottomPerformers, loading, renderRow }) => (
   <Card
-    className="rounded-xl border border-gray-100 shadow-sm bg-white h-full"
+    className="rounded-xl border border-border/50 shadow-sm bg-background h-full"
     styles={{ body: { padding: '0' } }}
     loading={loading}
   >
-    <div className="flex items-center gap-3 p-4 border-b border-gray-100">
-      <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+    <div className="flex items-center gap-3 p-4 border-b border-border/50">
+      <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center">
         {icon}
       </div>
-      <Text className="font-semibold text-gray-800">{title}</Text>
+      <Text className="font-semibold text-text-primary">{title}</Text>
     </div>
 
     <div className="p-4">
-      <div className="bg-green-50 rounded-lg p-3 mb-3">
+      <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 mb-3">
         <SectionHeader>Top 5 Performers</SectionHeader>
         {topPerformers?.length > 0 ? (
           <div>
@@ -129,7 +129,7 @@ const PerformanceCard = ({ title, icon, topPerformers, bottomPerformers, loading
         )}
       </div>
 
-      <div className="bg-red-50 rounded-lg p-3">
+      <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
         <SectionHeader>Bottom 5 Performers</SectionHeader>
         {bottomPerformers?.length > 0 ? (
           <div>

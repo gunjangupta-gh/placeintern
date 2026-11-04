@@ -57,13 +57,13 @@ const VisitsByTypePieChart = ({ selectedMonth }) => {
       const total = visitsByType?.total || 0;
       const percentage = total > 0 ? ((data.count / total) * 100).toFixed(1) : 0;
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="font-semibold text-gray-800 mb-1">{data.label}</p>
-          <p className="text-sm text-gray-600">
-            Count: <span className="text-gray-800 font-medium">{data.count}</span>
+        <div className="bg-background p-3 border border-border rounded-lg shadow-lg">
+          <p className="font-semibold text-text-primary mb-1">{data.label}</p>
+          <p className="text-sm text-text-secondary">
+            Count: <span className="text-text-primary font-medium">{data.count}</span>
           </p>
-          <p className="text-sm text-gray-600">
-            Percentage: <span className="text-gray-800 font-medium">{percentage}%</span>
+          <p className="text-sm text-text-secondary">
+            Percentage: <span className="text-text-primary font-medium">{percentage}%</span>
           </p>
         </div>
       );
@@ -81,7 +81,7 @@ const VisitsByTypePieChart = ({ selectedMonth }) => {
               className="w-3 h-3 rounded-full"
               style={{ backgroundColor: entry.color }}
             />
-            <span className="text-xs text-gray-600">{entry.value}</span>
+            <span className="text-xs text-text-secondary">{entry.value}</span>
           </div>
         ))}
       </div>
@@ -90,7 +90,7 @@ const VisitsByTypePieChart = ({ selectedMonth }) => {
 
   if (loading) {
     return (
-      <Card className="rounded-xl border border-gray-100 shadow-sm bg-white h-full">
+      <Card className="rounded-xl border border-border/50 shadow-sm bg-background h-full">
         <div className="flex justify-center items-center h-full min-h-[150px]">
           <Spin />
         </div>
@@ -104,17 +104,17 @@ const VisitsByTypePieChart = ({ selectedMonth }) => {
 
   return (
     <Card
-      className="rounded-xl border border-gray-100 shadow-sm bg-white h-full"
+      className="rounded-xl border border-border/50 shadow-sm bg-background h-full"
       styles={{ body: { padding: '0', height: '100%', display: 'flex', flexDirection: 'column' } }}
     >
-      <div className="flex items-center justify-between p-4 border-b border-gray-100 shrink-0">
+      <div className="flex items-center justify-between p-4 border-b border-border/50 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
             <PieChartOutlined className="text-blue-500" />
           </div>
           <div>
-            <Text className="font-semibold text-gray-800 block">Visits by Type</Text>
-            <Text className="text-xs text-gray-500">
+            <Text className="font-semibold text-text-primary block">Visits by Type</Text>
+            <Text className="text-xs text-text-tertiary">
               Total: {total} visit{total !== 1 ? 's' : ''}
             </Text>
           </div>

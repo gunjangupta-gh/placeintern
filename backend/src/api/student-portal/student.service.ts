@@ -1298,25 +1298,30 @@ export class StudentService {
 
     const studentId = student.id;
 
-    // Check if student already has an active internship application
+    // A student who has applied to (or got) a State-published internship cannot add one manually.
+    // Rejected / withdrawn applications do not count, so the student can add one after those.
     const activeApplication = await this.prisma.internshipApplication.findFirst(
       {
         where: {
           studentId,
           isActive: true,
-
+          isSelfIdentified: false,
           status: {
             in: [
-              ApplicationStatus.SELECTED,
-              ApplicationStatus.JOINED,
               ApplicationStatus.APPLIED,
+              ApplicationStatus.UNDER_REVIEW,
+              ApplicationStatus.SHORTLISTED,
+              ApplicationStatus.SELECTED,
+              ApplicationStatus.APPROVED,
+              ApplicationStatus.JOINED,
+              ApplicationStatus.COMPLETED,
             ],
           },
         },
       }
     );
 
-    if (activeApplication && !activeApplication.isSelfIdentified) {
+    if (activeApplication) {
       throw new BadRequestException(
         "You already have an active internship application"
       );

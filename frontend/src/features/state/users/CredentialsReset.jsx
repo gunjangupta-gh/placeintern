@@ -39,7 +39,7 @@ import { apiClient } from '../../../services/api';
 import { stateService } from '../../../services/state.service';
 import { debounce } from 'lodash';
 
-const { Text, Paragraph } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
 const CredentialsReset = () => {
   const [users, setUsers] = useState([]);
@@ -463,10 +463,10 @@ const CredentialsReset = () => {
   const hasActiveFilters = searchText || selectedRole || selectedInstitution || activeFilter !== undefined || lockFilter !== undefined;
 
   return (
-    <div className="">
-      <Card
-        title="Reset User Credentials"
-        extra={
+    <div style={{ padding: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <Title level={3} style={{ margin: 0 }}>Reset User Credentials</Title>
+        {
           <Space>
             <Tooltip title="Refresh user list">
               <Button
@@ -492,8 +492,8 @@ const CredentialsReset = () => {
             )}
           </Space>
         }
-        variant="borderless"
-      >
+      </div>
+      <div style={{ marginTop: 16 }}>
         <Space orientation="vertical" size="large" style={{ width: '100%' }}>
           <Alert
             message="Password Reset Guidelines"
@@ -525,7 +525,7 @@ const CredentialsReset = () => {
           )}
 
           {/* Filters Section */}
-          <Card size="small" className="bg-gray-50 dark:bg-gray-800">
+          <div className="p-4 bg-background-secondary rounded">
             <Row gutter={[16, 16]} align="middle">
               <Col xs={24} sm={12} md={6}>
                 <Input.Search
@@ -612,7 +612,7 @@ const CredentialsReset = () => {
                 )}
               </Col>
             </Row>
-          </Card>
+          </div>
 
           <div className="custom-table">
             <Table
@@ -633,7 +633,7 @@ const CredentialsReset = () => {
             />
           </div>
         </Space>
-      </Card>
+      </div>
 
       {/* Single Reset Confirmation Modal */}
       <Modal

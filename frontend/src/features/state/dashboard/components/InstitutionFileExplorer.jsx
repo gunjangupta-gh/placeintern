@@ -51,7 +51,7 @@ const getFileIcon = (type, fileName) => {
   if (['pdf'].includes(fileName?.split('.').pop()?.toLowerCase())) {
     return <FilePdfOutlined className="text-red-500" />;
   }
-  return <FileUnknownOutlined className="text-gray-500" />;
+  return <FileUnknownOutlined className="text-text-tertiary" />;
 };
 
 // Get folder icon based on type
@@ -62,7 +62,7 @@ const getFolderIcon = (type, expanded) => {
     'joining-reports': 'text-cyan-500',
     'monthly-reports': 'text-blue-500',
   };
-  return <Icon className={colors[type] || 'text-gray-500'} />;
+  return <Icon className={colors[type] || 'text-text-tertiary'} />;
 };
 
 const InstitutionFileExplorer = ({ open, onClose, institutionId, institutionName }) => {

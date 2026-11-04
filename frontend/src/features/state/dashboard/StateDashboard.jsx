@@ -100,15 +100,15 @@ const StateDashboard = () => {
 
   if (loading && !stats) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50 gap-4">
+      <div className="flex flex-col justify-center items-center min-h-screen bg-background gap-4">
         <Spin size="large" />
-        <Text className="text-gray-500 animate-pulse">Loading dashboard...</Text>
+        <Text className="text-text-tertiary animate-pulse">Loading dashboard...</Text>
       </div>
     );
   }
 
   return (
-    <div className="state-dashboard p-4 md:p-6 bg-gray-50 min-h-screen">
+    <div className="state-dashboard p-4 md:p-6 bg-background min-h-screen">
       {/* Header */}
       <DashboardHeader
         onRefresh={handleRefresh}

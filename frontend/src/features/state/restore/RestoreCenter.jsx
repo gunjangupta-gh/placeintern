@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Card,
   Table,
   Row,
   Col,
@@ -457,20 +456,18 @@ const RestoreCenter = () => {
   ];
 
   return (
-    <div className="">
-      <Card
-        title="Restore Center"
-        extra={
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={handleRefresh}
-            loading={loading || summaryLoading}
-          >
-            Refresh
-          </Button>
-        }
-        variant="borderless"
-      >
+    <div style={{ padding: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <Title level={3} style={{ margin: 0 }}>Restore Center</Title>
+        <Button
+          icon={<ReloadOutlined />}
+          onClick={handleRefresh}
+          loading={loading || summaryLoading}
+        >
+          Refresh
+        </Button>
+      </div>
+      <div style={{ marginTop: 16 }}>
         {/* Summary Cards */}
         <Row gutter={[16, 16]} className="mb-4">
           <Col xs={12} sm={6}>
@@ -517,12 +514,12 @@ const RestoreCenter = () => {
         </Row>
 
         {/* Tabs */}
-        <Card className="rounded-xl border-border" styles={{ body: { padding: '0' } }}>
+        <div>
         <Tabs
           activeKey={selectedType}
           onChange={handleTypeChange}
           items={tabItems}
-          className="!px-4 pt-2"
+          className="pt-2"
         />
 
         {/* Filters */}
@@ -629,8 +626,8 @@ const RestoreCenter = () => {
             }}
           />
         </div>
-        </Card>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };

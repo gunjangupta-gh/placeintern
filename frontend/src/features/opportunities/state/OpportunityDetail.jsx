@@ -122,7 +122,6 @@ const OpportunityDetail = () => {
           <Descriptions.Item label="Stipend">{opp.stipend || '-'}</Descriptions.Item>
           <Descriptions.Item label="Starts">{formatDate(opp.startDate)}</Descriptions.Item>
           <Descriptions.Item label="Apply by">{formatDate(opp.applicationDeadline)}</Descriptions.Item>
-          <Descriptions.Item label="Eligible years">{opp.eligibleYears?.length ? opp.eligibleYears.join(', ') : 'All'}</Descriptions.Item>
           <Descriptions.Item label="Industry contact (State only)" span={3}>
             {[opp.contactName, opp.contactPhone, opp.contactEmail].filter(Boolean).join(' · ') || 'Not provided'}
           </Descriptions.Item>
@@ -138,6 +137,7 @@ const OpportunityDetail = () => {
           dataSource={opp.branches || []}
           scroll={{ x: 'max-content' }}
           columns={[
+            { title: 'S.No', width: 64, render: (_v, _r, i) => i + 1 },
             { title: 'Branch', render: (_, b) => <span>{b.name} <Text type="secondary">({b.code})</Text></span> },
             { title: 'Actual positions', dataIndex: 'positions' },
             {

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
-  Card,
   Table,
   Button,
   Input,
@@ -44,7 +43,7 @@ import {
   selectDashboardStats
 } from '../store/stateSlice';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 const InstituteManagement = () => {
   const dispatch = useDispatch();
@@ -247,24 +246,22 @@ const InstituteManagement = () => {
   const hasActiveFilters = searchText || statusFilter !== 'all';
 
   return (
-    <div className="">
-      <Card
-        title="Institution Management"
-        extra={
-          <Space>
-            <Button icon={<FilterOutlined />} onClick={() => setShowFilters(!showFilters)}>
-              Filters
-            </Button>
-            <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={loading}>
-              Refresh
-            </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-              Add Institute
-            </Button>
-          </Space>
-        }
-        variant="borderless"
-      >
+    <div style={{ padding: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+        <Title level={3} style={{ margin: 0 }}>Institution Management</Title>
+        <Space>
+          <Button icon={<FilterOutlined />} onClick={() => setShowFilters(!showFilters)}>
+            Filters
+          </Button>
+          <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={loading}>
+            Refresh
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+            Add Institute
+          </Button>
+        </Space>
+      </div>
+      <div>
         <div className="mb-4">
           <Input.Search
             placeholder="Search by name, code, or city..."
@@ -280,7 +277,7 @@ const InstituteManagement = () => {
 
         {/* Filters */}
         {showFilters && (
-          <div className="mb-4 p-4 bg-gray-50 rounded">
+          <div className="mb-4 p-4 bg-background-secondary rounded">
             <Row gutter={[16, 16]} align="middle">
               <Col xs={24} sm={12} md={6}>
                 <Select
@@ -331,7 +328,7 @@ const InstituteManagement = () => {
             }}
           />
         </div>
-      </Card>
+      </div>
 
       {/* Create/Edit Modal */}
       <InstitutionModal

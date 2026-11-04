@@ -120,11 +120,11 @@ const BranchCountChip = ({ count, target, label, tone }) => {
   const hasTarget = target !== null && target !== undefined;
   const over = hasTarget && count > target;
   const colors = tone === "green"
-    ? "bg-green-50 dark:bg-green-900/20 text-green-600"
-    : "bg-blue-50 dark:bg-blue-900/20 text-blue-600";
+    ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400"
+    : "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400";
   return (
     <div
-      className={`px-2 py-1 rounded-md flex items-center gap-1.5 ${over ? "bg-red-50 dark:bg-red-900/20 text-red-600" : colors}`}
+      className={`px-2 py-1 rounded-md flex items-center gap-1.5 ${over ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400" : colors}`}
       title={hasTarget ? `${count} of ${target} sanctioned${over ? " (over capacity)" : ""}` : undefined}
     >
       <span className="text-sm font-bold">{count}</span>
@@ -173,19 +173,19 @@ const GeneralOverviewTab = memo(({ data, loading, error, staffCapacities }) => {
           className="rounded-lg" bodyStyle={{ padding: "8px" }}>
           <div className="grid grid-cols-3 gap-2">
             <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <div className="text-lg font-bold text-blue-600">{yearWiseStudents.firstYear || 0}</div>
+              <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{yearWiseStudents.firstYear || 0}</div>
               <div className="text-[9px] text-text-tertiary">1st Year</div>
               <Progress percent={totalStudents > 0 ? Math.round((yearWiseStudents.firstYear / totalStudents) * 100) : 0}
                 size="small" strokeColor="#3B82F6" showInfo={false} className="mt-1" />
             </div>
             <div className="text-center p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <div className="text-lg font-bold text-green-600">{yearWiseStudents.secondYear || 0}</div>
+              <div className="text-lg font-bold text-green-600 dark:text-green-400">{yearWiseStudents.secondYear || 0}</div>
               <div className="text-[9px] text-text-tertiary">2nd Year</div>
               <Progress percent={totalStudents > 0 ? Math.round((yearWiseStudents.secondYear / totalStudents) * 100) : 0}
                 size="small" strokeColor="#22C55E" showInfo={false} className="mt-1" />
             </div>
             <div className="text-center p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-              <div className="text-lg font-bold text-purple-600">{yearWiseStudents.thirdYear || 0}</div>
+              <div className="text-lg font-bold text-purple-600 dark:text-purple-400">{yearWiseStudents.thirdYear || 0}</div>
               <div className="text-[9px] text-text-tertiary">3rd Year</div>
               <Progress percent={totalStudents > 0 ? Math.round((yearWiseStudents.thirdYear / totalStudents) * 100) : 0}
                 size="small" strokeColor="#A855F7" showInfo={false} className="mt-1" />
@@ -808,19 +808,19 @@ const LandRecordsTab = memo(({ data, loading, error, branchInfrastructure = [], 
         className="rounded-lg" bodyStyle={{ padding: "8px" }}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-center">
-            <div className="text-lg font-bold text-blue-600">{lectureRooms?.numberOfRooms || 0}</div>
+            <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{lectureRooms?.numberOfRooms || 0}</div>
             <div className="text-[10px] text-text-tertiary">Lecture Rooms</div>
           </div>
           <div className="p-2 rounded-lg bg-green-50 dark:bg-green-900/20 text-center">
-            <div className="text-lg font-bold text-green-600">{labs?.numberOfRooms || 0}</div>
+            <div className="text-lg font-bold text-green-600 dark:text-green-400">{labs?.numberOfRooms || 0}</div>
             <div className="text-[10px] text-text-tertiary">Labs</div>
           </div>
           <div className="p-2 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-center">
-            <div className="text-lg font-bold text-orange-600">{workshops?.numberOfRooms || 0}</div>
+            <div className="text-lg font-bold text-orange-600 dark:text-orange-400">{workshops?.numberOfRooms || 0}</div>
             <div className="text-[10px] text-text-tertiary">Workshops</div>
           </div>
           <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-center">
-            <div className="text-lg font-bold text-purple-600">{commonArea?.availableAreaSqFt?.toLocaleString() || 0}</div>
+            <div className="text-lg font-bold text-purple-600 dark:text-purple-400">{commonArea?.availableAreaSqFt?.toLocaleString() || 0}</div>
             <div className="text-[10px] text-text-tertiary">Common Area (Sq.ft)</div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Input, Select, Tag, theme } from 'antd';
+import { Button, Input, Select, Tag, theme } from 'antd';
 import { toast } from 'react-hot-toast';
 import { SearchOutlined, DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
 import DataTable from '../../../components/tables/DataTable';
@@ -122,7 +122,7 @@ const InternshipReportOverview = () => {
         </div>
       </div>
 
-      <Card style={{ borderRadius: token.borderRadiusLG, border: `1px solid ${token.colorBorderSecondary}` }} bodyStyle={{ padding: 16 }}>
+      <div>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <Search
             placeholder="Search by student name, roll number, or company"
@@ -149,7 +149,7 @@ const InternshipReportOverview = () => {
             options={districts.map((d) => ({ value: d, label: d }))}
           />
         </div>
-      </Card>
+      </div>
 
       <div style={{ backgroundColor: token.colorBgContainer, borderRadius: token.borderRadiusLG, border: `1px solid ${token.colorBorderSecondary}`, overflow: 'hidden' }}>
         <DataTable

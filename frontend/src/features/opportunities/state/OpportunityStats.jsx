@@ -13,7 +13,7 @@ const Title = ({ children }) => (
 
 /**
  * Four headline cards for the State Directorate (published internships only):
- * total vacancies (branch-wise split in a modal behind the eye icon), average stipend, applications, selected.
+ * total internships (branch-wise split in a modal behind the eye icon), average stipend, applications, selected.
  */
 const OpportunityStats = ({ refreshKey }) => {
   const { token } = theme.useToken();
@@ -39,13 +39,13 @@ const OpportunityStats = ({ refreshKey }) => {
 
   return (
     <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
-      {/* 1. Total vacancies (branch-wise split is in the eye-icon modal) */}
+      {/* 1. Total internships (branch-wise split is in the eye-icon modal) */}
       <Col xs={24} sm={12} xl={6}>
         <Card size="small" style={{ ...cardStyle, position: 'relative' }}>
           <button
             type="button"
-            aria-label="View branch-wise vacancies"
-            title="View branch-wise vacancies"
+            aria-label="View branch-wise internships"
+            title="View branch-wise internships"
             onClick={() => setShowBranches(true)}
             style={{
               position: 'absolute', top: 10, right: 10, width: 24, height: 24, borderRadius: '50%', border: 'none',
@@ -59,10 +59,10 @@ const OpportunityStats = ({ refreshKey }) => {
           </button>
           <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap', paddingRight: 24 }}>
             <div style={{ minWidth: 110 }}>
-              <Title>Total vacancies</Title>
+              <Title>Total internships</Title>
               <Statistic value={stats.vacancies} valueStyle={{ fontSize: 32, fontWeight: 600 }} />
               <Text type="secondary" style={{ fontSize: 12 }}>
-                {stats.opportunities} internship{stats.opportunities === 1 ? '' : 's'} · {stats.openOpportunities} open
+                {stats.opportunities} opportunit{stats.opportunities === 1 ? 'y' : 'ies'} · {stats.openOpportunities} open
               </Text>
             </div>
           </div>
@@ -80,7 +80,7 @@ const OpportunityStats = ({ refreshKey }) => {
           )}
           <Text type="secondary" style={{ fontSize: 12 }}>
             {stats.stipendCoverage.counted
-              ? `Based on ${stats.stipendCoverage.counted} of ${stats.stipendCoverage.total} vacancies with a stipend`
+              ? `Based on ${stats.stipendCoverage.counted} of ${stats.stipendCoverage.total} internships with a stipend`
               : 'No stipend entered yet'}
           </Text>
         </Card>
@@ -101,13 +101,13 @@ const OpportunityStats = ({ refreshKey }) => {
           <Title>Selected students</Title>
           <Statistic value={stats.selected} suffix={<span style={{ fontSize: 13, color: token.colorTextSecondary }}>/ {stats.vacancies}</span>} valueStyle={{ fontSize: 28, fontWeight: 600, color: token.colorSuccess }} />
           <Progress percent={pct} size="small" showInfo={false} strokeColor={token.colorSuccess} style={{ marginBottom: 0 }} />
-          <Text type="secondary" style={{ fontSize: 12 }}>{stats.vacanciesLeft} vacancies left ({pct}% filled)</Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>{stats.vacanciesLeft} internships left ({pct}% filled)</Text>
         </Card>
       </Col>
 
       <Modal
         open={showBranches}
-        title="Branch-wise vacancies"
+        title="Branch-wise internships"
         footer={null}
         width={760}
         onCancel={() => setShowBranches(false)}
@@ -118,11 +118,11 @@ const OpportunityStats = ({ refreshKey }) => {
           rowKey="code"
           pagination={false}
           dataSource={stats.branchWise}
-          locale={{ emptyText: 'No vacancies yet' }}
+          locale={{ emptyText: 'No internships yet' }}
           scroll={{ y: 360 }}
           columns={[
             { title: 'Branch', render: (_, b) => <span style={{ whiteSpace: 'nowrap' }}>{b.name} <Text type="secondary">({b.code})</Text></span> },
-            { title: 'Vacancies', dataIndex: 'positions', align: 'right', sorter: (a, b) => a.positions - b.positions },
+            { title: 'Internships', dataIndex: 'positions', align: 'right', sorter: (a, b) => a.positions - b.positions },
             { title: 'Selected', dataIndex: 'selected', align: 'right', render: (n) => <Text style={{ color: token.colorSuccess }}>{n}</Text> },
             {
               title: 'Left',

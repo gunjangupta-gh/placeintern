@@ -34,7 +34,7 @@ describe('StudentOpportunityService.apply', () => {
         count: jest.fn().mockResolvedValue(o.seatsUsed ?? 0),
         findFirst: jest.fn().mockResolvedValue(o.mine ?? null),
         findMany: jest.fn().mockResolvedValue(o.holding ?? []),
-        create: jest.fn().mockResolvedValue({ id: 'app1', status: ApplicationStatus.APPLIED, opportunityId: 'o1' }),
+        create: jest.fn().mockResolvedValue({ id: 'app1', status: ApplicationStatus.UNDER_REVIEW, opportunityId: 'o1' }),
       },
     };
     const prisma: any = { $transaction: jest.fn().mockImplementation(async (fn: any) => fn(tx)) };
@@ -44,14 +44,14 @@ describe('StudentOpportunityService.apply', () => {
     return { svc: new StudentOpportunityService(prisma, cache, audit, elig), tx, cache, lockOrder };
   }
 
-  it('creates an APPLIED application, snapshots company data, and holds no contact fields', async () => {
+  it('creates an UNDER_REVIEW application, snapshots company data, and holds no contact fields', async () => {
     const { svc, tx, cache } = setup();
     const res = await svc.apply('u1', 'o1');
-    expect(res).toEqual({ applicationId: 'app1', status: 'APPLIED' });
+    expect(res).toEqual({ applicationId: 'app1', status: 'UNDER_REVIEW' });
 
     const data = tx.internshipApplication.create.mock.calls[0][0].data;
     expect(data).toMatchObject({
-      studentId: 's1', opportunityId: 'o1', isSelfIdentified: false, status: 'APPLIED',
+      studentId: 's1', opportunityId: 'o1', isSelfIdentified: false, status: 'UNDER_REVIEW',
       internshipPhase: InternshipPhase.NOT_STARTED, companyName: 'Godrej', jobProfile: 'Production Trainee',
       internshipDuration: '6 months',
     });

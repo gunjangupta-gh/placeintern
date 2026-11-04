@@ -130,7 +130,7 @@ export class StateOpportunityController {
   }
 
   @Post('applications/bulk')
-  @ApiOperation({ summary: 'Approve, reject or delete several applications' })
+  @ApiOperation({ summary: 'Approve, reject, mark or delete several applications' })
   bulk(@Body() dto: BulkApplicationActionDto, @Req() req: any) {
     return this.service.bulkAction(dto.action, dto.applicationIds, dto.remarks, this.actor(req));
   }

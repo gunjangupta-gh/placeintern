@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Card,
   Upload,
   Button,
   Steps,
@@ -12,6 +11,7 @@ import {
   Switch,
   Tooltip,
   Select,
+  Typography,
 } from 'antd';
 import { toast } from 'react-hot-toast';
 import {
@@ -32,6 +32,7 @@ import * as XLSX from 'xlsx';
 
 const { Step } = Steps;
 const { Dragger } = Upload;
+const { Title } = Typography;
 
 const BulkSelfInternshipUpload = () => {
   const dispatch = useDispatch();
@@ -363,18 +364,13 @@ const BulkSelfInternshipUpload = () => {
   ];
 
   return (
-    <div className="p-6">
-      <Card
-        title="Bulk Upload Self-Identified Internships"
-        extra={
-          <Button
-            icon={<HistoryOutlined />}
-            onClick={() => navigate('/app/bulk/job-history')}
-          >
-            View Job History
-          </Button>
-        }
-      >
+    <div style={{ padding: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+        <Title level={3} style={{ margin: 0 }}>Bulk Upload Self-Identified Internships</Title>
+        <Button icon={<HistoryOutlined />} onClick={() => navigate('/app/bulk/job-history')}>
+          View Job History
+        </Button>
+      </div>
         <Steps current={currentStep} className="mb-6">
           <Step title="Upload File" description="Select Excel file" />
           <Step title="Validate" description="Review records" />
@@ -670,7 +666,6 @@ const BulkSelfInternshipUpload = () => {
             )}
           </div>
         )}
-      </Card>
     </div>
   );
 };

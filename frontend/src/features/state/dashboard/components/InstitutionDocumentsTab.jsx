@@ -53,7 +53,7 @@ const getDocumentIcon = (fileName) => {
   const ext = fileName?.split('.').pop()?.toLowerCase();
   if (['pdf'].includes(ext)) return <FilePdfOutlined className="text-red-500" />;
   if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) return <FileImageOutlined className="text-blue-500" />;
-  return <FileUnknownOutlined className="text-gray-500" />;
+  return <FileUnknownOutlined className="text-text-tertiary" />;
 };
 
 const InstitutionDocumentsTab = ({ institutionId, institutionName }) => {

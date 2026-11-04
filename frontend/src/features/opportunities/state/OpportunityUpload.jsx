@@ -21,7 +21,6 @@ const previewColumns = [
         <Tag key={s.code}>{s.code}: {s.positions}{s.maxApplications ? ` (max ${s.maxApplications} applications)` : ''}</Tag>
       )),
   },
-  { title: 'Years', dataIndex: 'eligibleYears', render: (y) => (y?.length ? y.join(', ') : 'All') },
   { title: 'Duration', dataIndex: 'durationMonths', render: (m) => `${m} mo` },
   { title: 'Deadline', dataIndex: 'applicationDeadline', render: formatDate },
   { title: 'Start', dataIndex: 'startDate', render: formatDate },

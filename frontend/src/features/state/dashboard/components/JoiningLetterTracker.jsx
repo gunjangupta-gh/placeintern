@@ -17,9 +17,9 @@ const ProgressMetric = ({ label, current, total, color }) => {
 
   return (
     <div className="flex-1">
-      <Text className="text-xs text-gray-400 block mb-1">{label}</Text>
+      <Text className="text-xs text-text-tertiary block mb-1">{label}</Text>
       <div className="flex items-baseline gap-2 mb-2">
-        <Text className="text-lg font-bold text-gray-800">
+        <Text className="text-lg font-bold text-text-primary">
           {current.toLocaleString()} / {total.toLocaleString()}
         </Text>
         <Text className={`text-lg font-bold ${color}`}>{percent}%</Text>
@@ -27,8 +27,8 @@ const ProgressMetric = ({ label, current, total, color }) => {
       <Progress
         percent={percent}
         showInfo={false}
-        strokeColor={color === 'text-green-600' ? '#22c55e' : color === 'text-blue-600' ? '#3b82f6' : '#f59e0b'}
-        trailColor="#e5e7eb"
+        strokeColor={color === 'text-green-600 dark:text-green-400' ? '#22c55e' : color === 'text-blue-600 dark:text-blue-400' ? '#3b82f6' : '#f59e0b'}
+        trailColor="rgb(var(--color-border))"
         size="small"
         className="!m-0"
       />
@@ -55,7 +55,7 @@ const JoiningLetterTracker = ({ selectedMonth }) => {
 
   if (loading) {
     return (
-      <Card className="rounded-xl border border-gray-100 shadow-sm bg-white">
+      <Card className="rounded-xl border border-border/50 shadow-sm bg-background">
         <div className="flex justify-center items-center h-16">
           <Spin />
         </div>
@@ -77,18 +77,18 @@ const JoiningLetterTracker = ({ selectedMonth }) => {
 
   return (
     <Card
-      className="rounded-xl border border-gray-100 shadow-sm bg-white"
+      className="rounded-xl border border-border/50 shadow-sm bg-background"
       styles={{ body: { padding: '0' } }}
     >
-      <div className="flex items-center justify-between p-4 border-b border-gray-100">
+      <div className="flex items-center justify-between p-4 border-b border-border/50">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center">
             <BankOutlined className="text-amber-500" />
           </div>
-          <Text className="font-semibold text-gray-800">Joining Report & Student Mapping</Text>
+          <Text className="font-semibold text-text-primary">Joining Report & Student Mapping</Text>
         </div>
-        <button className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors">
-          <EyeOutlined className="text-gray-400 text-sm" />
+        <button className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-background-tertiary transition-colors">
+          <EyeOutlined className="text-text-tertiary text-sm" />
         </button>
       </div>
 
@@ -99,13 +99,13 @@ const JoiningLetterTracker = ({ selectedMonth }) => {
               label="Joining Reports Submitted"
               current={lettersUploaded}
               total={lettersTotal}
-              color={uploadRate >= 80 ? 'text-green-600' : uploadRate >= 50 ? 'text-amber-600' : 'text-red-500'}
+              color={uploadRate >= 80 ? 'text-green-600 dark:text-green-400' : uploadRate >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-500'}
             />
             <ProgressMetric
               label="Students Mapped to Faculty"
               current={studentsWithMentors}
               total={totalActiveStudents}
-              color="text-blue-600"
+              color="text-blue-600 dark:text-blue-400"
             />
           </div>
         ) : (

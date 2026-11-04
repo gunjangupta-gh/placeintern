@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Card,
   Row,
   Col,
   Select,
@@ -70,6 +69,21 @@ import ColumnSelector from '../../../components/report-builder/ColumnSelector';
 import FilterBuilder from '../../../components/report-builder/FilterBuilder';
 
 const { Title, Text, Paragraph } = Typography;
+/** Plain titled block (replaces the old Card wrappers): heading + optional actions, then content. */
+const Section = ({ title, extra, loading, heading, className, styles, children }) => (
+  <div className={className} style={{ marginBottom: heading ? 0 : 16 }}>
+    {(title || extra) && (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+        <div style={{ fontWeight: 600, fontSize: heading ? 20 : 15 }}>{title}</div>
+        {extra}
+      </div>
+    )}
+    <Spin spinning={!!loading}>
+      <div style={styles?.body}>{children}</div>
+    </Spin>
+  </div>
+);
+
 const { Option } = Select;
 const { Panel } = Collapse;
 const { TabPane } = Tabs;
@@ -637,7 +651,7 @@ const ReportBuilder = () => {
   const renderCatalog = () => (
     <div className="space-y-4">
       {Object.entries(catalogByCategory).map(([category, reports]) => (
-        <Card
+        <Section
           key={category}
           size="small"
           title={
@@ -675,7 +689,7 @@ const ReportBuilder = () => {
               </div>
             ))}
           </div>
-        </Card>
+        </Section>
       ))}
     </div>
   );
@@ -694,7 +708,7 @@ const ReportBuilder = () => {
       <div className="space-y-6">
         {/* Templates */}
         {templates.length > 0 && (
-          <Card size="small" title={<><FolderOpenOutlined /> Saved Templates</>}>
+          <Section size="small" title={<><FolderOpenOutlined /> Saved Templates</>}>
             <div className="flex flex-wrap gap-2">
               {templates.map((template) => (
                 <Tag
@@ -712,12 +726,12 @@ const ReportBuilder = () => {
                 </Tag>
               ))}
             </div>
-          </Card>
+          </Section>
         )}
 
         {/* Filters - shown prominently outside collapse */}
         {availableFilters.length > 0 && (
-          <Card
+          <Section
             size="small"
             title={
               <Space>
@@ -726,8 +740,6 @@ const ReportBuilder = () => {
                 <Text type="secondary" style={{ fontSize: 11, fontWeight: 400 }}>(Optional - Select to filter data)</Text>
               </Space>
             }
-            style={{ border: '1px solid #d9d9d9', borderRadius: 8 }}
-            styles={{ header: { background: '#fafafa', borderBottom: '1px solid #f0f0f0' } }}
           >
             <FilterBuilder
               filters={availableFilters}
@@ -736,7 +748,7 @@ const ReportBuilder = () => {
               onChange={setFilterValues}
               compact={false}
             />
-          </Card>
+          </Section>
         )}
 
         {/* Columns */}
@@ -828,7 +840,7 @@ const ReportBuilder = () => {
         </Collapse>
 
         {/* Export Format */}
-        <Card size="small" title={<><SettingOutlined /> Export Settings</>}>
+        <Section size="small" title={<><SettingOutlined /> Export Settings</>}>
           <Row gutter={16} align="middle">
             <Col xs={24} sm={12}>
               <Form.Item label="Format" className="mb-0">
@@ -885,7 +897,7 @@ const ReportBuilder = () => {
               </Space>
             </Col>
           </Row>
-        </Card>
+        </Section>
 
         {/* Generate Button */}
         <Button
@@ -905,7 +917,7 @@ const ReportBuilder = () => {
 
   return (
     <div className="">
-      <Card title="Report Builder" extra={<CmReportDownload />} variant="borderless">
+      <Section title="Report Builder" extra={<CmReportDownload />} heading>
         <Steps current={currentStep} className="mb-6" size="small">
         <Steps.Step title="Select Type" description="Choose report" />
         <Steps.Step title="Configure" description="Set columns & filters" />
@@ -925,7 +937,7 @@ const ReportBuilder = () => {
         >
           <Row gutter={24}>
             <Col xs={24} lg={10}>
-              <Card
+              <Section
                 title={
                   <Space>
                     <FolderOpenOutlined />
@@ -937,11 +949,11 @@ const ReportBuilder = () => {
                 styles={{ body: { maxHeight: 600, overflow: 'auto' } }}
               >
                 {renderCatalog()}
-              </Card>
+              </Section>
             </Col>
 
             <Col xs={24} lg={14}>
-              <Card
+              <Section
                 title={
                   <Space>
                     <SettingOutlined />
@@ -954,7 +966,7 @@ const ReportBuilder = () => {
                 loading={loading && selectedType && !config}
               >
                 {renderConfiguration()}
-              </Card>
+              </Section>
             </Col>
           </Row>
         </TabPane>
@@ -980,7 +992,7 @@ const ReportBuilder = () => {
           <Row gutter={16}>
             {/* Queue Stats */}
             <Col span={24} className="mb-4">
-              <Card size="small">
+              <Section size="small">
                 <Row gutter={16}>
                   <Col xs={12} sm={6}>
                     <div className="text-center">
@@ -1007,12 +1019,12 @@ const ReportBuilder = () => {
                     </div>
                   </Col>
                 </Row>
-              </Card>
+              </Section>
             </Col>
 
             {/* Active Reports */}
             <Col xs={24} lg={12}>
-              <Card
+              <Section
                 title={
                   <Space>
                     <SyncOutlined spin={activeReports.length > 0} />
@@ -1059,12 +1071,12 @@ const ReportBuilder = () => {
                     ))}
                   </div>
                 )}
-              </Card>
+              </Section>
             </Col>
 
             {/* Failed Reports */}
             <Col xs={24} lg={12}>
-              <Card
+              <Section
                 title={
                   <Space>
                     <ExclamationCircleOutlined />
@@ -1114,7 +1126,7 @@ const ReportBuilder = () => {
                     ))}
                   </div>
                 )}
-              </Card>
+              </Section>
             </Col>
           </Row>
         </TabPane>
@@ -1131,7 +1143,7 @@ const ReportBuilder = () => {
           }
           key="history"
         >
-          <Card
+          <Section
             title={
               <Space>
                 <FileSearchOutlined />
@@ -1168,10 +1180,10 @@ const ReportBuilder = () => {
                 }}
               />
             )}
-          </Card>
+          </Section>
         </TabPane>
       </Tabs>
-      </Card>
+      </Section>
 
       {/* Save Template Modal */}
       <Modal

@@ -19,7 +19,7 @@ const AppContent = React.memo(() => {
       <AntApp>
         <ErrorBoundary>
           <SEO />
-          <div className="min-h-screen bg-background-secondary text-text-primary">
+          <div className="min-h-screen bg-background text-text-primary">
             <AppRoutes />
             <PWAInstallPrompt />
             <Toaster 

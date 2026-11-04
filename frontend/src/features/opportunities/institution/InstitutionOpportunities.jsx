@@ -5,7 +5,7 @@ import { useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate, formatTime } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
-import { DEFAULT_PAGE_SIZE, tablePagination } from '../pagination';
+import { DEFAULT_PAGE_SIZE, tablePagination, serialColumn, statusLabel } from '../pagination';
 
 const { Title, Paragraph, Text } = Typography;
 const PENDING = ['APPLIED', 'UNDER_REVIEW', 'SHORTLISTED'];
@@ -46,7 +46,7 @@ const DataTab = ({ fetcher, columns, searchPlaceholder, rowKey = 'id', reloadKey
         size="middle"
         loading={loading}
         dataSource={rows}
-        columns={columns}
+        columns={[serialColumn(page, pageSize), ...columns]}
         scroll={{ x: 'max-content' }}
         pagination={tablePagination({ page, pageSize, total: meta.total, onChange: (p, ps) => { setPage(p); setPageSize(ps); } })}
       />
@@ -86,12 +86,12 @@ const InstitutionOpportunities = () => {
 
   const opportunityColumns = [
     { title: 'Company', dataIndex: ['company', 'name'] },
-    { title: 'Position', dataIndex: 'title' },
     { title: 'District', dataIndex: 'district' },
+    { title: 'Stipend', dataIndex: 'stipend', render: (v) => v || '-' },
     { title: 'Branches', dataIndex: 'branches', render: (b) => b.map((x) => <Tag key={x.id} color={x.approvedCount >= x.positions ? 'red' : undefined}>{x.code} {x.approvedCount}/{x.positions}</Tag>) },
     { title: 'Seats left', render: (_, r) => `${r.seatsLeft} of ${r.positions}` },
     { title: 'Deadline', dataIndex: 'applicationDeadline', render: formatDate },
-    { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{s}</Tag> },
+    { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
   ];
 
   const applicationColumns = [
@@ -99,7 +99,7 @@ const InstitutionOpportunities = () => {
     { title: 'Branch', dataIndex: ['student', 'branch', 'name'] },
     { title: 'Position', render: (_, r) => <div><div>{r.opportunity?.title}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.opportunity?.company?.name}</Text></div> },
     { title: 'Applied at', dataIndex: 'appliedDate', render: (v) => <div style={{ whiteSpace: 'nowrap' }}><div>{formatDate(v)}</div><Text type="secondary" style={{ fontSize: 12 }}>{formatTime(v)}</Text></div> },
-    { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{s}</Tag> },
+    { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
     ...(isPrincipal
       ? []
       : [{
@@ -127,7 +127,7 @@ const InstitutionOpportunities = () => {
       <Tabs
         destroyOnHidden
         items={[
-          { key: 'opportunities', label: 'Opportunities', children: <DataTab fetcher={fetchOpportunities} columns={opportunityColumns} searchPlaceholder="Search company or position" /> },
+          { key: 'opportunities', label: 'Opportunities', children: <DataTab fetcher={fetchOpportunities} columns={opportunityColumns} searchPlaceholder="Search company or district" /> },
           { key: 'applications', label: 'Applications', children: <DataTab fetcher={fetchApplications} columns={applicationColumns} searchPlaceholder="Search student name or roll no." reloadKey={reloadKey} /> },
           {
             key: 'incomplete',

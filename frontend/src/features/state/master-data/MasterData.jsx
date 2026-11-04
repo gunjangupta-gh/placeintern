@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Card,
   Table,
   Button,
   Modal,
@@ -390,10 +389,8 @@ const MasterData = () => {
         </span>
       ),
       children: (
-        <Card
-          className="rounded-xl border-border"
-          styles={{ body: { padding: 0 } }}
-          extra={
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -401,8 +398,7 @@ const MasterData = () => {
             >
               Add Batch
             </Button>
-          }
-        >
+          </div>
           <div className="custom-table">
             <Table
               columns={batchColumns}
@@ -413,7 +409,7 @@ const MasterData = () => {
               pagination={{ pageSize: 10 }}
             />
           </div>
-        </Card>
+        </div>
       ),
     },
     {
@@ -425,10 +421,8 @@ const MasterData = () => {
         </span>
       ),
       children: (
-        <Card
-          className="rounded-xl border-border"
-          styles={{ body: { padding: 0 } }}
-          extra={
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -436,8 +430,7 @@ const MasterData = () => {
             >
               Add Branch
             </Button>
-          }
-        >
+          </div>
           <div className="custom-table">
             <Table
               columns={branchColumns}
@@ -448,7 +441,7 @@ const MasterData = () => {
               pagination={{ pageSize: 10 }}
             />
           </div>
-        </Card>
+        </div>
       ),
     },
     {
@@ -460,10 +453,7 @@ const MasterData = () => {
         </span>
       ),
       children: (
-        <Card
-          className="rounded-xl border-border"
-          styles={{ body: { padding: 0 } }}
-        >
+        <div>
           <div className="custom-table">
             <Table
               columns={designationColumns}
@@ -474,29 +464,27 @@ const MasterData = () => {
               pagination={{ pageSize: 10 }}
             />
           </div>
-        </Card>
+        </div>
       ),
     },
   ];
 
   return (
-    <div className="">
-      <Card
-        title="Master Data Management"
-        extra={
-          <Button icon={<ReloadOutlined />} onClick={loadAllData} loading={loading}>
-            Refresh
-          </Button>
-        }
-        variant="borderless"
-      >
+    <div style={{ padding: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <Title level={3} style={{ margin: 0 }}>Master Data Management</Title>
+        <Button icon={<ReloadOutlined />} onClick={loadAllData} loading={loading}>
+          Refresh
+        </Button>
+      </div>
+      <div style={{ marginTop: 16 }}>
         <Tabs
           activeKey={activeTab}
           onChange={setActiveTab}
           items={tabItems}
           className="master-data-tabs"
         />
-      </Card>
+      </div>
 
       {/* Create/Edit Modal */}
       <Modal

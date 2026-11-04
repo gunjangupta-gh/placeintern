@@ -324,20 +324,18 @@ const CompaniesOverview = () => {
   ], []);
 
   return (
-    <div className="">
-      <Card
-        title="Companies Overview"
-        extra={
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={() => fetchCompanies({ forceRefresh: true })}
-            loading={loading}
-          >
-            Refresh
-          </Button>
-        }
-        variant="borderless"
-      >
+    <div style={{ padding: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+        <Title level={3} style={{ margin: 0 }}>Companies Overview</Title>
+        <Button
+          icon={<ReloadOutlined />}
+          onClick={() => fetchCompanies({ forceRefresh: true })}
+          loading={loading}
+        >
+          Refresh
+        </Button>
+      </div>
+      <div>
         {/* Summary Cards */}
         <Row gutter={[16, 16]} className="mb-4">
           <Col xs={12} sm={6}>
@@ -431,7 +429,7 @@ const CompaniesOverview = () => {
             rowClassName={(record) => record.isSelfIdentifiedCompany ? 'bg-purple-50/10 hover:bg-purple-50/20' : ''}
           />
         </div>
-      </Card>
+      </div>
 
       {/* Company Details Modal */}
       <Modal

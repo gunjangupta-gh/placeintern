@@ -125,7 +125,7 @@ export class WithdrawApplicationDto {
 }
 
 export class BulkApplicationActionDto {
-  @IsIn(['APPROVE', 'REJECT', 'DELETE']) action!: 'APPROVE' | 'REJECT' | 'DELETE';
+  @IsIn(['APPROVE', 'REJECT', 'DELETE', 'UNDER_REVIEW', 'SHORTLISTED']) action!: 'APPROVE' | 'REJECT' | 'DELETE' | 'UNDER_REVIEW' | 'SHORTLISTED';
   @IsArray() @ArrayMinSize(1) @ArrayMaxSize(200) @IsUUID('all', { each: true }) applicationIds!: string[];
   @IsOptional() @IsString() @MaxLength(500) remarks?: string;
 }

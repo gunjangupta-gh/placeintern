@@ -1,9 +1,8 @@
-import React from 'react';
-import { Table, Tag, Button, Space, Avatar, Typography, Tooltip, theme } from 'antd';
+import React, { useState } from 'react';
+import { Table, Tag, Button, Space, Typography, Tooltip, theme } from 'antd';
 import InternshipTypeBadge from '../../../../components/common/InternshipTypeBadge';
 import {
   EyeOutlined,
-  BankOutlined,
   CalendarOutlined,
   EnvironmentOutlined,
   ClockCircleOutlined,
@@ -12,7 +11,6 @@ import {
   StarOutlined,
 } from '@ant-design/icons';
 import { formatDisplayDate, getStatusColor } from '../utils/applicationUtils';
-import { getImageUrl } from '../../../../utils/imageUtils';
 
 const { Text } = Typography;
 
@@ -35,8 +33,16 @@ const ApplicationsTable = ({
   isSelfIdentified = false,
 }) => {
   const { token } = theme.useToken();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const baseColumns = [
+    {
+      title: 'S.No',
+      key: 'sno',
+      width: 64,
+      render: (_v, _r, index) => (page - 1) * pageSize + index + 1,
+    },
     {
       title: 'Company',
       key: 'company',
@@ -48,13 +54,6 @@ const ApplicationsTable = ({
 
         return (
           <div className="flex items-center gap-3">
-            <Avatar
-              src={company?.logo ? getImageUrl(company.logo) : null}
-              icon={<BankOutlined />}
-              size={40}
-              className="flex-shrink-0"
-              style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary }}
-            />
             <div className="min-w-0">
               <Text strong className="block truncate">
                 {company?.companyName || 'N/A'}
@@ -89,6 +88,16 @@ const ApplicationsTable = ({
           )}
         </div>
       ),
+    },
+    {
+      title: 'Stipend',
+      key: 'stipend',
+      width: 110,
+      render: (_, record) => {
+        const v = record.stipend;
+        if (v === null || v === undefined || v === '') return '-';
+        return /^\d+(\.\d+)?$/.test(String(v).trim()) ? `₹${Number(v).toLocaleString('en-IN')}` : v;
+      },
     },
     {
       title: 'Duration',
@@ -171,7 +180,9 @@ const ApplicationsTable = ({
       loading={loading}
       scroll={{ x:  'max-content' }}
       pagination={{
-        pageSize: 10,
+        current: page,
+        pageSize,
+        onChange: (p, ps) => { setPage(ps !== pageSize ? 1 : p); setPageSize(ps); },
         showSizeChanger: true,
         showTotal: (total, range) =>
           `${range[0]}-${range[1]} of ${total} applications`,

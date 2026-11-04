@@ -875,6 +875,36 @@ export class OpportunityService {
   }
 
   /**
+   * Move a pending application between the non-final statuses (under review / shortlisted).
+   * The student keeps the seat and the application slot; approve / reject still decide it.
+   */
+  async markStatus(
+    applicationId: string,
+    status: typeof ApplicationStatus.UNDER_REVIEW | typeof ApplicationStatus.SHORTLISTED,
+    remarks: string | undefined,
+    actor: Actor,
+  ) {
+    const app = await this.prisma.internshipApplication.findUnique({
+      where: { id: applicationId },
+      select: { id: true, studentId: true, status: true, opportunityId: true },
+    });
+    if (!app?.opportunityId) throw new NotFoundException('Application not found');
+    if (!PENDING_DECISION_STATUSES.includes(app.status)) {
+      throw new BadRequestException(`Application is already ${app.status}`);
+    }
+    if (app.status === status) return { success: true, applicationId };
+    const res = await this.prisma.internshipApplication.updateMany({
+      where: { id: applicationId, status: { in: PENDING_DECISION_STATUSES } },
+      data: { status, ...(remarks?.trim() ? { reviewRemarks: remarks.trim() } : {}) },
+    });
+    if (res.count === 0) throw new ConflictException('Application was updated by someone else. Refresh and retry.');
+
+    await this.cache.invalidateByTags(['applications', `student:${app.studentId}`]).catch(() => undefined);
+    this.logAudit(actor, AuditAction.APPLICATION_UPDATE, applicationId, `Marked internship application as ${status}`, { status, remarks });
+    return { success: true, applicationId };
+  }
+
+  /**
    * Permanently delete an application (director only).
    *  - Pending / rejected / withdrawn: simply removed. The student's slot and the seat are freed,
    *    and the student may apply to that opportunity again.
@@ -957,7 +987,7 @@ export class OpportunityService {
   }
 
   async bulkAction(
-    action: 'APPROVE' | 'REJECT' | 'DELETE',
+    action: 'APPROVE' | 'REJECT' | 'DELETE' | 'UNDER_REVIEW' | 'SHORTLISTED',
     applicationIds: string[],
     remarks: string | undefined,
     actor: Actor,
@@ -984,6 +1014,7 @@ export class OpportunityService {
         if (action === 'APPROVE') {
           skippedEarlier = (await this.approve(id, { remarks }, actor)).skippedEarlierApplicants;
         } else if (action === 'DELETE') await this.deleteApplication(id, actor);
+        else if (action === 'UNDER_REVIEW' || action === 'SHORTLISTED') await this.markStatus(id, ApplicationStatus[action], remarks, actor);
         else await this.reject(id, remarks!.trim(), actor);
         results.push({ applicationId: id, ok: true, skippedEarlier });
       } catch (e: any) {
