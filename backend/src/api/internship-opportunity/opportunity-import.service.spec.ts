@@ -82,6 +82,13 @@ describe('OpportunityImportService', () => {
     });
   });
 
+  describe('unreadable files', () => {
+    it('says why, instead of a generic message', async () => {
+      const notAnXlsx = Buffer.from('name,company\nx,y\n'); // e.g. a CSV renamed to .xlsx
+      await expect(service.validate(notAnXlsx)).rejects.toThrow(/Could not read the file \(.+\)\. Download the template again/);
+    });
+  });
+
   describe('example row', () => {
     const exampleOf = async () => {
       const wb = new ExcelJS.Workbook();

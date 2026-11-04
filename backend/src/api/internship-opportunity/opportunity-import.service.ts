@@ -293,8 +293,12 @@ export class OpportunityImportService {
     let workbook: ExcelJS.Workbook;
     try {
       workbook = await readExcelBuffer(buffer);
-    } catch {
-      throw new BadRequestException('Could not read the file. Please upload the .xlsx template.');
+    } catch (e: any) {
+      const reason = String(e?.message ?? e ?? 'unknown error').replace(/\s+/g, ' ').slice(0, 160);
+      this.logger.warn(`Opportunity upload could not be read (${buffer?.length ?? 0} bytes): ${reason}`);
+      throw new BadRequestException(
+        `Could not read the file (${reason}). Download the template again, fill it in and save it as .xlsx (Excel Workbook).`,
+      );
     }
     const sheet = workbook.getWorksheet(OPPORTUNITY_SHEET);
     if (!sheet) {
