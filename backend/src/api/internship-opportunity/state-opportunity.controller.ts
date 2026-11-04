@@ -99,6 +99,12 @@ export class StateOpportunityController {
     return this.importService.confirm(file.buffer, this.actor(req), skipInvalid === 'true');
   }
 
+  @Get('stats')
+  @ApiOperation({ summary: 'Headline numbers: total / branch-wise vacancies, average stipend, applications' })
+  stats() {
+    return this.service.stats();
+  }
+
   // ---- Applications ----
 
   @Get('applications')

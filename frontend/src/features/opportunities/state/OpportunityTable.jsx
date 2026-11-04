@@ -10,7 +10,7 @@ import { DEFAULT_PAGE_SIZE, tablePagination } from '../pagination';
 
 const STATUS_COLOR = { OPEN: 'green', CLOSED: 'default', DRAFT: 'orange', FILLED: 'blue' };
 
-const OpportunityTable = ({ refreshKey }) => {
+const OpportunityTable = ({ refreshKey, onChanged }) => {
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [meta, setMeta] = useState({ total: 0 });
@@ -46,6 +46,7 @@ const OpportunityTable = ({ refreshKey }) => {
     try {
       await opportunityService.update(row.id, { status: row.status === 'OPEN' ? 'CLOSED' : 'OPEN' });
       load();
+      onChanged?.();
     } catch (err) {
       toast.error(getErrorMessage(err, 'Update failed'));
     }
@@ -56,6 +57,7 @@ const OpportunityTable = ({ refreshKey }) => {
       await opportunityService.remove(row.id);
       toast.success('Opportunity deleted');
       load();
+      onChanged?.();
     } catch (err) {
       toast.error(getErrorMessage(err, 'Delete failed'));
     }
@@ -159,7 +161,7 @@ const OpportunityTable = ({ refreshKey }) => {
         <OpportunityEditModal
           opportunity={editing}
           onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); load(); }}
+          onSaved={() => { setEditing(null); load(); onChanged?.(); }}
         />
       )}
     </>

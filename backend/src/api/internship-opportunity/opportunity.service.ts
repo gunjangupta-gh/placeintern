@@ -31,6 +31,7 @@ import {
   todayStartIST,
 } from './opportunity-dates.util';
 import { buildApplicationWhere } from './application-filters';
+import { parseMonthlyStipend } from './stipend.util';
 import { applicationCap, countBranchApplications, studentInBranch } from './eligibility.service';
 import {
   ApproveApplicationDto,
@@ -173,6 +174,69 @@ export class OpportunityService {
     return {
       data: items.map((i) => this.shape(i, counts.get(i.id) ?? 0, byBranch.get(i.id))),
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  /**
+   * Headline numbers for the State dashboard cards. Covers published internships (OPEN and
+   * FILLED; drafts, closed and deleted ones are left out).
+   *  - vacancies: total positions, and per branch (with how many are already selected)
+   *  - averageStipend: per month, weighted by vacancies, over the vacancies whose stipend text
+   *    has a usable amount (branch stipend, else the opportunity's); coverage says how many
+   */
+  async stats() {
+    const scope = { isDeleted: false, status: { in: [OpportunityStatus.OPEN, OpportunityStatus.FILLED] } };
+    const [opps, received, waiting] = await Promise.all([
+      this.prisma.internshipOpportunity.findMany({
+        where: scope,
+        select: {
+          status: true,
+          stipend: true,
+          branches: {
+            select: { positions: true, approvedCount: true, stipend: true, branch: { select: { id: true, code: true, name: true } } },
+          },
+        },
+      }),
+      this.prisma.internshipApplication.count({
+        where: { opportunity: scope, isActive: true, status: { in: SEAT_HOLDING_STATUSES } },
+      }),
+      this.prisma.internshipApplication.count({
+        where: { opportunity: scope, isActive: true, status: { in: PENDING_DECISION_STATUSES } },
+      }),
+    ]);
+
+    const byBranch = new Map<string, { code: string; name: string; positions: number; selected: number }>();
+    let vacancies = 0;
+    let selected = 0;
+    let stipendTotal = 0;
+    let stipendVacancies = 0;
+    for (const o of opps) {
+      for (const b of o.branches) {
+        vacancies += b.positions;
+        selected += b.approvedCount;
+        const row = byBranch.get(b.branch.id) ?? { code: b.branch.code, name: b.branch.name, positions: 0, selected: 0 };
+        row.positions += b.positions;
+        row.selected += b.approvedCount;
+        byBranch.set(b.branch.id, row);
+
+        const amount = parseMonthlyStipend(b.stipend ?? o.stipend);
+        if (amount !== null) {
+          stipendTotal += amount * b.positions;
+          stipendVacancies += b.positions;
+        }
+      }
+    }
+
+    return {
+      opportunities: opps.length,
+      openOpportunities: opps.filter((o) => o.status === OpportunityStatus.OPEN).length,
+      vacancies,
+      selected,
+      vacanciesLeft: Math.max(vacancies - selected, 0),
+      branchWise: Array.from(byBranch.values()).sort((a, b) => b.positions - a.positions || a.code.localeCompare(b.code)),
+      averageStipend: stipendVacancies ? Math.round(stipendTotal / stipendVacancies) : null,
+      stipendCoverage: { counted: stipendVacancies, total: vacancies },
+      applications: { received, waiting },
     };
   }
 

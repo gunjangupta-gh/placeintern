@@ -5,6 +5,7 @@ import OpportunityUpload from './OpportunityUpload';
 import OpportunityTable from './OpportunityTable';
 import ApplicationsReview from './ApplicationsReview';
 import OpportunityEditModal from './OpportunityEditModal';
+import OpportunityStats from './OpportunityStats';
 
 const { Title } = Typography;
 
@@ -21,12 +22,13 @@ const StateOpportunities = () => {
         <Title level={3} style={{ margin: 0 }}>Internship Opportunities</Title>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setAdding(true)}>Add opportunity</Button>
       </div>
+      <OpportunityStats refreshKey={refreshKey} />
       <Tabs
         activeKey={tab}
         onChange={setTab}
         destroyOnHidden
         items={[
-          { key: 'opportunities', label: 'Opportunities', children: <OpportunityTable refreshKey={refreshKey} /> },
+          { key: 'opportunities', label: 'Opportunities', children: <OpportunityTable refreshKey={refreshKey} onChanged={bump} /> },
           { key: 'applications', label: 'Applications', children: <ApplicationsReview refreshKey={refreshKey} onChanged={bump} /> },
           {
             key: 'upload',
