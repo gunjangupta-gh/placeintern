@@ -3,16 +3,15 @@ import {
   Button,
   Card,
   Col,
-  Modal,
   Row,
   Select,
   Space,
   Spin,
-  Table,
   Tag,
   Typography,
   message,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import { ArrowLeftOutlined, FileTextOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import trainingAdminService from '../../../services/training-admin.service';
@@ -333,7 +332,7 @@ const FeedbackResponsesPage = () => {
               </Col>
             </Row>
 
-            <Table
+            <AppTable
               className="custom-table"
               dataSource={details?.responses || []}
               columns={responseColumns}
@@ -361,7 +360,7 @@ const FeedbackResponsesPage = () => {
         )}
       </Card>
 
-      <Modal
+      <AppModal
         open={Boolean(previewResponse)}
         onCancel={() => setPreviewResponse(null)}
         footer={null}
@@ -436,7 +435,7 @@ const FeedbackResponsesPage = () => {
             </div>
           </>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

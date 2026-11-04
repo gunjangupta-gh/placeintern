@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Space, Tag, Card, Input, Select, Modal, Form, DatePicker, InputNumber, Switch } from 'antd';
+import { Button, Space, Tag, Card, Input, Select, Form, DatePicker, InputNumber, Switch } from 'antd';
+import { AppModal } from '../../../components/ui';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMyPostings, togglePostingStatus, optimisticallyTogglePostingStatus, rollbackPostingStatus } from '../store/industrySlice';
 import DataTable from '../../../components/tables/DataTable';
@@ -42,7 +43,7 @@ const InternshipPostingList = () => {
   };
 
   const handleDeletePosting = async (id) => {
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Delete Posting',
       content: 'Are you sure you want to delete this internship posting?',
       okText: 'Delete',
@@ -245,7 +246,7 @@ const InternshipPostingList = () => {
         />
       </div>
 
-      <Modal
+      <AppModal
         title={editingPosting ? 'Edit Posting' : 'Create Posting'}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
@@ -340,7 +341,7 @@ const InternshipPostingList = () => {
             </div>
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Table, Button, Tag, Space, Modal, Input, Avatar, Drawer, Descriptions, Divider, Typography, Alert } from 'antd';
+import { Card, Button, Tag, Space, Input, Avatar, Descriptions, Divider, Typography, Alert } from 'antd';
+import { AppTable, AppModal, AppDrawer } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import { CheckOutlined, CloseOutlined, UserOutlined, EyeOutlined, FileTextOutlined } from '@ant-design/icons';
 import { fetchMyApplications, shortlistApplication, selectApplication, rejectApplication, optimisticallyUpdateApplicationStatus, rollbackApplicationOperation } from '../store/industrySlice';
@@ -53,7 +54,7 @@ const ApplicationsList = () => {
   };
 
   const handleSelect = async (applicationId) => {
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Confirm Selection',
       content: 'Are you sure you want to select this candidate? This action cannot be undone.',
       okText: 'Yes, Select',
@@ -190,70 +191,55 @@ const ApplicationsList = () => {
       ],
       onFilter: (value, record) => record.status === value,
     },
+  ];
+
+  const rowActions = [
     {
-      title: 'Actions',
-      key: 'actions',
-      render: (_, record) => (
-        <Space>
-          <Button
-            icon={<EyeOutlined />}
-            onClick={() => {
-              setSelectedApp(record);
-              setDetailDrawer(true);
-            }}
-            size="small"
-          >
-            View
-          </Button>
-          {record.status === 'PENDING' && (
-            <>
-              <Button
-                type="primary"
-                icon={<CheckOutlined />}
-                onClick={() => handleShortlist(record.id)}
-                size="small"
-              >
-                Shortlist
-              </Button>
-              <Button
-                danger
-                icon={<CloseOutlined />}
-                onClick={() => {
-                  setSelectedApp(record);
-                  setRejectModalVisible(true);
-                }}
-                size="small"
-              >
-                Reject
-              </Button>
-            </>
-          )}
-          {record.status === 'SHORTLISTED' && (
-            <>
-              <Button
-                type="primary"
-                className="bg-green-600 hover:bg-green-500 border-green-600 hover:border-green-500"
-                icon={<CheckOutlined />}
-                onClick={() => handleSelect(record.id)}
-                size="small"
-              >
-                Select
-              </Button>
-              <Button
-                danger
-                icon={<CloseOutlined />}
-                onClick={() => {
-                  setSelectedApp(record);
-                  setRejectModalVisible(true);
-                }}
-                size="small"
-              >
-                Reject
-              </Button>
-            </>
-          )}
-        </Space>
-      ),
+      key: 'view',
+      label: 'View',
+      icon: <EyeOutlined />,
+      onClick: (record) => {
+        setSelectedApp(record);
+        setDetailDrawer(true);
+      },
+    },
+    {
+      key: 'shortlist',
+      label: 'Shortlist',
+      icon: <CheckOutlined />,
+      type: 'primary',
+      hidden: (record) => record.status !== 'PENDING',
+      onClick: (record) => handleShortlist(record.id),
+    },
+    {
+      key: 'reject-pending',
+      label: 'Reject',
+      icon: <CloseOutlined />,
+      danger: true,
+      hidden: (record) => record.status !== 'PENDING',
+      onClick: (record) => {
+        setSelectedApp(record);
+        setRejectModalVisible(true);
+      },
+    },
+    {
+      key: 'select',
+      label: 'Select',
+      icon: <CheckOutlined />,
+      type: 'primary',
+      hidden: (record) => record.status !== 'SHORTLISTED',
+      onClick: (record) => handleSelect(record.id),
+    },
+    {
+      key: 'reject-shortlisted',
+      label: 'Reject',
+      icon: <CloseOutlined />,
+      danger: true,
+      hidden: (record) => record.status !== 'SHORTLISTED',
+      onClick: (record) => {
+        setSelectedApp(record);
+        setRejectModalVisible(true);
+      },
     },
   ];
 
@@ -272,8 +258,9 @@ const ApplicationsList = () => {
         }
         className="rounded-xl border-border shadow-sm"
       >
-        <Table scroll={{ x: 'max-content' }}
+        <AppTable scroll={{ x: 'max-content' }}
           columns={columns}
+          actions={rowActions}
           dataSource={applications}
           loading={loading}
           rowKey="id"
@@ -287,7 +274,7 @@ const ApplicationsList = () => {
       </Card>
 
       {/* Reject Modal */}
-      <Modal
+      <AppModal
         title={<span className="text-error font-semibold">Reject Application</span>}
         open={rejectModalVisible}
         onOk={handleReject}
@@ -316,10 +303,10 @@ const ApplicationsList = () => {
             className="rounded-lg"
           />
         </div>
-      </Modal>
+      </AppModal>
 
       {/* Detail Drawer */}
-      <Drawer
+      <AppDrawer
         title={<span className="text-text-primary font-semibold">Application Details</span>}
         placement="right"
         size="default"
@@ -480,7 +467,7 @@ const ApplicationsList = () => {
             </div>
           </div>
         )}
-      </Drawer>
+      </AppDrawer>
     </div>
   );
 };

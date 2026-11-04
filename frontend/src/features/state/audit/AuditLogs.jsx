@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Table,
   Button,
   DatePicker,
   Select,
@@ -19,6 +18,7 @@ import {
   Tooltip,
   theme,
 } from 'antd';
+import { AppTable } from '../../../components/ui';
 import {
   AuditOutlined,
   ReloadOutlined,
@@ -61,13 +61,13 @@ const AuditLogs = () => {
     entityType: undefined,
     category: undefined,
     page: 1,
-    limit: 50,
+    limit: 10,
   });
 
   // Pagination
   const [pagination, setPagination] = useState({
     current: 1,
-    pageSize: 50,
+    pageSize: 10,
     total: 0,
   });
 
@@ -782,7 +782,7 @@ const AuditLogs = () => {
 
         {/* Table */}
         <div className="custom-table">
-          <Table
+          <AppTable
             columns={columns}
             dataSource={logs}
             rowKey="id"

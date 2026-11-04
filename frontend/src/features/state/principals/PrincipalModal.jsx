@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Modal, Form, Input, Select, DatePicker, Button, Row, Col, Divider, Spin, Switch } from 'antd';
+import { Form, Input, Select, DatePicker, Button, Row, Col, Divider, Spin, Switch } from 'antd';
+import { AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import { SaveOutlined } from '@ant-design/icons';
 import { createPrincipal, updatePrincipal, fetchPrincipalById, clearCurrentPrincipal } from '../store/stateSlice';
@@ -100,7 +101,7 @@ const PrincipalModal = ({ open, onClose, principalId, onSuccess }) => {
   };
 
   return (
-    <Modal
+    <AppModal
       title={isEdit ? 'Edit Principal' : 'Add New Principal'}
       open={open}
       onCancel={handleClose}
@@ -260,7 +261,7 @@ const PrincipalModal = ({ open, onClose, principalId, onSuccess }) => {
           </Form.Item>
         </Form>
       )}
-    </Modal>
+    </AppModal>
   );
 };
 

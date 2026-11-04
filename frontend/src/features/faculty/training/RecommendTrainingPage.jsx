@@ -7,17 +7,16 @@ import {
   Input,
   Select,
   InputNumber,
-  Table,
   Tag,
-  Space,
-  Modal,
+  
   Typography,
   message,
   Tabs,
   Empty,
-  Tooltip,
-  Popconfirm,
-} from "antd";
+  
+  
+} from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   PlusOutlined,
   EditOutlined,
@@ -190,50 +189,13 @@ const RecommendTrainingPage = () => {
         </Text>
       ),
     },
-    {
-      title: "Actions",
-      key: "actions",
-      width: 120,
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="View Details">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => handleView(record)}
-            />
-          </Tooltip>
-          {record.status === "PENDING" && (
-            <>
-              <Tooltip title="Edit">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<EditOutlined />}
-                  onClick={() => handleOpenModal(record)}
-                />
-              </Tooltip>
-              <Popconfirm
-                title="Delete this recommendation?"
-                onConfirm={() => handleDelete(record.id)}
-                okText="Yes"
-                cancelText="No"
-              >
-                <Tooltip title="Delete">
-                  <Button
-                    type="text"
-                    size="small"
-                    danger
-                    icon={<DeleteOutlined />}
-                  />
-                </Tooltip>
-              </Popconfirm>
-            </>
-          )}
-        </Space>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'view', label: 'View Details', icon: <EyeOutlined />, onClick: (r) => handleView(r) },
+    { key: 'edit', label: 'Edit', icon: <EditOutlined />, onClick: (r) => handleOpenModal(r), hidden: (r) => r.status !== "PENDING" },
+    { key: 'delete', label: 'Delete', icon: <DeleteOutlined />, danger: true, onClick: (r) => handleDelete(r.id),
+      hidden: (r) => r.status !== "PENDING", confirm: { title: "Delete this recommendation?", okText: "Yes" } },
   ];
 
   const pendingCount = recommendations?.list?.filter(r => r.status === "PENDING").length || 0;
@@ -274,10 +236,11 @@ const RecommendTrainingPage = () => {
               label: `All (${recommendations?.list?.length || 0})`,
               children: (
                 <div className="py-2 custom-scrollbar overflow-x-auto">
-                  <Table
+                  <AppTable
                     className="custom-table"
                     dataSource={recommendations?.list || []}
                     columns={columns}
+                    actions={rowActions}
                     rowKey="id"
                     loading={recommendations?.loading}
                     size="small"
@@ -309,10 +272,11 @@ const RecommendTrainingPage = () => {
               label: `Pending (${pendingCount})`,
               children: (
                 <div className="py-2 custom-scrollbar overflow-x-auto">
-                  <Table
+                  <AppTable
                     className="custom-table"
                     dataSource={recommendations?.list?.filter(r => r.status === "PENDING") || []}
                     columns={columns}
+                    actions={rowActions}
                     rowKey="id"
                     size="small"
                     loading={recommendations?.loading}
@@ -327,10 +291,11 @@ const RecommendTrainingPage = () => {
               label: `Reviewed (${reviewedCount})`,
               children: (
                 <div className="py-2 custom-scrollbar overflow-x-auto">
-                  <Table
+                  <AppTable
                     className="custom-table"
                     dataSource={recommendations?.list?.filter(r => r.status !== "PENDING") || []}
                     columns={columns}
+                    actions={rowActions}
                     rowKey="id"
                     size="small"
                     loading={recommendations?.loading}
@@ -345,7 +310,7 @@ const RecommendTrainingPage = () => {
       </Card>
 
       {/* Create/Edit Modal */}
-      <Modal
+      <AppModal
         title={editingId ? "Edit Recommendation" : "Recommend a Training"}
         open={isModalOpen}
         onCancel={handleCloseModal}
@@ -476,10 +441,10 @@ const RecommendTrainingPage = () => {
             </Form.Item>
           </div>
         </Form>
-      </Modal>
+      </AppModal>
 
       {/* View Details Modal */}
-      <Modal
+      <AppModal
         title="Recommendation Details"
         open={viewModalOpen}
         onCancel={() => setViewModalOpen(false)}
@@ -582,7 +547,7 @@ const RecommendTrainingPage = () => {
             )}
           </div>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Drawer,
   Tree,
   Input,
   Typography,
@@ -14,6 +13,7 @@ import {
   Space,
   Divider,
 } from 'antd';
+import { AppDrawer } from '../../../../components/ui';
 import {
   FolderOutlined,
   FolderOpenOutlined,
@@ -169,7 +169,7 @@ const InstitutionFileExplorer = ({ open, onClose, institutionId, institutionName
   };
 
   return (
-    <Drawer
+    <AppDrawer
       title={
         <div className="flex items-center gap-3">
           <FolderOpenOutlined className="text-primary text-lg" />
@@ -317,7 +317,7 @@ const InstitutionFileExplorer = ({ open, onClose, institutionId, institutionName
           </div>
         )}
       </div>
-    </Drawer>
+    </AppDrawer>
   );
 };
 

@@ -1,15 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
-  Modal,
-  Table,
   Typography,
   Tag,
   Select,
   Empty,
   Button,
-  theme
+  theme,
 } from 'antd';
+import { AppTable, AppModal } from '../../../../components/ui';
 import { CalendarOutlined } from '@ant-design/icons';
 import {
   selectFacultyWorkload,
@@ -229,7 +228,7 @@ const FacultyVisitsModal = ({
   ];
 
   return (
-    <Modal
+    <AppModal
       title="Faculty Visits Overview"
       open={visible}
       onCancel={onClose}
@@ -305,7 +304,7 @@ const FacultyVisitsModal = ({
       </div>
 
       {/* Faculty Table */}
-      <Table scroll={{ x: 'max-content' }}
+      <AppTable scroll={{ x: 'max-content' }}
         dataSource={facultyVisitData}
         columns={columns}
         rowKey="id"
@@ -321,7 +320,7 @@ const FacultyVisitsModal = ({
           emptyText: <Empty description="No faculty data available" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         }}
       />
-    </Modal>
+    </AppModal>
   );
 };
 

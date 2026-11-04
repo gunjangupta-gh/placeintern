@@ -12,11 +12,11 @@ import {
   Tooltip,
   Alert,
   Tag,
-  Modal,
   Table,
   Empty,
   Tabs,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   TeamOutlined,
   ReloadOutlined,
@@ -463,7 +463,7 @@ const PrincipalDashboard = () => {
         </div>
 
         {/* Alert Details Modal */}
-        <Modal
+        <AppModal
           title={alertDetailModal.title}
           open={alertDetailModal.visible}
           onCancel={() => setAlertDetailModal({ visible: false, type: null, title: '', data: [] })}
@@ -474,7 +474,7 @@ const PrincipalDashboard = () => {
           transitionName=""
           maskTransitionName=""
         >
-          <Table scroll={{ x: 'max-content' }}
+          <AppTable scroll={{ x: 'max-content' }}
             dataSource={alertDetailModal.data}
             rowKey={(record) => record.studentId || record.grievanceId || record.id || Math.random()}
             pagination={{ pageSize: 10 }}
@@ -511,10 +511,10 @@ const PrincipalDashboard = () => {
               ] : []
             }
           />
-        </Modal>
+        </AppModal>
 
         {/* Students by Course Modal */}
-        <Modal
+        <AppModal
           title={
             <div className="flex items-center gap-2">
               <TeamOutlined className="text-primary" />
@@ -562,7 +562,7 @@ const PrincipalDashboard = () => {
             );
           })()}
 
-          <Table scroll={{ x: 'max-content' }}
+          <AppTable scroll={{ x: 'max-content' }}
             dataSource={dashboardStats?.studentsByBranch || []}
             rowKey={(record) => record.branchId || record.branch || record.id || Math.random()}
             pagination={false}
@@ -627,10 +627,10 @@ const PrincipalDashboard = () => {
               );
             }}
           />
-        </Modal>
+        </AppModal>
 
         {/* Mentors Details Modal */}
-        <Modal
+        <AppModal
           title={
             <div className="flex items-center gap-2">
               <TeamOutlined className="text-success" />
@@ -665,7 +665,7 @@ const PrincipalDashboard = () => {
               <div className="text-xs text-text-tertiary">Coverage Rate</div>
             </div>
           </div>
-          <Table scroll={{ x: 'max-content' }}
+          <AppTable scroll={{ x: 'max-content' }}
             dataSource={mentorCoverage?.mentorLoadDistribution || []}
             rowKey={(record) => record.mentorId || record.id || Math.random()}
             pagination={{ pageSize: 10 }}
@@ -712,10 +712,10 @@ const PrincipalDashboard = () => {
               },
             ]}
           />
-        </Modal>
+        </AppModal>
 
         {/* Partner Companies Modal */}
-        <Modal
+        <AppModal
           title={
             <div className="flex items-center gap-2">
               <BankOutlined className="text-blue-500" />
@@ -758,7 +758,7 @@ const PrincipalDashboard = () => {
             </div>
           </div>
 
-          <Table scroll={{ x: 'max-content' }}
+          <AppTable scroll={{ x: 'max-content' }}
             dataSource={internshipStats?.byCompany || []}
             rowKey={(record, index) => record.name || `company-${index}`}
             pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (total) => `Total ${total} companies` }}
@@ -823,7 +823,7 @@ const PrincipalDashboard = () => {
               )
             }}
           />
-        </Modal>
+        </AppModal>
 
         {/* Monthly Reports Modal */}
         <MonthlyReportsModal
@@ -848,7 +848,7 @@ const PrincipalDashboard = () => {
         />
 
         {/* Unassigned Students Modal */}
-        <Modal
+        <AppModal
           title={
             <div className="flex items-center gap-2">
               <WarningOutlined className="text-error" />
@@ -891,10 +891,10 @@ const PrincipalDashboard = () => {
               </div>
             </div>
           )}
-        </Modal>
+        </AppModal>
 
         {/* Student Grievances Modal */}
-        <Modal
+        <AppModal
           title={
             <div className="flex items-center gap-2">
               <ExclamationCircleOutlined className="text-error" />
@@ -944,7 +944,7 @@ const PrincipalDashboard = () => {
               )}
             </div>
           )}
-        </Modal>
+        </AppModal>
       </div>
     </div>
   );

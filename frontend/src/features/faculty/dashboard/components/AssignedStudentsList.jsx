@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Card, Table, Input, Button, Typography, Badge, Tooltip, Space, Tag, theme } from 'antd';
+import { Card, Input, Button, Typography, Badge, Tooltip, Space, Tag, theme } from 'antd';
+import { AppTable } from '../../../../components/ui';
 import {
   TeamOutlined,
   SearchOutlined,
@@ -448,7 +449,7 @@ const AssignedStudentsList = ({
         className="h-full !rounded-xl"
         style={{ borderColor: token.colorBorder }}
       >
-        <Table
+        <AppTable
           loading={loading}
           dataSource={filteredStudents}
           columns={columns}

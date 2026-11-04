@@ -1,9 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Modal,
   Tabs,
-  Table,
   Input,
   Button,
   Tag,
@@ -12,6 +10,7 @@ import {
   Badge,
   Tooltip,
 } from 'antd';
+import { AppTable, AppModal } from '../../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   WarningOutlined,
@@ -116,21 +115,6 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
         </div>
       ),
     },
-    {
-      title: '',
-      key: 'action',
-      width: 100,
-      render: (_, record) => (
-        <Button
-          type="link"
-          icon={<RightOutlined />}
-          onClick={() => handleViewInstitution(record.institutionId)}
-          className="text-primary"
-        >
-          View
-        </Button>
-      ),
-    },
   ], [handleViewInstitution]);
 
   // Students Without Mentors columns
@@ -174,21 +158,6 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
         )
       ),
     },
-    {
-      title: '',
-      key: 'action',
-      width: 100,
-      render: (_, record) => (
-        <Button
-          type="link"
-          icon={<RightOutlined />}
-          onClick={() => handleViewStudentInstitution(record)}
-          className="text-primary"
-        >
-          View
-        </Button>
-      ),
-    },
   ], [handleViewStudentInstitution]);
 
   // Missing Reports columns
@@ -227,21 +196,6 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
         <Tag color={days > 10 ? 'red' : days > 5 ? 'orange' : 'gold'}>
           {days} days overdue
         </Tag>
-      ),
-    },
-    {
-      title: '',
-      key: 'action',
-      width: 100,
-      render: (_, record) => (
-        <Button
-          type="link"
-          icon={<RightOutlined />}
-          onClick={() => handleViewStudentInstitution(record)}
-          className="text-primary"
-        >
-          View
-        </Button>
       ),
     },
   ], [handleViewStudentInstitution]);
@@ -283,21 +237,6 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
         </Tag>
       ),
     },
-    {
-      title: '',
-      key: 'action',
-      width: 100,
-      render: (_, record) => (
-        <Button
-          type="link"
-          icon={<RightOutlined />}
-          onClick={() => handleViewInstitution(record.institutionId)}
-          className="text-primary"
-        >
-          View
-        </Button>
-      ),
-    },
   ], [handleViewInstitution]);
 
   // Prepare filtered data for each tab
@@ -334,9 +273,10 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
         </span>
       ),
       children: (
-        <Table scroll={{ x: 'max-content' }}
+        <AppTable scroll={{ x: 'max-content' }}
           dataSource={filteredLowCompliance}
           columns={lowComplianceColumns}
+          actions={[{ key: 'view', label: 'View', icon: <RightOutlined />, onClick: (r) => handleViewInstitution(r.institutionId) }]}
           rowKey="institutionId"
           pagination={{ pageSize: 10, showSizeChanger: false }}
           size="middle"
@@ -365,9 +305,10 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
         </span>
       ),
       children: (
-        <Table scroll={{ x: 'max-content' }}
+        <AppTable scroll={{ x: 'max-content' }}
           dataSource={filteredStudentsWithoutMentors}
           columns={studentsWithoutMentorsColumns}
+          actions={[{ key: 'view', label: 'View', icon: <RightOutlined />, onClick: (r) => handleViewStudentInstitution(r) }]}
           rowKey="studentId"
           pagination={{ pageSize: 10, showSizeChanger: false }}
           size="middle"
@@ -396,9 +337,10 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
         </span>
       ),
       children: (
-        <Table scroll={{ x: 'max-content' }}
+        <AppTable scroll={{ x: 'max-content' }}
           dataSource={filteredMissingReports}
           columns={missingReportsColumns}
+          actions={[{ key: 'view', label: 'View', icon: <RightOutlined />, onClick: (r) => handleViewStudentInstitution(r) }]}
           rowKey="studentId"
           pagination={{ pageSize: 10, showSizeChanger: false }}
           size="middle"
@@ -427,9 +369,10 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
         </span>
       ),
       children: (
-        <Table scroll={{ x: 'max-content' }}
+        <AppTable scroll={{ x: 'max-content' }}
           dataSource={filteredVisitGaps}
           columns={visitGapsColumns}
+          actions={[{ key: 'view', label: 'View', icon: <RightOutlined />, onClick: (r) => handleViewInstitution(r.institutionId) }]}
           rowKey="institutionId"
           pagination={{ pageSize: 10, showSizeChanger: false }}
           size="middle"
@@ -447,7 +390,7 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
   ];
 
   return (
-    <Modal
+    <AppModal
       title={
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-error/10 flex items-center justify-center">
@@ -492,7 +435,7 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
         items={tabItems}
         className="critical-alerts-tabs"
       />
-    </Modal>
+    </AppModal>
   );
 };
 

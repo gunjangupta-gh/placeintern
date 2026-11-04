@@ -2,19 +2,18 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Card,
   Typography,
-  Table,
   Tag,
   Space,
   Button,
   Select,
   DatePicker,
   Input,
-  Modal,
   Row,
   Col,
   Empty,
   theme,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   FileDoneOutlined,
   ReloadOutlined,
@@ -46,7 +45,7 @@ const PrincipalVisitLogs = () => {
   const [searchText, setSearchText] = useState("");
   const [selectedFacultyId, setSelectedFacultyId] = useState(undefined);
   const [dateRange, setDateRange] = useState(null);
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
 
   // Restore to fetch faculty visit logs
   const fetchReports = useCallback(async ({ page = 1, limit = pagination.pageSize } = {}) => {
@@ -137,15 +136,6 @@ const PrincipalVisitLogs = () => {
       width: 130,
       render: (value) => <Tag color={statusColorMap[value] || "default"}>{value || "-"}</Tag>,
     },
-    {
-      title: "Action",
-      key: "action",
-      width: 90,
-      fixed: "right",
-      render: (_, record) => (
-        <Button type="text" icon={<EyeOutlined />} onClick={() => setSelectedReport(record)} />
-      ),
-    },
   ], []);
 
   return (
@@ -189,9 +179,12 @@ const PrincipalVisitLogs = () => {
             <Button type="primary" onClick={() => fetchReports({ page: 1, limit: pagination.pageSize })}>Apply</Button>
           </Space>
 
-          <Table
+          <AppTable
             rowKey="id"
             columns={columns}
+            actions={[
+              { key: "view", label: "View", icon: <EyeOutlined />, onClick: (record) => setSelectedReport(record) },
+            ]}
             dataSource={reports}
             loading={loading}
             locale={{ emptyText: <Empty description="No visit logs found" /> }}
@@ -207,7 +200,7 @@ const PrincipalVisitLogs = () => {
         </Card>
       </div>
 
-      <Modal
+      <AppModal
         title="Visit Log Details"
         open={!!selectedReport}
         onCancel={() => setSelectedReport(null)}
@@ -229,7 +222,7 @@ const PrincipalVisitLogs = () => {
             <div><Text strong>Recommendations:</Text><Paragraph>{selectedReport.recommendations || "-"}</Paragraph></div>
           </Space>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

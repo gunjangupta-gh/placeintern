@@ -1,19 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
-  Table,
   Button,
-  Space,
-  Modal,
+  
   Form,
   Input,
   Segmented,
   Typography,
   message,
-  Tooltip,
+  
   Descriptions,
   Tag,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   CheckOutlined,
   CloseOutlined,
@@ -202,54 +201,16 @@ const LessonPlanReviewPage = () => {
         );
       },
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 150,
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="View Details">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => openDetails(record)}
-            />
-          </Tooltip>
-          {record.status === 'SUBMITTED' && (
-            <>
-              <Tooltip title="Approve">
-                <Button
-                  type="text"
-                  size="small"
-                  className="text-green-600 hover:text-green-700"
-                  icon={<CheckOutlined />}
-                  onClick={() => openReview(record, 'APPROVED')}
-                />
-              </Tooltip>
-              <Tooltip title="Request Changes">
-                <Button
-                  type="text"
-                  size="small"
-                  className="text-purple-600 hover:text-purple-700"
-                  icon={<EditOutlined />}
-                  onClick={() => openReview(record, 'CHANGES_REQUESTED')}
-                />
-              </Tooltip>
-              <Tooltip title="Reject">
-                <Button
-                  type="text"
-                  size="small"
-                  danger
-                  icon={<CloseOutlined />}
-                  onClick={() => openReview(record, 'REJECTED')}
-                />
-              </Tooltip>
-            </>
-          )}
-        </Space>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'view', label: 'View Details', icon: <EyeOutlined />, onClick: (r) => openDetails(r) },
+    { key: 'approve', label: 'Approve', icon: <CheckOutlined className="text-green-600" />, onClick: (r) => openReview(r, 'APPROVED'),
+      hidden: (r) => r.status !== 'SUBMITTED' },
+    { key: 'changes', label: 'Request Changes', icon: <EditOutlined className="text-purple-600" />, onClick: (r) => openReview(r, 'CHANGES_REQUESTED'),
+      hidden: (r) => r.status !== 'SUBMITTED' },
+    { key: 'reject', label: 'Reject', icon: <CloseOutlined />, danger: true, onClick: (r) => openReview(r, 'REJECTED'),
+      hidden: (r) => r.status !== 'SUBMITTED' },
   ];
 
   return (
@@ -325,10 +286,11 @@ const LessonPlanReviewPage = () => {
           </div>
         ) : (
           <div className="custom-scrollbar overflow-x-auto">
-            <Table
+            <AppTable
               className="custom-table"
               dataSource={filteredLessonPlans}
               columns={columns}
+              actions={rowActions}
               rowKey="id"
               loading={loading}
               onChange={handleTableChange}
@@ -352,7 +314,7 @@ const LessonPlanReviewPage = () => {
       </Card>
 
       {/* Review Modal */}
-      <Modal
+      <AppModal
         title="Review Lesson Plan"
         open={reviewOpen}
         onCancel={() => setReviewOpen(false)}
@@ -414,10 +376,10 @@ const LessonPlanReviewPage = () => {
             </div>
           </div>
         )}
-      </Modal>
+      </AppModal>
 
       {/* Details Modal */}
-      <Modal
+      <AppModal
         title="Lesson Plan Details"
         open={detailsOpen}
         onCancel={() => setDetailsOpen(false)}
@@ -545,7 +507,7 @@ const LessonPlanReviewPage = () => {
             </Descriptions>
           </div>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

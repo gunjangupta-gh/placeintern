@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Input, Popconfirm, Select, Space, Table, Tag, Tooltip } from 'antd';
+import { Input, Select, Space, Tag, Tooltip } from 'antd';
+import { AppTable, StatusTag } from '../../../components/ui';
 import { DeleteOutlined, EditOutlined, EyeOutlined, PauseCircleOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -97,36 +98,20 @@ const OpportunityTable = ({ refreshKey, onChanged }) => {
       render: (_, r) => `${r.approvedCount} / ${r.appliedCount} / ${r.positions}`,
     },
     { title: 'Deadline', dataIndex: 'applicationDeadline', sorter: dateSorter((r) => r.applicationDeadline), render: formatDate },
-    { title: 'Status', dataIndex: 'status', sorter: textSorter((r) => r.status), render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
+    { title: 'Status', dataIndex: 'status', sorter: textSorter((r) => r.status), render: (s) => <StatusTag status={s} /> },
+  ];
+
+  const actions = [
+    { key: 'view', label: 'View applicants and selected students', icon: <EyeOutlined />, onClick: (r) => navigate(`/app/internship-opportunities/${r.id}`) },
+    { key: 'edit', label: 'Edit', icon: <EditOutlined />, onClick: openEdit },
     {
-      title: 'Actions',
-      render: (_, r) => (
-        <Space size={4}>
-          <Tooltip title="View applicants and selected students">
-            <Button size="small" type="text" aria-label="View" icon={<EyeOutlined />} onClick={() => navigate(`/app/internship-opportunities/${r.id}`)} />
-          </Tooltip>
-          <Tooltip title="Edit">
-            <Button size="small" type="text" aria-label="Edit" icon={<EditOutlined />} onClick={() => openEdit(r)} />
-          </Tooltip>
-          {r.status !== 'FILLED' && (
-            <Tooltip title={r.status === 'OPEN' ? 'Close applications' : 'Reopen applications'}>
-              <Button
-                size="small"
-                type="text"
-                aria-label={r.status === 'OPEN' ? 'Close applications' : 'Reopen applications'}
-                icon={r.status === 'OPEN' ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
-                onClick={() => toggle(r)}
-              />
-            </Tooltip>
-          )}
-          <Popconfirm title="Delete this opportunity?" description="Not possible once students have applied." onConfirm={() => remove(r)}>
-            <Tooltip title="Delete">
-              <Button size="small" type="text" danger aria-label="Delete" icon={<DeleteOutlined />} />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
+      key: 'toggle',
+      label: (r) => (r.status === 'OPEN' ? 'Close applications' : 'Reopen applications'),
+      icon: (r) => (r.status === 'OPEN' ? <PauseCircleOutlined /> : <PlayCircleOutlined />),
+      hidden: (r) => r.status === 'FILLED',
+      onClick: toggle,
     },
+    { key: 'delete', label: 'Delete', icon: <DeleteOutlined />, danger: true, onClick: remove, confirm: { title: 'Delete this opportunity?', description: 'Not possible once students have applied.' } },
   ];
 
   return (
@@ -142,13 +127,13 @@ const OpportunityTable = ({ refreshKey, onChanged }) => {
           options={['OPEN', 'CLOSED', 'FILLED', 'DRAFT'].map((s) => ({ value: s, label: s }))}
         />
       </Space>
-      <Table
+      <AppTable
         rowKey="id"
         size="middle"
         loading={loading}
         dataSource={rows}
         columns={columns}
-        scroll={{ x: 'max-content' }}
+        actions={actions}
         expandable={{
           expandedRowRender: (r) => (
             <div>

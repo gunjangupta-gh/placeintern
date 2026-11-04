@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Button, Tag, Avatar, Input, Select, Card, Modal, Space, Tooltip, Switch, InputNumber, theme } from 'antd';
+import { Button, Tag, Avatar, Input, Select, Card, Modal, Tooltip, Switch, InputNumber, theme } from 'antd';
+import { AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -158,7 +159,7 @@ const StudentList = () => {
       return;
     }
 
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Reset Password',
       content: `Are you sure you want to reset the password for ${record.user?.name || record.name}? A new password will be generated.`,
       okText: 'Reset Password',
@@ -218,7 +219,7 @@ const StudentList = () => {
     }
 
     const studentName = record.user?.name || record.name;
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Activate Student',
       content: `Are you sure you want to activate ${studentName}?`,
       okText: 'Activate',
@@ -354,31 +355,6 @@ const StudentList = () => {
         );
       },
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 160,
-      render: (_, record) => (
-        <Space size={4}>
-          <Tooltip title="View Details">
-            <Button type="text" icon={<EyeOutlined style={{ fontSize: 16 }} />} onClick={() => handleView(record)} />
-          </Tooltip>
-          <Tooltip title="Edit">
-            <Button type="text" icon={<EditOutlined style={{ fontSize: 16 }} />} onClick={() => handleEdit(record)} />
-          </Tooltip>
-          <Tooltip title="Reset Password">
-            <Button type="text" icon={<KeyOutlined style={{ fontSize: 16 }} />} onClick={() => handleResetPassword(record)} />
-          </Tooltip>
-          <Tooltip title={record.isPlaced ? 'Placed (click to view/edit)' : 'Mark as Placed'}>
-            <Button
-              type="text"
-              icon={<TrophyOutlined style={{ fontSize: 16, color: record.isPlaced ? token.colorSuccess : undefined }} />}
-              onClick={() => openPlacementModal(record)}
-            />
-          </Tooltip>
-        </Space>
-      ),
-    },
   ], [filters, list, token]);
 
   const handleSearch = useCallback((value) => {
@@ -479,6 +455,17 @@ const StudentList = () => {
       <div style={{ backgroundColor: token.colorBgContainer, borderRadius: token.borderRadiusLG, border: `1px solid ${token.colorBorderSecondary}`, boxShadow: token.boxShadowTertiary, overflow: 'hidden' }}>
         <DataTable
           columns={columns}
+          actions={[
+            { key: 'view', label: 'View Details', icon: <EyeOutlined />, onClick: (record) => handleView(record) },
+            { key: 'edit', label: 'Edit', icon: <EditOutlined />, onClick: (record) => handleEdit(record) },
+            { key: 'reset', label: 'Reset Password', icon: <KeyOutlined />, onClick: (record) => handleResetPassword(record) },
+            {
+              key: 'placed',
+              label: (record) => (record.isPlaced ? 'Placed (click to view/edit)' : 'Mark as Placed'),
+              icon: (record) => <TrophyOutlined style={{ color: record.isPlaced ? token.colorSuccess : undefined }} />,
+              onClick: (record) => openPlacementModal(record),
+            },
+          ]}
           dataSource={list}
           loading={loading}
           rowKey="id"
@@ -521,7 +508,7 @@ const StudentList = () => {
       />
 
       {/* Placement confirmation modal - opened from the Actions column */}
-      <Modal
+      <AppModal
         title="Placement Status"
         open={placementModal.open}
         onCancel={closePlacementModal}
@@ -564,7 +551,7 @@ const StudentList = () => {
             </div>
           </>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

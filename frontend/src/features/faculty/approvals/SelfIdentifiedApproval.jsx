@@ -3,11 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Card,
-  Table,
   Button,
-  Space,
+  
   Tag,
-  Modal,
   Form,
   Input,
   DatePicker,
@@ -15,10 +13,11 @@ import {
   Typography,
   Badge,
   Tabs,
-  Popconfirm,
+  
   Select,
   theme,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -330,55 +329,22 @@ const SelfIdentifiedApproval = () => {
         </div>
       ),
     },
-    {
-      title: "Actions",
-      key: "actions",
-      width: "18%",
-      render: (_, record) => (
-        <Space orientation="vertical" size="small">
-          <Button
-            type="link"
-            icon={<EyeOutlined />}
-            onClick={() => handleViewDetails(record)}
-            size="small"
-          >
-            View Details
-          </Button>
-          {record.internshipPhase !== "ACTIVE" && record.status !== "JOINED" ? (
-            <Space>
-              <Button
-                type="primary"
-                size="small"
-                icon={<CheckCircleOutlined />}
-                onClick={() => handleApprove(record)}
-              >
-                Approve
-              </Button>
-              <Popconfirm
-                title="Reject Application"
-                description="Are you sure you want to reject this application?"
-                onConfirm={() => handleReject(record)}
-                okText="Yes"
-                cancelText="No"
-              >
-                <Button
-                  danger
-                  size="small"
-                  icon={<CloseCircleOutlined />}
-                  loading={actionLoading}
-                >
-                  Reject
-                </Button>
-              </Popconfirm>
-            </Space>
-          ) : (
-            <Tag color="green" icon={<CheckCircleOutlined />}>
-              Approved on {dayjs(record.joiningDate).format("MMM DD, YYYY")}
-            </Tag>
-          )}
-        </Space>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'view', label: 'View Details', icon: <EyeOutlined />, onClick: (r) => handleViewDetails(r) },
+    { key: 'approve', label: 'Approve', icon: <CheckCircleOutlined />, onClick: (r) => handleApprove(r),
+      hidden: (r) => !(r.internshipPhase !== "ACTIVE" && r.status !== "JOINED") },
+    { key: 'reject', label: 'Reject', icon: <CloseCircleOutlined />, danger: true, loading: () => actionLoading,
+      onClick: (r) => handleReject(r),
+      confirm: { title: "Reject Application", description: "Are you sure you want to reject this application?", okText: "Yes" },
+      hidden: (r) => !(r.internshipPhase !== "ACTIVE" && r.status !== "JOINED") },
+    { key: 'approved', hidden: (r) => r.internshipPhase !== "ACTIVE" && r.status !== "JOINED",
+      render: (r) => (
+        <Tag color="green" icon={<CheckCircleOutlined />}>
+          Approved on {dayjs(r.joiningDate).format("MMM DD, YYYY")}
+        </Tag>
+      ) },
   ];
 
   const tabItems = [
@@ -393,13 +359,14 @@ const SelfIdentifiedApproval = () => {
         </Badge>
       ),
       children: (
-        <Table scroll={{ x: 'max-content' }}
+        <AppTable scroll={{ x: 'max-content' }}
           dataSource={getPendingApplications()}
           columns={columns}
+          actions={rowActions}
           rowKey="id"
           loading={loading}
           pagination={{
-            pageSize: 5,
+            pageSize: 10,
             showSizeChanger: true,
             showTotal: (total, range) =>
               `${range[0]}-${range[1]} of ${total} applications`,
@@ -418,13 +385,14 @@ const SelfIdentifiedApproval = () => {
         </Badge>
       ),
       children: (
-        <Table scroll={{ x: 'max-content' }}
+        <AppTable scroll={{ x: 'max-content' }}
           dataSource={getApprovedApplications()}
           columns={columns}
+          actions={rowActions}
           rowKey="id"
           loading={loading}
           pagination={{
-            pageSize: 5,
+            pageSize: 10,
             showSizeChanger: true,
             showTotal: (total, range) =>
               `${range[0]}-${range[1]} of ${total} applications`,
@@ -443,13 +411,14 @@ const SelfIdentifiedApproval = () => {
         </Badge>
       ),
       children: (
-        <Table scroll={{ x: 'max-content' }}
+        <AppTable scroll={{ x: 'max-content' }}
           dataSource={applications}
           columns={columns}
+          actions={rowActions}
           rowKey="id"
           loading={loading}
           pagination={{
-            pageSize: 5,
+            pageSize: 10,
             showSizeChanger: true,
             showTotal: (total, range) =>
               `${range[0]}-${range[1]} of ${total} applications`,
@@ -556,7 +525,7 @@ const SelfIdentifiedApproval = () => {
         </Card>
 
         {/* Detail View Modal */}
-        <Modal
+        <AppModal
           title={
             <div className="flex items-center gap-3 py-1">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border" style={{ backgroundColor: token.colorPrimaryBg, borderColor: token.colorPrimaryBorder }}>
@@ -721,10 +690,10 @@ const SelfIdentifiedApproval = () => {
               )}
             </div>
           )}
-        </Modal>
+        </AppModal>
 
         {/* Approval Modal */}
-        <Modal
+        <AppModal
           title={
             <div className="flex items-center gap-3 py-1">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border" style={{ backgroundColor: token.colorSuccessBg, borderColor: token.colorSuccessBorder }}>
@@ -804,7 +773,7 @@ const SelfIdentifiedApproval = () => {
               </Form>
             </div>
           )}
-        </Modal>
+        </AppModal>
       </div>
     </div>
   );

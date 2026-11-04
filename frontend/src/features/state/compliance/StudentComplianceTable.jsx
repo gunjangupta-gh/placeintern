@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Table, Tag, Input, Typography, Tooltip, Empty, Button, Badge } from 'antd';
+import { Tag, Input, Typography, Tooltip, Empty, Button, Badge } from 'antd';
+import { AppTable } from '../../../components/ui';
 import {
   SearchOutlined,
   CheckCircleOutlined,
@@ -234,7 +235,7 @@ const StudentComplianceTable = ({ students = [] }) => {
       </div>
 
       {/* Table */}
-      <Table
+      <AppTable
         columns={columns}
         dataSource={filteredStudents}
         rowKey="studentId"

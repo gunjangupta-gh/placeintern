@@ -10,7 +10,6 @@ import {
   Tag,
   Empty,
   Upload,
-  Modal,
   message,
   Tooltip,
   Select,
@@ -21,7 +20,8 @@ import {
   List,
   Descriptions,
   theme,
-} from "antd";
+} from 'antd';
+import { AppModal } from '../../../components/ui';
 import {
   SyncOutlined,
   CheckCircleOutlined,
@@ -1233,7 +1233,7 @@ const StudentDashboard = () => {
         </Row>
 
         {/* Upload Joining report Modal */}
-        <Modal
+        <AppModal
           title="Upload Joining Report"
           open={uploadModalVisible}
           onCancel={() => setUploadModalVisible(false)}
@@ -1272,10 +1272,10 @@ const StudentDashboard = () => {
               </div>
             )}
           </div>
-        </Modal>
+        </AppModal>
 
         {/* View Monthly Reports Modal */}
-        <Modal
+        <AppModal
           title="Monthly Reports"
           open={reportViewModalVisible}
           onCancel={() => setReportViewModalVisible(false)}
@@ -1354,10 +1354,10 @@ const StudentDashboard = () => {
               />
             )}
           </div>
-        </Modal>
+        </AppModal>
 
         {/* Pending Fields Modal */}
-        <Modal
+        <AppModal
           title="Pending Internship Data"
           open={pendingFieldsModalVisible}
           onCancel={() => setPendingFieldsModalVisible(false)}
@@ -1399,7 +1399,7 @@ const StudentDashboard = () => {
               )}
             />
           </div>
-        </Modal>
+        </AppModal>
 
         {/* Placement Interest Form Modal - shown until form is filled */}
         <PlacementInterestModal

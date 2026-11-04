@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Drawer,
   Typography,
   Tag,
   Spin,
@@ -13,6 +12,7 @@ import {
   Descriptions,
   Timeline,
 } from 'antd';
+import { AppDrawer } from '../../../components/ui';
 import {
   UserOutlined,
   FileTextOutlined,
@@ -356,7 +356,7 @@ const StudentComplianceDrawer = ({
   ];
 
   return (
-    <Drawer
+    <AppDrawer
       title={
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -387,7 +387,7 @@ const StudentComplianceDrawer = ({
         className="compliance-drawer-tabs px-3"
         tabBarStyle={{ marginBottom: 12 }}
       />
-    </Drawer>
+    </AppDrawer>
   );
 };
 

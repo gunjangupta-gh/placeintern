@@ -1,14 +1,13 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
 import {
-  Modal,
-  Table,
   Typography,
   Tag,
   Empty,
   Button,
-  theme
+  theme,
 } from 'antd';
+import { AppTable, AppModal } from '../../../../components/ui';
 import {
   selectJoiningLettersByMentor,
   selectJoiningLettersByMentorLoading,
@@ -111,7 +110,7 @@ const JoiningLettersModal = ({
   ];
 
   return (
-    <Modal
+    <AppModal
       title="Joining Report Overview"
       open={visible}
       onCancel={onClose}
@@ -164,7 +163,7 @@ const JoiningLettersModal = ({
       </div>
 
       {/* Faculty Table */}
-      <Table scroll={{ x: 'max-content' }}
+      <AppTable scroll={{ x: 'max-content' }}
         dataSource={byMentor}
         columns={columns}
         rowKey="mentorId"
@@ -180,7 +179,7 @@ const JoiningLettersModal = ({
           emptyText: <Empty description="No joining report data available" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         }}
       />
-    </Modal>
+    </AppModal>
   );
 };
 

@@ -4,14 +4,14 @@ import {
   Button,
   Card,
   Input,
-  Popconfirm,
+  
   Segmented,
-  Space,
-  Table,
-  Tooltip,
+  
+  
   Typography,
   message,
-} from "antd";
+} from 'antd';
+import { AppTable } from '../../../components/ui';
 import {
   EditOutlined,
   PlusOutlined,
@@ -134,54 +134,16 @@ const MyLessonPlansPage = () => {
         </Text>
       ),
     },
-    {
-      title: "Actions",
-      key: "actions",
-      width: 150,
-      render: (_, record) => (
-        <Space>
-          <Tooltip title="View/Edit">
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() =>
-                navigate(`/app/training/lesson-plans/${record.id}/edit`)
-              }
-            />
-          </Tooltip>
-          {record.status === "DRAFT" && (
-            <Tooltip title="Submit for Review">
-              <Button
-                type="text"
-                size="small"
-                className="text-green-600 hover:text-green-700"
-                icon={<SendOutlined />}
-                onClick={() => handleSubmit(record.id)}
-              />
-            </Tooltip>
-          )}
-          {["DRAFT", "REJECTED"].includes(record.status) && (
-            <Popconfirm
-              title="Delete lesson plan?"
-              description="This action cannot be undone."
-              onConfirm={() => handleDelete(record.id)}
-              okText="Delete"
-              okButtonProps={{ danger: true }}
-            >
-              <Tooltip title="Delete">
-                <Button
-                  type="text"
-                  size="small"
-                  danger
-                  icon={<DeleteOutlined />}
-                />
-              </Tooltip>
-            </Popconfirm>
-          )}
-        </Space>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'edit', label: 'View/Edit', icon: <EditOutlined />,
+      onClick: (r) => navigate(`/app/training/lesson-plans/${r.id}/edit`) },
+    { key: 'submit', label: 'Submit for Review', icon: <SendOutlined className="text-green-600" />,
+      onClick: (r) => handleSubmit(r.id), hidden: (r) => r.status !== "DRAFT" },
+    { key: 'delete', label: 'Delete', icon: <DeleteOutlined />, danger: true, onClick: (r) => handleDelete(r.id),
+      hidden: (r) => !["DRAFT", "REJECTED"].includes(r.status),
+      confirm: { title: "Delete lesson plan?", description: "This action cannot be undone.", okText: "Delete" } },
   ];
 
   return (
@@ -248,10 +210,11 @@ const MyLessonPlansPage = () => {
           </div>
         ) : (
           <div className="custom-scrollbar overflow-x-auto">
-            <Table
+            <AppTable
               className="custom-table"
               rowKey="id"
               columns={columns}
+              actions={rowActions}
               dataSource={filteredPlans}
               loading={lessonPlans.loading}
               size="small"

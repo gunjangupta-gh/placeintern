@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Button, Tag, Avatar, Input, Select, Card, Modal, Dropdown, Table, Typography, Space, Tooltip } from 'antd';
+import { Button, Tag, Avatar, Input, Select, Card, Modal, Dropdown, Typography, Space, Tooltip } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -115,7 +116,7 @@ const StaffList = () => {
     const actionPast = isCurrentlyActive ? 'deactivated' : 'activated';
     const previousList = [...list];
 
-    Modal.confirm({
+    AppModal.confirm({
       title: `${isCurrentlyActive ? 'Deactivate' : 'Activate'} Staff Member`,
       content: isCurrentlyActive
         ? `Are you sure you want to deactivate ${record.name}? They will no longer be able to access the system. ⚠️ All mentor assignments will be permanently deleted and new assignments will need to be created if the user is reactivated. Faculty visits done by this mentor will be preserved.`
@@ -141,7 +142,7 @@ const StaffList = () => {
   };
 
   const handleResetPassword = (record) => {
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Reset Password',
       content: `Are you sure you want to reset the password for ${record.name}? A new password will be generated.`,
       okText: 'Reset Password',
@@ -459,7 +460,7 @@ const StaffList = () => {
         </div>
 
         {/* Table */}
-        <Table scroll={{ x: 'max-content' }}
+        <AppTable scroll={{ x: 'max-content' }}
           columns={columns}
           dataSource={list}
           loading={loading}

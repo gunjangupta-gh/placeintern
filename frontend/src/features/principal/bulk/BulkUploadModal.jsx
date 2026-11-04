@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal } from 'antd';
+import { AppModal } from '../../../components/ui';
 import BulkUpload from './BulkUpload';
 
 const TITLES = {
@@ -12,7 +12,7 @@ const TITLES = {
  * `type` fixes the upload to 'students' or 'staff'; `onUploaded` lets the list refresh itself.
  */
 const BulkUploadModal = ({ open, type, onClose, onUploaded }) => (
-  <Modal
+  <AppModal
     title={TITLES[type] || 'Bulk Upload'}
     open={open}
     onCancel={onClose}
@@ -22,7 +22,7 @@ const BulkUploadModal = ({ open, type, onClose, onUploaded }) => (
     maskClosable={false}
   >
     <BulkUpload fixedType={type} embedded onUploaded={onUploaded} />
-  </Modal>
+  </AppModal>
 );
 
 export default BulkUploadModal;

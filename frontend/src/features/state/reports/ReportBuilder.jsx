@@ -6,7 +6,6 @@ import {
   Select,
   Form,
   Button,
-  Table,
   Tag,
   Steps,
   Space,
@@ -18,10 +17,10 @@ import {
   Collapse,
   Badge,
   Tabs,
-  Modal,
   Input,
   Switch,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   BarChartOutlined,
   FileTextOutlined,
@@ -479,15 +478,23 @@ const ReportBuilder = () => {
     }
   };
 
-  const handleDeleteReport = async (reportId) => {
-    try {
-      await reportService.deleteReport(reportId);
-      toast.success('Report deleted successfully');
-      await loadQueueData();
-      dispatch(fetchReportHistory({ page: 1, limit: 10 }));
-    } catch (err) {
-      toast.error(err.message || 'Failed to delete report');
-    }
+  const handleDeleteReport = (reportId) => {
+    AppModal.confirm({
+      title: 'Delete this report?',
+      content: 'This action cannot be undone.',
+      okText: 'Delete',
+      okType: 'danger',
+      onOk: async () => {
+        try {
+          await reportService.deleteReport(reportId);
+          toast.success('Report deleted successfully');
+          await loadQueueData();
+          dispatch(fetchReportHistory({ page: 1, limit: 10 }));
+        } catch (err) {
+          toast.error(err.message || 'Failed to delete report');
+        }
+      },
+    });
   };
 
   const handleDownload = async (reportId, format) => {
@@ -895,7 +902,7 @@ const ReportBuilder = () => {
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
               />
             ) : (
-              <Table scroll={{ x: 'max-content' }}
+              <AppTable scroll={{ x: 'max-content' }}
                 columns={historyColumns}
                 dataSource={history}
                 rowKey="id"
@@ -911,7 +918,7 @@ const ReportBuilder = () => {
       </Section>
 
       {/* Save Template Modal */}
-      <Modal
+      <AppModal
         title="Save Template"
         open={templateModalVisible}
         onOk={handleSaveTemplate}
@@ -944,7 +951,7 @@ const ReportBuilder = () => {
             </Text>
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

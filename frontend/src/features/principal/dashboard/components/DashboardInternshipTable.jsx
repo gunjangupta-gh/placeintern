@@ -8,13 +8,11 @@ import React, {
 import { useDispatch, useSelector } from "react-redux";
 import {
   Card,
-  Table,
   Tag,
   Button,
   Space,
   Typography,
   Input,
-  Modal,
   Row,
   Col,
   Avatar,
@@ -29,7 +27,8 @@ import {
   Tabs,
   Badge,
   Dropdown,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal } from '../../../../components/ui';
 import {
   ShopOutlined,
   EyeOutlined,
@@ -565,7 +564,7 @@ const DashboardInternshipTable = () => {
       return;
     }
 
-    Modal.confirm({
+    AppModal.confirm({
       title: "Remove Mentor",
       content: `Are you sure you want to remove the mentor from ${record.studentName}?`,
       okText: "Remove",
@@ -1097,7 +1096,7 @@ const DashboardInternshipTable = () => {
         className="rounded-2xl border-border shadow-sm"
         styles={{ body: { padding: 0 } }}
       >
-        <Table
+        <AppTable
           columns={columns}
           dataSource={filteredInternships}
           rowKey="id"
@@ -1117,7 +1116,7 @@ const DashboardInternshipTable = () => {
                       </Text>
                       {record.monthlyReports &&
                       record.monthlyReports.length > 0 ? (
-                        <Table scroll={{ x: 'max-content' }}
+                        <AppTable scroll={{ x: 'max-content' }}
                           dataSource={record.monthlyReports}
                           rowKey="id"
                           size="small"
@@ -1249,7 +1248,7 @@ const DashboardInternshipTable = () => {
       </Card>
 
       {/* Details Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2 text-text-primary">
             <ShopOutlined className="text-purple-500" />
@@ -1474,10 +1473,10 @@ const DashboardInternshipTable = () => {
             </div>
           </div>
         )}
-      </Modal>
+      </AppModal>
 
       {/* Assign Mentor Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2 text-text-primary">
             <UserAddOutlined className="text-green-500" />
@@ -1569,7 +1568,7 @@ const DashboardInternshipTable = () => {
             </div>
           )}
         </div>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

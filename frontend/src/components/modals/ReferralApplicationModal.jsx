@@ -1,7 +1,6 @@
 // src/components/ReferralApplicationModal.jsx
 import React, { useState, useEffect } from "react";
 import {
-  Modal,
   Form,
   Input,
   Select,
@@ -15,7 +14,8 @@ import {
   Space,
   Tag,
   message,
-} from "antd";
+} from 'antd';
+import { AppModal } from '../ui';
 import {
   UploadOutlined,
   CheckCircleOutlined,
@@ -181,7 +181,7 @@ const ReferralApplicationModal = ({ visible, onCancel, onSuccess }) => {
   }, [visible, form]);
 
   return (
-    <Modal
+    <AppModal
       title={
         <div className="flex items-center">
           <CheckCircleOutlined className="mr-2 text-success" />
@@ -392,7 +392,7 @@ const ReferralApplicationModal = ({ visible, onCancel, onSuccess }) => {
           </Button>
         </div>
       </Form>
-    </Modal>
+    </AppModal>
   );
 };
 

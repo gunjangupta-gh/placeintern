@@ -1,5 +1,6 @@
 import React from 'react';
-import { Table, Empty, Typography } from 'antd';
+import { Empty, Typography } from 'antd';
+import AppTable from '../ui/AppTable';
 import { InboxOutlined } from '@ant-design/icons';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from '../../utils/constants';
 
@@ -69,7 +70,7 @@ const DataTable = ({
 
   return (
     <div className={`data-table-wrapper ${className}`}>
-      <Table
+      <AppTable
         columns={enhancedColumns}
         dataSource={dataSource}
         loading={{
@@ -98,11 +99,6 @@ const DataTable = ({
           [&_.ant-table-tbody>tr:last-child>td]:border-b-0
           [&_.ant-table-tbody>tr:hover>td]:bg-primary-50/50
           [&_.ant-table-row-selected>td]:bg-primary-50
-          [&_.ant-pagination]:mt-4
-          [&_.ant-pagination]:px-4
-          [&_.ant-pagination]:py-3
-          [&_.ant-pagination]:bg-background-secondary
-          [&_.ant-pagination]:rounded-b-xl
         "
         rowClassName={(record, index) =>
           `transition-colors duration-150 ${

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Modal, Form, Button, Spin } from 'antd';
+import { Form, Button, Spin } from 'antd';
+import { AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   SaveOutlined,
@@ -192,7 +193,7 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
   };
 
   return (
-    <Modal
+    <AppModal
       title={null}
       open={open}
       onCancel={handleClose}
@@ -290,7 +291,7 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
           </div>
         </>
       )}
-    </Modal>
+    </AppModal>
   );
 };
 

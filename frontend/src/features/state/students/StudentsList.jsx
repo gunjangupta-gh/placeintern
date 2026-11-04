@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Card,
-  Table,
   Button,
   Tag,
   Space,
@@ -14,7 +13,6 @@ import {
   Tooltip,
   Typography,
   Statistic,
-  Drawer,
   Descriptions,
   Divider,
   Badge,
@@ -23,7 +21,8 @@ import {
   Timeline,
   Empty,
   Spin,
-} from "antd";
+} from 'antd';
+import { AppTable, AppDrawer } from '../../../components/ui';
 import {
   SearchOutlined,
   UserOutlined,
@@ -78,7 +77,7 @@ const StudentsList = () => {
   });
   const [tableParams, setTableParams] = useState({
     page: 1,
-    limit: 20,
+    limit: 10,
   });
   const [showFilters, setShowFilters] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -349,22 +348,6 @@ const StudentsList = () => {
         </Tag>
       ),
     },
-    {
-      title: "Actions",
-      key: "actions",
-      width: 100,
-      fixed: "right",
-      render: (_, record) => (
-        <Button
-          type="primary"
-          size="small"
-          icon={<EyeOutlined />}
-          onClick={() => handleViewStudent(record)}
-        >
-          View
-        </Button>
-      ),
-    },
   ];
 
   const studentsList = Array.isArray(students) ? students : [];
@@ -513,8 +496,11 @@ const StudentsList = () => {
         )}
 
         <div className="custom-table">
-          <Table
+          <AppTable
             columns={columns}
+            actions={[
+              { key: 'view', label: 'View', icon: <EyeOutlined />, type: 'primary', onClick: (record) => handleViewStudent(record) },
+            ]}
             dataSource={studentsList}
             loading={loading}
             rowKey="id"
@@ -536,7 +522,7 @@ const StudentsList = () => {
       </div>
 
       {/* Student Details Drawer */}
-      <Drawer
+      <AppDrawer
         title={null}
         placement="right"
         width={480}
@@ -760,7 +746,7 @@ const StudentsList = () => {
             />
           </div>
         )}
-      </Drawer>
+      </AppDrawer>
     </div>
   );
 };

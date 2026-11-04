@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Badge, Button, Card, Collapse, Descriptions, Drawer, Form, Input, Radio, Space, Table, Tooltip, Typography, message } from 'antd';
+import { Badge, Button, Card, Collapse, Descriptions, Form, Input, Radio, Space, Typography, message } from 'antd';
+import { AppTable, AppDrawer } from '../../../components/ui';
 import {
   FileDoneOutlined,
   BookOutlined,
@@ -139,28 +140,6 @@ const LessonPlanReviewPage = () => {
         </Text>
       ),
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 120,
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="Review">
-            <Button
-              type="primary"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={(e) => {
-                e.stopPropagation();
-                openReview(record);
-              }}
-            >
-              Review
-            </Button>
-          </Tooltip>
-        </Space>
-      ),
-    },
   ];
 
   const reviewedColumns = [
@@ -178,24 +157,6 @@ const LessonPlanReviewPage = () => {
             year: 'numeric',
           }) : '-'}
         </Text>
-      ),
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 100,
-      render: (_, record) => (
-        <Tooltip title="View">
-          <Button
-            type="text"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={(e) => {
-              e.stopPropagation();
-              openReview(record);
-            }}
-          />
-        </Tooltip>
       ),
     },
   ];
@@ -265,10 +226,13 @@ const LessonPlanReviewPage = () => {
         ) : activeTab === 'pending' ? (
           pendingPlans.length > 0 ? (
             <div className="custom-scrollbar overflow-x-auto">
-              <Table
+              <AppTable
                 className="custom-table"
                 rowKey="id"
                 columns={columns}
+                actions={[
+                  { key: 'review', label: 'Review', icon: <EyeOutlined />, type: 'primary', onClick: (record) => openReview(record) },
+                ]}
                 dataSource={pendingPlans}
                 loading={lessonPlans.loading}
                 size="small"
@@ -301,10 +265,13 @@ const LessonPlanReviewPage = () => {
         ) : (
           reviewedPlans.length > 0 ? (
             <div className="custom-scrollbar overflow-x-auto">
-              <Table
+              <AppTable
                 className="custom-table"
                 rowKey="id"
                 columns={reviewedColumns}
+                actions={[
+                  { key: 'view', label: 'View', icon: <EyeOutlined />, onClick: (record) => openReview(record) },
+                ]}
                 dataSource={reviewedPlans}
                 loading={lessonPlans.loading}
                 size="small"
@@ -337,7 +304,7 @@ const LessonPlanReviewPage = () => {
         )}
       </Card>
 
-      <Drawer
+      <AppDrawer
         title="Review Lesson Plan"
         placement="right"
         width={600}
@@ -471,7 +438,7 @@ const LessonPlanReviewPage = () => {
             )}
           </div>
         )}
-      </Drawer>
+      </AppDrawer>
     </div>
   );
 };

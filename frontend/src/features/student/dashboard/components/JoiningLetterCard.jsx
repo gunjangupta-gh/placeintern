@@ -1,6 +1,7 @@
 import React, { memo, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { Typography, Button, Tag, Tooltip, Modal, Upload, Space, theme } from 'antd';
+import { Typography, Button, Tag, Tooltip, Upload, Space, theme } from 'antd';
+import { AppModal } from '../../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   FileTextOutlined,
@@ -177,7 +178,7 @@ const JoiningLetterCard = ({
         </div>
 
         {/* Upload Modal */}
-        <Modal
+        <AppModal
           title={
             <div className="flex items-center gap-2">
               <CloudUploadOutlined style={{ color: token.colorPrimary }} />
@@ -241,10 +242,10 @@ const JoiningLetterCard = ({
               </div>
             )}
           </div>
-        </Modal>
+        </AppModal>
 
         {/* Delete Confirmation Modal */}
-        <Modal
+        <AppModal
           title={
             <div className="flex items-center gap-2" style={{ color: token.colorError }}>
               <DeleteOutlined />
@@ -264,7 +265,7 @@ const JoiningLetterCard = ({
         >
           <p>Are you sure you want to delete the joining report?</p>
           <p className="text-sm" style={{ color: token.colorError }}>This action cannot be undone.</p>
-        </Modal>
+        </AppModal>
       </>
     );
   }
@@ -324,7 +325,7 @@ const JoiningLetterCard = ({
       </div>
 
       {/* Modals - same as compact version */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <CloudUploadOutlined style={{ color: token.colorPrimary }} />
@@ -358,9 +359,9 @@ const JoiningLetterCard = ({
           <p className="ant-upload-text">Click or drag file to upload</p>
           <p className="ant-upload-hint">PDF only, max 5MB</p>
         </Upload.Dragger>
-      </Modal>
+      </AppModal>
 
-      <Modal
+      <AppModal
         title={<span style={{ color: token.colorError }}><DeleteOutlined /> Delete Joining Report</span>}
         open={deleteConfirmVisible}
         onCancel={() => setDeleteConfirmVisible(false)}
@@ -370,7 +371,7 @@ const JoiningLetterCard = ({
         ]}
       >
         <p>Are you sure you want to delete the joining report?</p>
-      </Modal>
+      </AppModal>
     </>
   );
 };

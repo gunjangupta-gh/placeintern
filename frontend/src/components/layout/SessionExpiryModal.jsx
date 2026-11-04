@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, Button } from 'antd';
+import { Button } from 'antd';
+import { AppModal } from '../ui';
 import { ClockCircleOutlined } from '@ant-design/icons';
 
 const SessionExpiryModal = ({
@@ -9,7 +10,7 @@ const SessionExpiryModal = ({
   onLogout,
 }) => {
   return (
-    <Modal
+    <AppModal
       title={
         <div className="flex items-center gap-2">
           <ClockCircleOutlined className="text-orange-500" />
@@ -42,7 +43,7 @@ const SessionExpiryModal = ({
           Would you like to extend your session to continue working?
         </p>
       </div>
-    </Modal>
+    </AppModal>
   );
 };
 

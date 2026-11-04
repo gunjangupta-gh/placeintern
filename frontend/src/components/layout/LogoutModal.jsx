@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, Button, theme } from 'antd';
+import { Button, theme } from 'antd';
+import { AppModal } from '../ui';
 import {
   ExclamationCircleOutlined,
   LogoutOutlined,
@@ -21,7 +22,7 @@ const LogoutModal = ({
   const { token } = theme.useToken();
 
   return (
-    <Modal
+    <AppModal
       title={
         <div className="flex items-center gap-2">
           <ExclamationCircleOutlined className="text-warning text-xl" />
@@ -75,7 +76,7 @@ const LogoutModal = ({
           You will need to sign in again to access your account.
         </p>
       </div>
-    </Modal>
+    </AppModal>
   );
 };
 

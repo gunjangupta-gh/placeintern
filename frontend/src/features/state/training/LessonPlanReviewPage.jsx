@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Button, Card, Descriptions, Form, Input, Modal, Space, Table, Tag, Tooltip, Typography, message, Select } from 'antd';
+import { Card, Descriptions, Form, Input, Tag, Typography, message, Select } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import { EyeOutlined, FileDoneOutlined, CheckCircleOutlined, ClockCircleOutlined, SearchOutlined } from '@ant-design/icons';
 import TrainingEmptyState from '../../../components/training/TrainingEmptyState';
 import { TableRowSkeleton } from '../../../components/training/skeletons/TrainingSkeletons';
@@ -84,26 +85,6 @@ const StateLessonPlanReviewPage = () => {
         return <Tag color={config.color} icon={config.icon}>{status}</Tag>;
       },
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="View full lesson plan">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => openView(record)}
-              aria-label={`View lesson plan: ${record.title}`}
-            />
-          </Tooltip>
-          <Button size="small" onClick={() => openReview(record)} aria-label={`Review lesson plan: ${record.title}`}>
-            Review
-          </Button>
-        </Space>
-      ),
-    },
   ];
 
   const filteredLessonPlans = useMemo(() => {
@@ -159,10 +140,14 @@ const StateLessonPlanReviewPage = () => {
             </div>
           ) : filteredLessonPlans.length > 0 ? (
             <div className="custom-scrollbar overflow-x-auto">
-              <Table
+              <AppTable
                 className="custom-table"
                 rowKey="id"
                 columns={columns}
+                actions={[
+                  { key: 'view', label: 'View full lesson plan', icon: <EyeOutlined />, onClick: (record) => openView(record) },
+                  { key: 'review', label: 'Review', icon: <FileDoneOutlined />, type: 'default', onClick: (record) => openReview(record) },
+                ]}
                 dataSource={filteredLessonPlans}
                 loading={lessonPlans.loading}
                 size="small"
@@ -185,7 +170,7 @@ const StateLessonPlanReviewPage = () => {
         </div>
       </Card>
 
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <EyeOutlined className="text-blue-700" />
@@ -243,9 +228,9 @@ const StateLessonPlanReviewPage = () => {
             </Descriptions>
           </div>
         )}
-      </Modal>
+      </AppModal>
 
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <FileDoneOutlined className="text-blue-700" />
@@ -273,7 +258,7 @@ const StateLessonPlanReviewPage = () => {
             <Input.TextArea rows={3} placeholder="Add notes" aria-label="Review comments" />
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

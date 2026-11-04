@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Modal,
   Form,
   Select,
   Input,
@@ -14,6 +13,7 @@ import {
   Spin,
   Divider,
 } from 'antd';
+import { AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   CameraOutlined,
@@ -96,7 +96,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
       return;
     }
 
-    const guidanceModal = Modal.confirm({
+    const guidanceModal = AppModal.confirm({
       title: 'Visit Log Writing Guidance',
       width: 760,
       content: (
@@ -376,7 +376,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
   );
 
   return (
-    <Modal
+    <AppModal
       title={
         <div className="flex items-center gap-2">
           <CameraOutlined className="text-primary" />
@@ -642,7 +642,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
           </div>
         </Form.Item>
       </Form>
-    </Modal>
+    </AppModal>
   );
 });
 

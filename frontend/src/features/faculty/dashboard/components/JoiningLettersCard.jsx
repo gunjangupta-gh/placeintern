@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { Card, Tag, Button, Space, Modal, Input, Empty, Badge, Tooltip, Avatar, theme } from 'antd';
+import { Card, Tag, Button, Space, Input, Empty, Badge, Tooltip, Avatar, theme } from 'antd';
+import { AppModal } from '../../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   FileProtectOutlined,
@@ -92,7 +93,7 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
   };
 
   const handleDelete = async (letter) => {
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Delete Joining Report',
       content: 'Are you sure you want to delete this joining report? This action cannot be undone.',
       okText: 'Delete',
@@ -233,7 +234,7 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
       </Card>
 
       {/* Action Modal */}
-      <Modal
+      <AppModal
         title={actionModal.action === 'verify' ? 'Verify Joining Report' : 'Reject Joining Report'}
         open={actionModal.visible}
         onCancel={() => {
@@ -267,7 +268,7 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
           value={remarks}
           onChange={(e) => setRemarks(e.target.value)}
         />
-      </Modal>
+      </AppModal>
     </>
   );
 };

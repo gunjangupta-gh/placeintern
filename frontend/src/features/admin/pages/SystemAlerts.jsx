@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Tag, Spin, Button, Empty, Space, Select, Statistic, Row, Col } from 'antd';
+import { Card, Tag, Spin, Button, Empty, Space, Select, Statistic, Row, Col } from 'antd';
+import { AppTable } from '../../../components/ui';
 import {
   AlertOutlined,
   WarningOutlined,
@@ -220,11 +221,11 @@ const SystemAlerts = () => {
       {/* Alerts Table */}
       <Card>
         {alerts.length > 0 ? (
-          <Table scroll={{ x: 'max-content' }}
+          <AppTable scroll={{ x: 'max-content' }}
             dataSource={alerts}
             columns={columns}
             rowKey="id"
-            pagination={{ pageSize: 20 }}
+            pagination={{ pageSize: 10 }}
             rowClassName={(record) =>
               record.severity === 'critical' ? 'bg-red-50' : ''
             }

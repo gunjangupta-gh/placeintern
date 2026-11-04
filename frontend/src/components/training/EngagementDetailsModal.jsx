@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Modal, Button, Table, Typography, Empty, Tooltip, DatePicker } from 'antd';
+import { Button, Typography, Empty, Tooltip, DatePicker } from 'antd';
+import { AppTable, AppModal } from '../ui';
 import { CheckCircleOutlined, TeamOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
@@ -297,7 +298,7 @@ const EngagementDetailsModal = ({
   };
 
   return (
-    <Modal
+    <AppModal
       open={open}
       onCancel={handleModalClose}
       footer={null}
@@ -429,7 +430,7 @@ const EngagementDetailsModal = ({
         {/* Content */}
         <div className="p-5">
           {tableData.length > 0 ? (
-            <Table scroll={{ x: 'max-content' }}
+            <AppTable scroll={{ x: 'max-content' }}
               columns={columns}
               dataSource={tableData}
               rowKey={(record) => isTrainingWise ? record?.trainingId : (record?.itemName || record?.metric)}
@@ -449,7 +450,7 @@ const EngagementDetailsModal = ({
           )}
         </div>
       </div>
-    </Modal>
+    </AppModal>
   );
 };
 

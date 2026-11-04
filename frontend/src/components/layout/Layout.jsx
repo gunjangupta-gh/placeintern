@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Layout, Drawer } from 'antd';
+import { Layout } from 'antd';
+import { AppDrawer } from '../ui';
 import { Outlet } from 'react-router-dom';
 import useBreakpoint from 'antd/es/grid/hooks/useBreakpoint';
 
@@ -102,7 +103,7 @@ const Layouts = () => {
         </Sider>
       ) : (
         /* Mobile Drawer */
-        <Drawer
+        <AppDrawer
           placement="left"
           closable
           onClose={() => setMobileOpen(false)}
@@ -139,7 +140,7 @@ const Layouts = () => {
               onMobileClose={() => setMobileOpen(false)}
             />
           </div>
-        </Drawer>
+        </AppDrawer>
       )}
 
       <Layout

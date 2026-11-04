@@ -4,13 +4,12 @@ import {
   Button,
   Card,
   Form,
-  Modal,
   Space,
-  Table,
   Typography,
   Tooltip,
   message,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   CalendarOutlined,
   PlusOutlined,
@@ -533,7 +532,7 @@ const TrainingDashboardPage = () => {
           </Text>
         }
       >
-        <Table scroll={{ x: 'max-content' }}
+        <AppTable scroll={{ x: 'max-content' }}
           rowKey="course"
           columns={courseColumns}
           dataSource={normalizedCourseWiseFaculty}
@@ -549,7 +548,7 @@ const TrainingDashboardPage = () => {
         type={detailModalType || 'engagement'}
       />
 
-      <Modal
+      <AppModal
         title={`Create Training - Step ${formStep + 1} of ${TRAINING_FORM_STEP_TITLES.length}: ${TRAINING_FORM_STEP_TITLES[formStep]}`}
         open={createModalOpen}
         onCancel={handleCloseCreateModal}
@@ -569,7 +568,7 @@ const TrainingDashboardPage = () => {
           currentStep={formStep}
           onStepChange={setFormStep}
         />
-      </Modal>
+      </AppModal>
     </div>
   );
 };

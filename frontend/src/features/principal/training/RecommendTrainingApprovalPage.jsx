@@ -5,15 +5,12 @@ import {
   Card,
   Form,
   Input,
-  Modal,
   Select,
-  Space,
-  Table,
   Tag,
-  Tooltip,
   Typography,
   message,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   BulbOutlined,
   CheckOutlined,
@@ -157,44 +154,24 @@ const RecommendTrainingApprovalPage = () => {
         </Text>
       ),
     },
+  ];
+
+  const rowActions = [
+    { key: "view", label: "View details", icon: <EyeOutlined />, onClick: (record) => openView(record) },
     {
-      title: "Actions",
-      key: "actions",
-      width: 150,
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="View details">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => openView(record)}
-            />
-          </Tooltip>
-          {["PENDING", "UNDER_REVIEW"].includes(record.status) && (
-            <>
-              <Tooltip title="Approve">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<CheckOutlined />}
-                  className="text-green-600 hover:text-green-700"
-                  onClick={() => openReview(record, "APPROVED")}
-                />
-              </Tooltip>
-              <Tooltip title="Reject">
-                <Button
-                  type="text"
-                  size="small"
-                  danger
-                  icon={<CloseOutlined />}
-                  onClick={() => openReview(record, "REJECTED")}
-                />
-              </Tooltip>
-            </>
-          )}
-        </Space>
-      ),
+      key: "approve",
+      label: "Approve",
+      icon: <CheckOutlined />,
+      onClick: (record) => openReview(record, "APPROVED"),
+      hidden: (record) => !["PENDING", "UNDER_REVIEW"].includes(record.status),
+    },
+    {
+      key: "reject",
+      label: "Reject",
+      icon: <CloseOutlined />,
+      danger: true,
+      onClick: (record) => openReview(record, "REJECTED"),
+      hidden: (record) => !["PENDING", "UNDER_REVIEW"].includes(record.status),
     },
   ];
 
@@ -251,10 +228,11 @@ const RecommendTrainingApprovalPage = () => {
           />
         ) : (
           <div className="custom-scrollbar overflow-x-auto">
-            <Table
+            <AppTable
               className="custom-table"
               rowKey="id"
               columns={columns}
+              actions={rowActions}
               dataSource={filteredRecommendations}
               loading={recommendations.loading}
               size="small"
@@ -274,7 +252,7 @@ const RecommendTrainingApprovalPage = () => {
         )}
       </Card>
 
-      <Modal
+      <AppModal
         title="Review Recommendation"
         open={reviewOpen}
         onCancel={() => setReviewOpen(false)}
@@ -332,9 +310,9 @@ const RecommendTrainingApprovalPage = () => {
             }
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
 
-      <Modal
+      <AppModal
         title="Recommendation Details"
         open={viewOpen}
         onCancel={() => setViewOpen(false)}
@@ -402,7 +380,7 @@ const RecommendTrainingApprovalPage = () => {
             )}
           </div>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

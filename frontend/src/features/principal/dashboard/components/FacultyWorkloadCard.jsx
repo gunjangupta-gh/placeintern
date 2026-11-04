@@ -2,13 +2,13 @@ import React, { useEffect, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Card,
-  Table,
   Typography,
   Tag,
   Spin,
   Empty,
   Tooltip,
 } from 'antd';
+import { AppTable } from '../../../../components/ui';
 import {
   UserOutlined,
   TeamOutlined,
@@ -198,12 +198,12 @@ const FacultyWorkloadCard = () => {
 
       {/* Faculty Table */}
       {faculty.length > 0 ? (
-        <Table className="custom-table"
+        <AppTable className="custom-table"
           dataSource={faculty}
           columns={columns}
           rowKey="id"
           size="small"
-          pagination={{ pageSize: 5, showSizeChanger: false }}
+          pagination={{ pageSize: 10, showSizeChanger: false }}
           scroll={{ x: 'max-content' }}
         />
       ) : (

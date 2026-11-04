@@ -2169,3 +2169,110 @@ body {
 .min-h-screen.bg-background-secondary {
   background-color: rgb(var(--color-background));
 }
+
+/* Common UI kit (components/ui): one look for every modal and drawer */
+.app-modal .ant-modal-title,
+.app-drawer .ant-drawer-title {
+  font-weight: 600;
+}
+.app-modal .ant-modal-content {
+  border-radius: 12px;
+}
+
+/* Common UI kit: table footer, same as the PIMS tables. "1–10 of 50" left; previous / "Page 1 / 5" / next right. */
+.ant-table-wrapper.app-table .ant-table-pagination.ant-pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  margin: 0 !important;
+  padding: 8px 12px;
+  border-top: 1px solid rgb(var(--color-border));
+  font-size: 12px;
+  color: rgb(var(--color-text-tertiary));
+  font-variant-numeric: tabular-nums;
+}
+.ant-table-wrapper.app-table .ant-pagination .ant-pagination-total-text {
+  margin-right: auto;
+}
+.ant-table-wrapper.app-table .ant-pagination .ant-pagination-simple-pager {
+  height: auto;
+  margin: 0 4px;
+}
+.ant-table-wrapper.app-table .ant-pagination .ant-pagination-simple-pager::before {
+  content: 'Page';
+  margin-right: 4px;
+}
+.ant-table-wrapper.app-table .ant-pagination .ant-pagination-slash {
+  margin: 0 4px;
+}
+
+/* Confirm dialogs (components/ui ConfirmModal / AppModal.confirm): round warning icon, PIMS layout */
+.app-confirm-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 20px;
+}
+.app-confirm-icon--danger {
+  background: rgb(var(--color-error) / 0.12);
+  color: rgb(var(--color-error));
+}
+.app-confirm-icon--warning {
+  background: rgb(var(--color-warning) / 0.14);
+  color: rgb(var(--color-warning));
+}
+.app-confirm .ant-modal-confirm-body {
+  align-items: flex-start;
+  gap: 12px;
+}
+.app-confirm .ant-modal-confirm-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+.app-confirm .ant-modal-confirm-content {
+  margin-top: 4px;
+  font-size: 13px;
+  color: rgb(var(--color-text-secondary));
+}
+.app-confirm .ant-modal-confirm-btns {
+  margin-top: 20px;
+}
+
+/* Row action icons (components/ui RowActions, and any icon-only button in a table cell): plain icon, no background,
+   muted colour, subtle hover, red for danger - same as the PIMS tables. */
+.row-action-btn.ant-btn,
+.app-table td .ant-btn.ant-btn-icon-only {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  color: rgb(var(--color-text-tertiary)) !important;
+  font-size: 16px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.row-action-btn.ant-btn:hover:not(:disabled),
+.app-table td .ant-btn.ant-btn-icon-only:hover:not(:disabled) {
+  background: rgb(var(--color-background-tertiary)) !important;
+  color: rgb(var(--color-text-primary)) !important;
+}
+.row-action-btn.ant-btn.ant-btn-dangerous,
+.app-table td .ant-btn.ant-btn-icon-only.ant-btn-dangerous {
+  color: rgb(var(--color-error)) !important;
+}
+.row-action-btn.ant-btn.ant-btn-dangerous:hover:not(:disabled),
+.app-table td .ant-btn.ant-btn-icon-only.ant-btn-dangerous:hover:not(:disabled) {
+  background: rgb(var(--color-error) / 0.1) !important;
+  color: rgb(var(--color-error)) !important;
+}
+.row-action-btn.ant-btn:disabled,
+.app-table td .ant-btn.ant-btn-icon-only:disabled {
+  opacity: 0.4;
+}

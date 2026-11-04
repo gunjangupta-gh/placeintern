@@ -6,11 +6,11 @@ import {
   Spin,
   Typography,
   List,
-  Modal,
   Tooltip,
   Descriptions,
   Button,
 } from 'antd';
+import { AppModal } from '../../../../components/ui';
 import {
   TeamOutlined,
   CheckCircleOutlined,
@@ -140,7 +140,7 @@ const FacultyVisitsSection = ({
 
 
       {/* View Visit Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <CheckCircleOutlined className="text-green-500" />
@@ -226,7 +226,7 @@ const FacultyVisitsSection = ({
             )}
           </div>
         )}
-      </Modal>
+      </AppModal>
     </Card>
   );
 };

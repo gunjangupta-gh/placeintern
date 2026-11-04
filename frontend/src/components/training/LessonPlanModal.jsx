@@ -3,11 +3,11 @@ import {
   Alert,
   Form,
   Input,
-  Modal,
   Select,
   Typography,
   message,
 } from 'antd';
+import { AppModal } from '../ui';
 import { BookOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -73,7 +73,7 @@ const LessonPlanModal = ({
   };
 
   return (
-    <Modal
+    <AppModal
       title={
         <div className="flex items-center gap-2">
           <BookOutlined className="text-blue-700" />
@@ -227,7 +227,7 @@ const LessonPlanModal = ({
           </Text>
         </div>
       </div>
-    </Modal>
+    </AppModal>
   );
 };
 

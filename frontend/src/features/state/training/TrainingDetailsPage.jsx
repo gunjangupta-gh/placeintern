@@ -7,14 +7,14 @@ import {
   Col,
   Descriptions,
   Divider,
-  Modal,
   Row,
   Space,
   Tag,
   Tooltip,
   Typography,
   message,
-} from "antd";
+} from 'antd';
+import { AppModal } from '../../../components/ui';
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
 import {
@@ -637,7 +637,7 @@ const StateTrainingDetailsPage = () => {
         </Col>
       </Row>
 
-      <Modal
+      <AppModal
         open={attendanceModalOpen}
         onCancel={() => setAttendanceModalOpen(false)}
         footer={null}
@@ -878,7 +878,7 @@ const StateTrainingDetailsPage = () => {
             </div>
           )}
         </div>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Modal,
   Avatar,
   Form,
   Input,
@@ -12,10 +11,11 @@ import {
   message,
   Divider,
   Tabs,
-  Popconfirm,
   Typography,
   Switch,
 } from 'antd';
+import { AppPopconfirm } from './ui';
+import { AppModal } from './ui';
 import {
   UserOutlined,
   MailOutlined,
@@ -383,7 +383,7 @@ const UserProfile = ({ visible, onClose }) => {
   const roleConfig = userData ? getRoleConfig(userData.role) : {};
 
   return (
-    <Modal
+    <AppModal
       open={visible}
       onCancel={handleCancel}
       footer={null}
@@ -791,7 +791,7 @@ const UserProfile = ({ visible, onClose }) => {
                               maxLength={6}
                               className="w-36 font-mono rounded-lg"
                             />
-                            <Popconfirm
+                            <AppPopconfirm
                               title="Disable Two-Factor Authentication?"
                               description="Your account will be less secure without 2FA."
                               onConfirm={handleDisableMfa}
@@ -807,7 +807,7 @@ const UserProfile = ({ visible, onClose }) => {
                               >
                                 Disable 2FA
                               </Button>
-                            </Popconfirm>
+                            </AppPopconfirm>
                           </div>
                         </div>
                       ) : (
@@ -878,7 +878,7 @@ const UserProfile = ({ visible, onClose }) => {
           <Text className="text-text-tertiary">Unable to load profile data</Text>
         </div>
       )}
-    </Modal>
+    </AppModal>
   );
 };
 

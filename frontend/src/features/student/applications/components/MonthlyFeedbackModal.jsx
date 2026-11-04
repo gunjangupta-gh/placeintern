@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Modal, Button, Alert } from 'antd';
+import { Button, Alert } from 'antd';
+import { AppModal } from '../../../../components/ui';
 import { toast } from 'react-hot-toast';
 import { CalendarOutlined, SendOutlined, UploadOutlined } from '@ant-design/icons';
 
@@ -58,7 +59,7 @@ const MonthlyFeedbackModal = ({
   };
 
   return (
-    <Modal
+    <AppModal
       title={
         <div className="flex items-center text-green-700">
           <CalendarOutlined className="mr-2" />
@@ -140,7 +141,7 @@ const MonthlyFeedbackModal = ({
           </div>
         </div>
       </div>
-    </Modal>
+    </AppModal>
   );
 };
 

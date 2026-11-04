@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Col, Descriptions, Popconfirm, Result, Row, Skeleton, Space, Statistic, Table, Tabs, Tag, Typography } from 'antd';
+import { Button, Card, Col, Descriptions, Result, Row, Skeleton, Space, Statistic, Tabs, Tag, Typography } from 'antd';
+import { AppTable, AppPopconfirm } from '../../../components/ui';
 import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -97,7 +98,7 @@ const OpportunityDetail = () => {
               {opp.status === 'OPEN' ? 'Close applications' : 'Reopen applications'}
             </Button>
           )}
-          <Popconfirm
+          <AppPopconfirm
             title="Delete this opportunity?"
             description="Not possible once students have applied."
             okText="Delete"
@@ -105,7 +106,7 @@ const OpportunityDetail = () => {
             onConfirm={remove}
           >
             <Button danger loading={busy} icon={<DeleteOutlined />}>Delete</Button>
-          </Popconfirm>
+          </AppPopconfirm>
         </Space>
       </div>
 
@@ -131,7 +132,7 @@ const OpportunityDetail = () => {
       </Card>
 
       <Card size="small" title="Branch-wise positions" style={{ marginBottom: 12 }}>
-        <Table
+        <AppTable
           size="small"
           rowKey="id"
           pagination={false}

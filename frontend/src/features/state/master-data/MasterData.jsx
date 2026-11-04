@@ -1,21 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Table,
   Button,
-  Modal,
   Form,
   Input,
   InputNumber,
-  Space,
   Typography,
   Tabs,
   Tag,
-  Popconfirm,
   Row,
   Col,
-  Tooltip,
   Switch,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   PlusOutlined,
@@ -201,33 +197,6 @@ const MasterData = () => {
       key: 'createdAt',
       render: (date) => new Date(date).toLocaleDateString(),
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 120,
-      render: (_, record) => (
-        <Space>
-          <Tooltip title="Edit">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => openModal('batch', record)}
-            />
-          </Tooltip>
-          <Popconfirm
-            title="Delete this batch?"
-            description="This will deactivate the batch."
-            onConfirm={() => handleDelete('batch', record.id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Tooltip title="Delete">
-              <Button type="text" danger icon={<DeleteOutlined />} />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
-    },
   ];
 
   const branchColumns = [
@@ -262,33 +231,6 @@ const MasterData = () => {
         <Tag color={isActive ? 'success' : 'default'}>
           {isActive ? 'Active' : 'Inactive'}
         </Tag>
-      ),
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 120,
-      render: (_, record) => (
-        <Space>
-          <Tooltip title="Edit">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => openModal('branch', record)}
-            />
-          </Tooltip>
-          <Popconfirm
-            title="Delete this branch?"
-            description="This will deactivate the branch."
-            onConfirm={() => handleDelete('branch', record.id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Tooltip title="Delete">
-              <Button type="text" danger icon={<DeleteOutlined />} />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
       ),
     },
   ];
@@ -400,8 +342,19 @@ const MasterData = () => {
             </Button>
           </div>
           <div className="custom-table">
-            <Table scroll={{ x: 'max-content' }}
+            <AppTable scroll={{ x: 'max-content' }}
               columns={batchColumns}
+              actions={[
+                { key: 'edit', label: 'Edit', icon: <EditOutlined />, onClick: (record) => openModal('batch', record) },
+                {
+                  key: 'delete',
+                  label: 'Delete',
+                  icon: <DeleteOutlined />,
+                  danger: true,
+                  confirm: { title: 'Delete this batch?', description: 'This will deactivate the batch.', okText: 'Yes' },
+                  onClick: (record) => handleDelete('batch', record.id),
+                },
+              ]}
               dataSource={batches}
               rowKey="id"
               loading={loading}
@@ -432,8 +385,19 @@ const MasterData = () => {
             </Button>
           </div>
           <div className="custom-table">
-            <Table scroll={{ x: 'max-content' }}
+            <AppTable scroll={{ x: 'max-content' }}
               columns={branchColumns}
+              actions={[
+                { key: 'edit', label: 'Edit', icon: <EditOutlined />, onClick: (record) => openModal('branch', record) },
+                {
+                  key: 'delete',
+                  label: 'Delete',
+                  icon: <DeleteOutlined />,
+                  danger: true,
+                  confirm: { title: 'Delete this branch?', description: 'This will deactivate the branch.', okText: 'Yes' },
+                  onClick: (record) => handleDelete('branch', record.id),
+                },
+              ]}
               dataSource={branches}
               rowKey="id"
               loading={loading}
@@ -455,7 +419,7 @@ const MasterData = () => {
       children: (
         <div>
           <div className="custom-table">
-            <Table scroll={{ x: 'max-content' }}
+            <AppTable scroll={{ x: 'max-content' }}
               columns={designationColumns}
               dataSource={designations}
               rowKey="key"
@@ -487,7 +451,7 @@ const MasterData = () => {
       </div>
 
       {/* Create/Edit Modal */}
-      <Modal
+      <AppModal
         title={`${editingItem ? 'Edit' : 'Create'} ${modalType.charAt(0).toUpperCase() + modalType.slice(1)}`}
         open={modalVisible}
         onCancel={closeModal}
@@ -508,7 +472,7 @@ const MasterData = () => {
             </Button>
           </div>
         </Form>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

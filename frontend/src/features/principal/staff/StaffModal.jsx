@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Select, Button, Row, Col, Spin, Modal, Divider } from 'antd';
+import { Form, Input, Select, Button, Row, Col, Spin, Divider } from 'antd';
+import { AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { createStaff, updateStaff, fetchStaff } from '../store/principalSlice';
@@ -116,7 +117,7 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
   };
 
   return (
-    <Modal
+    <AppModal
       title={isEditMode ? 'Edit Staff Member' : 'Add New Staff Member'}
       open={open}
       onCancel={handleClose}
@@ -223,7 +224,7 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
           </div>
         </Form>
       )}
-    </Modal>
+    </AppModal>
   );
 };
 

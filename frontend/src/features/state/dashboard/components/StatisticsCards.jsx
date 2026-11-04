@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Row, Col, Modal, Table, Spin, Typography, Tooltip } from 'antd';
+import { Row, Col, Spin, Typography, Tooltip } from 'antd';
+import { AppTable, AppModal } from '../../../../components/ui';
 import {
   UserOutlined,
   FileTextOutlined,
@@ -44,7 +45,7 @@ const STAT_VARIANTS = {
 
 // College-wise breakdown modal
 const CollegeBreakdownModal = ({ visible, onClose, title, loading, data, columns }) => (
-  <Modal
+  <AppModal
     title={<span className="font-semibold text-base">{title}</span>}
     open={visible}
     onCancel={onClose}
@@ -55,7 +56,7 @@ const CollegeBreakdownModal = ({ visible, onClose, title, loading, data, columns
     {loading ? (
       <div className="flex justify-center py-12"><Spin /></div>
     ) : (
-      <Table scroll={{ x: 'max-content' }}
+      <AppTable scroll={{ x: 'max-content' }}
         dataSource={data}
         columns={columns}
         rowKey={(record) => record.id || record.institutionId || record.name}
@@ -64,7 +65,7 @@ const CollegeBreakdownModal = ({ visible, onClose, title, loading, data, columns
         className="mt-4 [&_.ant-table-thead_th]:bg-gray-50 [&_.ant-table-thead_th]:text-[10px] [&_.ant-table-thead_th]:font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:text-text-tertiary"
       />
     )}
-  </Modal>
+  </AppModal>
 );
 
 const StatCard = ({ icon: Icon, title, lines = [], onClick, onView, infoTooltip, variant = 'primary' }) => {

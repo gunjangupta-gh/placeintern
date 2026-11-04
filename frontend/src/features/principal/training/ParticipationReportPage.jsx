@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Avatar, Card, Col, Progress, Row, Table, Tag, Typography, Tabs, Skeleton, Statistic, List } from 'antd';
+import { Avatar, Card, Col, Progress, Row, Tag, Typography, Tabs, Skeleton, Statistic, List } from 'antd';
+import { AppTable } from '../../../components/ui';
 import {
   TeamOutlined,
   CheckCircleOutlined,
@@ -441,7 +442,7 @@ const ParticipationReportPage = () => {
                     <Skeleton active paragraph={{ rows: 10 }} />
                   ) : reportData.applications.length > 0 ? (
                     <div className="custom-scrollbar overflow-x-auto">
-                      <Table
+                      <AppTable
                         dataSource={reportData.applications}
                         rowKey="id"
                         columns={applicationColumns}
@@ -479,7 +480,7 @@ const ParticipationReportPage = () => {
                     <Skeleton active paragraph={{ rows: 8 }} />
                   ) : reportData.byTraining.length > 0 ? (
                     <div className="custom-scrollbar overflow-x-auto">
-                      <Table
+                      <AppTable
                         dataSource={reportData.byTraining}
                         rowKey={(record) => record.training?.id}
                         columns={trainingColumns}

@@ -1,7 +1,6 @@
 // GenerateReportDrawer Component - Configure and generate reports
 import React, { useState, useEffect } from "react";
 import {
-  Drawer,
   Button,
   Steps,
   Typography,
@@ -14,7 +13,8 @@ import {
   Tag,
   Collapse,
   message,
-} from "antd";
+} from 'antd';
+import { AppDrawer } from '../ui';
 import {
   FileTextOutlined,
   FilterOutlined,
@@ -400,7 +400,7 @@ const GenerateReportDrawer = ({
   const isLastStep = currentStep === steps.length - 1;
 
   return (
-    <Drawer
+    <AppDrawer
       title={
         <Space>
           <FileTextOutlined />
@@ -537,7 +537,7 @@ const GenerateReportDrawer = ({
           </Card>
         </div>
       )}
-    </Drawer>
+    </AppDrawer>
   );
 };
 

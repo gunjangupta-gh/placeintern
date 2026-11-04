@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Avatar, Button, Card, Descriptions, Form, Input, Modal, Select, Space, Tag, Tooltip, Typography, message } from 'antd';
+import { Avatar, Card, Descriptions, Form, Input, Select, Tag, Tooltip, Typography, message } from 'antd';
+import { AppModal } from '../../../components/ui';
 import {
   CheckOutlined,
   CloseOutlined,
@@ -17,7 +18,7 @@ import {
   fetchPrincipalApplications,
   reviewPrincipalApplication,
 } from '../store/principalTrainingSlice';
-import { Table } from 'antd';
+import { AppTable } from '../../../components/ui';
 
 const { Text, Title } = Typography;
 
@@ -144,53 +145,29 @@ const ApplicationReviewPage = () => {
         </Text>
       ),
     },
+  ];
+
+  const rowActions = [
     {
-      title: 'Actions',
-      key: 'actions',
-      width: 150,
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="View Training">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/app/training/${record.trainingId || record.training?.id}`);
-              }}
-            />
-          </Tooltip>
-          {isReviewableStatus(record.status) && (
-            <>
-              <Tooltip title="Approve">
-                <Button
-                  type="text"
-                  size="small"
-                  className="text-green-600 hover:text-green-700"
-                  icon={<CheckOutlined />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openReview(record, 'APPROVED');
-                  }}
-                />
-              </Tooltip>
-              <Tooltip title="Reject">
-                <Button
-                  type="text"
-                  size="small"
-                  danger
-                  icon={<CloseOutlined />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openReview(record, 'REJECTED');
-                  }}
-                />
-              </Tooltip>
-            </>
-          )}
-        </Space>
-      ),
+      key: 'view',
+      label: 'View Training',
+      icon: <EyeOutlined />,
+      onClick: (record) => navigate(`/app/training/${record.trainingId || record.training?.id}`),
+    },
+    {
+      key: 'approve',
+      label: 'Approve',
+      icon: <CheckOutlined />,
+      onClick: (record) => openReview(record, 'APPROVED'),
+      hidden: (record) => !isReviewableStatus(record.status),
+    },
+    {
+      key: 'reject',
+      label: 'Reject',
+      icon: <CloseOutlined />,
+      danger: true,
+      onClick: (record) => openReview(record, 'REJECTED'),
+      hidden: (record) => !isReviewableStatus(record.status),
     },
   ];
 
@@ -257,10 +234,11 @@ const ApplicationReviewPage = () => {
           />
         ) : (
           <div className="custom-scrollbar overflow-x-auto">
-            <Table
+            <AppTable
               className="custom-table"
               rowKey="id"
               columns={columns}
+              actions={rowActions}
               dataSource={filteredApplications}
               loading={applications.loading}
               size="small"
@@ -289,7 +267,7 @@ const ApplicationReviewPage = () => {
         )}
       </Card>
 
-      <Modal
+      <AppModal
         title="Review Application"
         open={reviewOpen}
         onCancel={() => setReviewOpen(false)}
@@ -321,7 +299,7 @@ const ApplicationReviewPage = () => {
             />
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

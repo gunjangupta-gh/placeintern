@@ -9,10 +9,9 @@ import {
   Badge,
   Tooltip,
   Alert,
-  Modal,
-  Table,
   Tag,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   BankOutlined,
   ReloadOutlined,
@@ -457,21 +456,21 @@ const PrincipalOverview = () => {
       </div>
 
       {/* Alert Details Modal */}
-      <Modal
+      <AppModal
         title={alertDetailModal.title}
         open={alertDetailModal.visible}
         onCancel={() => setAlertDetailModal({ visible: false, type: null, title: '', data: [] })}
         footer={null}
         width={700}
       >
-        <Table scroll={{ x: 'max-content' }} className="custom-table"
+        <AppTable scroll={{ x: 'max-content' }} className="custom-table"
           dataSource={alertDetailModal.data}
           rowKey={(record) => record.studentId || record.grievanceId || record.id || Math.random()}
           pagination={{ pageSize: 10 }}
           size="small"
           columns={getModalColumns(alertDetailModal.type)}
         />
-      </Modal>
+      </AppModal>
     </div>
   );
 };

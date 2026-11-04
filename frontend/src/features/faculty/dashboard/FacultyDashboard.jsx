@@ -1,5 +1,6 @@
 import React, { useState, useCallback, memo } from 'react';
-import { Row, Col, Spin, Alert, Modal, FloatButton, theme } from 'antd';
+import { Row, Col, Spin, Alert, FloatButton, theme } from 'antd';
+import { AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import { SyncOutlined, CameraOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -71,7 +72,7 @@ const FacultyDashboard = () => {
 
   // Handle deleting a visit log
   const handleDeleteVisit = useCallback(async (visitId) => {
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Delete Visit Log',
       content: 'Are you sure you want to delete this visit log?',
       okText: 'Yes, Delete',

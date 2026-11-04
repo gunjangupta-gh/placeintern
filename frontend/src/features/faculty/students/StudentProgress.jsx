@@ -12,7 +12,6 @@ import {
   Progress,
   Tag,
   Tabs,
-  Modal,
   Form,
   DatePicker,
   Spin,
@@ -24,11 +23,11 @@ import {
   Tooltip,
   Select,
   Upload,
-  Popconfirm,
   Space,
   Badge,
   theme,
-} from "antd";
+} from 'antd';
+import { AppModal } from '../../../components/ui';
 import {
   UserOutlined,
   EditOutlined,
@@ -493,7 +492,7 @@ const StudentProgressPage = () => {
   };
 
   const handleDeleteInternship = async (appId) => {
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Delete Internship Application',
       content: 'Are you sure you want to delete this internship application? This action cannot be undone.',
       okText: 'Delete',
@@ -962,7 +961,7 @@ const StudentProgressPage = () => {
       </div>
     </div>
 
-      <Modal
+      <AppModal
         title={
           modalType === "feedback"
             ? "Add New Feedback"
@@ -1030,10 +1029,10 @@ const StudentProgressPage = () => {
             </>
           )}
         </Form>
-      </Modal>
+      </AppModal>
 
       {/* Monthly Report Upload Modal */}
-      <Modal
+      <AppModal
         title="Upload Monthly Report"
         open={isReportUploadModalVisible}
         onCancel={() => {
@@ -1138,10 +1137,10 @@ const StudentProgressPage = () => {
             />
           )}
         </div>
-      </Modal>
+      </AppModal>
 
       {/* Edit Internship Modal */}
-      <Modal
+      <AppModal
         title="Edit Internship Application"
         open={editInternshipModal.visible}
         onCancel={() => {
@@ -1257,7 +1256,7 @@ const StudentProgressPage = () => {
             />
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
     </>
   );
 };

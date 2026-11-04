@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Button, Modal, Space, Typography } from 'antd';
+import { Button, Space, Typography } from 'antd';
+import { AppModal } from './ui';
 import { DownloadOutlined, CloseOutlined, MobileOutlined, DesktopOutlined } from '@ant-design/icons';
 import Cookies from 'js-cookie';
 
@@ -86,7 +87,7 @@ const PWAInstallPrompt = () => {
   return (
     <>
       {/* Install Prompt Modal - Auto popup only */}
-      <Modal
+      <AppModal
         open={showInstallPrompt}
         onCancel={handleDismiss}
         footer={null}
@@ -130,7 +131,7 @@ const PWAInstallPrompt = () => {
             </Text>
           </div>
         </div>
-      </Modal>
+      </AppModal>
     </>
   );
 };

@@ -4,13 +4,13 @@ import {
   Checkbox,
   Form,
   Input,
-  Modal,
   Radio,
   Rate,
   Space,
   Typography,
   message,
 } from 'antd';
+import { AppModal } from '../ui';
 import { FileTextOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -113,7 +113,7 @@ const FeedbackFormModal = ({
   };
 
   return (
-    <Modal
+    <AppModal
       title={
         <div className="flex items-center gap-2">
           <FileTextOutlined className="text-blue-700" />
@@ -171,7 +171,7 @@ const FeedbackFormModal = ({
           </Text>
         </div>
       </div>
-    </Modal>
+    </AppModal>
   );
 };
 

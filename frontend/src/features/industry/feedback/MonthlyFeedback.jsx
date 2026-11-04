@@ -2,11 +2,8 @@
 import React, { useState, useEffect } from "react";
 import {
   Card,
-  Table,
   Button,
   message,
-  Popconfirm,
-  Space,
   Tag,
   Row,
   Col,
@@ -14,12 +11,11 @@ import {
   Rate,
   Typography,
   Divider,
-  Modal,
   theme,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   PlusOutlined,
-  EditOutlined,
   DeleteOutlined,
   UserOutlined,
   EyeOutlined,
@@ -221,39 +217,25 @@ export default function MonthlyFeedbackPage() {
         return <Tag color={color}>{rating}/5</Tag>;
       },
     },
+  ];
+
+  const rowActions = [
     {
-      title: "Actions",
-      key: "actions",
-      width: 160,
-      render: (_, record) => (
-        <Space size="small">
-          <Button
-            icon={<EyeOutlined />}
-            onClick={() => handleViewDetails(record)}
-            className="text-green-600"
-            title="View Details"
-          />
-          {/* <Button
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-            className="text-blue-600"
-            title="Edit"
-          /> */}
-          <Popconfirm
-            title="Delete Feedback"
-            description="Are you sure you want to delete this feedback?"
-            onConfirm={() => {
-              const industryId = record.industry?.id || record.industryId;
-              handleDelete(record.id, industryId);
-            }}
-            okText="Delete"
-            cancelText="Cancel"
-            okButtonProps={{ danger: true }}
-          >
-            <Button icon={<DeleteOutlined />} danger title="Delete" />
-          </Popconfirm>
-        </Space>
-      ),
+      key: "view",
+      label: "View Details",
+      icon: <EyeOutlined />,
+      onClick: (record) => handleViewDetails(record),
+    },
+    {
+      key: "delete",
+      label: "Delete",
+      icon: <DeleteOutlined />,
+      danger: true,
+      confirm: { title: "Delete Feedback", description: "Are you sure you want to delete this feedback?", okText: "Delete" },
+      onClick: (record) => {
+        const industryId = record.industry?.id || record.industryId;
+        handleDelete(record.id, industryId);
+      },
     },
   ];
 
@@ -283,14 +265,15 @@ export default function MonthlyFeedbackPage() {
         }
         className=""
       >
-        <Table
+        <AppTable
           dataSource={feedbacks}
           columns={columns}
+          actions={rowActions}
           rowKey="id"
           loading={loading}
           scroll={{ x: "max-content" }}
           pagination={{
-            pageSize: 5,
+            pageSize: 10,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total, range) =>
@@ -311,7 +294,7 @@ export default function MonthlyFeedbackPage() {
       />
 
       {/* View Details Modal - keeping the existing one */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center">
             <EyeOutlined className="mr-2 text-green-600" />
@@ -557,7 +540,7 @@ export default function MonthlyFeedbackPage() {
             </div>
           </div>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 }

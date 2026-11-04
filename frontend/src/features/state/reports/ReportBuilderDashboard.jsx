@@ -8,8 +8,8 @@ import {
   Space,
   Badge,
   Tooltip,
-  Modal,
-} from "antd";
+} from 'antd';
+import { AppModal } from '../../../components/ui';
 import {
   ReloadOutlined,
   PlusOutlined,
@@ -236,7 +236,7 @@ const ReportBuilderDashboard = () => {
   }, [downloading]);
 
   const handleDeleteReport = useCallback((report) => {
-    Modal.confirm({
+    AppModal.confirm({
       title: "Delete Report",
       icon: <ExclamationCircleOutlined />,
       content: `Are you sure you want to delete "${report.reportName || formatLabel(report.reportType)}"?`,

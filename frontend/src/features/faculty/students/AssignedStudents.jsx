@@ -1,7 +1,8 @@
 // src/pages/faculty/AssignedStudents.jsx
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Table, Typography, Card, Tag, Spin, Empty, Alert, Button, theme, Input, Select, Space, Row, Col, Statistic, Popconfirm } from "antd";
+import { Typography, Card, Tag, Spin, Empty, Alert, Button, theme, Input, Select, Space, Row, Col, Statistic, } from 'antd';
+import { AppTable } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   PhoneOutlined,
@@ -237,53 +238,19 @@ const AssignedStudents = React.memo(() => {
         </Tag>
       ),
     },
-    {
-      title: "Actions",
-      key: "actions",
-      fixed: 'right',
-      width: 180,
-      render: (_, r) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<EyeOutlined />}
-            onClick={() => {
-                setSelectedStudent(r);
-                setDetailModalVisible(true);
-            }}
-            style={{ color: token.colorPrimary }}
-          >
-            Details
-          </Button>
-          {r.isActive ? (
-            <Button
-              type="text"
-              icon={<StopOutlined />}
-              style={{ color: token.colorError }}
-              onClick={() => openDeactivateModal(r)}
-            >
-              Deactivate
-            </Button>
-          ) : (
-            <Popconfirm
-              title="Activate Student"
-              description="This will activate the student and their mentor assignments and internship applications."
-              onConfirm={() => handleToggleStatus(r)}
-              okText="Yes"
-              cancelText="No"
-            >
-              <Button
-                type="text"
-                icon={<PlayCircleOutlined />}
-                style={{ color: token.colorSuccess }}
-              >
-                Activate
-              </Button>
-            </Popconfirm>
-          )}
-        </Space>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'details', label: 'Details', icon: <EyeOutlined style={{ color: token.colorPrimary }} />,
+      onClick: (r) => {
+        setSelectedStudent(r);
+        setDetailModalVisible(true);
+      } },
+    { key: 'deactivate', label: 'Deactivate', icon: <StopOutlined style={{ color: token.colorError }} />, danger: true,
+      onClick: (r) => openDeactivateModal(r), hidden: (r) => !r.isActive },
+    { key: 'activate', label: 'Activate', icon: <PlayCircleOutlined style={{ color: token.colorSuccess }} />,
+      onClick: (r) => handleToggleStatus(r), hidden: (r) => !!r.isActive,
+      confirm: { title: "Activate Student", description: "This will activate the student and their mentor assignments and internship applications.", okText: "Yes" } },
   ];
 
   if (loading && students.length === 0) {
@@ -384,8 +351,9 @@ const AssignedStudents = React.memo(() => {
         </div>
 
         {/* Table */}
-        <Table
+        <AppTable
             columns={columns}
+            actions={rowActions}
             dataSource={filteredStudents}
             rowKey="id"
             loading={loading}

@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Modal,
   Form,
   Input,
   Select,
@@ -10,6 +9,7 @@ import {
   Row,
   Col,
 } from 'antd';
+import { AppModal } from '../../../../components/ui';
 import { TrophyOutlined, SendOutlined } from '@ant-design/icons';
 
 const { TextArea } = Input;
@@ -28,7 +28,7 @@ const FeedbackModal = ({
   };
 
   return (
-    <Modal
+    <AppModal
       title={
         <div className="flex items-center text-green-700">
           <TrophyOutlined className="mr-2" />
@@ -172,7 +172,7 @@ const FeedbackModal = ({
           </Form>
         )}
       </div>
-    </Modal>
+    </AppModal>
   );
 };
 

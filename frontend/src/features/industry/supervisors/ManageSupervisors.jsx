@@ -1,22 +1,19 @@
 import React, { useState, useEffect } from "react";
 import {
   Card,
-  Table,
   Button,
   Form,
   Input,
-  Modal,
   Space,
   Tag,
   Typography,
   message,
-  Popconfirm,
   Divider,
   Alert,
   Spin,
-  Tooltip,
   Badge,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   UserAddOutlined,
   EditOutlined,
@@ -223,39 +220,18 @@ const ManageSupervisors = () => {
       key: "createdAt",
       render: (date) => moment(date).format("DD MMM YYYY"),
     },
+  ];
+
+  const rowActions = [
+    { key: "view", label: "View Details", icon: <EyeOutlined />, onClick: (record) => handleView(record) },
+    { key: "edit", label: "Edit", icon: <EditOutlined />, onClick: (record) => handleEdit(record) },
     {
-      title: "Actions",
-      key: "actions",
-      render: (_, record) => (
-        <Space>
-          <Tooltip title="View Details">
-            <Button
-              type="text"
-              icon={<EyeOutlined />}
-              onClick={() => handleView(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Edit">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => handleEdit(record)}
-            />
-          </Tooltip>
-          <Popconfirm
-            title="Delete Supervisor"
-            description="Are you sure you want to delete this supervisor? This action cannot be undone."
-            onConfirm={() => handleDelete(record.id)}
-            okText="Yes, Delete"
-            cancelText="Cancel"
-            okButtonProps={{ danger: true }}
-          >
-            <Tooltip title="Delete">
-              <Button type="text" danger icon={<DeleteOutlined />} />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
+      key: "delete",
+      label: "Delete",
+      icon: <DeleteOutlined />,
+      danger: true,
+      confirm: { title: "Delete Supervisor", description: "Are you sure you want to delete this supervisor? This action cannot be undone.", okText: "Yes, Delete" },
+      onClick: (record) => handleDelete(record.id),
     },
   ];
 
@@ -341,13 +317,14 @@ const ManageSupervisors = () => {
 
         {/* Supervisors Table */}
         <Card>
-          <Table scroll={{ x: 'max-content' }}
+          <AppTable scroll={{ x: 'max-content' }}
             columns={columns}
+            actions={rowActions}
             dataSource={supervisors}
             rowKey="id"
             loading={loading}
             pagination={{
-              pageSize: 5,
+              pageSize: 10,
               showTotal: (total) => `Total ${total} supervisors`,
             }}
             locale={{
@@ -364,7 +341,7 @@ const ManageSupervisors = () => {
         </Card>
 
         {/* Create/Edit Modal */}
-        <Modal
+        <AppModal
           title={
             <Space>
               <UserAddOutlined />
@@ -454,10 +431,10 @@ const ManageSupervisors = () => {
               </Space>
             </Form.Item>
           </Form>
-        </Modal>
+        </AppModal>
 
         {/* View Details Modal */}
-        <Modal
+        <AppModal
           title={
             <Space>
               <EyeOutlined />
@@ -535,7 +512,7 @@ const ManageSupervisors = () => {
               </Space>
             </div>
           )}
-        </Modal>
+        </AppModal>
       </div>
     </Layouts>
   );

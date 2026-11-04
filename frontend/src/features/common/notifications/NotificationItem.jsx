@@ -1,5 +1,6 @@
 import React from 'react';
-import { Avatar, Button, Tooltip, Popconfirm, Space, Typography, Tag } from 'antd';
+import { Avatar, Button, Tooltip, Space, Typography, Tag } from 'antd';
+import { AppPopconfirm } from '../../../components/ui';
 import { CheckOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getNotificationIcon, getNotificationColor, formatTimeAgo, formatFullDate } from './notificationUtils.jsx';
 
@@ -120,7 +121,7 @@ const NotificationItem = ({
                 )}
                 {onDelete && (
                   <Tooltip title="Delete">
-                    <Popconfirm
+                    <AppPopconfirm
                       title="Delete this?"
                       onConfirm={handleDelete}
                       okText="Yes"
@@ -135,7 +136,7 @@ const NotificationItem = ({
                         onClick={(e) => e.stopPropagation()}
                         className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
                       />
-                    </Popconfirm>
+                    </AppPopconfirm>
                   </Tooltip>
                 )}
               </Space>

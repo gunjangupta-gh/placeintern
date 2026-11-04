@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { Card, Empty, Table, Typography } from 'antd';
+import { Card, Empty, Typography } from 'antd';
+import { AppTable } from '../../../../components/ui';
 
 const { Text } = Typography;
 
@@ -88,7 +89,7 @@ const CourseWiseFacultyTable = ({ rows = [], loading = false }) => {
       loading={loading}
     >
       {normalizedRows.length > 0 ? (
-        <Table
+        <AppTable
           rowKey={(record) => record.courseId || record.course}
           columns={columns}
           dataSource={normalizedRows}

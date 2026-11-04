@@ -2,7 +2,6 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Card,
-  Table,
   Row,
   Col,
   Statistic,
@@ -13,7 +12,6 @@ import {
   Space,
   Avatar,
   Typography,
-  Modal,
   Spin,
   Empty,
   Alert,
@@ -23,6 +21,7 @@ import {
   List,
   Progress,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   BankOutlined,
   TeamOutlined,
@@ -84,7 +83,7 @@ const CompaniesOverview = () => {
   const [sortBy, setSortBy] = useState('studentCount');
   const [sortOrder, setSortOrder] = useState('desc');
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [isInitialMount, setIsInitialMount] = useState(true);
 
@@ -305,22 +304,6 @@ const CompaniesOverview = () => {
         return <Tag icon={<ClockCircleOutlined />} color="warning" className="m-0 rounded-full border-0 font-medium text-[10px] uppercase tracking-wide px-2 py-0.5">Pending</Tag>;
       },
     },
-    {
-      title: 'Action',
-      key: 'action',
-      width: 100,
-      fixed: 'right',
-      align: 'center',
-      render: (_, record) => (
-        <Button
-          type="text"
-          size="small"
-          icon={<EyeOutlined style={{ fontSize: 14 }} />}
-          onClick={() => handleViewDetails(record)}
-          className="text-text-secondary hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8 flex items-center justify-center p-0"
-        />
-      ),
-    },
   ], []);
 
   return (
@@ -410,8 +393,11 @@ const CompaniesOverview = () => {
 
         {/* Companies Table */}
         <div className="custom-table">
-          <Table
+          <AppTable
             columns={columns}
+            actions={[
+              { key: 'view', label: 'View', icon: <EyeOutlined />, onClick: (record) => handleViewDetails(record) },
+            ]}
             dataSource={filteredAndSortedCompanies}
             rowKey="id"
             loading={loading}
@@ -432,7 +418,7 @@ const CompaniesOverview = () => {
       </div>
 
       {/* Company Details Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-3">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
@@ -600,9 +586,9 @@ const CompaniesOverview = () => {
 
                       {/* Students Table */}
                       <div className="border-t border-border/60 overflow-hidden mx-0">
-                        <Table scroll={{ x: 'max-content' }}
+                        <AppTable scroll={{ x: 'max-content' }}
                           dataSource={institution.students || []}
-                          pagination={{ pageSize: 5, showSizeChanger: false }}
+                          pagination={{ pageSize: 10, showSizeChanger: false }}
                           size="small"
                           columns={[
                             {
@@ -683,7 +669,7 @@ const CompaniesOverview = () => {
         ) : (
           <Empty description="No data available" />
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

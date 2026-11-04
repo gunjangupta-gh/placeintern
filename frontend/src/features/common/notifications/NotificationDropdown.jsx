@@ -9,12 +9,11 @@ import {
   Tag,
   Avatar,
   Tooltip,
-  Popconfirm,
-  Drawer,
   Spin,
   Input,
   List,
 } from 'antd';
+import { AppDrawer, AppPopconfirm } from '../../../components/ui';
 import {
   BellOutlined,
   DeleteOutlined,
@@ -116,7 +115,7 @@ const NotificationDropdown = ({ maxItems = 10 }) => {
                     style={{ color: darkMode ? '#9ca3af' : '#6b7280' }}
                   />
                 </Tooltip>
-                <Popconfirm
+                <AppPopconfirm
                   title="Clear all notifications?"
                   description="This action cannot be undone."
                   onConfirm={clearAll}
@@ -131,7 +130,7 @@ const NotificationDropdown = ({ maxItems = 10 }) => {
                       style={{ color: darkMode ? '#9ca3af' : '#6b7280' }}
                     />
                   </Tooltip>
-                </Popconfirm>
+                </AppPopconfirm>
               </>
             )}
           </Space>
@@ -320,7 +319,7 @@ const NotificationDropdown = ({ maxItems = 10 }) => {
       </Dropdown>
 
       {/* All Notifications Drawer */}
-      <Drawer
+      <AppDrawer
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -339,7 +338,7 @@ const NotificationDropdown = ({ maxItems = 10 }) => {
                   <Tooltip title="Mark all as read">
                     <Button type="text" size="small" icon={<CheckOutlined />} onClick={markAllAsRead} />
                   </Tooltip>
-                  <Popconfirm
+                  <AppPopconfirm
                     title="Clear all notifications?"
                     description="This action cannot be undone."
                     onConfirm={clearAll}
@@ -349,7 +348,7 @@ const NotificationDropdown = ({ maxItems = 10 }) => {
                     <Tooltip title="Clear all">
                       <Button type="text" size="small" icon={<ClearOutlined />} danger />
                     </Tooltip>
-                  </Popconfirm>
+                  </AppPopconfirm>
                 </>
               )}
             </Space>
@@ -499,7 +498,7 @@ const NotificationDropdown = ({ maxItems = 10 }) => {
                               />
                             </Tooltip>
                           )}
-                          <Popconfirm
+                          <AppPopconfirm
                             title="Delete this notification?"
                             onConfirm={(e) => handleDelete(notification.id, e)}
                             okText="Delete"
@@ -514,7 +513,7 @@ const NotificationDropdown = ({ maxItems = 10 }) => {
                                 style={{ color: darkMode ? '#6b7280' : '#9ca3af', padding: '4px' }}
                               />
                             </Tooltip>
-                          </Popconfirm>
+                          </AppPopconfirm>
                         </Space>
                       </div>
                     </div>
@@ -524,7 +523,7 @@ const NotificationDropdown = ({ maxItems = 10 }) => {
             />
           )}
         </div>
-      </Drawer>
+      </AppDrawer>
     </>
   );
 };

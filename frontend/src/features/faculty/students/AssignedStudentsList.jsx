@@ -18,12 +18,12 @@ import {
   Modal,
   Form,
   Select,
-  Popconfirm,
   theme,
   Grid,
   Switch,
   Alert,
 } from 'antd';
+import { AppModal, AppPopconfirm } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -454,7 +454,7 @@ const AssignedStudentsList = () => {
       return;
     }
 
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Reset Password',
       content: `Are you sure you want to reset the password for ${selectedStudent?.user?.name || selectedStudent?.name}? A new password will be generated.`,
       okText: 'Reset Password',
@@ -904,7 +904,7 @@ const AssignedStudentsList = () => {
                         />
                       </Tooltip>
                     )}
-                    <Popconfirm
+                    <AppPopconfirm
                       title="Delete Report"
                       description="Are you sure you want to delete this report?"
                       onConfirm={() => handleDeleteReport(report.id)}
@@ -920,7 +920,7 @@ const AssignedStudentsList = () => {
                           icon={<DeleteOutlined />}
                         />
                       </Tooltip>
-                    </Popconfirm>
+                    </AppPopconfirm>
                   </div>
                 </Card>
               ))}
@@ -1182,7 +1182,7 @@ const AssignedStudentsList = () => {
       />
 
       {/* Upload Document Modal */}
-      <Modal
+      <AppModal
         title="Upload Document"
         open={uploadDocumentModal}
         onCancel={() => {
@@ -1229,7 +1229,7 @@ const AssignedStudentsList = () => {
             </Upload>
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
 
       {/* Edit Student Modal */}
       <FacultyStudentModal
@@ -1241,7 +1241,7 @@ const AssignedStudentsList = () => {
       />
 
       {/* Report Upload Modal */}
-      <Modal
+      <AppModal
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <FileTextOutlined style={{ color: token.colorPrimary }} />
@@ -1377,7 +1377,7 @@ const AssignedStudentsList = () => {
             style={{ borderRadius: 8, padding: '10px 12px' }}
           />
         </div>
-      </Modal>
+      </AppModal>
 
       {/* Deactivation confirmation modal */}
       <DeactivationConfirmModal

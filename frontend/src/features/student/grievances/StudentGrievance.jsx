@@ -2,11 +2,9 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Card,
-  Table,
   Tag,
   Button,
   Typography,
-  Modal,
   Form,
   Input,
   Select,
@@ -15,10 +13,10 @@ import {
   Row,
   Col,
   Badge,
-  Drawer,
   Timeline,
   Divider,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal, AppDrawer } from '../../../components/ui';
 import {
   PlusOutlined,
   EyeOutlined,
@@ -229,14 +227,10 @@ export default function StudentGrievance() {
       key: "submittedDate",
       render: (date) => <Text className="text-xs text-text-secondary">{dayjs(date).format("MMM D, YYYY")}</Text>,
     },
-    {
-      title: "",
-      key: "action",
-      width: 80,
-      render: (_, record) => (
-        <Button type="text" size="small" icon={<EyeOutlined />} onClick={() => openDetailDrawer(record)} />
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'view', label: 'View', icon: <EyeOutlined />, onClick: (r) => openDetailDrawer(r) },
   ];
 
   const grievanceList = Array.isArray(grievances) ? grievances : [];
@@ -277,9 +271,11 @@ export default function StudentGrievance() {
             <Spin size="small" />
           </div>
         ) : (
-          <Table scroll={{ x: 'max-content' }}
+          <AppTable scroll={{ x: 'max-content' }}
             dataSource={grievanceList}
             columns={columns}
+            actions={rowActions}
+            actionsTitle=""
             rowKey="id"
             size="small"
             pagination={{ pageSize: 10, showSizeChanger: false, size: "small" }}
@@ -298,7 +294,7 @@ export default function StudentGrievance() {
       </Card>
 
       {/* Create Modal */}
-      <Modal
+      <AppModal
         title={<span className="text-sm font-semibold">Submit Grievance</span>}
         open={createModalVisible}
         onCancel={() => { setCreateModalVisible(false); form.resetFields(); }}
@@ -345,10 +341,10 @@ export default function StudentGrievance() {
             <Button type="primary" htmlType="submit" icon={<SendOutlined />} loading={submitting} className="rounded-lg h-8 text-xs">Submit</Button>
           </div>
         </Form>
-      </Modal>
+      </AppModal>
 
       {/* Detail Drawer */}
-      <Drawer
+      <AppDrawer
         title={<span className="text-sm font-semibold">Grievance Details</span>}
         open={detailDrawerVisible}
         onClose={() => { setDetailDrawerVisible(false); setSelectedGrievance(null); }}
@@ -438,7 +434,7 @@ export default function StudentGrievance() {
             )}
           </div>
         )}
-      </Drawer>
+      </AppDrawer>
     </div>
   );
 }

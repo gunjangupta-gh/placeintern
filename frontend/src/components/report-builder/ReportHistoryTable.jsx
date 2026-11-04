@@ -1,15 +1,14 @@
 // ReportHistoryTable Component - View generated reports history
 import React from "react";
 import {
-  Table,
   Tag,
-  Space,
   Button,
   Tooltip,
   Typography,
   Empty,
   Dropdown,
-} from "antd";
+} from 'antd';
+import { AppTable } from '../ui';
 import {
   DownloadOutlined,
   EyeOutlined,
@@ -228,46 +227,35 @@ const ReportHistoryTable = ({
         );
       },
     },
+  ];
+
+  const rowActions = [
     {
-      title: "Actions",
-      key: "actions",
-      width: 140,
-      fixed: "right",
-      render: (_, record) => (
-        <Space size="small">
-          {record.status === "completed" && (
-            <Tooltip title="Download">
-              <Button
-                type="primary"
-                size="small"
-                icon={<DownloadOutlined />}
-                loading={isDownloading(record.id)}
-                disabled={isDownloading(record.id)}
-                onClick={() => handleDownload(record)}
-              />
-            </Tooltip>
-          )}
-
-          <Tooltip title="View Details">
-            <Button
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => onView?.(record)}
-            />
-          </Tooltip>
-
-          <Dropdown menu={getActionMenu(record)} trigger={["click"]}>
-            <Button size="small" icon={<MoreOutlined />} />
-          </Dropdown>
-        </Space>
+      key: "download",
+      label: "Download",
+      icon: <DownloadOutlined />,
+      type: "primary",
+      hidden: (record) => record.status !== "completed",
+      loading: (record) => isDownloading(record.id),
+      disabled: (record) => isDownloading(record.id),
+      onClick: (record) => handleDownload(record),
+    },
+    { key: "view", label: "View Details", icon: <EyeOutlined />, onClick: (record) => onView?.(record) },
+    {
+      key: "more",
+      render: (record) => (
+        <Dropdown menu={getActionMenu(record)} trigger={["click"]}>
+          <Button size="small" icon={<MoreOutlined />} />
+        </Dropdown>
       ),
     },
   ];
 
   return (
     <div className="report-history-table">
-      <Table
+      <AppTable
         columns={columns}
+        actions={rowActions}
         dataSource={safeReports}
         rowKey="id"
         loading={loading}

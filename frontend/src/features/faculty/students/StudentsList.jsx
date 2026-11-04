@@ -1,7 +1,6 @@
 // components/faculty/StudentsList.jsx
 import React from "react";
 import {
-  Table,
   Typography,
   Empty,
   Button,
@@ -11,7 +10,8 @@ import {
   Tooltip,
   Dropdown,
   theme,
-} from "antd";
+} from 'antd';
+import { AppTable } from '../../../components/ui';
 import {
   UserOutlined,
   PhoneOutlined,
@@ -457,13 +457,13 @@ const StudentsList = React.memo(({
       </div>
 
       {students.length > 0 ? (
-        <Table
+        <AppTable
           columns={studentColumns}
           dataSource={students}
           rowKey="id"
           scroll={{ x: "max-content" }}
           pagination={{
-            pageSize: 5,
+            pageSize: 10,
             showSizeChanger: true,
             showTotal: (total, range) =>
               `${range[0]}-${range[1]} of ${total} students`,

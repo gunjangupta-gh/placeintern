@@ -3,16 +3,13 @@ import {
   Card,
   Row,
   Col,
-  Table,
   Tag,
   Button,
   Space,
   Input,
   Select,
-  Modal,
   Form,
   Typography,
-  Drawer,
   Timeline,
   Divider,
   Statistic,
@@ -21,10 +18,10 @@ import {
   Tooltip,
   Badge,
   DatePicker,
-  Popconfirm,
   Tabs,
   Checkbox,
 } from 'antd';
+import { AppTable, AppModal, AppDrawer, AppPopconfirm } from '../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   SearchOutlined,
@@ -41,6 +38,7 @@ import {
   InboxOutlined,
   CheckSquareOutlined,
   CloseCircleOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import { helpSupportService, SUPPORT_CATEGORIES, TICKET_STATUS, TICKET_PRIORITY } from '../../services/helpSupport.service';
 import { useAuth } from '../../hooks/useAuth';
@@ -342,17 +340,10 @@ const SupportDashboard = () => {
       ),
       sorter: (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
     },
-    {
-      title: 'Action',
-      key: 'action',
-      width: 80,
-      fixed: 'right',
-      render: (_, record) => (
-        <Button type="link" onClick={() => handleViewTicket(record.id)}>
-          View
-        </Button>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'view', label: 'View', icon: <EyeOutlined />, onClick: (record) => handleViewTicket(record.id) },
   ];
 
   return (
@@ -516,14 +507,15 @@ const SupportDashboard = () => {
 
         {/* Tickets Table */}
         <Card className=" shadow-sm overflow-hidden ">
-          <Table
+          <AppTable
             columns={columns}
+            actions={rowActions}
             dataSource={filteredTickets}
             rowKey="id"
             loading={loading}
             scroll={{ x: 'max-content' }}
             pagination={{
-              pageSize: 15,
+              pageSize: 10,
               showSizeChanger: true,
               showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} tickets`,
               className: "px-6 py-4",
@@ -534,7 +526,7 @@ const SupportDashboard = () => {
         </Card>
 
         {/* Ticket Detail Drawer */}
-        <Drawer
+        <AppDrawer
           title={
             selectedTicket ? (
               <div className="flex items-center gap-3">
@@ -562,9 +554,9 @@ const SupportDashboard = () => {
                   </Button>
                 )}
                 {selectedTicket.status === 'RESOLVED' && (
-                  <Popconfirm title="Close this ticket?" onConfirm={handleCloseTicket}>
+                  <AppPopconfirm title="Close this ticket?" onConfirm={handleCloseTicket}>
                     <Button className="rounded-lg h-9"><CloseCircleOutlined /> Close</Button>
-                  </Popconfirm>
+                  </AppPopconfirm>
                 )}
               </Space>
             )
@@ -717,10 +709,10 @@ const SupportDashboard = () => {
               )}
             </div>
           ) : null}
-        </Drawer>
+        </AppDrawer>
 
         {/* Assign Modal */}
-        <Modal
+        <AppModal
           title={<div className="flex items-center gap-2"><TeamOutlined className="text-primary" /> Assign Ticket</div>}
           open={assignModalVisible}
           onCancel={() => {
@@ -754,10 +746,10 @@ const SupportDashboard = () => {
               </Button>
             </div>
           </Form>
-        </Modal>
+        </AppModal>
 
         {/* Resolve Modal */}
-        <Modal
+        <AppModal
           title={<div className="flex items-center gap-2"><CheckCircleOutlined className="text-success" /> Resolve Ticket</div>}
           open={resolveModalVisible}
           onCancel={() => {
@@ -785,7 +777,7 @@ const SupportDashboard = () => {
               </Button>
             </div>
           </Form>
-        </Modal>
+        </AppModal>
       </Card>
     </div>
   );

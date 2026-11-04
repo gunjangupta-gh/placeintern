@@ -1,20 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
-  Table,
   Button,
   Tag,
-  Space,
-  Popconfirm,
   Typography,
   Row,
   Col,
   Statistic,
   Input,
-  Modal,
   Tooltip,
   Badge,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   DeleteOutlined,
@@ -28,6 +25,7 @@ import {
   SearchOutlined,
   WifiOutlined,
   DisconnectOutlined,
+  UsergroupDeleteOutlined,
 } from '@ant-design/icons';
 import { adminService } from '../../../services/admin.service';
 
@@ -37,7 +35,7 @@ const ActiveSessions = ({ realtimeStats, connected, onRefreshSessions }) => {
   const [sessions, setSessions] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 50, total: 0 });
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
   const [filters, setFilters] = useState({ userId: '', institutionId: '' });
   const [terminateAllModalOpen, setTerminateAllModalOpen] = useState(false);
   const [terminatingAll, setTerminatingAll] = useState(false);
@@ -232,38 +230,24 @@ const ActiveSessions = ({ realtimeStats, connected, onRefreshSessions }) => {
       width: 140,
       render: (date) => new Date(date).toLocaleString(),
     },
+  ];
+
+  const rowActions = [
     {
-      title: 'Actions',
-      key: 'actions',
-      width: 180,
-      render: (_, record) => (
-        <Space size="small">
-          <Popconfirm
-            title="Terminate this session?"
-            description="The user will be logged out immediately."
-            onConfirm={() => handleTerminateSession(record.id)}
-            okText="Terminate"
-            cancelText="Cancel"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
-              Terminate
-            </Button>
-          </Popconfirm>
-          <Popconfirm
-            title="Terminate all sessions for this user?"
-            description="The user will be logged out from all devices."
-            onConfirm={() => handleTerminateUserSessions(record.userId)}
-            okText="Terminate All"
-            cancelText="Cancel"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="link" size="small" danger>
-              All
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
+      key: 'terminate',
+      label: 'Terminate',
+      icon: <DeleteOutlined />,
+      danger: true,
+      confirm: { title: 'Terminate this session?', description: 'The user will be logged out immediately.', okText: 'Terminate' },
+      onClick: (record) => handleTerminateSession(record.id),
+    },
+    {
+      key: 'terminate-all',
+      label: 'Terminate all sessions for this user',
+      icon: <UsergroupDeleteOutlined />,
+      danger: true,
+      confirm: { title: 'Terminate all sessions for this user?', description: 'The user will be logged out from all devices.', okText: 'Terminate All' },
+      onClick: (record) => handleTerminateUserSessions(record.userId),
     },
   ];
 
@@ -371,8 +355,9 @@ const ActiveSessions = ({ realtimeStats, connected, onRefreshSessions }) => {
 
       {/* Sessions Table */}
       <Card className="shadow-sm border-border rounded-2xl bg-surface">
-        <Table
+        <AppTable
           columns={columns}
+          actions={rowActions}
           dataSource={sessions}
           loading={loading}
           rowKey="id"
@@ -387,7 +372,7 @@ const ActiveSessions = ({ realtimeStats, connected, onRefreshSessions }) => {
       </Card>
 
       {/* Terminate All Confirmation Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2 text-error">
             <WarningOutlined />
@@ -420,7 +405,7 @@ const ActiveSessions = ({ realtimeStats, connected, onRefreshSessions }) => {
             current session. This action cannot be undone.
           </Text>
         </div>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

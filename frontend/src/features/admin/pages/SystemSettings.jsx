@@ -10,11 +10,11 @@ import {
   Button,
   Space,
   Spin,
-  Popconfirm,
   Tag,
   Tooltip,
   Divider,
 } from 'antd';
+import { AppPopconfirm } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   SaveOutlined,
@@ -270,7 +270,7 @@ const SystemSettings = () => {
           <Button icon={<ExportOutlined />} onClick={handleExport}>
             Export
           </Button>
-          <Popconfirm
+          <AppPopconfirm
             title="Reset all settings to defaults?"
             description="This action cannot be undone."
             onConfirm={handleResetAll}
@@ -278,7 +278,7 @@ const SystemSettings = () => {
             <Button danger icon={<ReloadOutlined />}>
               Reset All
             </Button>
-          </Popconfirm>
+          </AppPopconfirm>
         </Space>
       </div>
 
@@ -296,7 +296,7 @@ const SystemSettings = () => {
                 <span className="text-sm text-gray-600">Refresh config cache</span>
                 <Switch checked={refreshConfigCache} onChange={setRefreshConfigCache} />
               </div>
-              <Popconfirm
+              <AppPopconfirm
                 title="Clear all cache?"
                 description="This will flush Redis and local cache across services."
                 onConfirm={handleClearCache}
@@ -306,7 +306,7 @@ const SystemSettings = () => {
                 <Button danger loading={clearingCache} icon={<ReloadOutlined />}>
                   Clear Cache
                 </Button>
-              </Popconfirm>
+              </AppPopconfirm>
             </Space>
           </div>
         </Card>

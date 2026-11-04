@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Statistic, Table, Spin, Select, DatePicker, Tag, Tooltip } from 'antd';
+import { Card, Row, Col, Statistic, Spin, Select, DatePicker, Tag, Tooltip } from 'antd';
+import { AppTable } from '../../../components/ui';
 import {
   UserOutlined,
   LoginOutlined,
@@ -167,7 +168,7 @@ const AdminAnalytics = () => {
         </Col>
         <Col xs={24} md={8}>
           <Card title="Logins by Role">
-            <Table scroll={{ x: 'max-content' }}
+            <AppTable scroll={{ x: 'max-content' }}
               dataSource={loginAnalytics?.byRole || []}
               columns={roleColumns}
               rowKey="role"
@@ -178,7 +179,7 @@ const AdminAnalytics = () => {
         </Col>
         <Col xs={24} md={8}>
           <Card title="Peak Hours">
-            <Table scroll={{ x: 'max-content' }}
+            <AppTable scroll={{ x: 'max-content' }}
               dataSource={(loginAnalytics?.byHour || []).slice(0, 5)}
               columns={hourlyColumns}
               rowKey="hour"

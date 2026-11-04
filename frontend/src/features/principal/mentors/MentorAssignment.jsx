@@ -2,17 +2,14 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Card,
-  Table,
   Button,
   Select,
   Space,
-  Modal,
   Form,
   Tag,
   Input,
   Row,
   Col,
-  Popconfirm,
   Dropdown,
   Segmented,
   Tooltip,
@@ -20,6 +17,7 @@ import {
   Typography,
   Alert,
 } from 'antd';
+import { AppTable, AppModal, AppPopconfirm } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   UserAddOutlined,
@@ -448,53 +446,38 @@ const MentorAssignment = () => {
         );
       },
     },
+  ];
+
+  const studentRowActions = [
     {
-      title: 'Actions',
-      key: 'actions',
-      width: 120,
-      fixed: 'right',
-      render: (_, record) => {
-        const hasAssignment = studentsWithMentors.has(record.id);
-        return (
-          <Space size="small">
-            {hasAssignment ? (
-              <>
-                <Tooltip title="Change Mentor">
-                  <Button
-                    type="text"
-                    icon={<EditOutlined />}
-                    size="small"
-                    onClick={() => handleEditClick(record)}
-                  />
-                </Tooltip>
-                <Popconfirm
-                  title="Remove mentor assignment?"
-                  description="This will unassign the mentor from this student."
-                  onConfirm={() => handleRemoveAssignment(record.id)}
-                  okText="Yes"
-                  cancelText="No"
-                >
-                  <Tooltip title="Remove Mentor">
-                    <Button type="text" danger icon={<DeleteOutlined />} size="small" />
-                  </Tooltip>
-                </Popconfirm>
-              </>
-            ) : (
-              <Tooltip title="Assign Mentor">
-                <Button
-                  type="text"
-                  icon={<UserAddOutlined />}
-                  size="small"
-                  onClick={() => {
-                    setSelectedStudents([record.id]);
-                    setAssignModalVisible(true);
-                  }}
-                />
-              </Tooltip>
-            )}
-          </Space>
-        );
+      key: 'change',
+      label: 'Change Mentor',
+      icon: <EditOutlined />,
+      onClick: (record) => handleEditClick(record),
+      hidden: (record) => !studentsWithMentors.has(record.id),
+    },
+    {
+      key: 'remove',
+      label: 'Remove Mentor',
+      icon: <DeleteOutlined />,
+      danger: true,
+      onClick: (record) => handleRemoveAssignment(record.id),
+      confirm: {
+        title: 'Remove mentor assignment?',
+        description: 'This will unassign the mentor from this student.',
+        okText: 'Yes',
       },
+      hidden: (record) => !studentsWithMentors.has(record.id),
+    },
+    {
+      key: 'assign',
+      label: 'Assign Mentor',
+      icon: <UserAddOutlined />,
+      onClick: (record) => {
+        setSelectedStudents([record.id]);
+        setAssignModalVisible(true);
+      },
+      hidden: (record) => studentsWithMentors.has(record.id),
     },
   ];
 
@@ -761,7 +744,7 @@ const MentorAssignment = () => {
               <Button icon={<ReloadOutlined />} onClick={handleRefresh} className="rounded-lg" />
             </Tooltip>
             {stats?.students?.withoutMentor > 0 && (
-              <Popconfirm
+              <AppPopconfirm
                 title="Auto-assign mentors?"
                 description={`This will distribute ${stats.students.withoutMentor} unassigned student(s) evenly among available mentors.`}
                 onConfirm={handleAutoAssign}
@@ -771,7 +754,7 @@ const MentorAssignment = () => {
                 <Button icon={<ThunderboltOutlined />} loading={loading} className="rounded-lg">
                   Auto-Assign ({stats.students.withoutMentor})
                 </Button>
-              </Popconfirm>
+              </AppPopconfirm>
             )}
             <Button
               type="primary"
@@ -791,11 +774,11 @@ const MentorAssignment = () => {
             Current Mentor Assignments
           </h3>
           <div className="bg-surface rounded-xl border-border shadow-soft overflow-hidden">
-            <Table scroll={{ x: 'max-content' }}
+            <AppTable scroll={{ x: 'max-content' }}
               columns={assignmentColumns}
               dataSource={uniqueMentorAssignments}
               rowKey={(record) => record.mentor?.id || record.id}
-              pagination={{ pageSize: 5 }}
+              pagination={{ pageSize: 10 }}
               size="small"
               className="custom-table-small"
             />
@@ -855,9 +838,10 @@ const MentorAssignment = () => {
           </div>
 
           <div className="bg-surface rounded-xl border-border shadow-soft overflow-hidden">
-            <Table
+            <AppTable
               rowSelection={rowSelection}
               columns={studentColumns}
+              actions={studentRowActions}
               dataSource={students?.list || []}
               rowKey="id"
               loading={students?.loading}
@@ -879,7 +863,7 @@ const MentorAssignment = () => {
       </Card>
 
       {/* Assign Modal */}
-      <Modal
+      <AppModal
         title={
           <Space className="text-primary">
             <UserAddOutlined className="text-xl" />
@@ -933,7 +917,7 @@ const MentorAssignment = () => {
               </Text>
             </div>
             <div className="rounded-xl border  overflow-hidden">
-              <Table scroll={{ x: 'max-content' }}
+              <AppTable scroll={{ x: 'max-content' }}
                 rowSelection={rowSelection}
                 columns={[
                   {
@@ -964,17 +948,17 @@ const MentorAssignment = () => {
                 ]}
                 dataSource={students?.list || []}
                 rowKey="id"
-                pagination={{ pageSize: 5 }}
+                pagination={{ pageSize: 10 }}
                 size="small"
                 className="custom-table-small"
               />
             </div>
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
 
       {/* Edit Mentor Modal */}
-      <Modal
+      <AppModal
         title={
           <Space className="text-primary">
             <SwapOutlined className="text-xl" />
@@ -1052,7 +1036,7 @@ const MentorAssignment = () => {
             )}
           </Form>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

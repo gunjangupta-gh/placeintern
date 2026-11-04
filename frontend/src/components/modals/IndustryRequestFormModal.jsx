@@ -1,7 +1,6 @@
 // src/components/IndustryRequestFormModal.jsx
 import React, { useState, useEffect } from "react";
 import {
-  Modal,
   Form,
   Input,
   Select,
@@ -12,7 +11,8 @@ import {
   Tag,
   Divider,
   Button,
-} from "antd";
+} from 'antd';
+import { AppModal } from '../ui';
 import { PlusOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import API from "../../services/api";
 import { toast } from "react-hot-toast";
@@ -157,7 +157,7 @@ const IndustryRequestFormModal = ({
   };
 
   return (
-    <Modal
+    <AppModal
       title={
         <div className="flex items-center">
           <PlusOutlined className="mr-2 text-primary" />
@@ -436,7 +436,7 @@ const IndustryRequestFormModal = ({
           </Button>
         </div>
       </Form>
-    </Modal>
+    </AppModal>
   );
 };
 

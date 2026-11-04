@@ -4,14 +4,13 @@ import {
   Button,
   Card,
   Input,
-  Modal,
-  Popconfirm,
-  Space,
-  Table,
+  
+  
   Tooltip,
   Typography,
   message,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   EyeOutlined,
   DeleteOutlined,
@@ -436,101 +435,30 @@ const MyApplicationsPage = () => {
         );
       },
     },
-    {
-      title: "Actions",
-      key: "actions",
-      width: 150,
-      render: (_, record) => (
-        <Space size="small" onClick={(e) => e.stopPropagation()}>
-          <Tooltip title="View Training">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleView(record.trainingId || record.training?.id);
-              }}
-              aria-label="View training details"
-            />
-          </Tooltip>
-          {record.status === "APPROVED" &&
-            isTrainingOngoing(record.training) &&
-            (hasMarkedAttendanceForToday(record) ? (
-              <Tooltip title="Attendance marked for today">
-                <CheckCircleOutlined className="text-green-500 mx-2" />
-              </Tooltip>
-            ) : (
-              <Tooltip title="Mark Attendance">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<CheckCircleOutlined />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenAttendance(record);
-                  }}
-                  aria-label="Mark attendance"
-                  className="text-green-600 hover:text-green-700"
-                />
-              </Tooltip>
-            ))}
-          {record.status === "APPROVED" &&
-            record.training?.endDate &&
-            new Date(record.training.endDate) < new Date() && (
-              <>
-                <Tooltip title="Submit Feedback">
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<CommentOutlined />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenFeedback(record);
-                    }}
-                    aria-label="Submit feedback"
-                    className="text-blue-600 hover:text-blue-700"
-                  />
-                </Tooltip>
-                <Tooltip title="Submit Lesson Plan">
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<BookOutlined />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenLessonPlan(record);
-                    }}
-                    aria-label="Submit lesson plan"
-                    className="text-green-600 hover:text-green-700"
-                  />
-                </Tooltip>
-              </>
-            )}
-          {["PENDING", "SUBMITTED"].includes(record.status) && (
-            <Popconfirm
-              title="Withdraw application?"
-              description="Are you sure you want to withdraw this application?"
-              onConfirm={() => handleWithdraw(record.id)}
-              okText="Yes, Withdraw"
-              cancelText="Cancel"
-              okButtonProps={{ danger: true }}
-            >
-              <Tooltip title="Withdraw">
-                <Button
-                  type="text"
-                  size="small"
-                  danger
-                  icon={<DeleteOutlined />}
-                  onClick={(e) => e.stopPropagation()}
-                  aria-label="Withdraw application"
-                />
-              </Tooltip>
-            </Popconfirm>
-          )}
-        </Space>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'view', label: 'View Training', icon: <EyeOutlined />,
+      onClick: (r) => handleView(r.trainingId || r.training?.id) },
+    { key: 'attendance-done',
+      hidden: (r) => !(r.status === "APPROVED" && isTrainingOngoing(r.training) && hasMarkedAttendanceForToday(r)),
+      render: () => (
+        <Tooltip title="Attendance marked for today">
+          <CheckCircleOutlined className="text-green-500 mx-2" />
+        </Tooltip>
+      ) },
+    { key: 'attendance', label: 'Mark Attendance', icon: <CheckCircleOutlined className="text-green-600" />,
+      onClick: (r) => handleOpenAttendance(r),
+      hidden: (r) => !(r.status === "APPROVED" && isTrainingOngoing(r.training) && !hasMarkedAttendanceForToday(r)) },
+    { key: 'feedback', label: 'Submit Feedback', icon: <CommentOutlined className="text-blue-600" />,
+      onClick: (r) => handleOpenFeedback(r),
+      hidden: (r) => !(r.status === "APPROVED" && r.training?.endDate && new Date(r.training.endDate) < new Date()) },
+    { key: 'lesson-plan', label: 'Submit Lesson Plan', icon: <BookOutlined className="text-green-600" />,
+      onClick: (r) => handleOpenLessonPlan(r),
+      hidden: (r) => !(r.status === "APPROVED" && r.training?.endDate && new Date(r.training.endDate) < new Date()) },
+    { key: 'withdraw', label: 'Withdraw', icon: <DeleteOutlined />, danger: true,
+      onClick: (r) => handleWithdraw(r.id), hidden: (r) => !["PENDING", "SUBMITTED"].includes(r.status),
+      confirm: { title: "Withdraw application?", description: "Are you sure you want to withdraw this application?", okText: "Yes, Withdraw" } },
   ];
 
   const isLoading = applications.loading && !applications.list;
@@ -613,10 +541,11 @@ const MyApplicationsPage = () => {
           />
         ) : (
           <div className="custom-scrollbar overflow-x-auto">
-            <Table
+            <AppTable
               className="custom-table"
               rowKey="id"
               columns={columns}
+              actions={rowActions}
               dataSource={filteredApplications}
               loading={applications.loading}
               size="small"
@@ -661,7 +590,7 @@ const MyApplicationsPage = () => {
       />
 
       {/* Mark Attendance Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <CheckCircleOutlined className="text-green-500" />
@@ -722,7 +651,7 @@ const MyApplicationsPage = () => {
             </div>
           )}
         </div>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

@@ -9,7 +9,6 @@ import {
   Col,
   Tag,
   Input,
-  Modal,
   Upload,
   Form,
   Button,
@@ -22,6 +21,7 @@ import {
   theme,
   Grid,
 } from 'antd';
+import { AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -294,7 +294,7 @@ const AllStudents = () => {
       return;
     }
 
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Activate Student',
       content: `Are you sure you want to activate ${selectedStudent?.user?.name}?`,
       okText: 'Activate',
@@ -1292,7 +1292,7 @@ const AllStudents = () => {
                           label: resettingCredential ? 'Resetting...' : 'Reset Credential',
                           disabled: resettingCredential,
                           onClick: () => {
-                            Modal.confirm({
+                            AppModal.confirm({
                               title: 'Reset Student Credential',
                               content: `Are you sure you want to reset the password for ${selectedStudent?.name}?`,
                               okText: 'Reset',
@@ -1415,7 +1415,7 @@ const AllStudents = () => {
       />
 
       {/* Placement confirmation modal - opened from the profile actions */}
-      <Modal
+      <AppModal
         title="Placement Status"
         open={placementModal}
         onCancel={closePlacementModal}
@@ -1456,10 +1456,10 @@ const AllStudents = () => {
             </div>
           </>
         )}
-      </Modal>
+      </AppModal>
 
       {/* Upload Document Modal */}
-      <Modal
+      <AppModal
         title="Upload Document"
         open={uploadModal}
         onCancel={() => setUploadModal(false)}
@@ -1498,7 +1498,7 @@ const AllStudents = () => {
             </Upload>
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

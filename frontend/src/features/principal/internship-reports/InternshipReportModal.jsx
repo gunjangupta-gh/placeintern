@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Form, Input, Select, AutoComplete, Switch, InputNumber, Row, Col, Divider, Typography } from 'antd';
+import { Form, Input, Select, AutoComplete, Switch, InputNumber, Row, Col, Divider, Typography } from 'antd';
+import { AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import principalService from '../../../services/principal.service';
 import { internshipReportService } from '../../../services/internshipReport.service';
@@ -140,7 +141,7 @@ const InternshipReportModal = ({ open, onClose, report, onSuccess }) => {
   };
 
   return (
-    <Modal
+    <AppModal
       title={isEditMode ? 'Edit Internship Report' : 'Add Internship Report'}
       open={open}
       onCancel={onClose}
@@ -312,7 +313,7 @@ const InternshipReportModal = ({ open, onClose, report, onSuccess }) => {
           </Col>
         </Row>
       </Form>
-    </Modal>
+    </AppModal>
   );
 };
 

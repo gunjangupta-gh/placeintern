@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Card, Upload, Button, Steps, Table, Alert, Space, Divider, Typography, Row, Col, Statistic } from 'antd';
+import { Card, Upload, Button, Steps, Alert, Space, Divider, Typography, Row, Col, Statistic } from 'antd';
+import { AppTable } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   UploadOutlined,
@@ -303,11 +304,11 @@ const BulkStudentUpload = () => {
             {validationResults.valid.length > 0 && (
               <div style={{ marginBottom: '24px' }}>
                 <Title level={5} style={{ color: '#52c41a' }}>Valid Records</Title>
-                <Table
+                <AppTable
                   columns={validColumns}
                   dataSource={validationResults.valid}
                   rowKey="rowNumber"
-                  pagination={{ pageSize: 5 }}
+                  pagination={{ pageSize: 10 }}
                   size="small"
                   scroll={{ x: true }}
                 />
@@ -317,11 +318,11 @@ const BulkStudentUpload = () => {
             {validationResults.invalid.length > 0 && (
               <div style={{ marginBottom: '24px' }}>
                 <Title level={5} style={{ color: '#ff4d4f' }}>Invalid Records</Title>
-                <Table
+                <AppTable
                   columns={invalidColumns}
                   dataSource={validationResults.invalid}
                   rowKey="rowNumber"
-                  pagination={{ pageSize: 5 }}
+                  pagination={{ pageSize: 10 }}
                   size="small"
                   scroll={{ x: true }}
                 />
@@ -413,7 +414,7 @@ const BulkStudentUpload = () => {
                 <Title level={5} style={{ color: '#52c41a' }}>
                   Successfully Created ({uploadResult.successRecords.length})
                 </Title>
-                <Table
+                <AppTable
                   columns={[
                     { title: 'Row', dataIndex: 'row', key: 'row', width: 60 },
                     { title: 'Name', dataIndex: 'name', key: 'name' },
@@ -423,7 +424,7 @@ const BulkStudentUpload = () => {
                   ]}
                   dataSource={uploadResult.successRecords}
                   rowKey="row"
-                  pagination={{ pageSize: 5 }}
+                  pagination={{ pageSize: 10 }}
                   size="small"
                   scroll={{ x: true }}
                 />
@@ -435,7 +436,7 @@ const BulkStudentUpload = () => {
                 <Title level={5} style={{ color: '#ff4d4f' }}>
                   Failed Records ({uploadResult.failedRecords.length})
                 </Title>
-                <Table
+                <AppTable
                   columns={[
                     { title: 'Row', dataIndex: 'row', key: 'row', width: 60 },
                     { title: 'Name', dataIndex: 'name', key: 'name', render: (t) => t || '-' },
@@ -449,7 +450,7 @@ const BulkStudentUpload = () => {
                   ]}
                   dataSource={uploadResult.failedRecords}
                   rowKey="row"
-                  pagination={{ pageSize: 5 }}
+                  pagination={{ pageSize: 10 }}
                   size="small"
                   scroll={{ x: true }}
                 />

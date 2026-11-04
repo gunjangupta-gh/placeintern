@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Select, DatePicker, Button, Row, Col, Upload, Spin, Modal, Divider, Avatar, Image, theme } from 'antd';
+import { Form, Input, Select, DatePicker, Button, Row, Col, Upload, Spin, Divider, Avatar, Image, theme } from 'antd';
+import { AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateStudent, fetchAssignedStudents, selectStudents } from '../store/facultySlice';
@@ -298,7 +299,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
   ];
 
   return (
-    <Modal
+    <AppModal
       title="Edit Student"
       open={open}
       onCancel={handleClose}
@@ -627,7 +628,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
           </Row>
 
           {/* Image Preview Modal */}
-          <Modal
+          <AppModal
             open={previewOpen}
             title="Profile Image Preview"
             footer={null}
@@ -638,7 +639,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
             maskTransitionName=""
           >
             <img alt="Preview" style={{ width: '100%' }} src={previewImage} />
-          </Modal>
+          </AppModal>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingTop: 16, borderTop: `1px solid ${token.colorBorderSecondary}`, marginTop: 16, position: 'sticky', bottom: 0, backgroundColor: token.colorBgContainer, paddingBottom: 8 }}>
             <Button onClick={handleClose}>
@@ -650,7 +651,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
           </div>
         </Form>
       )}
-    </Modal>
+    </AppModal>
   );
 };
 

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, Tabs, Tag, Typography, Table, Row, Col, Empty, theme } from 'antd';
+import { Card, Tabs, Tag, Typography, Row, Col, Empty, theme } from 'antd';
+import { AppTable } from '../../../components/ui';
 import {
   BankOutlined,
   IdcardOutlined,
@@ -193,7 +194,7 @@ const InstitutionProfileView = ({ institution, intakes = [], staffCapacities = [
           <Text className="text-sm font-semibold" style={{ color: token.colorText }}>Covered Areas</Text>
         </div>
         {coveredAreas.length ? (
-          <Table
+          <AppTable
             size="small"
             bordered
             pagination={false}
@@ -212,7 +213,7 @@ const InstitutionProfileView = ({ institution, intakes = [], staffCapacities = [
           <ApartmentOutlined style={{ color: token.colorPrimary }} />
           <Text className="text-sm font-semibold" style={{ color: token.colorText }}>Course-wise Infrastructure</Text>
         </div>
-        <Table
+        <AppTable
           size="small"
           bordered
           pagination={false}
@@ -234,7 +235,7 @@ const InstitutionProfileView = ({ institution, intakes = [], staffCapacities = [
 
   const intakeTab = (
     <div className="p-5">
-      <Table
+      <AppTable
         size="small"
         bordered
         pagination={false}
@@ -255,7 +256,7 @@ const InstitutionProfileView = ({ institution, intakes = [], staffCapacities = [
 
   const staffTab = (
     <div className="p-5">
-      <Table
+      <AppTable
         size="small"
         bordered
         pagination={false}

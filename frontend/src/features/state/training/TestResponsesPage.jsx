@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Card,
-  Table,
   Button,
   Select,
   Typography,
@@ -11,8 +10,8 @@ import {
   Col,
   Spin,
   Segmented,
-  Modal,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   SyncOutlined,
   ArrowLeftOutlined,
@@ -354,7 +353,7 @@ const TestResponsesPage = () => {
             )}
 
             <div className="custom-scrollbar overflow-x-auto">
-              <Table
+              <AppTable
                 className="custom-table"
                 dataSource={currentTestData?.responses || []}
                 columns={responseColumns}
@@ -385,7 +384,7 @@ const TestResponsesPage = () => {
         )}
       </Card>
 
-      <Modal
+      <AppModal
         open={Boolean(previewResponse)}
         onCancel={() => setPreviewResponse(null)}
         footer={null}
@@ -514,7 +513,7 @@ const TestResponsesPage = () => {
             </div>
           </>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

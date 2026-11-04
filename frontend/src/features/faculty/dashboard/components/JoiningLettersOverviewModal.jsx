@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Modal, Table, Tag, Button, Space, Input, Typography, Tooltip } from 'antd';
+import { Tag, Button, Input, Typography } from 'antd';
+import { AppTable, AppModal } from '../../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   FileProtectOutlined,
@@ -91,7 +92,7 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
   };
 
   const handleDelete = async (letter) => {
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Delete Joining Report',
       content: 'Are you sure? This cannot be undone.',
       okText: 'Delete',
@@ -157,43 +158,22 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
         );
       },
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 150,
-      render: (_, record) => {
-        const isPending = record.status === 'PENDING' || record.status === 'UPLOADED';
-        return (
-          <Space size="small">
-            {record.joiningLetterUrl && (
-              <Tooltip title="View">
-                <Button type="text" size="small" icon={<EyeOutlined />} onClick={() => handleView(record)} />
-              </Tooltip>
-            )}
-            {isPending && (
-              <>
-                <Tooltip title="Verify">
-                  <Button type="text" size="small" icon={<CheckCircleOutlined className="text-green-500" />}
-                    onClick={() => setActionModal({ visible: true, letter: record, action: 'verify' })} />
-                </Tooltip>
-                <Tooltip title="Reject">
-                  <Button type="text" size="small" icon={<CloseCircleOutlined className="text-red-500" />}
-                    onClick={() => setActionModal({ visible: true, letter: record, action: 'reject' })} />
-                </Tooltip>
-              </>
-            )}
-            <Tooltip title="Delete">
-              <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)} />
-            </Tooltip>
-          </Space>
-        );
-      },
-    },
+  ];
+
+  const rowActions = [
+    { key: 'view', label: 'View', icon: <EyeOutlined />, onClick: (r) => handleView(r), hidden: (r) => !r.joiningLetterUrl },
+    { key: 'verify', label: 'Verify', icon: <CheckCircleOutlined className="text-green-500" />,
+      onClick: (r) => setActionModal({ visible: true, letter: r, action: 'verify' }),
+      hidden: (r) => !(r.status === 'PENDING' || r.status === 'UPLOADED') },
+    { key: 'reject', label: 'Reject', icon: <CloseCircleOutlined className="text-red-500" />,
+      onClick: (r) => setActionModal({ visible: true, letter: r, action: 'reject' }),
+      hidden: (r) => !(r.status === 'PENDING' || r.status === 'UPLOADED') },
+    { key: 'delete', label: 'Delete', icon: <DeleteOutlined />, danger: true, onClick: (r) => handleDelete(r) },
   ];
 
   return (
     <>
-      <Modal
+      <AppModal
         title={<Title level={4} style={{ margin: 0 }}>Joining Reports Overview</Title>}
         open={visible}
         onCancel={onClose}
@@ -218,8 +198,9 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
           </div>
         </div> */}
 
-        <Table
+        <AppTable
           columns={columns}
+          actions={rowActions}
           dataSource={lettersList.length > 0 ? lettersList : letters}
           rowKey="id"
           loading={loading}
@@ -233,10 +214,10 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
           size="small"
           scroll={{ x: 'max-content' }}
         />
-      </Modal>
+      </AppModal>
 
       {/* Action Modal */}
-      <Modal
+      <AppModal
         title={actionModal.action === 'verify' ? 'Verify Joining Report' : 'Reject Joining Report'}
         open={actionModal.visible}
         onCancel={() => { setActionModal({ visible: false, letter: null, action: null }); setRemarks(''); }}
@@ -261,7 +242,7 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
           value={remarks}
           onChange={(e) => setRemarks(e.target.value)}
         />
-      </Modal>
+      </AppModal>
     </>
   );
 };

@@ -21,7 +21,8 @@ import {
   Statistic,
   Rate,
   Empty,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   UserOutlined,
   EyeOutlined,
@@ -307,7 +308,7 @@ const ViewApplicants = () => {
       if (newStatus === "REJECTED") {
         const reason = await new Promise((resolve) => {
           let rejectionReason = "";
-          Modal.confirm({
+          AppModal.confirm({
             title: "Reject Application",
             content: (
               <div className="mt-4">
@@ -757,7 +758,7 @@ const ViewApplicants = () => {
 
         {/* Applications Table */}
         <Card className="rounded-2xl border-border shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
-          <Table
+          <AppTable
             columns={columns}
             dataSource={filteredData}
             rowKey="id"
@@ -778,7 +779,7 @@ const ViewApplicants = () => {
         </Card>
 
         {/* Application Details Modal */}
-        <Modal
+        <AppModal
           title={
             <div className="flex items-center gap-3 py-1">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
@@ -889,7 +890,7 @@ const ViewApplicants = () => {
               ]} />
             </div>
           )}
-        </Modal>
+        </AppModal>
 
                 {/* Monthly Feedbacks Tab */}
                 {selectedApplication.monthlyFeedbacks?.length > 0 && (
@@ -1598,7 +1599,7 @@ const ViewApplicants = () => {
               </Tabs>
             </div>
           )}
-        </Modal>
+        </AppModal>
         {/* CompletionFeedbackModal Integration */}
         <CompletionFeedbackModal
           visible={completionModalVisible}

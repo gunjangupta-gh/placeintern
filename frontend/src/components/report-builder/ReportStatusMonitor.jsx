@@ -1,7 +1,6 @@
 // ReportStatusMonitor Component - Track async report generation via WebSocket
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Modal,
   Progress,
   Typography,
   Space,
@@ -11,7 +10,8 @@ import {
   Alert,
   Descriptions,
   Result,
-} from "antd";
+} from 'antd';
+import { AppModal } from '../ui';
 import {
   LoadingOutlined,
   CheckCircleOutlined,
@@ -372,7 +372,7 @@ const ReportStatusMonitor = ({
   };
 
   return (
-    <Modal
+    <AppModal
       title={
         <Space>
           <FileTextOutlined />
@@ -386,7 +386,7 @@ const ReportStatusMonitor = ({
       destroyOnHidden
     >
       {renderContent()}
-    </Modal>
+    </AppModal>
   );
 };
 

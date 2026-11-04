@@ -4,7 +4,6 @@ import {
   Steps,
   Upload,
   Button,
-  Table,
   Progress,
   Alert,
   Typography,
@@ -13,6 +12,7 @@ import {
   Col,
   Statistic,
 } from 'antd';
+import { AppTable } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   InboxOutlined,
@@ -347,11 +347,11 @@ const BulkUpload = () => {
             </div>
 
             <div className="custom-table mb-8">
-              <Table
+              <AppTable
                 columns={getPreviewColumns()}
                 dataSource={getPreviewData()}
                 scroll={{ x: true }}
-                pagination={{ pageSize: 5 }}
+                pagination={{ pageSize: 10 }}
                 size="small"
               />
             </div>

@@ -11,10 +11,10 @@ import {
   Segmented,
   Select,
   Space,
-  Table,
   Tooltip,
   Typography,
-} from "antd";
+} from 'antd';
+import { AppTable } from '../../../components/ui';
 import {
   CalendarOutlined,
   SearchOutlined,
@@ -703,7 +703,7 @@ const TrainingCalendarPage = () => {
         ) : (
           <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: 0 } }}>
             <div className="custom-scrollbar overflow-x-auto">
-              <Table
+              <AppTable
                 className="custom-table"
                 rowKey="id"
                 columns={columns}

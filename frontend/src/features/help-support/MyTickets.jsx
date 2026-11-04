@@ -1,16 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
-  Table,
   Tag,
   Button,
   Space,
   Input,
   Select,
-  Modal,
   Form,
   Typography,
-  Drawer,
   Timeline,
   Divider,
   Empty,
@@ -19,6 +16,7 @@ import {
   Tooltip,
   Badge,
 } from 'antd';
+import { AppTable, AppModal, AppDrawer } from '../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   PlusOutlined,
@@ -30,6 +28,7 @@ import {
   MessageOutlined,
   ReloadOutlined,
   CustomerServiceOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import { helpSupportService, SUPPORT_CATEGORIES, TICKET_STATUS, TICKET_PRIORITY } from '../../services/helpSupport.service';
 import { useAuth } from '../../hooks/useAuth';
@@ -366,22 +365,6 @@ const MyTickets = () => {
             <MessageOutlined className="text-gray-400" />
           </Badge>
         ),
-      },
-      {
-        title: '',
-        key: 'action',
-        width: 90,
-        align: 'right',
-        render: (_, record) => (
-          <Button
-            type="default"
-            size="small"
-            onClick={() => handleViewTicket(record.id)}
-            className="rounded-lg border-gray-200 text-gray-600 hover:text-blue-600 hover:border-blue-200 text-xs"
-          >
-            View
-          </Button>
-        ),
       }
     );
 
@@ -389,6 +372,10 @@ const MyTickets = () => {
   };
 
   const columns = getColumns();
+
+  const rowActions = [
+    { key: 'view', label: 'View', icon: <EyeOutlined />, onClick: (record) => handleViewTicket(record.id) },
+  ];
 
   // Calculate stats
   const stats = {
@@ -507,8 +494,9 @@ const MyTickets = () => {
 
         {/* Tickets Table */}
         <Card className="rounded-xl border border-border shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
-          <Table scroll={{ x: 'max-content' }}
+          <AppTable scroll={{ x: 'max-content' }}
             columns={columns}
+            actions={rowActions}
             dataSource={filteredTickets}
             rowKey="id"
             loading={loading}
@@ -537,7 +525,7 @@ const MyTickets = () => {
         </Card>
 
         {/* Ticket Detail Drawer */}
-        <Drawer
+        <AppDrawer
           title={
             selectedTicket ? (
               <div className="flex items-center gap-2">
@@ -693,10 +681,10 @@ const MyTickets = () => {
               )}
             </div>
           ) : null}
-        </Drawer>
+        </AppDrawer>
 
         {/* New Ticket Modal */}
-        <Modal
+        <AppModal
           title="Submit New Ticket"
           open={newTicketVisible}
           onCancel={() => {
@@ -773,7 +761,7 @@ const MyTickets = () => {
               </Button>
             </div>
           </Form>
-        </Modal>
+        </AppModal>
       </Card>
     </div>
   );

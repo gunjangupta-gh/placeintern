@@ -12,8 +12,6 @@ import {
   Form,
   Input,
   InputNumber,
-  Modal,
-  Popconfirm,
   Radio,
   Rate,
   Result,
@@ -28,7 +26,8 @@ import {
   Tooltip,
   Typography,
   message,
-} from "antd";
+} from 'antd';
+import { AppModal, AppPopconfirm } from '../../../components/ui';
 import {
   CalendarOutlined,
   UserOutlined,
@@ -849,7 +848,7 @@ const TrainingDetailsPage = () => {
                 />
               )}
               {canWithdraw && (
-                <Popconfirm
+                <AppPopconfirm
                   title="Withdraw application?"
                   description="Are you sure?"
                   onConfirm={handleWithdraw}
@@ -859,7 +858,7 @@ const TrainingDetailsPage = () => {
                   <Button danger size="small" block>
                     Withdraw Application
                   </Button>
-                </Popconfirm>
+                </AppPopconfirm>
               )}
               {status?.status === "APPROVED" && (
                 <div className="space-y-1.5">
@@ -1173,7 +1172,7 @@ const TrainingDetailsPage = () => {
       </Row>
 
       {/* Application Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <SendOutlined className="text-blue-700" />
@@ -1208,10 +1207,10 @@ const TrainingDetailsPage = () => {
             </Text>
           </div>
         </div>
-      </Modal>
+      </AppModal>
 
       {/* Feedback Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <FileTextOutlined className="text-blue-700" />
@@ -1267,10 +1266,10 @@ const TrainingDetailsPage = () => {
             </Text>
           </div>
         </div>
-      </Modal>
+      </AppModal>
 
       {/* Pre-Test Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <FormOutlined className="text-blue-700" />
@@ -1361,10 +1360,10 @@ const TrainingDetailsPage = () => {
             </Text>
           </div>
         </div>
-      </Modal>
+      </AppModal>
 
       {/* Post-Test Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <SolutionOutlined className="text-blue-700" />
@@ -1454,7 +1453,7 @@ const TrainingDetailsPage = () => {
             </Text>
           </div>
         </div>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

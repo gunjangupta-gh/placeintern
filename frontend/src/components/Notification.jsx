@@ -9,13 +9,13 @@ import {
   Tag,
   Avatar,
   Tooltip,
-  Popconfirm,
   App,
-  Drawer,
   Spin,
   Input,
   theme,
 } from 'antd';
+import { AppPopconfirm } from './ui';
+import { AppDrawer } from './ui';
 import {
   BellOutlined,
   DeleteOutlined,
@@ -269,7 +269,7 @@ const NotificationDropdown = () => {
                       </Tooltip>
                     )}
                     <Tooltip title="Delete">
-                      <Popconfirm
+                      <AppPopconfirm
                         title="Delete notification?"
                         onConfirm={(e) => handleDelete(item.id, e)}
                         okText="Yes"
@@ -282,7 +282,7 @@ const NotificationDropdown = () => {
                           onClick={(e) => e.stopPropagation()}
                           className="h-6 w-6 p-0 rounded-md hover:bg-error/10 hover:text-error"
                         />
-                      </Popconfirm>
+                      </AppPopconfirm>
                     </Tooltip>
                   </Space>
                 </div>
@@ -343,7 +343,7 @@ const NotificationDropdown = () => {
       </Dropdown>
 
       {/* Full Notification Drawer */}
-      <Drawer
+      <AppDrawer
         title={
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -355,7 +355,7 @@ const NotificationDropdown = () => {
               )}
             </div>
             {notifications.length > 0 && (
-              <Popconfirm
+              <AppPopconfirm
                 title="Clear all notifications?"
                 onConfirm={handleClearAll}
                 okText="Yes"
@@ -364,7 +364,7 @@ const NotificationDropdown = () => {
                 <Button type="text" danger icon={<ClearOutlined />} size="small">
                   Clear All
                 </Button>
-              </Popconfirm>
+              </AppPopconfirm>
             )}
           </div>
         }
@@ -436,7 +436,7 @@ const NotificationDropdown = () => {
                         </Tooltip>
                       )}
                       <Tooltip title="Delete">
-                        <Popconfirm
+                        <AppPopconfirm
                           title="Delete notification?"
                           onConfirm={(e) => handleDelete(item.id, e)}
                           okText="Yes"
@@ -449,7 +449,7 @@ const NotificationDropdown = () => {
                             onClick={(e) => e.stopPropagation()}
                             className="h-6 w-6 p-0 rounded-md hover:bg-error/10 hover:text-error"
                           />
-                        </Popconfirm>
+                        </AppPopconfirm>
                       </Tooltip>
                     </Space>
                   </div>
@@ -468,7 +468,7 @@ const NotificationDropdown = () => {
             className="py-10"
           />
         )}
-      </Drawer>
+      </AppDrawer>
     </>
   );
 };

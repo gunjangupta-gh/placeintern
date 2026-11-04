@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, Button, Space, Typography, Divider, message, Tooltip } from 'antd';
+import { Button, Space, Typography, Divider, message, Tooltip } from 'antd';
+import { AppModal } from '../ui';
 import {
   DownloadOutlined,
   LinkedinOutlined,
@@ -56,7 +57,7 @@ const CertificatePreviewModal = ({
   };
 
   return (
-    <Modal
+    <AppModal
       open={open}
       onCancel={onClose}
       footer={null}
@@ -199,7 +200,7 @@ const CertificatePreviewModal = ({
           Share it with confidence on your professional profiles.
         </Text>
       </div>
-    </Modal>
+    </AppModal>
   );
 };
 

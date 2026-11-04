@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
-  Table,
   Button,
   Input,
-  Modal,
   Space,
   Tag,
   Alert,
@@ -18,6 +16,7 @@ import {
   Row,
   Col,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   SearchOutlined,
@@ -176,7 +175,7 @@ const CredentialsReset = () => {
   };
 
   const handleUnlockAccount = (user) => {
-    Modal.confirm({
+    AppModal.confirm({
       title: (
         <Space>
           <ExclamationCircleOutlined className="text-yellow-500" />
@@ -415,39 +414,6 @@ const CredentialsReset = () => {
         return <Tag color="green" className="text-xs">Unlocked</Tag>;
       },
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 190,
-      render: (_, record) => (
-        <Space>
-          <Tooltip title="Reset Password">
-            <Button
-              type="primary"
-              icon={<LockOutlined />}
-              size="small"
-              onClick={() => handleSingleReset(record)}
-              disabled={!record.active || resetting}
-            >
-              Reset
-            </Button>
-          </Tooltip>
-          {isUserLocked(record) && (
-            <Tooltip title="Unlock Account">
-              <Button
-                icon={<UnlockOutlined />}
-                size="small"
-                onClick={() => handleUnlockAccount(record)}
-                loading={unlockingUserId === record.id}
-                disabled={resetting}
-              >
-                Unlock
-              </Button>
-            </Tooltip>
-          )}
-        </Space>
-      ),
-    },
   ];
 
   const rowSelection = {
@@ -615,8 +581,28 @@ const CredentialsReset = () => {
           </div>
 
           <div className="custom-table">
-            <Table
+            <AppTable
               columns={columns}
+              actions={[
+                {
+                  key: 'reset',
+                  label: 'Reset Password',
+                  icon: <LockOutlined />,
+                  type: 'primary',
+                  disabled: (record) => !record.active || resetting,
+                  onClick: (record) => handleSingleReset(record),
+                },
+                {
+                  key: 'unlock',
+                  label: 'Unlock Account',
+                  icon: <UnlockOutlined />,
+                  type: 'default',
+                  hidden: (record) => !isUserLocked(record),
+                  loading: (record) => unlockingUserId === record.id,
+                  disabled: resetting,
+                  onClick: (record) => handleUnlockAccount(record),
+                },
+              ]}
               dataSource={users}
               loading={loading}
               rowKey="id"
@@ -636,7 +622,7 @@ const CredentialsReset = () => {
       </div>
 
       {/* Single Reset Confirmation Modal */}
-      <Modal
+      <AppModal
         title={
           <Space>
             <ExclamationCircleOutlined className="text-yellow-500" />
@@ -686,10 +672,10 @@ const CredentialsReset = () => {
             </Space>
           </Space>
         )}
-      </Modal>
+      </AppModal>
 
       {/* Bulk Reset Confirmation Modal */}
-      <Modal
+      <AppModal
         title={
           <Space>
             <ExclamationCircleOutlined className="text-yellow-500" />
@@ -743,10 +729,10 @@ const CredentialsReset = () => {
             <Text>Send password reset emails to users</Text>
           </Space>
         </Space>
-      </Modal>
+      </AppModal>
 
       {/* Results Modal */}
-      <Modal
+      <AppModal
         title={
           <Space>
             {resetResults && resetResults.failed === 0 ? (
@@ -861,7 +847,7 @@ const CredentialsReset = () => {
             )}
           </Space>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

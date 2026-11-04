@@ -16,12 +16,11 @@ import {
   Button,
   Progress,
   Tooltip,
-  Table,
   message,
-  Modal,
   Breadcrumb,
   Alert,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import { toast } from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import dayjs from "dayjs";
@@ -863,7 +862,7 @@ const MonthlyCompliancePage = () => {
             {filtered.length} students
           </Text>
         </div>
-        <Table
+        <AppTable
           columns={cols}
           dataSource={filtered}
           rowKey="studentId"
@@ -1272,7 +1271,7 @@ const MonthlyCompliancePage = () => {
                 style={{ width: 140 }}
               />
             </div>
-            <Table
+            <AppTable
               columns={fileCols}
               dataSource={filteredFiles}
               rowKey="id"
@@ -1784,7 +1783,7 @@ const MonthlyCompliancePage = () => {
       </Row>
 
       {/* Preview Modal */}
-      <Modal
+      <AppModal
         title={<span style={{ fontSize: 13 }}>{previewFileName}</span>}
         open={!!previewUrl}
         onCancel={() => {
@@ -1812,7 +1811,7 @@ const MonthlyCompliancePage = () => {
             style={{ width: "100%", height: "100%", border: 0 }}
           />
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

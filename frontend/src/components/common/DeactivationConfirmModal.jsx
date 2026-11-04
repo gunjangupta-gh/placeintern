@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, Select, Input } from 'antd';
+import { Select, Input } from 'antd';
+import { AppModal } from '../ui';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -31,7 +32,7 @@ const DeactivationConfirmModal = ({
   confirmLoading = false,
   description,
 }) => (
-  <Modal
+  <AppModal
     title="Deactivate Student"
     open={open}
     onCancel={onCancel}
@@ -67,7 +68,7 @@ const DeactivationConfirmModal = ({
         onChange={(e) => onRemarksChange(e.target.value)}
       />
     </div>
-  </Modal>
+  </AppModal>
 );
 
 export default DeactivationConfirmModal;

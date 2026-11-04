@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Modal, Form, Input, Select, DatePicker, Button, Row, Col, Divider, Upload, Spin, Alert } from 'antd';
+import { Form, Input, Select, DatePicker, Button, Row, Col, Divider, Upload, Spin, Alert } from 'antd';
+import { AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import { SaveOutlined, UploadOutlined } from '@ant-design/icons';
 import { createVisitLog, updateVisitLog, fetchVisitLogById, fetchAssignedStudents } from '../store/facultySlice';
@@ -62,7 +63,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
       return;
     }
 
-    const guidanceModal = Modal.confirm({
+    const guidanceModal = AppModal.confirm({
       title: 'Visit Log Writing Guidance',
       width: 760,
       content: (
@@ -298,7 +299,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
   }), [beforeUpload, fileList, handleFileChange]);
 
   return (
-    <Modal
+    <AppModal
       title={isEdit ? 'Edit Visit Log' : 'Add Visit Log'}
       open={open && guidanceAcknowledged}
       onCancel={handleClose}
@@ -560,7 +561,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
         </Form>
         </>
       )}
-    </Modal>
+    </AppModal>
   );
 };
 

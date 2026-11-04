@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, Table, Tag, Button, Space, Avatar, Typography, Tooltip, Badge, Progress } from 'antd';
+import { Card, Tag, Button, Space, Avatar, Typography, Tooltip, Badge, Progress } from 'antd';
+import { AppTable } from '../../../../components/ui';
 import {
   BankOutlined,
   EyeOutlined,
@@ -256,23 +257,6 @@ const InstitutionsTable = ({ institutions, loading, onViewAll, onViewDetails, mo
         </Tag>
       ),
     },
-    {
-      title: '',
-      key: 'action',
-      width: 50,
-      fixed: 'right',
-      render: (_, record) => (
-        <Tooltip title="View Details">
-          <Button
-            type="text"
-            icon={<EyeOutlined className="text-text-tertiary hover:text-primary" />}
-            size="small"
-            onClick={() => onViewDetails?.(record) || navigate(`/app/institutions-overview?id=${record.id}`)}
-            className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-background-tertiary"
-          />
-        </Tooltip>
-      ),
-    },
   ];
 
   const monthName = month ? new Date(2024, month - 1, 1).toLocaleString('default', { month: 'long' }) : '';
@@ -308,8 +292,16 @@ const InstitutionsTable = ({ institutions, loading, onViewAll, onViewDetails, mo
         body: { padding: 0 } 
       }}
     >
-      <Table
+      <AppTable
         columns={columns}
+        actions={[
+          {
+            key: 'view',
+            label: 'View Details',
+            icon: <EyeOutlined />,
+            onClick: (record) => onViewDetails?.(record) || navigate(`/app/institutions-overview?id=${record.id}`),
+          },
+        ]}
         dataSource={institutions}
         loading={loading}
         pagination={false}

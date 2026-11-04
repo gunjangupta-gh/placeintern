@@ -8,13 +8,11 @@ import React, {
 import { useDispatch, useSelector } from "react-redux";
 import {
   Card,
-  Table,
   Tag,
   Button,
   Space,
   Typography,
   Input,
-  Modal,
   Row,
   Col,
   Avatar,
@@ -29,8 +27,8 @@ import {
   Tabs,
   Badge,
   Dropdown,
-  Popconfirm,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal, AppPopconfirm } from '../../../components/ui';
 import {
   ShopOutlined,
   SearchOutlined,
@@ -551,7 +549,7 @@ const SelfIdentifiedInternships = () => {
       return;
     }
 
-    Modal.confirm({
+    AppModal.confirm({
       title: "Remove Mentor",
       content: `Are you sure you want to remove the mentor from ${record.studentName}?`,
       okText: "Remove",
@@ -1085,7 +1083,7 @@ const SelfIdentifiedInternships = () => {
                     return {
                       key: item.key,
                       label: (
-                        <Popconfirm
+                        <AppPopconfirm
                           title={`Unassign mentor from ${selectedRowKeys.length} student(s)?`}
                           description="This will remove the assigned mentor from selected students"
                           onConfirm={handleBulkUnassignMentor}
@@ -1096,14 +1094,14 @@ const SelfIdentifiedInternships = () => {
                             {item.icon}
                             <span>{item.label}</span>
                           </div>
-                        </Popconfirm>
+                        </AppPopconfirm>
                       ),
                     };
                   }
                   return {
                     key: item.key,
                     label: (
-                      <Popconfirm
+                      <AppPopconfirm
                         title={`Update ${selectedRowKeys.length} internship(s)?`}
                         description={`This will change their status to "${item.label.replace(
                           "Mark as ",
@@ -1117,7 +1115,7 @@ const SelfIdentifiedInternships = () => {
                           {item.icon}
                           <span>{item.label}</span>
                         </div>
-                      </Popconfirm>
+                      </AppPopconfirm>
                     ),
                   };
                 }),
@@ -1211,7 +1209,7 @@ const SelfIdentifiedInternships = () => {
           items={tabItems}
           className="!px-4 pt-4"
         />
-        <Table
+        <AppTable
           columns={columns}
           dataSource={filteredInternships}
           rowKey="id"
@@ -1232,7 +1230,7 @@ const SelfIdentifiedInternships = () => {
                       </Text>
                       {record.monthlyReports &&
                       record.monthlyReports.length > 0 ? (
-                        <Table scroll={{ x: 'max-content' }}
+                        <AppTable scroll={{ x: 'max-content' }}
                           dataSource={record.monthlyReports}
                           rowKey="id"
                           size="small"
@@ -1364,7 +1362,7 @@ const SelfIdentifiedInternships = () => {
       </Card>
 
       {/* Details Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2 text-text-primary">
             <ShopOutlined className="text-purple-500" />
@@ -1562,10 +1560,10 @@ const SelfIdentifiedInternships = () => {
             </div>
           </div>
         )}
-      </Modal>
+      </AppModal>
 
       {/* Assign Mentor Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2 text-text-primary">
             <UserAddOutlined className="text-green-500" />
@@ -1657,7 +1655,7 @@ const SelfIdentifiedInternships = () => {
             </div>
           )}
         </div>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

@@ -8,17 +8,15 @@ import {
   Form,
   Input,
   InputNumber,
-  Modal,
   Row,
   Select,
   Switch,
-  Table,
   Tabs,
   Tag,
-  Tooltip,
   Typography,
   message,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   FileTextOutlined,
   PlusOutlined,
@@ -36,6 +34,7 @@ import {
   SearchOutlined,
   InfoCircleOutlined,
   LockOutlined,
+  SendOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import TrainingEmptyState from "../../../components/training/TrainingEmptyState";
@@ -526,45 +525,6 @@ const TestFormManagementPage = () => {
           </Tag>
         ),
     },
-    {
-      title: "Actions",
-      key: "actions",
-      width: 220,
-      render: (_, record) => (
-        <div className="flex gap-2">
-          <Tooltip title="View Responses">
-            <Button
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => handleViewResponses(record)}
-            />
-          </Tooltip>
-          <Button
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => openEdit(record)}
-          >
-            Edit
-          </Button>
-          {!record.isPublished && (
-            <Button
-              size="small"
-              type="primary"
-              ghost
-              onClick={() => handlePublish(record.id)}
-            >
-              Publish
-            </Button>
-          )}
-          <Button
-            size="small"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.id)}
-          />
-        </div>
-      ),
-    },
   ];
 
   const stats = useMemo(() => {
@@ -726,22 +686,6 @@ const TestFormManagementPage = () => {
           </span>
         ),
       },
-      {
-        title: "Action",
-        key: "action",
-        width: 80,
-        render: (_, record) => (
-          <Button
-            size="small"
-            type="link"
-            icon={<EyeOutlined />}
-            onClick={() => handleViewResponseDetail(record)}
-            className="text-xs"
-          >
-            View
-          </Button>
-        ),
-      },
     ],
     [responseTeacherFilters, responseTrainingFilters, selectedForm?.passingScore],
   );
@@ -801,10 +745,16 @@ const TestFormManagementPage = () => {
           <TableRowSkeleton rows={5} columns={6} />
         ) : filteredForms.length > 0 ? (
           <div className="custom-scrollbar overflow-x-auto">
-            <Table
+            <AppTable
               className="custom-table"
               rowKey="id"
               columns={columns}
+              actions={[
+                { key: 'responses', label: 'View Responses', icon: <EyeOutlined />, onClick: (record) => handleViewResponses(record) },
+                { key: 'edit', label: 'Edit', icon: <EditOutlined />, onClick: (record) => openEdit(record) },
+                { key: 'publish', label: 'Publish', icon: <SendOutlined />, type: 'primary', hidden: (record) => !!record.isPublished, onClick: (record) => handlePublish(record.id) },
+                { key: 'delete', label: 'Delete', icon: <DeleteOutlined />, danger: true, onClick: (record) => handleDelete(record.id), confirm: { title: 'Delete this test form?', description: 'This action cannot be undone.' } },
+              ]}
               dataSource={filteredForms}
               loading={currentForms.loading}
               size="small"
@@ -845,7 +795,7 @@ const TestFormManagementPage = () => {
       </Card>
 
       {/* Create/Edit Modal */}
-      <Modal
+      <AppModal
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
         footer={null}
@@ -1275,10 +1225,10 @@ const TestFormManagementPage = () => {
             </div>
           </Form>
         </div>
-      </Modal>
+      </AppModal>
 
       {/* Responses Modal */}
-      <Modal
+      <AppModal
         open={responsesModalOpen}
         onCancel={() => setResponsesModalOpen(false)}
         footer={null}
@@ -1353,10 +1303,13 @@ const TestFormManagementPage = () => {
                 </div>
               ) : responsesData.length > 0 ? (
                 <div className="custom-scrollbar overflow-x-auto">
-                  <Table
+                  <AppTable
                     className="responses-table"
                     rowKey="id"
                     columns={responseColumns}
+                    actions={[
+                      { key: 'view', label: 'View', icon: <EyeOutlined />, onClick: (record) => handleViewResponseDetail(record) },
+                    ]}
                     dataSource={responsesData}
                     pagination={{
                       current: responsesPagination.current,
@@ -1404,10 +1357,10 @@ const TestFormManagementPage = () => {
             </div>
           </>
         )}
-      </Modal>
+      </AppModal>
 
       {/* Response Detail Modal */}
-      <Modal
+      <AppModal
         open={responseDetailOpen}
         onCancel={() => setResponseDetailOpen(false)}
         footer={null}
@@ -1556,7 +1509,7 @@ const TestFormManagementPage = () => {
             </div>
           </>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

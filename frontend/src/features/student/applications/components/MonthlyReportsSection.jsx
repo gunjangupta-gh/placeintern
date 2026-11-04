@@ -1,8 +1,19 @@
 import React, { useState, useCallback, useMemo, useEffect, memo } from 'react';
 import {
-  Card, Button, Tag, Empty, Spin, Progress, Select, Popconfirm, Switch,
-  Typography, Modal, Alert, Tooltip, Upload
+  Card,
+  Button,
+  Tag,
+  Empty,
+  Spin,
+  Progress,
+  Select,
+  Switch,
+  Typography,
+  Alert,
+  Tooltip,
+  Upload,
 } from 'antd';
+import { AppModal, AppPopconfirm } from '../../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   FileTextOutlined, UploadOutlined, DeleteOutlined, CheckCircleOutlined,
@@ -41,7 +52,7 @@ const MonthlyReportsSection = ({
   const [selectedYear, setSelectedYear] = useState(() => dayjs().year());
 
   const showMonthlyReportGuideline = useCallback((onContinue) => {
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Monthly Report Guideline',
       width: 760,
       content: (
@@ -352,7 +363,7 @@ const MonthlyReportsSection = ({
 
                     {/* Delete button */}
                     {report.status !== 'APPROVED' && report.reportFileUrl && (
-                      <Popconfirm
+                      <AppPopconfirm
                         title="Delete this report?"
                         onConfirm={() => handleDeleteReport(report.id, report.status)}
                         okText="Yes"
@@ -361,7 +372,7 @@ const MonthlyReportsSection = ({
                         <Tooltip title="Delete">
                           <Button type="text" size="small" danger icon={<DeleteOutlined />} />
                         </Tooltip>
-                      </Popconfirm>
+                      </AppPopconfirm>
                     )}
                   </div>
                 </div>
@@ -372,7 +383,7 @@ const MonthlyReportsSection = ({
       </Card>
 
       {/* Upload Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <FileTextOutlined className="text-primary" />
@@ -481,10 +492,10 @@ const MonthlyReportsSection = ({
             className="!py-2"
           />
         </div>
-      </Modal>
+      </AppModal>
 
       {/* View Report Modal */}
-      <Modal
+      <AppModal
         title={selectedReport ? `${MONTH_NAMES[selectedReport.reportMonth - 1]} ${selectedReport.reportYear} Report` : 'View Report'}
         open={viewModalVisible}
         onCancel={handleCloseViewModal}
@@ -531,7 +542,7 @@ const MonthlyReportsSection = ({
             )}
           </div>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

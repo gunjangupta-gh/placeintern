@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Table, Button, Tag, Space, Modal, Input, DatePicker, Typography, Segmented, theme, Row, Col, Empty } from 'antd';
+import { Card, Button, Tag, Space, Input, DatePicker, Typography, Segmented, theme, Row, Col, Empty } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import { PlusOutlined, EyeOutlined, EditOutlined, DeleteOutlined, SearchOutlined, CalendarOutlined, ReloadOutlined, FileTextOutlined, EnvironmentOutlined, FileImageOutlined, UserOutlined, ProjectOutlined, MessageOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { fetchVisitLogs, deleteVisitLog, optimisticallyDeleteVisitLog, rollbackVisitLogOperation, fetchAssignedStudents } from '../store/facultySlice';
@@ -95,7 +96,7 @@ const VisitLogList = React.memo(() => {
   }, [dispatch]);
 
   const handleDelete = useCallback((id) => {
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Delete Visit Log',
       content: 'Are you sure you want to delete this visit log? This action cannot be undone.',
       okText: 'Delete',
@@ -204,29 +205,14 @@ const VisitLogList = React.memo(() => {
         );
       },
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 280,
-      fixed: 'right',
-      render: (_, record) => {
-        const isDraft = record.status?.toUpperCase() === 'DRAFT';
-        return (
-          <Space>
-            <Button icon={<EyeOutlined />} onClick={() => { setSelectedLog(record); setDetailModalVisible(true); }}>
-              View
-            </Button>
-            <Button type={isDraft ? 'primary' : 'default'} icon={<EditOutlined />} onClick={() => handleOpenModal(record.id, record)}>
-              {isDraft ? 'Complete' : 'Edit'}
-            </Button>
-            <Button danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>
-              Delete
-            </Button>
-          </Space>
-        );
-      },
-    },
   ], [handleDelete]);
+
+  const rowActions = [
+    { key: 'view', label: 'View', icon: <EyeOutlined />, onClick: (r) => { setSelectedLog(r); setDetailModalVisible(true); } },
+    { key: 'edit', label: (r) => (r.status?.toUpperCase() === 'DRAFT' ? 'Complete' : 'Edit'), icon: <EditOutlined />,
+      onClick: (r) => handleOpenModal(r.id, r) },
+    { key: 'delete', label: 'Delete', icon: <DeleteOutlined />, danger: true, onClick: (r) => handleDelete(r.id) },
+  ];
 
   // Info row component for Modal
   const InfoRow = ({ label, value, fullWidth }) => (
@@ -286,8 +272,9 @@ const VisitLogList = React.memo(() => {
 
         {/* Table */}
         <Card className="rounded-xl shadow-sm" bodyStyle={{ padding: 0 }}>
-          <Table
+          <AppTable
             columns={columns}
+            actions={rowActions}
             dataSource={filteredLogs}
             loading={loading}
             rowKey="id"
@@ -306,7 +293,7 @@ const VisitLogList = React.memo(() => {
       </div>
 
       {/* Detail Modal */}
-      <Modal
+      <AppModal
         title={null}
         open={detailModalVisible}
         onCancel={() => { setDetailModalVisible(false); setSelectedLog(null); }}
@@ -452,7 +439,7 @@ const VisitLogList = React.memo(() => {
         ) : (
           <Empty description="No visit log selected" />
         )}
-      </Modal>
+      </AppModal>
 
       <UnifiedVisitLogModal visible={modalOpen} onClose={handleCloseModal} onSuccess={handleModalSuccess} students={assignedStudents} visitLogId={editingVisitLogId} existingData={editingVisitData} />
     </div>

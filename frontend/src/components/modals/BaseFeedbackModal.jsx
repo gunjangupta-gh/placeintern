@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Select, DatePicker, Row, Col, Card, Spin } from 'antd';
+import { Form, Input, Select, DatePicker, Row, Col, Card, Spin } from 'antd';
+import { AppModal } from '../ui';
 import { UserOutlined } from '@ant-design/icons';
 import RatingField from './RatingField';
 import dayjs from 'dayjs';
@@ -220,7 +221,7 @@ const BaseFeedbackModal = ({
   const formatOption = formatApplicationOption || defaultFormatApplicationOption;
 
   return (
-    <Modal
+    <AppModal
       title={
         <div className="flex items-center">
           <UserOutlined className="mr-2 text-primary" />
@@ -360,7 +361,7 @@ const BaseFeedbackModal = ({
         {/* Custom children - allows parent to inject additional fields */}
         {children}
       </Form>
-    </Modal>
+    </AppModal>
   );
 };
 

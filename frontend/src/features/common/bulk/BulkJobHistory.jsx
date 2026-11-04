@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
-  Table,
   Tag,
   Button,
   Space,
   Select,
   DatePicker,
   Progress,
-  Modal,
   Descriptions,
   Tooltip,
   Badge,
@@ -17,6 +15,7 @@ import {
   Col,
   Typography,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   ReloadOutlined,
@@ -294,44 +293,28 @@ const BulkJobHistory = () => {
       key: 'processingTime',
       render: (time) => (time ? `${(time / 1000).toFixed(1)}s` : '-'),
     },
+  ];
+
+  const hasValidJobId = (record) => record.jobId && !record.jobId.startsWith('pending-');
+
+  const rowActions = [
+    { key: 'view', label: 'View Details', icon: <EyeOutlined />, onClick: (record) => handleViewDetails(record) },
     {
-      title: 'Actions',
-      key: 'actions',
-      render: (_, record) => {
-        const hasValidJobId = record.jobId && !record.jobId.startsWith('pending-');
-        return (
-          <Space size="small">
-            <Tooltip title="View Details">
-              <Button
-                type="text"
-                icon={<EyeOutlined />}
-                onClick={() => handleViewDetails(record)}
-              />
-            </Tooltip>
-            {record.status === 'QUEUED' && (
-              <Tooltip title={hasValidJobId ? 'Cancel' : 'Cannot cancel - job not queued yet'}>
-                <Button
-                  type="text"
-                  danger
-                  icon={<StopOutlined />}
-                  onClick={() => handleCancelJob(record.jobId)}
-                  disabled={!hasValidJobId}
-                />
-              </Tooltip>
-            )}
-            {record.status === 'FAILED' && (
-              <Tooltip title={hasValidJobId ? 'Retry' : 'Cannot retry - no job ID'}>
-                <Button
-                  type="text"
-                  icon={<RedoOutlined />}
-                  onClick={() => handleRetryJob(record.jobId)}
-                  disabled={!hasValidJobId}
-                />
-              </Tooltip>
-            )}
-          </Space>
-        );
-      },
+      key: 'cancel',
+      label: (record) => (hasValidJobId(record) ? 'Cancel' : 'Cannot cancel - job not queued yet'),
+      icon: <StopOutlined />,
+      danger: true,
+      hidden: (record) => record.status !== 'QUEUED',
+      disabled: (record) => !hasValidJobId(record),
+      onClick: (record) => handleCancelJob(record.jobId),
+    },
+    {
+      key: 'retry',
+      label: (record) => (hasValidJobId(record) ? 'Retry' : 'Cannot retry - no job ID'),
+      icon: <RedoOutlined />,
+      hidden: (record) => record.status !== 'FAILED',
+      disabled: (record) => !hasValidJobId(record),
+      onClick: (record) => handleRetryJob(record.jobId),
     },
   ];
 
@@ -409,8 +392,9 @@ const BulkJobHistory = () => {
           />
         </Space>
 
-        <Table scroll={{ x: 'max-content' }}
+        <AppTable scroll={{ x: 'max-content' }}
           columns={columns}
+          actions={rowActions}
           dataSource={jobs}
           rowKey="id"
           loading={loading}
@@ -423,7 +407,7 @@ const BulkJobHistory = () => {
         />
 
       {/* Job Detail Modal */}
-      <Modal
+      <AppModal
         title="Job Details"
         open={detailModalVisible}
         onCancel={() => setDetailModalVisible(false)}
@@ -526,7 +510,7 @@ const BulkJobHistory = () => {
                 <h4 className="font-semibold text-red-600 mb-2">
                   Sample Errors (first 5):
                 </h4>
-                <Table scroll={{ x: 'max-content' }}
+                <AppTable scroll={{ x: 'max-content' }}
                   dataSource={selectedJob.errorReport.slice(0, 5)}
                   columns={[
                     { title: 'Row', dataIndex: 'row', key: 'row', width: 60 },
@@ -541,7 +525,7 @@ const BulkJobHistory = () => {
             )}
           </div>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

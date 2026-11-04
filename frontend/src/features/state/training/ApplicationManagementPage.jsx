@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Button, Card, Form, Input, Modal, Segmented, Select, Space, Table, Tag, Tooltip, Typography, message } from 'antd';
+import { Card, Form, Input, Segmented, Select, Tag, Typography, message } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   FileTextOutlined,
   CheckCircleOutlined,
@@ -207,37 +208,6 @@ const ApplicationManagementPage = () => {
         </Text>
       ),
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 110,
-      render: (_, record) => {
-        if (!isReviewableStatus(record.status)) return <Text type="secondary" className="text-xs">-</Text>;
-
-        return (
-          <Space size="small">
-            <Tooltip title="Approve Application">
-              <Button
-                type="text"
-                size="small"
-                icon={<CheckCircleOutlined className="text-green-600" />}
-                onClick={() => openReview(record, 'APPROVED')}
-                aria-label={`Approve application from ${record.user?.name || 'faculty'}`}
-              />
-            </Tooltip>
-            <Tooltip title="Reject Application">
-              <Button
-                type="text"
-                size="small"
-                icon={<CloseCircleOutlined className="text-red-600" />}
-                onClick={() => openReview(record, 'REJECTED')}
-                aria-label={`Reject application from ${record.user?.name || 'faculty'}`}
-              />
-            </Tooltip>
-          </Space>
-        );
-      },
-    },
   ];
 
   const filteredApplications = useMemo(() => {
@@ -307,10 +277,26 @@ const ApplicationManagementPage = () => {
           <TableRowSkeleton rows={5} columns={4} />
         ) : filteredApplications.length > 0 ? (
           <div className="custom-scrollbar overflow-x-auto">
-            <Table
+            <AppTable
               className="custom-table"
               rowKey="id"
               columns={columns}
+              actions={[
+                {
+                  key: 'approve',
+                  label: 'Approve Application',
+                  icon: <CheckCircleOutlined className="text-green-600" />,
+                  hidden: (record) => !isReviewableStatus(record.status),
+                  onClick: (record) => openReview(record, 'APPROVED'),
+                },
+                {
+                  key: 'reject',
+                  label: 'Reject Application',
+                  icon: <CloseCircleOutlined className="text-red-600" />,
+                  hidden: (record) => !isReviewableStatus(record.status),
+                  onClick: (record) => openReview(record, 'REJECTED'),
+                },
+              ]}
               dataSource={filteredApplications}
               loading={isCoordinatorRoute ? coordinatorLoading : applications.loading}
               size="small"
@@ -347,7 +333,7 @@ const ApplicationManagementPage = () => {
         )}
       </Card>
 
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <FileTextOutlined className="text-blue-700" />
@@ -374,7 +360,7 @@ const ApplicationManagementPage = () => {
             <Input.TextArea rows={3} placeholder="Add notes" aria-label="Review comments" />
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

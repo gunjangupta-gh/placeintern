@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Dropdown, Input, Modal, Popconfirm, Segmented, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Button, Dropdown, Input, Segmented, Space, Tag, Tooltip, Typography } from 'antd';
+import { AppTable, AppModal, AppPopconfirm } from '../../../components/ui';
 import { CheckOutlined, CloseOutlined, DeleteOutlined, DownloadOutlined, DownOutlined, WarningOutlined } from '@ant-design/icons';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate, formatTime } from '../../../services/opportunity.service';
@@ -223,42 +224,49 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
           { title: 'Position', sorter: textSorter((r) => r.opportunity?.title), render: (_, r) => <div><div>{r.opportunity?.title}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.opportunity?.company?.name}</Text></div> },
         ]),
     { title: 'Status', dataIndex: 'status', sorter: textSorter((r) => r.status), render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
+  ];
+
+  const rowActions = [
     {
-      title: 'Actions',
-      render: (_, r) => (
-        <Space size={4}>
-          {PENDING.includes(r.status) && (
-            <>
-              <Tooltip title={earlierWaiting(r) > 0 ? `Approve (${earlierWaiting(r)} earlier applicant(s) of this branch are still waiting)` : 'Approve'}>
-                <Button
-                  size="small"
-                  type="text"
-                  aria-label="Approve"
-                  style={{ color: earlierWaiting(r) > 0 ? '#fa8c16' : '#52c41a' }}
-                  icon={earlierWaiting(r) > 0 ? <WarningOutlined /> : <CheckOutlined />}
-                  onClick={() => openDecision('APPROVE', [r.id])}
-                />
-              </Tooltip>
-              <Tooltip title="Reject">
-                <Button size="small" type="text" danger aria-label="Reject" icon={<CloseOutlined />} onClick={() => openDecision('REJECT', [r.id])} />
-              </Tooltip>
-              <Dropdown menu={markMenu([r.id], r.status)} trigger={['click']}>
-                <Button size="small" type="text" aria-label="Mark as">Mark as <DownOutlined /></Button>
-              </Dropdown>
-            </>
-          )}
-          <Popconfirm title="Delete this application?" description={deleteText(r)} okText="Delete" okButtonProps={{ danger: true }} onConfirm={() => deleteApplications([r.id])}>
-            <Tooltip title="Delete">
-              <Button size="small" type="text" danger aria-label="Delete" icon={<DeleteOutlined />} />
-            </Tooltip>
-          </Popconfirm>
-          {!PENDING.includes(r.status) && (r.reviewRemarks || r.rejectionReason) && (
-            <Text type="secondary" style={{ fontSize: 12 }} ellipsis={{ tooltip: r.rejectionReason || r.reviewRemarks }}>
-              {r.rejectionReason || r.reviewRemarks}
-            </Text>
-          )}
-        </Space>
+      key: 'approve',
+      label: (r) => (earlierWaiting(r) > 0 ? `Approve (${earlierWaiting(r)} earlier applicant(s) of this branch are still waiting)` : 'Approve'),
+      icon: (r) => (earlierWaiting(r) > 0 ? <WarningOutlined style={{ color: '#fa8c16' }} /> : <CheckOutlined style={{ color: '#52c41a' }} />),
+      hidden: (r) => !PENDING.includes(r.status),
+      onClick: (r) => openDecision('APPROVE', [r.id]),
+    },
+    {
+      key: 'reject',
+      label: 'Reject',
+      icon: <CloseOutlined />,
+      danger: true,
+      hidden: (r) => !PENDING.includes(r.status),
+      onClick: (r) => openDecision('REJECT', [r.id]),
+    },
+    {
+      key: 'mark',
+      hidden: (r) => !PENDING.includes(r.status),
+      render: (r) => (
+        <Dropdown menu={markMenu([r.id], r.status)} trigger={['click']}>
+          <Button size="small" type="text" aria-label="Mark as">Mark as <DownOutlined /></Button>
+        </Dropdown>
       ),
+    },
+    {
+      key: 'delete',
+      label: 'Delete',
+      icon: <DeleteOutlined />,
+      danger: true,
+      confirm: (r) => ({ title: 'Delete this application?', description: deleteText(r), okText: 'Delete' }),
+      onClick: (r) => deleteApplications([r.id]),
+    },
+    {
+      key: 'remarks',
+      render: (r) =>
+        !PENDING.includes(r.status) && (r.reviewRemarks || r.rejectionReason) ? (
+          <Text type="secondary" style={{ fontSize: 12 }} ellipsis={{ tooltip: r.rejectionReason || r.reviewRemarks }}>
+            {r.rejectionReason || r.reviewRemarks}
+          </Text>
+        ) : null,
     },
   ];
 
@@ -279,7 +287,7 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
             <Dropdown menu={markMenu(selectedPending)} trigger={['click']} disabled={!selectedPending.length}>
               <Button disabled={!selectedPending.length}>Mark as ({selectedPending.length}) <DownOutlined /></Button>
             </Dropdown>
-            <Popconfirm
+            <AppPopconfirm
               title={`Delete ${selected.length} application(s)?`}
               description="Seats and student slots are released. Approvals are undone. Refused where reports or visits exist."
               okText="Delete"
@@ -287,23 +295,24 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
               onConfirm={() => deleteApplications(selected)}
             >
               <Button danger icon={<DeleteOutlined />}>Delete ({selected.length})</Button>
-            </Popconfirm>
+            </AppPopconfirm>
           </>
         )}
       </Space>
 
-      <Table
+      <AppTable
         rowKey="id"
         size="middle"
         loading={loading}
         dataSource={rows}
         columns={columns}
+        actions={rowActions}
         scroll={{ x: 'max-content' }}
         rowSelection={{ selectedRowKeys: selected, onChange: setSelected }}
         pagination={tablePagination({ page, pageSize, total: meta.total, label: 'applications', onChange: (p, ps) => { setPage(p); setPageSize(ps); } })}
       />
 
-      <Modal
+      <AppModal
         open={!!decision}
         title={decision?.action === 'APPROVE' ? `Approve ${decision?.ids.length} application(s)` : `Reject ${decision?.ids.length} application(s)`}
         okText={decision?.action === 'APPROVE' ? 'Approve' : 'Reject'}
@@ -333,7 +342,7 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
           onChange={(e) => setRemarks(e.target.value)}
           placeholder={decision?.action === 'REJECT' ? 'Reason (required, shown to the student)' : 'Remarks (optional)'}
         />
-      </Modal>
+      </AppModal>
     </>
   );
 };

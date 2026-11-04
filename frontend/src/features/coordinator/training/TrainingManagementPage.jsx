@@ -4,9 +4,7 @@ import {
   Button,
   Card,
   Input,
-  Modal,
   Space,
-  Table,
   Tag,
   Tooltip,
   Typography,
@@ -17,7 +15,8 @@ import {
   Select,
   Form,
   message,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   PlusOutlined,
   EditOutlined,
@@ -1024,7 +1023,7 @@ const TrainingManagementPage = () => {
         <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: 0 } }}>
           <div className="p-0 custom-scrollbar">
             {filteredTrainings.length > 0 ? (
-              <Table scroll={{ x: 'max-content' }}
+              <AppTable scroll={{ x: 'max-content' }}
                 rowKey="id"
                 columns={columns}
                 dataSource={filteredTrainings}
@@ -1294,7 +1293,7 @@ const TrainingManagementPage = () => {
       )}
 
       {/* Create/Edit Training Modal */}
-      <Modal
+      <AppModal
         open={formModalOpen}
         onCancel={handleCloseFormModal}
         footer={null}
@@ -1352,10 +1351,10 @@ const TrainingManagementPage = () => {
             onStepChange={setFormStep}
           />
         </div>
-      </Modal>
+      </AppModal>
 
       {/* Attendance Modal */}
-      <Modal
+      <AppModal
         open={statsModalOpen}
         onCancel={() => {
           setStatsModalOpen(false);
@@ -1649,9 +1648,9 @@ const TrainingManagementPage = () => {
             <Text type="secondary">Loading attendance data...</Text>
           </div>
         )}
-      </Modal>
+      </AppModal>
 
-      <Modal
+      <AppModal
         open={testModalOpen}
         onCancel={handleCloseTestModal}
         footer={null}
@@ -1741,7 +1740,7 @@ const TrainingManagementPage = () => {
             </Col>
           </Row>
 
-          <Table
+          <AppTable
             rowKey="id"
             columns={testResponseColumns}
             dataSource={currentTestData?.responses || []}
@@ -1761,9 +1760,9 @@ const TrainingManagementPage = () => {
             }}
           />
         </div>
-      </Modal>
+      </AppModal>
 
-      <Modal
+      <AppModal
         open={feedbackModalOpen}
         onCancel={handleCloseFeedbackModal}
         footer={null}
@@ -1841,7 +1840,7 @@ const TrainingManagementPage = () => {
             </Col>
           </Row>
 
-          <Table
+          <AppTable
             rowKey="id"
             columns={feedbackResponseColumns}
             dataSource={feedbackData?.responses || []}
@@ -1861,7 +1860,7 @@ const TrainingManagementPage = () => {
             }}
           />
         </div>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

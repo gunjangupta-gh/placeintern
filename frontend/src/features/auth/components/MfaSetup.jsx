@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Modal,
   Steps,
   Button,
   Input,
@@ -9,6 +8,7 @@ import {
   Alert,
   Divider,
 } from 'antd';
+import { AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   QrcodeOutlined,
@@ -250,7 +250,7 @@ const MfaSetup = ({ visible, onClose, onSuccess }) => {
   };
 
   return (
-    <Modal
+    <AppModal
       open={visible}
       onCancel={onClose}
       footer={null}
@@ -269,7 +269,7 @@ const MfaSetup = ({ visible, onClose, onSuccess }) => {
         />
         {renderStepContent()}
       </div>
-    </Modal>
+    </AppModal>
   );
 };
 

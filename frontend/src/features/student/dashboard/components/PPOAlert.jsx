@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Button, Modal, Radio, Input, Form, Space, Typography, Result } from 'antd';
+import { Alert, Button, Radio, Input, Form, Space, Typography, Result } from 'antd';
+import { AppModal } from '../../../../components/ui';
 import { GiftOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { toast } from 'react-hot-toast';
 import studentService from '../../../../services/student.service';
@@ -137,7 +138,7 @@ const PPOAlert = () => {
         }
       />
 
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <GiftOutlined className="text-primary" />
@@ -281,7 +282,7 @@ const PPOAlert = () => {
             </Form.Item>
           </Form>
         )}
-      </Modal>
+      </AppModal>
     </>
   );
 };

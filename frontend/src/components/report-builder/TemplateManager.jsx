@@ -7,16 +7,16 @@ import {
   Space,
   Tag,
   Tooltip,
-  Modal,
   Form,
   Input,
   Switch,
   Empty,
   Spin,
-  Popconfirm,
   App,
   Avatar,
-} from "antd";
+} from 'antd';
+import { AppPopconfirm } from '../ui';
+import { AppModal } from '../ui';
 import {
   SaveOutlined,
   EditOutlined,
@@ -222,7 +222,7 @@ const TemplateManager = ({
                           onClick={() => handleEditTemplate(template)}
                         />
                       </Tooltip>
-                      <Popconfirm
+                      <AppPopconfirm
                         title="Delete Template"
                         description="Are you sure you want to delete this template?"
                         onConfirm={() => handleDeleteTemplate(template.id)}
@@ -233,7 +233,7 @@ const TemplateManager = ({
                         <Tooltip title="Delete">
                           <Button size="small" danger icon={<DeleteOutlined />} className="h-7" />
                         </Tooltip>
-                      </Popconfirm>
+                      </AppPopconfirm>
                     </div>
                   </div>
                   <div>
@@ -344,7 +344,7 @@ const TemplateManager = ({
       )}
 
       {/* Save Template Modal */}
-      <Modal
+      <AppModal
         title={
           <Space>
             <SaveOutlined />
@@ -443,7 +443,7 @@ const TemplateManager = ({
             </Button>
           </div>
         </Form>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

@@ -8,13 +8,13 @@ import {
   Select,
   Space,
   Tooltip,
-  Popconfirm,
   Tabs,
   Spin,
   Typography,
   Divider,
   Dropdown,
 } from 'antd';
+import { AppPopconfirm } from '../../../components/ui';
 import {
   BellOutlined,
   CheckOutlined,
@@ -329,7 +329,7 @@ const NotificationViewer = () => {
                 >
                   Read
                 </Button>
-                <Popconfirm
+                <AppPopconfirm
                   title={`Delete ${selectedIds.length} notifications?`}
                   onConfirm={handleBulkDelete}
                   okText="Yes"
@@ -337,7 +337,7 @@ const NotificationViewer = () => {
                   placement="bottomRight"
                 >
                   <Button danger size="small" type="primary" icon={<DeleteOutlined />} className="rounded-lg h-8 font-semibold shadow-red-100" />
-                </Popconfirm>
+                </AppPopconfirm>
               </div>
             ) : (
               <>

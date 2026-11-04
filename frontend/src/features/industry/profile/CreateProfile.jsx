@@ -18,7 +18,8 @@ import {
   Space,
   Descriptions,
   Avatar,
-} from "antd";
+} from 'antd';
+import { AppModal } from '../../../components/ui';
 import { useNavigate } from "react-router-dom";
 import {
   SaveOutlined,
@@ -511,7 +512,7 @@ const CreateIndustryProfile = () => {
             </Row>
     
             {/* Edit Modal */}
-            <Modal
+            <AppModal
               title={
                 <div className="flex items-center text-primary font-semibold">
                   <EditOutlined className="mr-2" />
@@ -605,7 +606,7 @@ const CreateIndustryProfile = () => {
                   </Button>
                 </div>
               </Form>
-            </Modal>
+            </AppModal>
           </div>
         </Layouts>
       );
@@ -651,7 +652,7 @@ const CreateIndustryProfile = () => {
           )} */}
 
           {/* Edit Modal */}
-          <Modal
+          <AppModal
             title={
               <div className="flex items-center text-blue-700">
                 <EditOutlined className="mr-2" />
@@ -923,7 +924,7 @@ const CreateIndustryProfile = () => {
                 </Button>
               </div>
             </Form>
-          </Modal>
+          </AppModal>
           {/* Add Industry Request Form Modal */}
           <IndustryRequestFormModal
             visible={requestModalVisible}

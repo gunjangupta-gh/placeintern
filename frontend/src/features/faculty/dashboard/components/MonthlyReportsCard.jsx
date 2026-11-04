@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
-import { Card, Tag, Button, Space, Modal, Input, Empty, Badge, Tooltip, Avatar, theme, Popconfirm } from 'antd';
+import { Card, Tag, Button, Space, Input, Empty, Badge, Tooltip, Avatar, theme } from 'antd';
+import { AppModal, AppPopconfirm } from '../../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   FileTextOutlined,
@@ -181,7 +182,7 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
                             </Tooltip>
                           </>
                         )}
-                        <Popconfirm
+                        <AppPopconfirm
                           title="Delete Report"
                           description="Are you sure you want to delete this report?"
                           onConfirm={() => handleDeleteReport(report.id)}
@@ -197,7 +198,7 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
                               icon={<DeleteOutlined />}
                             />
                           </Tooltip>
-                        </Popconfirm>
+                        </AppPopconfirm>
                       </Space>
                     </div>
                   </div>
@@ -214,7 +215,7 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
       </Card>
 
       {/* Review Modal */}
-      <Modal
+      <AppModal
         title={reviewModal.action === 'approve' ? 'Approve Report' : 'Reject Report'}
         open={reviewModal.visible}
         onCancel={() => {
@@ -248,7 +249,7 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
           value={remarks}
           onChange={(e) => setRemarks(e.target.value)}
         />
-      </Modal>
+      </AppModal>
     </>
   );
 };

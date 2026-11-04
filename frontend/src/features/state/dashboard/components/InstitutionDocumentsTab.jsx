@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Table,
   Input,
   Select,
   Tag,
@@ -15,6 +14,7 @@ import {
   Row,
   Col,
 } from 'antd';
+import { AppTable } from '../../../../components/ui';
 import {
   SearchOutlined,
   DownloadOutlined,
@@ -174,28 +174,6 @@ const InstitutionDocumentsTab = ({ institutionId, institutionName }) => {
         </Text>
       ),
     },
-    {
-      title: 'Action',
-      key: 'action',
-      width: 80,
-      align: 'center',
-      render: (_, record) => (
-        record.downloadUrl ? (
-          <Tooltip title="Download / View">
-            <Button
-              type="text"
-              size="small"
-              icon={<DownloadOutlined />}
-              onClick={() => window.open(record.downloadUrl, '_blank')}
-            />
-          </Tooltip>
-        ) : (
-          <Tooltip title="File not available">
-            <Button type="text" size="small" disabled icon={<DownloadOutlined />} />
-          </Tooltip>
-        )
-      ),
-    },
   ];
 
   if (error) {
@@ -294,15 +272,24 @@ const InstitutionDocumentsTab = ({ institutionId, institutionName }) => {
 
       {/* Table */}
       <div className="flex-1 min-h-0">
-        <Table
+        <AppTable
           columns={columns}
+          actions={[
+            {
+              key: 'download',
+              label: (r) => (r.downloadUrl ? 'Download / View' : 'File not available'),
+              icon: <DownloadOutlined />,
+              disabled: (r) => !r.downloadUrl,
+              onClick: (r) => window.open(r.downloadUrl, '_blank'),
+            },
+          ]}
           dataSource={filteredDocuments}
           rowKey="id"
           size="small"
           loading={loading}
           scroll={{ x: 'max-content', y: 400 }}
           pagination={{
-            pageSize: 20,
+            pageSize: 10,
             showSizeChanger: true,
             showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
             pageSizeOptions: ['10', '20', '50', '100'],

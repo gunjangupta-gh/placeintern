@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, InputNumber, Select, DatePicker, Button, Row, Col, Upload, Spin, Modal, Divider, theme, Tooltip } from 'antd';
+import { Form, Input, InputNumber, Select, DatePicker, Button, Row, Col, Upload, Spin, Divider, theme, Tooltip } from 'antd';
+import { AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { createStudent, updateStudent, fetchStudents, uploadStudentDocument } from '../store/principalSlice';
@@ -233,7 +234,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
   ];
 
   return (
-    <Modal
+    <AppModal
       title={isEditMode ? 'Edit Student' : 'Add New Student'}
       open={open}
       onCancel={handleClose}
@@ -598,7 +599,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
           </div>
         </Form>
       </Spin>
-    </Modal>
+    </AppModal>
   );
 };
 

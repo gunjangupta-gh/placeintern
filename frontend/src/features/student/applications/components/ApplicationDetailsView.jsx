@@ -1,6 +1,7 @@
 import React, { memo, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { Card, Button, Typography, Tabs, Tag, Upload, Modal, Progress, Tooltip, theme, Row, Col } from 'antd';
+import { Card, Button, Typography, Tabs, Tag, Upload, Progress, Tooltip, theme, Row, Col } from 'antd';
+import { AppModal } from '../../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   ArrowLeftOutlined,
@@ -325,7 +326,7 @@ const ApplicationDetailsView = ({
       </Card>
 
       {/* Upload Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <UploadOutlined style={{ color: token.colorPrimary }} />
@@ -365,10 +366,10 @@ const ApplicationDetailsView = ({
             </p>
           </Upload.Dragger>
         </div>
-      </Modal>
+      </AppModal>
 
       {/* Delete Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <DeleteOutlined style={{ color: token.colorError }} />
@@ -396,7 +397,7 @@ const ApplicationDetailsView = ({
             This action cannot be undone.
           </p>
         </div>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Col, DatePicker, Divider, Form, Input, InputNumber, Modal, Row, Select, Tooltip, Typography } from 'antd';
+import { Button, Col, DatePicker, Divider, Form, Input, InputNumber, Row, Select, Tooltip, Typography } from 'antd';
+import { AppModal } from '../../../components/ui';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { toast } from 'react-hot-toast';
@@ -166,7 +167,7 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
   };
 
   return (
-    <Modal
+    <AppModal
       title={isCreate ? 'Add internship opportunity' : `Edit: ${opportunity.title}`}
       open
       width={900}
@@ -361,7 +362,7 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
           </Col>
         </Row>
       </Form>
-    </Modal>
+    </AppModal>
   );
 };
 

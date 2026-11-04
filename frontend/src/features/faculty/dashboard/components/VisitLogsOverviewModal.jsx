@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { Modal, Table, Tag, Alert, Typography } from 'antd';
+import { Tag, Alert, Typography } from 'antd';
+import { AppTable, AppModal } from '../../../../components/ui';
 import {
   ExclamationCircleOutlined,
   CheckCircleOutlined,
@@ -252,7 +253,7 @@ const VisitLogsOverviewModal = ({ visible, onClose, students = [], visitLogs = [
   ];
 
   return (
-    <Modal
+    <AppModal
       title={
         <div className="flex items-center gap-2">
           <VideoCameraOutlined style={{ color: '#3b82f6' }} />
@@ -300,7 +301,7 @@ const VisitLogsOverviewModal = ({ visible, onClose, students = [], visitLogs = [
       )}
 
       {/* Table */}
-      <Table
+      <AppTable
         columns={columns}
         dataSource={tableData}
         pagination={false}
@@ -325,7 +326,7 @@ const VisitLogsOverviewModal = ({ visible, onClose, students = [], visitLogs = [
           <span>Not Applicable</span>
         </div>
       </div>
-    </Modal>
+    </AppModal>
   );
 };
 

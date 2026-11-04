@@ -1,19 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
-  Table,
   Button,
-  Space,
-  Modal,
+  
   Form,
   Input,
   Segmented,
   Typography,
   message,
   Tag,
-  Tooltip,
+  
   Descriptions,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   CheckOutlined,
   CloseOutlined,
@@ -212,45 +211,14 @@ const RecommendationsPage = () => {
         </Text>
       ),
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 130,
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="View Details">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => openDetails(record)}
-            />
-          </Tooltip>
-          {record.status === 'PENDING' && (
-            <>
-              <Tooltip title="Approve">
-                <Button
-                  type="text"
-                  size="small"
-                  className="text-green-600 hover:text-green-700"
-                  icon={<CheckOutlined />}
-                  onClick={() => openReview(record, 'APPROVED')}
-                />
-              </Tooltip>
-              <Tooltip title="Reject">
-                <Button
-                  type="text"
-                  size="small"
-                  danger
-                  icon={<CloseOutlined />}
-                  onClick={() => openReview(record, 'REJECTED')}
-                />
-              </Tooltip>
-            </>
-          )}
-        </Space>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'view', label: 'View Details', icon: <EyeOutlined />, onClick: (r) => openDetails(r) },
+    { key: 'approve', label: 'Approve', icon: <CheckOutlined className="text-green-600" />, onClick: (r) => openReview(r, 'APPROVED'),
+      hidden: (r) => r.status !== 'PENDING' },
+    { key: 'reject', label: 'Reject', icon: <CloseOutlined />, danger: true, onClick: (r) => openReview(r, 'REJECTED'),
+      hidden: (r) => r.status !== 'PENDING' },
   ];
 
   return (
@@ -326,10 +294,11 @@ const RecommendationsPage = () => {
           </div>
         ) : (
           <div className="custom-scrollbar overflow-x-auto">
-            <Table
+            <AppTable
               className="custom-table"
               dataSource={filteredRecommendations}
               columns={columns}
+              actions={rowActions}
               rowKey="id"
               loading={loading}
               onChange={handleTableChange}
@@ -353,7 +322,7 @@ const RecommendationsPage = () => {
       </Card>
 
       {/* Review Modal */}
-      <Modal
+      <AppModal
         title="Review Recommendation"
         open={reviewOpen}
         onCancel={() => setReviewOpen(false)}
@@ -394,10 +363,10 @@ const RecommendationsPage = () => {
             </div>
           </div>
         )}
-      </Modal>
+      </AppModal>
 
       {/* Details Modal */}
-      <Modal
+      <AppModal
         title="Recommendation Details"
         open={detailsOpen}
         onCancel={() => setDetailsOpen(false)}
@@ -465,7 +434,7 @@ const RecommendationsPage = () => {
             )}
           </Descriptions>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

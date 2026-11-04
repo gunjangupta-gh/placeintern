@@ -18,7 +18,8 @@ import {
   Progress,
   Alert,
   Upload,
-} from "antd";
+} from 'antd';
+import { AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   BankOutlined,
@@ -817,7 +818,7 @@ const InternshipDetails = () => {
         </div>
 
         {/* Application Modal */}
-        <Modal
+        <AppModal
           title={
             <div className="flex items-center ">
               <SendOutlined className="mr-2" />
@@ -928,7 +929,7 @@ const InternshipDetails = () => {
               </Button>
             </div>
           </Form>
-        </Modal>
+        </AppModal>
       </div>
   );
 };

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Modal,
   Tabs,
   Descriptions,
   Tag,
@@ -20,13 +19,13 @@ import {
   Typography,
   Tooltip,
   Upload,
-  Popconfirm,
   theme,
   Row,
   Col,
   Switch,
   Alert,
 } from 'antd';
+import { AppModal, AppPopconfirm } from '../../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   UserOutlined,
@@ -892,14 +891,14 @@ const StudentDetailsModal = ({
                     </Button>
                   </Upload>
                   {effectiveInternship?.joiningLetterUrl && (
-                    <Popconfirm
+                    <AppPopconfirm
                       title="Delete joining report?"
                       onConfirm={handleDeleteJoiningLetter}
                       okText="Delete"
                       okButtonProps={{ danger: true }}
                     >
                       <Button size="small" danger icon={<DeleteOutlined />} />
-                    </Popconfirm>
+                    </AppPopconfirm>
                   )}
                 </Space>
               )}
@@ -994,7 +993,7 @@ const StudentDetailsModal = ({
                           />
                         </Tooltip>
                       )}
-                      <Popconfirm
+                      <AppPopconfirm
                         title="Delete this report?"
                         description="This action cannot be undone."
                         onConfirm={() => handleDeleteReport(report.id)}
@@ -1009,7 +1008,7 @@ const StudentDetailsModal = ({
                             icon={<DeleteOutlined />}
                           />
                         </Tooltip>
-                      </Popconfirm>
+                      </AppPopconfirm>
                     </Space>
                   </div>
                   {report.submittedAt && (
@@ -1030,7 +1029,7 @@ const StudentDetailsModal = ({
 
   return (
     <>
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-3">
             <ProfileAvatar size={40} profileImage={studentData?.profileImage} className="bg-primary" />
@@ -1075,7 +1074,7 @@ const StudentDetailsModal = ({
             className="mb-0"
           />
         </Spin>
-      </Modal>
+      </AppModal>
 
       {/* Unified Visit Log Modal */}
       <UnifiedVisitLogModal
@@ -1087,7 +1086,7 @@ const StudentDetailsModal = ({
       />
 
       {/* Report Upload Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <FileTextOutlined style={{ color: token.colorPrimary }} />
@@ -1218,7 +1217,7 @@ const StudentDetailsModal = ({
             style={{ padding: '10px 12px' }}
           />
         </div>
-      </Modal>
+      </AppModal>
     </>
   );
 };

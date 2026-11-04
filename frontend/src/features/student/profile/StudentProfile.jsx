@@ -30,9 +30,9 @@ import {
   Input,
   Select,
   Upload,
-  Modal,
   theme,
-} from "antd";
+} from 'antd';
+import { AppModal } from '../../../components/ui';
 import ImgCrop from "antd-img-crop";
 import {
   UserOutlined,
@@ -1192,7 +1192,7 @@ export default function StudentProfile() {
       </div>
 
       {/* Edit Modal */}
-      <Modal
+      <AppModal
         title={
           <span
             className="text-base font-semibold"
@@ -1554,10 +1554,10 @@ export default function StudentProfile() {
             </Col>
           </Row>
         </Form>
-      </Modal>
+      </AppModal>
 
       {/* Upload Document Modal */}
-      <Modal
+      <AppModal
         title={
           <span
             className="text-base font-semibold"
@@ -1641,7 +1641,7 @@ export default function StudentProfile() {
             </Upload>
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
     </div>
   );
 }

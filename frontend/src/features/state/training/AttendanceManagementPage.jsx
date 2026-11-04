@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Button, Card, Col, DatePicker, Form, Input, Row, Table, Typography, message } from 'antd';
+import { Button, Card, Col, DatePicker, Form, Input, Row, Typography, message } from 'antd';
+import { AppTable } from '../../../components/ui';
 import { useParams } from 'react-router-dom';
 import { TeamOutlined, CalendarOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 import PageHeader from '../../../components/PageHeader';
@@ -213,7 +214,7 @@ const AttendanceManagementPage = () => {
           <TableRowSkeleton rows={5} columns={2} />
         ) : filteredAttendance.length > 0 ? (
           <div className="custom-scrollbar overflow-x-auto">
-            <Table
+            <AppTable
               className="custom-table"
               rowKey="id"
               columns={columns}

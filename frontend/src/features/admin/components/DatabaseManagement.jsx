@@ -1,21 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
-  Table,
   Button,
-  Modal,
   Form,
   Input,
   Select,
   Upload,
   Tag,
   Space,
-  Popconfirm,
   Progress,
   Typography,
   Row,
   Col,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   PlusOutlined,
@@ -272,47 +270,33 @@ const DatabaseManagement = ({ backupProgress, restoreProgress, connected }) => {
       width: 160,
       render: (date) => new Date(date).toLocaleString(),
     },
+  ];
+
+  const rowActions = [
     {
-      title: 'Actions',
-      key: 'actions',
-      width: 200,
-      render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            icon={<DownloadOutlined />}
-            onClick={() => handleDownload(record)}
-            disabled={record.status !== 'COMPLETED' && record.status !== 'RESTORED'}
-          >
-            Download
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            icon={<ReloadOutlined />}
-            onClick={() => {
-              setSelectedBackup(record);
-              setRestoreModalOpen(true);
-            }}
-            disabled={record.status !== 'COMPLETED' && record.status !== 'RESTORED'}
-          >
-            Restore
-          </Button>
-          <Popconfirm
-            title="Delete this backup?"
-            description="This action cannot be undone."
-            onConfirm={() => handleDelete(record.id)}
-            okText="Delete"
-            cancelText="Cancel"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
-              Delete
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
+      key: 'download',
+      label: 'Download',
+      icon: <DownloadOutlined />,
+      disabled: (record) => record.status !== 'COMPLETED' && record.status !== 'RESTORED',
+      onClick: (record) => handleDownload(record),
+    },
+    {
+      key: 'restore',
+      label: 'Restore',
+      icon: <ReloadOutlined />,
+      disabled: (record) => record.status !== 'COMPLETED' && record.status !== 'RESTORED',
+      onClick: (record) => {
+        setSelectedBackup(record);
+        setRestoreModalOpen(true);
+      },
+    },
+    {
+      key: 'delete',
+      label: 'Delete',
+      icon: <DeleteOutlined />,
+      danger: true,
+      confirm: { title: 'Delete this backup?', description: 'This action cannot be undone.', okText: 'Delete' },
+      onClick: (record) => handleDelete(record.id),
     },
   ];
 
@@ -446,8 +430,9 @@ const DatabaseManagement = ({ backupProgress, restoreProgress, connected }) => {
         }
         className="shadow-sm border-border rounded-2xl bg-surface"
       >
-        <Table
+        <AppTable
           columns={columns}
+          actions={rowActions}
           dataSource={backups}
           loading={loading}
           rowKey="id"
@@ -462,7 +447,7 @@ const DatabaseManagement = ({ backupProgress, restoreProgress, connected }) => {
       </Card>
 
       {/* Create Backup Modal */}
-      <Modal
+      <AppModal
         title="Create New Backup"
         open={createModalOpen}
         onCancel={() => {
@@ -495,10 +480,10 @@ const DatabaseManagement = ({ backupProgress, restoreProgress, connected }) => {
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
 
       {/* Upload Backup Modal */}
-      <Modal
+      <AppModal
         title="Upload Backup File"
         open={uploadModalOpen}
         onCancel={() => {
@@ -527,10 +512,10 @@ const DatabaseManagement = ({ backupProgress, restoreProgress, connected }) => {
             <Progress percent={uploadProgress} status="active" className="mt-4" />
           )}
         </div>
-      </Modal>
+      </AppModal>
 
       {/* Restore Confirmation Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2 text-warning">
             <ExclamationCircleOutlined />
@@ -583,7 +568,7 @@ const DatabaseManagement = ({ backupProgress, restoreProgress, connected }) => {
             This action cannot be undone. Make sure you have a recent backup of the current state.
           </Paragraph>
         </div>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Table, Typography, Button, Tag, Space, Input, Avatar, Dropdown, App, Select, Row, Col } from 'antd';
+import { Typography, Button, Tag, Space, Input, Avatar, Dropdown, App, Select, Row, Col } from 'antd';
+import { AppTable, confirmLook } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import { PlusOutlined, EditOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined, FilterOutlined, ClearOutlined, StopOutlined, CheckCircleOutlined, DownloadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
@@ -129,7 +130,7 @@ const StaffList = () => {
   };
 
   const handleResetPassword = (id, name) => {
-    modal.confirm({
+    modal.confirm(confirmLook({
       title: 'Reset Password',
       content: (
         <div>
@@ -163,14 +164,14 @@ const StaffList = () => {
           setResettingId(null);
         }
       },
-    });
+    }));
   };
 
   const handleToggleStatus = (id, name, isCurrentlyActive) => {
     const action = isCurrentlyActive ? 'deactivate' : 'activate';
     const actionPast = isCurrentlyActive ? 'deactivated' : 'activated';
 
-    modal.confirm({
+    modal.confirm(confirmLook({
       title: `${isCurrentlyActive ? 'Deactivate' : 'Activate'} Staff Member`,
       content: isCurrentlyActive
         ? `Are you sure you want to deactivate ${name}? They will no longer be able to access the system. ⚠️ All mentor assignments will be permanently deleted and new assignments will need to be created if the user is reactivated. Faculty visits done by this mentor will be preserved.`
@@ -191,7 +192,7 @@ const StaffList = () => {
           setTogglingId(null);
         }
       },
-    });
+    }));
   };
 
   const staffList = Array.isArray(staff) ? staff : [];
@@ -423,74 +424,6 @@ const StaffList = () => {
         </Tag>
       ),
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 80,
-      align: 'center',
-      render: (_, record) => {
-        const isActive = record.active !== false;
-
-        const handleMenuClick = ({ key }) => {
-          switch (key) {
-            case 'edit':
-              handleOpenModal(record.id);
-              break;
-            case 'reset-password':
-              handleResetPassword(record.id, record.name);
-              break;
-            case 'toggle-status':
-              handleToggleStatus(record.id, record.name, isActive);
-              break;
-            default:
-              break;
-          }
-        };
-
-        const isLoading = resettingId === record.id || togglingId === record.id;
-
-        const menuItems = [
-          {
-            key: 'edit',
-            icon: <EditOutlined />,
-            label: 'Edit',
-            disabled: isLoading,
-          },
-          {
-            key: 'reset-password',
-            icon: <KeyOutlined />,
-            label: 'Reset Password',
-            disabled: isLoading,
-          },
-          {
-            type: 'divider',
-          },
-          {
-            key: 'toggle-status',
-            icon: isActive ? <StopOutlined /> : <CheckCircleOutlined />,
-            label: isActive ? 'Deactivate' : 'Activate',
-            danger: isActive,
-            disabled: isLoading,
-          },
-        ];
-
-        return (
-          <Dropdown
-            menu={{ items: menuItems, onClick: handleMenuClick }}
-            trigger={['click']}
-            placement="bottomRight"
-            disabled={isLoading}
-          >
-            <Button
-              type="text"
-              icon={<MoreOutlined />}
-              size="small"
-              disabled={isLoading}
-            />
-          </Dropdown>
-        );
-      },
-    },
   ];
 
   return (
@@ -645,8 +578,75 @@ const StaffList = () => {
         )}
 
         <div className="custom-table">
-          <Table scroll={{ x: 'max-content' }}
+          <AppTable scroll={{ x: 'max-content' }}
             columns={columns}
+            actions={[
+              {
+                key: 'more',
+                render: (record) => {
+                  const isActive = record.active !== false;
+
+                  const handleMenuClick = ({ key }) => {
+                    switch (key) {
+                      case 'edit':
+                        handleOpenModal(record.id);
+                        break;
+                      case 'reset-password':
+                        handleResetPassword(record.id, record.name);
+                        break;
+                      case 'toggle-status':
+                        handleToggleStatus(record.id, record.name, isActive);
+                        break;
+                      default:
+                        break;
+                    }
+                  };
+
+                  const isLoading = resettingId === record.id || togglingId === record.id;
+
+                  const menuItems = [
+                    {
+                      key: 'edit',
+                      icon: <EditOutlined />,
+                      label: 'Edit',
+                      disabled: isLoading,
+                    },
+                    {
+                      key: 'reset-password',
+                      icon: <KeyOutlined />,
+                      label: 'Reset Password',
+                      disabled: isLoading,
+                    },
+                    {
+                      type: 'divider',
+                    },
+                    {
+                      key: 'toggle-status',
+                      icon: isActive ? <StopOutlined /> : <CheckCircleOutlined />,
+                      label: isActive ? 'Deactivate' : 'Activate',
+                      danger: isActive,
+                      disabled: isLoading,
+                    },
+                  ];
+
+                  return (
+                    <Dropdown
+                      menu={{ items: menuItems, onClick: handleMenuClick }}
+                      trigger={['click']}
+                      placement="bottomRight"
+                      disabled={isLoading}
+                    >
+                      <Button
+                        type="text"
+                        icon={<MoreOutlined />}
+                        size="small"
+                        disabled={isLoading}
+                      />
+                    </Dropdown>
+                  );
+                },
+              },
+            ]}
             dataSource={staffList}
             loading={loading}
             rowKey="id"

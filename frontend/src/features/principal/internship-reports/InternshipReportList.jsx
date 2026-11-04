@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Input, Dropdown, Modal, Tag, Tabs, theme } from 'antd';
+import { Button, Input, Dropdown, Tag, Tabs, theme } from 'antd';
+import { AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   PlusOutlined,
@@ -63,7 +64,7 @@ const InternshipReportList = () => {
   };
 
   const handleDelete = (record) => {
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Delete Internship Report',
       content: `Are you sure you want to delete the gathered internship report for ${record.student?.user?.name || 'this student'}?`,
       okText: 'Delete',

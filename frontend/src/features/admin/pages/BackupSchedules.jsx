@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Card,
-  Table,
   Button,
-  Modal,
   Form,
   Input,
   Select,
@@ -11,10 +9,10 @@ import {
   Switch,
   Tag,
   Space,
-  Popconfirm,
   Spin,
   Tooltip,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   PlusOutlined,
@@ -185,33 +183,18 @@ const BackupSchedules = () => {
       key: 'nextRun',
       render: (nextRun) => (nextRun ? new Date(nextRun).toLocaleString() : '-'),
     },
+  ];
+
+  const rowActions = [
+    { key: 'run', label: 'Run Now', icon: <PlayCircleOutlined />, onClick: (record) => handleTrigger(record.id) },
+    { key: 'edit', label: 'Edit', icon: <EditOutlined />, onClick: (record) => handleEdit(record) },
     {
-      title: 'Actions',
-      key: 'actions',
-      render: (_, record) => (
-        <Space>
-          <Tooltip title="Run Now">
-            <Button
-              type="text"
-              icon={<PlayCircleOutlined />}
-              onClick={() => handleTrigger(record.id)}
-            />
-          </Tooltip>
-          <Tooltip title="Edit">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => handleEdit(record)}
-            />
-          </Tooltip>
-          <Popconfirm
-            title="Delete this schedule?"
-            onConfirm={() => handleDelete(record.id)}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      ),
+      key: 'delete',
+      label: 'Delete',
+      icon: <DeleteOutlined />,
+      danger: true,
+      confirm: { title: 'Delete this schedule?', okText: 'OK' },
+      onClick: (record) => handleDelete(record.id),
     },
   ];
 
@@ -263,9 +246,10 @@ const BackupSchedules = () => {
 
       {/* Schedules Table */}
       <Card title="Custom Schedules">
-        <Table scroll={{ x: 'max-content' }}
+        <AppTable scroll={{ x: 'max-content' }}
           dataSource={schedules}
           columns={columns}
+          actions={rowActions}
           rowKey="id"
           pagination={{ pageSize: 10 }}
           locale={{ emptyText: 'No custom schedules configured' }}
@@ -273,7 +257,7 @@ const BackupSchedules = () => {
       </Card>
 
       {/* Create/Edit Modal */}
-      <Modal
+      <AppModal
         title={editingSchedule ? 'Edit Schedule' : 'Create Schedule'}
         open={modalVisible}
         onOk={handleSubmit}
@@ -336,7 +320,7 @@ const BackupSchedules = () => {
             <InputNumber min={1} max={365} style={{ width: '100%' }} />
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

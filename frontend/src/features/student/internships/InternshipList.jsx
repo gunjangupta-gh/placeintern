@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Space, Tag, Card, Input, Select, Typography, Avatar, Tooltip, theme } from 'antd';
+import {   Tag, Card, Input, Select, Typography, Avatar, Tooltip, theme } from 'antd';
+import { AppTable } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -170,38 +171,12 @@ const InternshipList = () => {
         return <Tag className="rounded-md" style={{ color: token.colorTextTertiary, borderColor: token.colorBorder }}>Not Applied</Tag>;
       },
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      align: 'right',
-      width: 180,
-      fixed: 'right',
-      render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="default"
-            size="small"
-            className="rounded-lg"
-            style={{ borderColor: token.colorBorder, color: token.colorTextSecondary }}
-            onClick={() => navigate(`/internships/${record.id}`)}
-          >
-            Details
-          </Button>
-          {!isApplied(record.id) && (
-            <Button
-              type="primary"
-              size="small"
-              icon={<SendOutlined />}
-              onClick={() => handleApply(record.id)}
-              className="rounded-lg shadow-sm"
-              style={{ backgroundColor: token.colorPrimary }}
-            >
-              Apply
-            </Button>
-          )}
-        </Space>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'details', label: 'Details', icon: <EyeOutlined />, onClick: (r) => navigate(`/internships/${r.id}`) },
+    { key: 'apply', label: 'Apply', icon: <SendOutlined />, type: 'primary', onClick: (r) => handleApply(r.id),
+      hidden: (r) => isApplied(r.id) },
   ];
 
   const stats = {
@@ -355,8 +330,9 @@ const InternshipList = () => {
           style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorder}` }}
           styles={{ body: { padding: 0 } }}
         >
-          <Table
+          <AppTable
             columns={columns}
+            actions={rowActions}
             dataSource={internships.list}
             rowKey="id"
             loading={loading}

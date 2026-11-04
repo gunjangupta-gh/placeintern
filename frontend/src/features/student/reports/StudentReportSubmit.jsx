@@ -1,9 +1,20 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Card, Table, Button, Modal, Upload, Switch, Select, Alert,
-  Tag, Typography, Empty, Spin, Tooltip, Popconfirm, theme
+  Card,
+  Button,
+  Upload,
+  Switch,
+  Select,
+  Alert,
+  Tag,
+  Typography,
+  Empty,
+  Spin,
+  Tooltip,
+  theme,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   PlusOutlined, UploadOutlined, EyeOutlined,
@@ -64,7 +75,7 @@ const StudentReportSubmit = () => {
   const [selectedYear, setSelectedYear] = useState(() => dayjs().year());
 
   const showMonthlyReportGuideline = useCallback((onContinue) => {
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Monthly Report Guideline',
       width: 760,
       content: (
@@ -448,58 +459,13 @@ const StudentReportSubmit = () => {
       width: 130,
       render: (status) => getStatusTag(status),
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 120,
-      align: 'center',
-      render: (_, record) => (
-        <div className="flex items-center justify-center gap-0.5">
-          {record.reportFileUrl && (
-            <Tooltip title="View">
-              <Button
-                type="text"
-                size="small"
-                icon={<EyeOutlined />}
-                onClick={() => handleView(record.reportFileUrl)}
-                className="hover:bg-transparent"
-              />
-            </Tooltip>
-          )}
-          {record.status !== 'APPROVED' && (
-            <>
-              <Tooltip title="Replace">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<UploadOutlined />}
-                  onClick={() => handleReplace(record)}
-                  className="hover:bg-transparent"
-                />
-              </Tooltip>
-              <Popconfirm
-                title="Delete this report?"
-                onConfirm={() => handleDelete(record.id)}
-                okText="Yes"
-                cancelText="No"
-                okButtonProps={{ danger: true, className: 'rounded-lg' }}
-                cancelButtonProps={{ className: 'rounded-lg' }}
-              >
-                <Tooltip title="Delete">
-                  <Button
-                    type="text"
-                    size="small"
-                    danger
-                    icon={<DeleteOutlined />}
-                    className="hover:bg-transparent"
-                  />
-                </Tooltip>
-              </Popconfirm>
-            </>
-          )}
-        </div>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'view', label: 'View', icon: <EyeOutlined />, onClick: (r) => handleView(r.reportFileUrl), hidden: (r) => !r.reportFileUrl },
+    { key: 'replace', label: 'Replace', icon: <UploadOutlined />, onClick: (r) => handleReplace(r), hidden: (r) => r.status === 'APPROVED' },
+    { key: 'delete', label: 'Delete', icon: <DeleteOutlined />, danger: true, onClick: (r) => handleDelete(r.id),
+      hidden: (r) => r.status === 'APPROVED', confirm: { title: "Delete this report?", okText: "Yes" } },
   ];
 
   // Stats
@@ -663,9 +629,10 @@ const StudentReportSubmit = () => {
             </Button>
           </Empty>
         ) : (
-          <Table scroll={{ x: 'max-content' }}
+          <AppTable scroll={{ x: 'max-content' }}
             dataSource={reports}
             columns={columns}
+            actions={rowActions}
             rowKey="id"
             size="middle"
             pagination={{
@@ -679,7 +646,7 @@ const StudentReportSubmit = () => {
       </Card>
 
       {/* Upload Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <FileTextOutlined style={{ color: token.colorPrimary }} />
@@ -827,9 +794,9 @@ const StudentReportSubmit = () => {
             </>
           )}
         </div>
-      </Modal>
+      </AppModal>
 
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <FileTextOutlined style={{ color: token.colorPrimary }} />
@@ -895,7 +862,7 @@ const StudentReportSubmit = () => {
         </div>
           );
         })()}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Row, Col, Card, Progress, Tag, Button, Statistic, Typography, Tooltip, Badge, Popconfirm, message } from 'antd';
+import { Row, Col, Card, Progress, Tag, Button, Statistic, Typography, Tooltip, Badge, message } from 'antd';
+import { AppPopconfirm } from '../../../components/ui';
 import {
   ReloadOutlined,
   CheckCircleOutlined,
@@ -183,7 +184,7 @@ const SystemOverview = ({ health, metrics, onRefresh, refreshing, connected, las
               </div>
               <div className="flex items-center justify-between w-full">
                 <Text strong className="text-text-primary">Redis/Cache</Text>
-                <Popconfirm
+                <AppPopconfirm
                   title="Clear cache?"
                   description="This will flush Redis and local cache."
                   onConfirm={handleClearCache}
@@ -193,7 +194,7 @@ const SystemOverview = ({ health, metrics, onRefresh, refreshing, connected, las
                   <Button size="small" danger loading={clearingCache}>
                     Clear
                   </Button>
-                </Popconfirm>
+                </AppPopconfirm>
               </div>
             </div>
             <div className="flex items-center justify-between">

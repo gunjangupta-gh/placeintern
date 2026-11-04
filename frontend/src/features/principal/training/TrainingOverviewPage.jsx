@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Button, Card, Input, Modal, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { Button, Card, Input, Space, Tag, Tooltip, Typography } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   CalendarOutlined,
   TeamOutlined,
@@ -357,58 +358,44 @@ const TrainingOverviewPage = () => {
         );
       },
     },
+  ];
+
+  const rowActions = [
     {
-      title: "Actions",
-      key: "actions",
-      width: 180,
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="View Attendance">
-            <Button
-              type="text"
-              size="small"
-              icon={<CheckCircleOutlined />}
-              onClick={async () => {
-                try {
-                  setSelectedTraining(record);
-                  setAttendanceModalOpen(true);
-                  setAttendanceLoading(true);
-                  const response = await trainingPrincipalService.getTrainingAttendance(record.id);
-                  setAttendanceData(response?.data || response || null);
-                } catch (error) {
-                  setAttendanceData(null);
-                } finally {
-                  setAttendanceLoading(false);
-                }
-              }}
-            />
-          </Tooltip>
-          <Tooltip title="View Test Responses">
-            <Button
-              type="text"
-              size="small"
-              icon={<SafetyCertificateOutlined />}
-              onClick={() => navigate(`/app/principal/test-responses?trainingId=${record.id}`)}
-            />
-          </Tooltip>
-          <Tooltip title="View Feedback Responses">
-            <Button
-              type="text"
-              size="small"
-              icon={<FileTextOutlined />}
-              onClick={() => navigate(`/app/principal/feedback-responses?trainingId=${record.id}`)}
-            />
-          </Tooltip>
-          <Tooltip title="View Lesson Plans">
-            <Button
-              type="text"
-              size="small"
-              icon={<BookOutlined />}
-              onClick={() => navigate('/app/training/lesson-plans')}
-            />
-          </Tooltip>
-        </Space>
-      ),
+      key: 'attendance',
+      label: 'View Attendance',
+      icon: <CheckCircleOutlined />,
+      onClick: async (record) => {
+        try {
+          setSelectedTraining(record);
+          setAttendanceModalOpen(true);
+          setAttendanceLoading(true);
+          const response = await trainingPrincipalService.getTrainingAttendance(record.id);
+          setAttendanceData(response?.data || response || null);
+        } catch (error) {
+          setAttendanceData(null);
+        } finally {
+          setAttendanceLoading(false);
+        }
+      },
+    },
+    {
+      key: 'tests',
+      label: 'View Test Responses',
+      icon: <SafetyCertificateOutlined />,
+      onClick: (record) => navigate(`/app/principal/test-responses?trainingId=${record.id}`),
+    },
+    {
+      key: 'feedback',
+      label: 'View Feedback Responses',
+      icon: <FileTextOutlined />,
+      onClick: (record) => navigate(`/app/principal/feedback-responses?trainingId=${record.id}`),
+    },
+    {
+      key: 'lessons',
+      label: 'View Lesson Plans',
+      icon: <BookOutlined />,
+      onClick: () => navigate('/app/training/lesson-plans'),
     },
   ];
 
@@ -665,10 +652,11 @@ const TrainingOverviewPage = () => {
             <TableRowSkeleton rows={5} columns={4} />
           ) : filteredTrainings.length > 0 ? (
             <div className="custom-scrollbar overflow-x-auto">
-              <Table
+              <AppTable
                 className="custom-table"
                 rowKey="id"
                 columns={trainingColumns}
+                actions={rowActions}
                 dataSource={filteredTrainings}
                 loading={trainings.loading}
                 size="small"
@@ -706,7 +694,7 @@ const TrainingOverviewPage = () => {
         </div>
       </Card>
 
-      <Modal
+      <AppModal
         open={attendanceModalOpen}
         onCancel={() => {
           setAttendanceModalOpen(false);
@@ -834,9 +822,9 @@ const TrainingOverviewPage = () => {
             />
           )}
         </div>
-      </Modal>
+      </AppModal>
 
-      <Modal
+      <AppModal
         open={testModalOpen}
         onCancel={() => {
           setTestModalOpen(false);
@@ -872,12 +860,12 @@ const TrainingOverviewPage = () => {
             <Text type="secondary">Loading test responses...</Text>
           </div>
         ) : currentTestResponses.length > 0 ? (
-          <Table
+          <AppTable
             rowKey="id"
             columns={testResponseColumns}
             dataSource={currentTestResponses}
             size="small"
-            pagination={{ pageSize: 8, size: "small" }}
+            pagination={{ pageSize: 10, size: "small" }}
             scroll={{ x: "max-content" }}
           />
         ) : (
@@ -887,9 +875,9 @@ const TrainingOverviewPage = () => {
             description="No test submissions available for this training."
           />
         )}
-      </Modal>
+      </AppModal>
 
-      <Modal
+      <AppModal
         open={feedbackModalOpen}
         onCancel={() => {
           setFeedbackModalOpen(false);
@@ -905,12 +893,12 @@ const TrainingOverviewPage = () => {
             <Text type="secondary">Loading feedback responses...</Text>
           </div>
         ) : feedbackResponses.length > 0 ? (
-          <Table
+          <AppTable
             rowKey="id"
             columns={feedbackColumns}
             dataSource={feedbackResponses}
             size="small"
-            pagination={{ pageSize: 8, size: "small" }}
+            pagination={{ pageSize: 10, size: "small" }}
             scroll={{ x: "max-content" }}
           />
         ) : (
@@ -920,9 +908,9 @@ const TrainingOverviewPage = () => {
             description="No feedback submissions available for this training."
           />
         )}
-      </Modal>
+      </AppModal>
 
-      <Modal
+      <AppModal
         open={lessonPlanModalOpen}
         onCancel={() => {
           setLessonPlanModalOpen(false);
@@ -938,12 +926,12 @@ const TrainingOverviewPage = () => {
             <Text type="secondary">Loading lesson plans...</Text>
           </div>
         ) : lessonPlanData.length > 0 ? (
-          <Table
+          <AppTable
             rowKey="id"
             columns={lessonPlanColumns}
             dataSource={lessonPlanData}
             size="small"
-            pagination={{ pageSize: 8, size: "small" }}
+            pagination={{ pageSize: 10, size: "small" }}
             scroll={{ x: "max-content" }}
           />
         ) : (
@@ -953,7 +941,7 @@ const TrainingOverviewPage = () => {
             description="No lesson plans available for this training."
           />
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Button, Card, Col, Form, Input, Row, Table, Tag, Typography, message } from 'antd';
+import { Button, Card, Col, Form, Input, Row, Tag, Typography, message } from 'antd';
+import { AppTable } from '../../../components/ui';
 import { useParams } from 'react-router-dom';
-import { SafetyCertificateOutlined, CheckCircleOutlined, CloseCircleOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import { SafetyCertificateOutlined, CheckCircleOutlined, CloseCircleOutlined, ArrowUpOutlined, ArrowDownOutlined, StopOutlined } from '@ant-design/icons';
 import PageHeader from '../../../components/PageHeader';
 import TrainingEmptyState from '../../../components/training/TrainingEmptyState';
 import { TrainingStatSkeleton, TableRowSkeleton } from '../../../components/training/skeletons/TrainingSkeletons';
@@ -127,20 +128,6 @@ const CertificateManagementPage = () => {
           : <Tag color="red" icon={<CloseCircleOutlined />}>Revoked</Tag>
       ),
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      render: (_, record) => (
-        <Button
-          size="small"
-          danger
-          onClick={() => handleRevoke(record.id)}
-          aria-label={`Revoke certificate for ${record.user?.name || 'faculty'}`}
-        >
-          Revoke
-        </Button>
-      ),
-    },
   ];
 
   const stats = useMemo(() => {
@@ -245,10 +232,13 @@ const CertificateManagementPage = () => {
           <TableRowSkeleton rows={5} columns={4} />
         ) : filteredCertificates.length > 0 ? (
           <div className="custom-scrollbar overflow-x-auto">
-            <Table
+            <AppTable
               className="custom-table"
               rowKey="id"
               columns={columns}
+              actions={[
+                { key: 'revoke', label: 'Revoke', icon: <StopOutlined />, danger: true, onClick: (record) => handleRevoke(record.id), confirm: { title: 'Revoke this certificate?', description: 'The certificate will no longer be valid.', okText: 'Revoke' } },
+              ]}
               dataSource={filteredCertificates}
               loading={certificates.loading}
               size="small"

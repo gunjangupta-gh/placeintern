@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Table, Tag, Alert, Spin, Select, Statistic, Timeline, Empty } from 'antd';
+import { Card, Row, Col, Tag, Alert, Spin, Select, Statistic, Timeline, Empty } from 'antd';
+import { AppTable } from '../../../components/ui';
 import {
   WarningOutlined,
   ExclamationCircleOutlined,
@@ -217,7 +218,7 @@ const SecurityInsights = () => {
       {/* Suspicious Activities Table */}
       <Card title="Suspicious Activities">
         {suspiciousActivities.length > 0 ? (
-          <Table scroll={{ x: 'max-content' }}
+          <AppTable scroll={{ x: 'max-content' }}
             dataSource={suspiciousActivities}
             columns={columns}
             rowKey={(record) => `${record.userId}-${record.type}`}

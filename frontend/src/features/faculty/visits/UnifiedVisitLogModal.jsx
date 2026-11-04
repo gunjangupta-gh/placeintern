@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Modal,
   Form,
   Select,
   Input,
@@ -18,6 +17,7 @@ import {
   Card,
   Switch,
 } from 'antd';
+import { AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   EnvironmentOutlined,
@@ -122,7 +122,7 @@ const UnifiedVisitLogModal = ({
       return;
     }
 
-    const guidanceModal = Modal.confirm({
+    const guidanceModal = AppModal.confirm({
       title: 'Visit Log Writing Guidance',
       width: 760,
       content: (
@@ -412,7 +412,7 @@ const UnifiedVisitLogModal = ({
   );
 
   return (
-    <Modal
+    <AppModal
       title={
         <Space>
           <CameraOutlined className="text-primary" />
@@ -593,7 +593,7 @@ const UnifiedVisitLogModal = ({
           </Row>
         </Card>
       </Form>
-    </Modal>
+    </AppModal>
   );
 };
 

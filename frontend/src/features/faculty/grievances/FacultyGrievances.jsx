@@ -2,12 +2,10 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
   Card,
-  Table,
   Tag,
   Button,
   Typography,
   Space,
-  Modal,
   Form,
   Input,
   Select,
@@ -24,7 +22,8 @@ import {
   Steps,
   Tooltip,
   Avatar,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   EyeOutlined,
   EditOutlined,
@@ -368,44 +367,14 @@ export default function FacultyGrievances() {
         </Tooltip>
       ),
     },
-    {
-      title: "Action",
-      key: "action",
-      fixed: "right",
-      width: 200,
-      render: (_, record) => (
-        <Space size="small" wrap>
-          <Button
-            type="link"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => openDetailModal(record)}
-          >
-            View
-          </Button>
-          {record.assignedToId === userId && !["RESOLVED", "CLOSED", "REJECTED"].includes(record.status) && (
-            <>
-              <Button
-                type="primary"
-                size="small"
-                icon={<MessageOutlined />}
-                onClick={() => openRespondModal(record)}
-              >
-                Respond
-              </Button>
-              <Button
-                size="small"
-                icon={<ArrowUpOutlined />}
-                onClick={() => openEscalateModal(record)}
-                className="text-warning border-warning"
-              >
-                Escalate
-              </Button>
-            </>
-          )}
-        </Space>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'view', label: 'View', icon: <EyeOutlined />, onClick: (r) => openDetailModal(r) },
+    { key: 'respond', label: 'Respond', icon: <MessageOutlined />, onClick: (r) => openRespondModal(r),
+      hidden: (r) => !(r.assignedToId === userId && !["RESOLVED", "CLOSED", "REJECTED"].includes(r.status)) },
+    { key: 'escalate', label: 'Escalate', icon: <ArrowUpOutlined />, onClick: (r) => openEscalateModal(r),
+      hidden: (r) => !(r.assignedToId === userId && !["RESOLVED", "CLOSED", "REJECTED"].includes(r.status)) },
   ];
 
   const filteredGrievances = (status) => {
@@ -525,9 +494,11 @@ export default function FacultyGrievances() {
               <Spin size="small" />
             </div>
           ) : (
-            <Table
+            <AppTable
               dataSource={filteredGrievances(activeTab)}
               columns={columns}
+              actions={rowActions}
+              actionsTitle="Action"
               rowKey="id"
               scroll={{ x: "max-content" }}
               pagination={{
@@ -548,7 +519,7 @@ export default function FacultyGrievances() {
         </Card>
 
         {/* Detail Modal */}
-        <Modal
+        <AppModal
           title={<><FileTextOutlined className="mr-2" />Grievance Details</>}
           open={detailModalVisible}
           onCancel={() => {
@@ -731,10 +702,10 @@ export default function FacultyGrievances() {
               )}
             </div>
           )}
-        </Modal>
+        </AppModal>
 
         {/* Respond Modal */}
-        <Modal
+        <AppModal
           title={<><MessageOutlined className="text-success mr-2" />Respond to Grievance</>}
           open={respondModalVisible}
           onCancel={() => setRespondModalVisible(false)}
@@ -771,10 +742,10 @@ export default function FacultyGrievances() {
               </Space>
             </Form.Item>
           </Form>
-        </Modal>
+        </AppModal>
 
         {/* Escalate Modal */}
-        <Modal
+        <AppModal
           title={<><ArrowUpOutlined className="text-warning mr-2" />Escalate Grievance</>}
           open={escalateModalVisible}
           onCancel={() => setEscalateModalVisible(false)}
@@ -805,7 +776,7 @@ export default function FacultyGrievances() {
               </Space>
             </Form.Item>
           </Form>
-        </Modal>
+        </AppModal>
       </div>
     </div>
   );

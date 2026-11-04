@@ -9,17 +9,16 @@ import {
   Empty,
   Form,
   Input,
-  Modal,
   Row,
   Select,
   Space,
   Switch,
-  Table,
   Tag,
   Typography,
   theme,
   Popover,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   DeleteOutlined,
   EnvironmentOutlined,
@@ -81,7 +80,7 @@ const PrincipalFeedback = () => {
   const [dateRange, setDateRange] = useState(null);
   const [pagination, setPagination] = useState({
     current: 1,
-    pageSize: 20,
+    pageSize: 10,
     total: 0,
   });
 
@@ -231,7 +230,7 @@ const PrincipalFeedback = () => {
   );
 
   const handleDelete = useCallback((record) => {
-    Modal.confirm({
+    AppModal.confirm({
       title: "Delete Principal Feedback",
       icon: <ExclamationCircleOutlined />,
       content: `Are you sure you want to delete this feedback from ${record.visitDate ? dayjs(record.visitDate).format("DD MMM YYYY") : "unknown date"}?`,
@@ -300,32 +299,6 @@ const PrincipalFeedback = () => {
           const label = status === "COMPLETED" ? "Completed" : status === "DRAFT" ? "Draft" : value || "-";
           return <Tag color={statusColorMap[status] || "default"}>{label}</Tag>;
         },
-      },
-      {
-        title: "Action",
-        key: "action",
-        width: 150,
-        fixed: "right",
-        render: (_, record) => (
-          <Space size={0}>
-            <Button
-              type="text"
-              icon={<EyeOutlined />}
-              onClick={() => setSelectedReport(record)}
-            />
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => openEditModal(record)}
-            />
-            <Button
-              type="text"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => handleDelete(record)}
-            />
-          </Space>
-        ),
       },
     ],
     [handleDelete],
@@ -571,9 +544,14 @@ const PrincipalFeedback = () => {
             </div>
           </div>
 
-          <Table
+          <AppTable
             rowKey="id"
             columns={columns}
+            actions={[
+              { key: "view", label: "View", icon: <EyeOutlined />, onClick: (record) => setSelectedReport(record) },
+              { key: "edit", label: "Edit", icon: <EditOutlined />, onClick: (record) => openEditModal(record) },
+              { key: "delete", label: "Delete", icon: <DeleteOutlined />, danger: true, onClick: (record) => handleDelete(record) },
+            ]}
             dataSource={reports}
             loading={loading}
             locale={{
@@ -592,7 +570,7 @@ const PrincipalFeedback = () => {
         </Card>
       </div>
 
-      <Modal
+      <AppModal
         title="Principal Feedback Details"
         open={!!selectedReport}
         onCancel={() => setSelectedReport(null)}
@@ -672,9 +650,9 @@ const PrincipalFeedback = () => {
             </div>
           </Space>
         )}
-      </Modal>
+      </AppModal>
 
-      <Modal
+      <AppModal
         title={isEditMode ? "Edit Principal Feedback" : "Add Principal Feedback"}
         open={createOpen}
         onCancel={closeCreateModal}
@@ -995,7 +973,7 @@ const PrincipalFeedback = () => {
             </Form.Item>
           </Card>
         </Form>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

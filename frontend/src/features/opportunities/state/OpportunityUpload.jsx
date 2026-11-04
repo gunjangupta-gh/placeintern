@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, Button, Card, Checkbox, Space, Statistic, Table, Tag, Typography, Upload } from 'antd';
+import { Alert, Button, Card, Checkbox, Space, Statistic, Tag, Typography, Upload } from 'antd';
+import { AppTable } from '../../../components/ui';
 import { CheckCircleOutlined, DownloadOutlined, InboxOutlined } from '@ant-design/icons';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate } from '../../../services/opportunity.service';
@@ -128,7 +129,7 @@ const OpportunityUpload = ({ onImported }) => {
                 style={{ marginBottom: 12 }}
                 message="Some rows have errors. Fix them in the file and upload again, or skip them."
               />
-              <Table scroll={{ x: 'max-content' }}
+              <AppTable scroll={{ x: 'max-content' }}
                 size="small"
                 rowKey="row"
                 pagination={{ pageSize: 10, hideOnSinglePage: true }}
@@ -146,7 +147,7 @@ const OpportunityUpload = ({ onImported }) => {
           )}
 
           {preview.validRows > 0 && (
-            <Table
+            <AppTable
               size="small"
               rowKey="row"
               scroll={{ x: 'max-content' }}

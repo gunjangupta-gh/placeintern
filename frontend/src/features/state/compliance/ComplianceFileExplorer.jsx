@@ -7,12 +7,11 @@ import {
   Button,
   Tooltip,
   Tag,
-  Table,
   Breadcrumb,
   message,
   Alert,
-  Modal,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   FolderOutlined,
   FolderOpenOutlined,
@@ -337,35 +336,6 @@ const ComplianceFileExplorer = ({ institutionId, institutionName }) => {
         return <Tag color="default">-</Tag>;
       },
     },
-    {
-      title: '',
-      key: 'action',
-      width: 100,
-      render: (_, record) => (
-        <div className="flex items-center gap-1">
-          <Tooltip title={record.downloadUrl ? 'View' : 'Generate URL & View'}>
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              loading={refreshingFile === record.id}
-              onClick={() => handleFileAction(record, 'view')}
-              className="text-gray-400 hover:text-primary"
-            />
-          </Tooltip>
-          <Tooltip title={record.downloadUrl ? 'Download' : 'Generate URL & Download'}>
-            <Button
-              type="text"
-              size="small"
-              icon={<DownloadOutlined />}
-              loading={refreshingFile === record.id}
-              onClick={() => handleFileAction(record, 'download')}
-              className="text-gray-400 hover:text-primary"
-            />
-          </Tooltip>
-        </div>
-      ),
-    },
   ];
 
   // Render folder cards (root view)
@@ -495,8 +465,24 @@ const ComplianceFileExplorer = ({ institutionId, institutionName }) => {
 
         {/* File table */}
         <div className="flex-1 overflow-auto">
-          <Table
+          <AppTable
             columns={columns}
+            actions={[
+              {
+                key: 'view',
+                label: (r) => (r.downloadUrl ? 'View' : 'Generate URL & View'),
+                icon: <EyeOutlined />,
+                loading: (r) => refreshingFile === r.id,
+                onClick: (r) => handleFileAction(r, 'view'),
+              },
+              {
+                key: 'download',
+                label: (r) => (r.downloadUrl ? 'Download' : 'Generate URL & Download'),
+                icon: <DownloadOutlined />,
+                loading: (r) => refreshingFile === r.id,
+                onClick: (r) => handleFileAction(r, 'download'),
+              },
+            ]}
             dataSource={filteredFiles}
             rowKey="id"
             size="small"
@@ -592,7 +578,7 @@ const ComplianceFileExplorer = ({ institutionId, institutionName }) => {
       </div>
 
       {/* Preview Modal */}
-      <Modal
+      <AppModal
         title={previewFileName}
         open={!!previewUrl}
         onCancel={() => {
@@ -614,7 +600,7 @@ const ComplianceFileExplorer = ({ institutionId, institutionName }) => {
             className="w-full h-full border-0"
           />
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

@@ -9,16 +9,14 @@ import {
   Typography,
   Row,
   Col,
-  Table,
   Tag,
   Badge,
-  Drawer,
   Timeline,
   Empty,
   Divider,
   Spin,
-  Modal,
 } from 'antd';
+import { AppTable, AppModal, AppDrawer } from '../../../components/ui';
 import {
   PlusOutlined,
   SendOutlined,
@@ -201,14 +199,10 @@ const SubmitGrievance = () => {
         return <Text className="text-xs text-text-secondary">{d ? dayjs(d).format('MMM D, YYYY') : 'N/A'}</Text>;
       },
     },
-    {
-      title: '',
-      key: 'actions',
-      width: 60,
-      render: (_, record) => (
-        <Button type="text" size="small" icon={<EyeOutlined />} onClick={() => { setSelectedGrievance(record); setDrawerVisible(true); }} />
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'view', label: 'View', icon: <EyeOutlined />, onClick: (r) => { setSelectedGrievance(r); setDrawerVisible(true); } },
   ];
 
   const grievanceList = Array.isArray(grievances) ? grievances : [];
@@ -231,9 +225,11 @@ const SubmitGrievance = () => {
         {loading ? (
           <div className="flex justify-center py-16"><Spin size="small" /></div>
         ) : (
-          <Table scroll={{ x: 'max-content' }}
+          <AppTable scroll={{ x: 'max-content' }}
             dataSource={grievanceList}
             columns={columns}
+            actions={rowActions}
+            actionsTitle=""
             rowKey="id"
             size="small"
             pagination={{ pageSize: 10, showSizeChanger: false, size: 'small' }}
@@ -252,7 +248,7 @@ const SubmitGrievance = () => {
       </Card>
 
       {/* Create Modal */}
-      <Modal
+      <AppModal
         title={<span className="text-sm font-semibold">Submit Grievance</span>}
         open={modalVisible}
         onCancel={() => { setModalVisible(false); form.resetFields(); }}
@@ -293,10 +289,10 @@ const SubmitGrievance = () => {
             <Button type="primary" htmlType="submit" icon={<SendOutlined />} loading={submitting} className="rounded-lg h-8 text-xs">Submit</Button>
           </div>
         </Form>
-      </Modal>
+      </AppModal>
 
       {/* Detail Drawer */}
-      <Drawer
+      <AppDrawer
         title={<span className="text-sm font-semibold">Grievance Details</span>}
         open={drawerVisible}
         onClose={() => { setDrawerVisible(false); setSelectedGrievance(null); }}
@@ -377,7 +373,7 @@ const SubmitGrievance = () => {
             )}
           </div>
         )}
-      </Drawer>
+      </AppDrawer>
     </div>
   );
 };

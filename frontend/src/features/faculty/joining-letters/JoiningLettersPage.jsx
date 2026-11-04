@@ -2,21 +2,18 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Card,
-  Table,
   Button,
   Tag,
   Space,
-  Modal,
   Input,
   Typography,
   Avatar,
-  Tooltip,
-  Drawer,
   Descriptions,
   Upload,
   Select,
   theme,
 } from 'antd';
+import { AppTable, AppModal, AppDrawer } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   FileProtectOutlined,
@@ -76,7 +73,7 @@ const JoiningLettersPage = () => {
   };
 
   const handleDelete = (letter) => {
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Delete Joining Report',
       content: 'Are you sure you want to delete this joining report? This action cannot be undone.',
       okText: 'Delete',
@@ -226,42 +223,12 @@ const JoiningLettersPage = () => {
         </Tag>
       ),
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: '20%',
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="View Details">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => handleViewDetails(record)}
-            />
-          </Tooltip>
-          {record.joiningLetterUrl && (
-            <Tooltip title="View Document">
-              <Button
-                type="text"
-                size="small"
-                icon={<DownloadOutlined />}
-                onClick={() => handleView(record)}
-              />
-            </Tooltip>
-          )}
-          <Tooltip title="Delete">
-            <Button
-              type="text"
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => handleDelete(record)}
-            />
-          </Tooltip>
-        </Space>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'details', label: 'View Details', icon: <EyeOutlined />, onClick: (r) => handleViewDetails(r) },
+    { key: 'document', label: 'View Document', icon: <DownloadOutlined />, onClick: (r) => handleView(r), hidden: (r) => !r.joiningLetterUrl },
+    { key: 'delete', label: 'Delete', icon: <DeleteOutlined />, danger: true, onClick: (r) => handleDelete(r) },
   ];
 
 
@@ -336,8 +303,9 @@ const JoiningLettersPage = () => {
             />
           </div>
 
-          <Table
+          <AppTable
             columns={columns}
+            actions={rowActions}
             dataSource={filteredLetters}
             loading={loading}
             rowKey="id"
@@ -360,7 +328,7 @@ const JoiningLettersPage = () => {
       </div>
 
       {/* Upload Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: token.colorPrimaryBg }}>
@@ -469,10 +437,10 @@ const JoiningLettersPage = () => {
             </div>
           )}
         </div>
-      </Modal>
+      </AppModal>
 
       {/* Detail Drawer */}
-      <Drawer
+      <AppDrawer
         title={
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center border" style={{ backgroundColor: token.colorPrimaryBg, borderColor: token.colorPrimaryBorder }}>
@@ -590,7 +558,7 @@ const JoiningLettersPage = () => {
 
           </div>
         )}
-      </Drawer>
+      </AppDrawer>
     </div>
   );
 };

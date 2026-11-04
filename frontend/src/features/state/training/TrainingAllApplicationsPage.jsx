@@ -1,19 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  Button,
   Card,
   Input,
-  Popconfirm,
   Segmented,
   Select,
   Space,
-  Table,
   Tag,
   Tooltip,
   Typography,
   message,
-} from "antd";
+} from 'antd';
+import { AppTable } from '../../../components/ui';
 import {
   DeleteOutlined,
   SearchOutlined,
@@ -246,33 +244,6 @@ const TrainingAllApplicationsPage = () => {
         </Text>
       ),
     },
-    {
-      title: "Actions",
-      key: "actions",
-      width: 120,
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="Permanently delete this application">
-            <Popconfirm
-              title="Delete application permanently?"
-              description="This action cannot be undone."
-              okText="Delete"
-              okButtonProps={{ danger: true, loading: deletingId === record.id }}
-              onConfirm={() => handlePermanentDelete(record.id)}
-            >
-              <Button
-                danger
-                type="text"
-                size="small"
-                icon={<DeleteOutlined />}
-                loading={deletingId === record.id}
-                aria-label={`Delete application from ${record.user?.name || "faculty"}`}
-              />
-            </Popconfirm>
-          </Tooltip>
-        </Space>
-      ),
-    },
   ];
 
   return (
@@ -331,10 +302,21 @@ const TrainingAllApplicationsPage = () => {
           <TableRowSkeleton rows={5} columns={5} />
         ) : filteredApplications.length > 0 ? (
           <div className="custom-scrollbar overflow-x-auto">
-            <Table
+            <AppTable
               className="custom-table"
               rowKey="id"
               columns={columns}
+              actions={[
+                {
+                  key: 'delete',
+                  label: 'Permanently delete this application',
+                  icon: <DeleteOutlined />,
+                  danger: true,
+                  loading: (record) => deletingId === record.id,
+                  confirm: { title: 'Delete application permanently?', description: 'This action cannot be undone.', okText: 'Delete' },
+                  onClick: (record) => handlePermanentDelete(record.id),
+                },
+              ]}
               dataSource={filteredApplications}
               loading={applications.loading}
               size="small"

@@ -1,17 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
-  Table,
   Tag,
   Button,
   Typography,
   Space,
-  Modal,
   Form,
   Input,
   Select,
   DatePicker,
-  Drawer,
   Statistic,
   Row,
   Col,
@@ -24,6 +21,7 @@ import {
   message,
   Steps,
 } from 'antd';
+import { AppTable, AppModal, AppDrawer } from '../../../components/ui';
 import {
   AlertOutlined,
   EyeOutlined,
@@ -226,7 +224,7 @@ const GrievanceList = () => {
   };
 
   const handleEscalate = async (id) => {
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Escalate Grievance',
       content: 'Are you sure you want to escalate this grievance?',
       okText: 'Escalate',
@@ -258,7 +256,7 @@ const GrievanceList = () => {
   };
 
   const handleClose = async (id) => {
-    Modal.confirm({
+    AppModal.confirm({
       title: 'Close Grievance',
       content: 'Are you sure you want to close this grievance?',
       okText: 'Close',
@@ -370,22 +368,10 @@ const GrievanceList = () => {
         return displayDate ? dayjs(displayDate).format('MMM DD, YYYY') : 'N/A';
       },
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      fixed: 'right',
-      width: 100,
-      render: (_, record) => (
-        <Button
-          type="link"
-          size="small"
-          icon={<EyeOutlined />}
-          onClick={() => handleViewDetail(record)}
-        >
-          View
-        </Button>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'view', label: 'View', icon: <EyeOutlined />, onClick: (record) => handleViewDetail(record) },
   ];
 
   return (
@@ -516,9 +502,10 @@ const GrievanceList = () => {
 
         {/* Table */}
         <Card>
-          <Table
+          <AppTable
             dataSource={filteredGrievances}
             columns={columns}
+            actions={rowActions}
             rowKey="id"
             loading={loading}
             scroll={{ x: 'max-content' }}
@@ -540,7 +527,7 @@ const GrievanceList = () => {
         </Card>
 
         {/* Detail Drawer */}
-        <Drawer
+        <AppDrawer
           title={
             <Space>
               <AlertOutlined />
@@ -833,10 +820,10 @@ const GrievanceList = () => {
               </div>
             </div>
           )}
-        </Drawer>
+        </AppDrawer>
 
         {/* Response Modal */}
-        <Modal
+        <AppModal
           title={
             <Space>
               <SendOutlined />
@@ -897,7 +884,7 @@ const GrievanceList = () => {
               </Form>
             </>
           )}
-        </Modal>
+        </AppModal>
       </div>
     </div>
   );

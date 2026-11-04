@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card,
-  Table,
   Button,
   Space,
-  Modal,
   Form,
   Input,
   Select,
@@ -17,6 +15,7 @@ import {
   Alert,
   Spin,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   SendOutlined,
   SyncOutlined,
@@ -430,20 +429,10 @@ const RemindersPage = () => {
       key: 'pendingCount',
       render: (count) => <Badge count={count} style={{ backgroundColor: '#faad14' }} />,
     },
-    {
-      title: '',
-      key: 'actions',
-      render: (_, record) => (
-        <Button
-          type="primary"
-          size="small"
-          icon={<SendOutlined />}
-          onClick={() => openReminderModal(activeTab, record)}
-        >
-          Send
-        </Button>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'send', label: 'Send', icon: <SendOutlined />, type: 'primary', onClick: (r) => openReminderModal(activeTab, r) },
   ];
 
   const reminderTrainingOptions = getTrainingsWithPending(reminderType).map((item) => {
@@ -542,10 +531,12 @@ const RemindersPage = () => {
         </div>
 
         <div className="custom-scrollbar overflow-x-auto">
-          <Table
+          <AppTable
             className="custom-table"
             dataSource={getTrainingsWithPending(activeTab)}
             columns={trainingColumns}
+            actions={rowActions}
+            actionsTitle=""
             rowKey="trainingId"
             pagination={false}
             size="small"
@@ -607,7 +598,7 @@ const RemindersPage = () => {
         )}
 
         <div className="custom-scrollbar overflow-x-auto">
-          <Table
+          <AppTable
             className="custom-table"
             dataSource={filteredFaculty}
             columns={facultyColumns}
@@ -638,7 +629,7 @@ const RemindersPage = () => {
       </Card>
 
       {/* Send Reminder Modal */}
-      <Modal
+      <AppModal
         title={`Send ${getReminderTypeLabel(reminderType)} Reminder`}
         open={reminderOpen}
         onCancel={() => setReminderOpen(false)}
@@ -705,7 +696,7 @@ const RemindersPage = () => {
             />
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

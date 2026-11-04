@@ -1,7 +1,6 @@
 // src/components/industry/EditInternshipModal.jsx
 import React, { useState, useEffect } from "react";
 import {
-  Modal,
   Form,
   Input,
   Select,
@@ -14,7 +13,8 @@ import {
   InputNumber,
   Checkbox,
   Space,
-} from "antd";
+} from 'antd';
+import { AppModal } from '../ui';
 import { SaveOutlined, EditOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
@@ -119,7 +119,7 @@ const EditInternshipModal = ({ visible, onClose, internship, onSuccess }) => {
   };
 
   return (
-    <Modal
+    <AppModal
       title={
         <div className="flex items-center">
           <EditOutlined className="mr-2 text-primary" />
@@ -538,7 +538,7 @@ const EditInternshipModal = ({ visible, onClose, internship, onSuccess }) => {
           </Space>
         </div>
       </Form>
-    </Modal>
+    </AppModal>
   );
 };
 

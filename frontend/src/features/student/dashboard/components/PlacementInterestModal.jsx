@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Button, Alert, Spin, Result, theme } from 'antd';
+import { Form, Button, Alert, Spin, Result, theme } from 'antd';
+import { AppModal } from '../../../../components/ui';
 import { SendOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import toast from 'react-hot-toast';
 import PlacementInterestForm, { PLAN_AFTER_DIPLOMA } from './PlacementInterestForm';
@@ -81,19 +82,19 @@ const PlacementInterestModal = ({ open, onClose, onSuccess, closable = false }) 
 
   if (submitted) {
     return (
-      <Modal open={open} onCancel={handleClose} footer={null} closable centered width={400}>
+      <AppModal open={open} onCancel={handleClose} footer={null} closable centered width={400}>
         <Result
           icon={<CheckCircleOutlined style={{ color: token.colorSuccess, fontSize: 48 }} />}
           title="Thank You!"
           subTitle="Your response has been recorded."
           extra={<Button type="primary" onClick={handleClose}>Done</Button>}
         />
-      </Modal>
+      </AppModal>
     );
   }
 
   return (
-    <Modal
+    <AppModal
       open={open}
       onCancel={handleClose}
       closable={closable}
@@ -137,7 +138,7 @@ const PlacementInterestModal = ({ open, onClose, onSuccess, closable = false }) 
           <PlacementInterestForm form={form} initialData={existingData} onValuesChange={() => forceUpdate({})} />
         </>
       )}
-    </Modal>
+    </AppModal>
   );
 };
 

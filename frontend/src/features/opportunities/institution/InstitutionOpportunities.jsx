@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Input, Modal, Table, Tabs, Tag, Typography } from 'antd';
+import { Alert, Button, Input, Tabs, Tag, Typography } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import { RollbackOutlined } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
@@ -42,7 +43,7 @@ const DataTab = ({ fetcher, columns, searchPlaceholder, rowKey = 'id', reloadKey
   return (
     <>
       <Input.Search allowClear placeholder={searchPlaceholder} style={{ width: 300, marginBottom: 12 }} value={search} onChange={(e) => setSearch(e.target.value)} />
-      <Table
+      <AppTable
         rowKey={rowKey}
         size="middle"
         loading={loading}
@@ -147,7 +148,7 @@ const InstitutionOpportunities = () => {
           },
         ]}
       />
-      <Modal
+      <AppModal
         open={!!withdrawing}
         title="Withdraw this application?"
         okText="Withdraw"
@@ -164,7 +165,7 @@ const InstitutionOpportunities = () => {
           Only pending applications can be withdrawn.
         </p>
         <Input.TextArea rows={3} maxLength={500} showCount value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" />
-      </Modal>
+      </AppModal>
     </div>
   );
 };

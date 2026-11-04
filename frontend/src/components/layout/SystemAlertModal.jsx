@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Modal, Button, Typography, Space, Badge, List, Empty, Spin, Tag } from 'antd';
+import { Button, Typography, Space, Badge, List, Empty, Spin, Tag } from 'antd';
+import { AppModal } from '../ui';
 import {
   InfoCircleOutlined,
   WarningOutlined,
@@ -284,7 +285,7 @@ const SystemAlertModal = () => {
   const dismissibleCount = alerts.filter(a => a.isDismissible).length;
 
   return (
-    <Modal
+    <AppModal
       title={
         <Space>
           <Badge count={alerts.length} offset={[-5, 5]}>
@@ -377,7 +378,7 @@ const SystemAlertModal = () => {
           )}
         </Space>
       )}
-    </Modal>
+    </AppModal>
   );
 };
 

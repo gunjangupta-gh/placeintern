@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Descriptions, Input, Modal, Table, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Button, Descriptions, Input, Tag, Tooltip, Typography } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import { CheckCircleFilled } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -49,7 +50,7 @@ const ApplyButton = ({ item, onClick }) => {
 
 /** Details of one internship, shown before the student confirms the application. */
 const ApplyModal = ({ item, applying, limit, onCancel, onConfirm }) => (
-  <Modal
+  <AppModal
     open={!!item}
     title={item ? `${item.title} at ${item.company?.name}` : ''}
     width={680}
@@ -93,7 +94,7 @@ const ApplyModal = ({ item, applying, limit, onCancel, onConfirm }) => (
         )}
       </>
     )}
-  </Modal>
+  </AppModal>
 );
 
 const BrowseOpportunities = () => {
@@ -219,7 +220,7 @@ const BrowseOpportunities = () => {
         style={{ maxWidth: 420, marginBottom: 16 }}
       />
 
-      <Table
+      <AppTable
         rowKey="id"
         size="middle"
         loading={loading}

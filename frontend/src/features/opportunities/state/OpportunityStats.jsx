@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Col, Modal, Progress, Row, Skeleton, Statistic, Table, Typography, theme } from 'antd';
+import { Card, Col, Progress, Row, Skeleton, Statistic, Table, Typography, theme } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import { EyeOutlined } from '@ant-design/icons';
 import { opportunityService } from '../../../services/opportunity.service';
 
@@ -105,7 +106,7 @@ const OpportunityStats = ({ refreshKey }) => {
         </Card>
       </Col>
 
-      <Modal
+      <AppModal
         open={showBranches}
         title="Branch-wise internships"
         footer={null}
@@ -113,7 +114,7 @@ const OpportunityStats = ({ refreshKey }) => {
         onCancel={() => setShowBranches(false)}
         destroyOnHidden
       >
-        <Table
+        <AppTable
           size="small"
           rowKey="code"
           pagination={false}
@@ -153,7 +154,7 @@ const OpportunityStats = ({ refreshKey }) => {
         <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
           Published internships only (open and filled).
         </Text>
-      </Modal>
+      </AppModal>
     </Row>
   );
 };

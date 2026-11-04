@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, memo } from "react";
 import {
   Card,
-  Table,
   Tag,
   Button,
   Space,
@@ -14,16 +13,15 @@ import {
   Badge,
   Descriptions,
   Rate,
-  Modal,
   Select,
   DatePicker,
-  Tooltip,
   Calendar,
   Spin,
   List,
   theme,
   Grid,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   UserOutlined,
   TeamOutlined,
@@ -675,21 +673,6 @@ const FacultyProgress = () => {
         </Tag>
       ),
     },
-    {
-      title: "Actions",
-      key: "actions",
-      width: 80,
-      render: (_, record) => (
-        <Tooltip title="View Details">
-          <Button
-            type="text"
-            icon={<EyeOutlined />}
-            onClick={() => handleViewReportDetails(record)}
-            style={{ color: token.colorPrimary }}
-          />
-        </Tooltip>
-      ),
-    },
   ];
 
   // Calendar cell renderer for visits
@@ -737,7 +720,7 @@ const FacultyProgress = () => {
       ),
       children: (
         <div style={{ padding: "12px 0" }}>
-          <Table
+          <AppTable
             size="small"
             columns={studentColumns}
             dataSource={facultyDetails?.students || []}
@@ -955,9 +938,17 @@ const FacultyProgress = () => {
 
           {/* Visits Table or Calendar */}
           {visitViewMode === "table" ? (
-            <Table
+            <AppTable
               size="small"
               columns={visitColumns}
+              actions={[
+                {
+                  key: "view",
+                  label: "View Details",
+                  icon: <EyeOutlined />,
+                  onClick: (record) => handleViewReportDetails(record),
+                },
+              ]}
               dataSource={filteredVisits}
               rowKey="id"
               loading={detailsLoading}
@@ -1373,7 +1364,7 @@ const FacultyProgress = () => {
       </Row>
 
       {/* Visit Report Details Modal */}
-      <Modal
+      <AppModal
         title={null}
         open={reportDetailsVisible}
         onCancel={() => {
@@ -1500,7 +1491,7 @@ const FacultyProgress = () => {
             </div>
           </div>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

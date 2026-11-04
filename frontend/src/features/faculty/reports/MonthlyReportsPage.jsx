@@ -3,26 +3,24 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
-  Table,
   Button,
   Tag,
-  Space,
+  
   Input,
   Badge,
   Tabs,
   Typography,
   Avatar,
-  Tooltip,
-  Drawer,
+  
   Descriptions,
   theme,
-  Modal,
   Upload,
   Switch,
   Select,
   Alert,
-  Popconfirm,
+  
 } from 'antd';
+import { AppTable, AppModal, AppDrawer } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   FileTextOutlined,
@@ -515,71 +513,17 @@ const MonthlyReportsPage = () => {
       ],
       onFilter: (value, record) => record.status === value,
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: '20%',
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="View Details">
-            <Button
-              type="text"
-              size="small"
-              icon={<FileTextOutlined />}
-              onClick={() => handleViewDetails(record)}
-            />
-          </Tooltip>
-          {record.reportFileUrl && (
-            <Tooltip title="View Report">
-              <Button
-                type="text"
-                size="small"
-                icon={<EyeOutlined />}
-                onClick={() => handleViewReport(record)}
-              />
-            </Tooltip>
-          )}
-          {record.status !== 'APPROVED' && (
-            <Tooltip title="Approve Report">
-              <Button
-                type="text"
-                size="small"
-                icon={<CheckCircleOutlined />}
-                onClick={() => handleApproveReport(record.id)}
-              />
-            </Tooltip>
-          )}
-          {record.status !== 'APPROVED' && (
-            <Tooltip title="Reject Report">
-              <Button
-                type="text"
-                size="small"
-                danger
-                icon={<CloseCircleOutlined />}
-                onClick={() => openRejectModal(record.id)}
-              />
-            </Tooltip>
-          )}
-          <Popconfirm
-            title="Delete Report"
-            description="Are you sure you want to delete this report?"
-            onConfirm={() => handleDeleteReport(record.id)}
-            okText="Delete"
-            okButtonProps={{ danger: true }}
-            cancelText="Cancel"
-          >
-            <Tooltip title="Delete Report">
-              <Button
-                type="text"
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-              />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'details', label: 'View Details', icon: <FileTextOutlined />, onClick: (r) => handleViewDetails(r) },
+    { key: 'report', label: 'View Report', icon: <EyeOutlined />, onClick: (r) => handleViewReport(r), hidden: (r) => !r.reportFileUrl },
+    { key: 'approve', label: 'Approve Report', icon: <CheckCircleOutlined />, onClick: (r) => handleApproveReport(r.id),
+      hidden: (r) => r.status === 'APPROVED' },
+    { key: 'reject', label: 'Reject Report', icon: <CloseCircleOutlined />, danger: true, onClick: (r) => openRejectModal(r.id),
+      hidden: (r) => r.status === 'APPROVED' },
+    { key: 'delete', label: 'Delete Report', icon: <DeleteOutlined />, danger: true, onClick: (r) => handleDeleteReport(r.id),
+      confirm: { title: "Delete Report", description: "Are you sure you want to delete this report?", okText: "Delete" } },
   ];
 
   return (
@@ -710,8 +654,9 @@ const MonthlyReportsPage = () => {
             className="!px-4"
           /> */}
 
-          <Table
+          <AppTable
             columns={columns}
+            actions={rowActions}
             dataSource={filteredReports}
             loading={loading}
             rowKey="id"
@@ -732,7 +677,7 @@ const MonthlyReportsPage = () => {
       </div>
 
       {/* Detail Drawer */}
-      <Drawer
+      <AppDrawer
         title={
           <div className="flex items-center gap-3">
             <div 
@@ -856,10 +801,10 @@ const MonthlyReportsPage = () => {
             </div>
           </div>
         )}
-      </Drawer>
+      </AppDrawer>
 
       {/* Upload Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <FileTextOutlined style={{ color: token.colorPrimary }} />
@@ -1008,10 +953,10 @@ const MonthlyReportsPage = () => {
             style={{ padding: '10px 12px' }}
           />
         </div>
-      </Modal>
+      </AppModal>
 
       {/* Reject Reason Modal */}
-      <Modal
+      <AppModal
         title="Reject Report"
         open={rejectModalVisible}
         onCancel={closeRejectModal}
@@ -1044,7 +989,7 @@ const MonthlyReportsPage = () => {
             Minimum 10 characters required.
           </Text>
         </div>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

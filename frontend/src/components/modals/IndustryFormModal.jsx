@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Select, Button, Steps, message, Row, Col } from 'antd';
+import { Form, Input, Select, Button, Steps, message, Row, Col } from 'antd';
+import { AppModal } from '../ui';
 import { createIndustry, updateIndustry } from '../../services/industryApi';
 import { toast } from "react-hot-toast";
 
@@ -52,7 +53,7 @@ const IndustryFormModal = ({ visible, onClose, onSuccess, industry }) => {
   };
 
   return (
-    <Modal
+    <AppModal
       title={industry ? 'Edit Industry' : 'Create Industry'}
       open={visible}
       onCancel={onClose}
@@ -151,7 +152,7 @@ const IndustryFormModal = ({ visible, onClose, onSuccess, industry }) => {
           </Button>
         )}
       </div>
-    </Modal>
+    </AppModal>
   );
 };
 

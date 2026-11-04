@@ -4,12 +4,10 @@ import {
   Card,
   Row,
   Col,
-  Table,
   Tag,
   Button,
   Input,
   Select,
-  Modal,
   Form,
   DatePicker,
   Spin,
@@ -21,6 +19,7 @@ import {
   Statistic,
   Space,
 } from 'antd';
+import { AppTable, AppModal } from '../../../../components/ui';
 import { toast } from 'react-hot-toast';
 import { useDebouncedCallback } from '../../../../hooks/useDebounce';
 import {
@@ -247,54 +246,30 @@ const JoiningLetterPanel = () => {
       render: (date) =>
         date ? new Date(date).toLocaleDateString() : '-',
     },
+  ];
+
+  const rowActions = [
     {
-      title: 'Actions',
-      key: 'actions',
-      width: 180,
-      render: (_, record) => {
-        if (record.status !== 'PENDING') {
-          return (
-            <Button
-              type="link"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => openLetterUrl(record.letterUrl)}
-              disabled={!record.letterUrl}
-            >
-              View
-            </Button>
-          );
-        }
-        return (
-          <Space size="small">
-            <Button
-              type="link"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => openLetterUrl(record.letterUrl)}
-              disabled={!record.letterUrl}
-            >
-              View
-            </Button>
-            <Button
-              type="primary"
-              size="small"
-              icon={<CheckCircleOutlined />}
-              onClick={() => handleVerify(record)}
-            >
-              Verify
-            </Button>
-            <Button
-              danger
-              size="small"
-              icon={<CloseCircleOutlined />}
-              onClick={() => handleReject(record)}
-            >
-              Reject
-            </Button>
-          </Space>
-        );
-      },
+      key: 'view',
+      label: 'View',
+      icon: <EyeOutlined />,
+      onClick: (record) => openLetterUrl(record.letterUrl),
+      disabled: (record) => !record.letterUrl,
+    },
+    {
+      key: 'verify',
+      label: 'Verify',
+      icon: <CheckCircleOutlined />,
+      onClick: (record) => handleVerify(record),
+      hidden: (record) => record.status !== 'PENDING',
+    },
+    {
+      key: 'reject',
+      label: 'Reject',
+      icon: <CloseCircleOutlined />,
+      danger: true,
+      onClick: (record) => handleReject(record),
+      hidden: (record) => record.status !== 'PENDING',
     },
   ];
 
@@ -413,9 +388,10 @@ const JoiningLetterPanel = () => {
             }
             styles={{ body: { padding: '0' } }}
           >
-            <Table scroll={{ x: 'max-content' }}
+            <AppTable scroll={{ x: 'max-content' }}
               dataSource={letters}
               columns={columns}
+              actions={rowActions}
               rowKey="applicationId"
               loading={lettersLoading}
               size="small"
@@ -488,7 +464,7 @@ const JoiningLetterPanel = () => {
       </Row>
 
       {/* Verify Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <CheckCircleOutlined className="text-green-500" />
@@ -525,10 +501,10 @@ const JoiningLetterPanel = () => {
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
 
       {/* Reject Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <CloseCircleOutlined className="text-red-500" />
@@ -566,7 +542,7 @@ const JoiningLetterPanel = () => {
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

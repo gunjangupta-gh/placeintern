@@ -7,12 +7,12 @@ import {
   Select,
   Tabs,
   DatePicker,
-  Table,
   Row,
   Col,
   Checkbox,
   Alert,
 } from 'antd';
+import { AppTable } from '../../../components/ui';
 import {
   PhoneOutlined,
   MailOutlined,
@@ -233,7 +233,7 @@ const InstitutionFormTabs = ({
                 { title: 'Last Repair Date', width: 160, render: (_, __, index) => <Form.Item name={[index, 'lastMajorRepairDate']} className="mb-0"><DatePicker className="w-full" format="DD-MM-YYYY" /></Form.Item> },
                 { title: 'Future Expansion', width: 190, render: (_, __, index) => <Form.Item name={[index, 'futureExpansionScope']} className="mb-0"><Input placeholder="Optional" /></Form.Item> },
               ];
-              return <Table size="small" bordered pagination={false} scroll={{ x: 1030 }} columns={tableColumns} dataSource={fields.map((field) => ({ key: field.key }))} />;
+              return <AppTable size="small" bordered pagination={false} scroll={{ x: 1030 }} columns={tableColumns} dataSource={fields.map((field) => ({ key: field.key }))} />;
             }}
           </Form.List>
         </>
@@ -243,7 +243,7 @@ const InstitutionFormTabs = ({
       key: 'other',
       text: 'Other Info',
       children: (
-        <Table
+        <AppTable
           size="small"
           bordered
           pagination={false}
@@ -374,7 +374,7 @@ const InstitutionFormTabs = ({
                       Add Intake Row
                     </Button>
                   </div>
-                  <Table size="small" bordered pagination={false} scroll={{ x: 980 }} columns={tableColumns} dataSource={fields.map((field) => ({ key: field.key }))} />
+                  <AppTable size="small" bordered pagination={false} scroll={{ x: 980 }} columns={tableColumns} dataSource={fields.map((field) => ({ key: field.key }))} />
                 </div>
               );
             }}
@@ -469,7 +469,7 @@ const InstitutionFormTabs = ({
                       Add Staff Row
                     </Button>
                   </div>
-                  <Table size="small" bordered pagination={false} scroll={{ x: 800 }} columns={tableColumns} dataSource={fields.map((field) => ({ key: field.key }))} />
+                  <AppTable size="small" bordered pagination={false} scroll={{ x: 800 }} columns={tableColumns} dataSource={fields.map((field) => ({ key: field.key }))} />
                 </div>
               );
             }}
@@ -551,7 +551,7 @@ const InstitutionFormTabs = ({
                       Add Row
                     </Button>
                   </div>
-                  <Table size="small" bordered pagination={false} scroll={{ x: 840 }} columns={tableColumns} dataSource={fields.map((field) => ({ key: field.key }))} />
+                  <AppTable size="small" bordered pagination={false} scroll={{ x: 840 }} columns={tableColumns} dataSource={fields.map((field) => ({ key: field.key }))} />
                 </div>
               );
             }}

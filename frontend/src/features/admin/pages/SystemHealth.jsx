@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Statistic, Progress, Tag, Table, Alert, Spin, Button, Tooltip } from 'antd';
+import { Card, Row, Col, Statistic, Progress, Tag, Alert, Spin, Button, Tooltip } from 'antd';
+import { AppTable } from '../../../components/ui';
 import {
   CheckCircleOutlined,
   WarningOutlined,
@@ -273,7 +274,7 @@ const SystemHealth = () => {
 
       {/* Services Status */}
       <Card title="Service Status" className="mb-6">
-        <Table scroll={{ x: 'max-content' }}
+        <AppTable scroll={{ x: 'max-content' }}
           dataSource={report?.services || []}
           columns={serviceColumns}
           rowKey="name"
@@ -284,7 +285,7 @@ const SystemHealth = () => {
       {/* Recent Alerts */}
       <Card title="Recent Alerts">
         {alerts?.length > 0 ? (
-          <Table scroll={{ x: 'max-content' }}
+          <AppTable scroll={{ x: 'max-content' }}
             dataSource={alerts}
             columns={alertColumns}
             rowKey="id"

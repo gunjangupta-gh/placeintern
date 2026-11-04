@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Button, Card, Col, Input, Row, Segmented, Statistic, Table, Tag, Tooltip, Typography, message } from 'antd';
+import { Button, Card, Col, Input, Row, Segmented, Statistic, Tag,  Typography, message } from 'antd';
+import { AppTable } from '../../../components/ui';
 import {
   SafetyCertificateOutlined,
   DownloadOutlined,
@@ -209,32 +210,12 @@ const MyCertificatesPage = () => {
         }) : '-'
       ),
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 180,
-      render: (_, record) => (
-        <div className="flex gap-2">
-          <Tooltip title="Preview">
-            <Button
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => handlePreview(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Download">
-            <Button
-              type="primary"
-              size="small"
-              icon={<DownloadOutlined />}
-              onClick={() => handleDownload(record.id, `certificate_${record.certificateNumber || record.id}.pdf`)}
-            >
-              Download
-            </Button>
-          </Tooltip>
-        </div>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'preview', label: 'Preview', icon: <EyeOutlined />, onClick: (r) => handlePreview(r) },
+    { key: 'download', label: 'Download', icon: <DownloadOutlined />, type: 'primary',
+      onClick: (r) => handleDownload(r.id, `certificate_${r.certificateNumber || r.id}.pdf`) },
   ];
 
   const isLoading = certificates.loading && !certificates.list;
@@ -366,10 +347,11 @@ const MyCertificatesPage = () => {
       ) : (
         <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: 0 } }}>
           <div className="custom-scrollbar overflow-x-auto">
-            <Table
+            <AppTable
               className="custom-table"
               rowKey="id"
               columns={columns}
+              actions={rowActions}
               dataSource={filteredCertificates}
               loading={certificates.loading}
               size="small"

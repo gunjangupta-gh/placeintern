@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
-  Table,
   Button,
-  Space,
-  Modal,
+  
   Form,
   Input,
   Segmented,
@@ -13,6 +11,7 @@ import {
   Tooltip,
   Descriptions,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   CheckOutlined,
   CloseOutlined,
@@ -178,45 +177,14 @@ const ApplicationReviewPage = () => {
         </Text>
       ),
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 140,
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="View Details">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => openDetails(record)}
-            />
-          </Tooltip>
-          {isReviewableStatus(record.status) && (
-            <>
-              <Tooltip title="Approve">
-                <Button
-                  type="text"
-                  size="small"
-                  className="text-green-600 hover:text-green-700"
-                  icon={<CheckOutlined />}
-                  onClick={() => openReview(record, 'APPROVED')}
-                />
-              </Tooltip>
-              <Tooltip title="Reject">
-                <Button
-                  type="text"
-                  size="small"
-                  danger
-                  icon={<CloseOutlined />}
-                  onClick={() => openReview(record, 'REJECTED')}
-                />
-              </Tooltip>
-            </>
-          )}
-        </Space>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'view', label: 'View Details', icon: <EyeOutlined />, onClick: (r) => openDetails(r) },
+    { key: 'approve', label: 'Approve', icon: <CheckOutlined className="text-green-600" />, onClick: (r) => openReview(r, 'APPROVED'),
+      hidden: (r) => !isReviewableStatus(r.status) },
+    { key: 'reject', label: 'Reject', icon: <CloseOutlined />, danger: true, onClick: (r) => openReview(r, 'REJECTED'),
+      hidden: (r) => !isReviewableStatus(r.status) },
   ];
 
   return (
@@ -292,10 +260,11 @@ const ApplicationReviewPage = () => {
           </div>
         ) : (
           <div className="custom-scrollbar overflow-x-auto">
-            <Table
+            <AppTable
               className="custom-table"
               dataSource={filteredApplications}
               columns={columns}
+              actions={rowActions}
               rowKey="id"
               loading={loading}
               onChange={handleTableChange}
@@ -319,7 +288,7 @@ const ApplicationReviewPage = () => {
       </Card>
 
       {/* Review Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2">
             <span>Review Application</span>
@@ -363,10 +332,10 @@ const ApplicationReviewPage = () => {
             </div>
           </div>
         )}
-      </Modal>
+      </AppModal>
 
       {/* Details Modal */}
-      <Modal
+      <AppModal
         title="Application Details"
         open={detailsOpen}
         onCancel={() => setDetailsOpen(false)}
@@ -420,7 +389,7 @@ const ApplicationReviewPage = () => {
             )}
           </Descriptions>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { useDispatch } from 'react-redux';
-import { Modal, Table, Tag, Alert, Typography, Button, Upload, Switch, Select, theme } from 'antd';
+import { Tag, Alert, Typography, Button, Upload, Switch, Select, theme } from 'antd';
+import { AppTable, AppModal } from '../../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   ExclamationCircleOutlined,
@@ -343,7 +344,7 @@ const MonthlyReportsOverviewModal = ({ visible, onClose, students = [], monthlyR
 
   return (
     <>
-    <Modal
+    <AppModal
       title={
         <div className="flex items-center justify-between pr-8">
           <Title level={4} style={{ margin: 0 }}>Monthly Reports Overview</Title>
@@ -398,7 +399,7 @@ const MonthlyReportsOverviewModal = ({ visible, onClose, students = [], monthlyR
       )}
 
       {/* Table */}
-      <Table
+      <AppTable
         columns={columns}
         dataSource={tableData}
         pagination={false}
@@ -431,10 +432,10 @@ const MonthlyReportsOverviewModal = ({ visible, onClose, students = [], monthlyR
           <span>Not Applicable</span>
         </div>
       </div>
-    </Modal>
+    </AppModal>
 
     {/* Upload Modal */}
-    <Modal
+    <AppModal
       title={
         <div className="flex items-center gap-2">
           <FileTextOutlined style={{ color: token.colorPrimary }} />
@@ -583,7 +584,7 @@ const MonthlyReportsOverviewModal = ({ visible, onClose, students = [], monthlyR
           style={{ padding: '10px 12px' }}
         />
       </div>
-    </Modal>
+    </AppModal>
     </>
   );
 };

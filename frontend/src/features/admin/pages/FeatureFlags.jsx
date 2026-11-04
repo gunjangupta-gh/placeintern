@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Switch, Tag, Spin, Input, Space, Button, Alert } from 'antd';
+import { Card, Switch, Tag, Spin, Input, Space, Button, Alert } from 'antd';
+import { AppTable } from '../../../components/ui';
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -187,7 +188,7 @@ const FeatureFlags = () => {
 
       {/* Features Table */}
       <Card>
-        <Table scroll={{ x: 'max-content' }}
+        <AppTable scroll={{ x: 'max-content' }}
           dataSource={features}
           columns={columns}
           rowKey="key"

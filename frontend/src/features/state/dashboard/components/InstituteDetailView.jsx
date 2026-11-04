@@ -13,7 +13,6 @@ import {
   Row,
   Col,
   Statistic,
-  Table,
   Tag,
   Button,
   Spin,
@@ -22,7 +21,6 @@ import {
   Typography,
   Space,
   Avatar,
-  Modal,
   Descriptions,
   Badge,
   Input,
@@ -35,7 +33,8 @@ import {
   Alert,
   Result,
   Switch,
-} from "antd";
+} from 'antd';
+import { AppTable, AppModal } from '../../../../components/ui';
 import {
   TeamOutlined,
   BankOutlined,
@@ -963,7 +962,7 @@ const StudentDetailModal = memo(
     const selfId = student.selfIdentifiedData;
 
     return (
-      <Modal
+      <AppModal
         title="Student Details"
         open={visible}
         onCancel={onClose}
@@ -1169,7 +1168,7 @@ const StudentDetailModal = memo(
             </Descriptions.Item>
           </Descriptions>
         </div>
-      </Modal>
+      </AppModal>
     );
   },
 );
@@ -1523,7 +1522,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
 
   const handleRemoveMentor = useCallback(
     (student) => {
-      Modal.confirm({
+      AppModal.confirm({
         title: "Remove Mentor",
         icon: <ExclamationCircleOutlined />,
         content: `Are you sure you want to remove the mentor from ${student.user?.name || student.name}?`,
@@ -1558,7 +1557,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
         return;
       }
 
-      Modal.confirm({
+      AppModal.confirm({
         title: "Activate Student",
         icon: <ExclamationCircleOutlined className="text-success" />,
         content: (
@@ -1631,7 +1630,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
       const action = isActive ? "Deactivate" : "Activate";
       const actionLower = isActive ? "deactivate" : "activate";
 
-      Modal.confirm({
+      AppModal.confirm({
         title: `${action} Faculty`,
         icon: (
           <ExclamationCircleOutlined
@@ -2019,27 +2018,6 @@ const InstituteDetailView = ({ defaultTab = null }) => {
           );
         },
       },
-      {
-        title: "",
-        key: "action",
-        width: 40,
-        fixed: "right",
-        align: "center",
-        render: (_, record) => (
-          <Dropdown
-            menu={{ items: getStudentActionItems(record) }}
-            trigger={["click"]}
-            placement="bottomRight"
-          >
-            <Button
-              type="text"
-              size="small"
-              icon={<MoreOutlined />}
-              className="text-text-tertiary hover:text-primary"
-            />
-          </Dropdown>
-        ),
-      },
     ],
     [getStudentActionItems],
   );
@@ -2247,8 +2225,27 @@ const InstituteDetailView = ({ defaultTab = null }) => {
                           <Spin size="large" />
                         </div>
                       ) : (
-                        <Table
+                        <AppTable
                           columns={studentColumns}
+                          actions={[
+                            {
+                              key: 'more',
+                              render: (record) => (
+                                <Dropdown
+                                  menu={{ items: getStudentActionItems(record) }}
+                                  trigger={["click"]}
+                                  placement="bottomRight"
+                                >
+                                  <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<MoreOutlined />}
+                                    className="text-text-tertiary hover:text-primary"
+                                  />
+                                </Dropdown>
+                              ),
+                            },
+                          ]}
                           dataSource={students.list}
                           rowKey="id"
                           loading={students.loading && students.list.length > 0}
@@ -2339,7 +2336,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
       />
 
       {/* Mentor Assignment Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2 text-primary">
             <TeamOutlined />
@@ -2544,7 +2541,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
               return null;
             })()}
         </div>
-      </Modal>
+      </AppModal>
 
       {/* File Explorer Drawer */}
       <InstitutionFileExplorer

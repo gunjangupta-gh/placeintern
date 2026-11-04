@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Table, Tag, Button, Space, Typography, Tooltip, theme } from 'antd';
+import { Tag,   Typography,  theme } from 'antd';
+import { AppTable } from '../../../../components/ui';
 import InternshipTypeBadge from '../../../../components/common/InternshipTypeBadge';
 import {
   EyeOutlined,
@@ -148,31 +149,16 @@ const ApplicationsTable = ({
         </Tag>
       ),
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 100,
-      fixed: 'right',
-      render: (_, record) => (
-        <Space>
-          <Tooltip title="View Details">
-            <Button
-              type="primary"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => onViewDetails(record)}
-            >
-              View
-            </Button>
-          </Tooltip>
-        </Space>
-      ),
-    },
+  ];
+
+  const rowActions = [
+    { key: 'view', label: 'View Details', icon: <EyeOutlined />, type: 'primary', onClick: (r) => onViewDetails(r) },
   ];
 
   return (
-    <Table
+    <AppTable
       columns={baseColumns}
+      actions={rowActions}
       dataSource={applications}
       rowKey="id"
       loading={loading}

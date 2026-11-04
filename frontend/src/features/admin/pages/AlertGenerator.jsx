@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Card,
-  Table,
   Button,
-  Modal,
   Form,
   Input,
   Select,
@@ -11,7 +9,6 @@ import {
   DatePicker,
   Tag,
   Space,
-  Popconfirm,
   message,
   Spin,
   Row,
@@ -21,6 +18,7 @@ import {
   Tooltip,
   Badge,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   PlusOutlined,
   EditOutlined,
@@ -266,39 +264,18 @@ const AlertGenerator = () => {
       render: (date) => dayjs(date).format('MMM D, YYYY'),
       sorter: (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
     },
+  ];
+
+  const rowActions = [
+    { key: 'view', label: 'View Details', icon: <EyeOutlined />, onClick: (record) => handleViewDetails(record) },
+    { key: 'edit', label: 'Edit', icon: <EditOutlined />, onClick: (record) => handleEdit(record) },
     {
-      title: 'Actions',
-      key: 'actions',
-      width: 150,
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="View Details">
-            <Button
-              type="text"
-              icon={<EyeOutlined />}
-              onClick={() => handleViewDetails(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Edit">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => handleEdit(record)}
-            />
-          </Tooltip>
-          <Popconfirm
-            title="Delete this alert?"
-            description="This action cannot be undone."
-            onConfirm={() => handleDelete(record.id)}
-            okText="Delete"
-            okButtonProps={{ danger: true }}
-          >
-            <Tooltip title="Delete">
-              <Button type="text" danger icon={<DeleteOutlined />} />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
+      key: 'delete',
+      label: 'Delete',
+      icon: <DeleteOutlined />,
+      danger: true,
+      confirm: { title: 'Delete this alert?', description: 'This action cannot be undone.', okText: 'Delete' },
+      onClick: (record) => handleDelete(record.id),
     },
   ];
 
@@ -364,10 +341,11 @@ const AlertGenerator = () => {
 
       {/* Alerts Table */}
       <Card>
-        <Table scroll={{ x: 'max-content' }}
+        <AppTable scroll={{ x: 'max-content' }}
           loading={loading}
           dataSource={alerts}
           columns={columns}
+          actions={rowActions}
           rowKey="id"
           pagination={{
             current: pagination.page,
@@ -381,7 +359,7 @@ const AlertGenerator = () => {
       </Card>
 
       {/* Create/Edit Modal */}
-      <Modal
+      <AppModal
         title={editingAlert ? 'Edit Alert' : 'Create New Alert'}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
@@ -492,10 +470,10 @@ const AlertGenerator = () => {
             </Button>
           </div>
         </Form>
-      </Modal>
+      </AppModal>
 
       {/* Detail Modal */}
-      <Modal
+      <AppModal
         title="Alert Details"
         open={detailModalVisible}
         onCancel={() => setDetailModalVisible(false)}
@@ -578,7 +556,7 @@ const AlertGenerator = () => {
             </div>
           </div>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Table,
   Row,
   Col,
   Tag,
@@ -10,15 +9,14 @@ import {
   Select,
   Space,
   Typography,
-  Modal,
   Spin,
   Empty,
   Alert,
   Tooltip,
   Tabs,
   DatePicker,
-  Popconfirm,
 } from 'antd';
+import { AppTable, AppPopconfirm } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   UndoOutlined,
@@ -80,7 +78,7 @@ const RestoreCenter = () => {
   const [institutionId, setInstitutionId] = useState('');
   const [dateRange, setDateRange] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
   const debouncedSearch = useDebounce(searchInput);
@@ -245,32 +243,6 @@ const RestoreCenter = () => {
               {record.institution?.name || record.institutionName || 'N/A'}
             </Text>
           </div>
-        ),
-      },
-      {
-        title: 'Action',
-        key: 'action',
-        width: 120,
-        fixed: 'right',
-        align: 'center',
-        render: (_, record) => (
-          <Popconfirm
-            title="Restore this item?"
-            description="This will restore the item and its associated data."
-            onConfirm={() => handleRestore(record.id)}
-            okText="Restore"
-            cancelText="Cancel"
-          >
-            <Button
-              type="primary"
-              size="small"
-              icon={<UndoOutlined />}
-              loading={restoring[record.id]}
-              className="rounded-lg"
-            >
-              Restore
-            </Button>
-          </Popconfirm>
         ),
       },
     ];
@@ -554,7 +526,7 @@ const RestoreCenter = () => {
               placeholder={['From Date', 'To Date']}
             />
             {selectedRowKeys.length > 0 && (
-              <Popconfirm
+              <AppPopconfirm
                 title={`Restore ${selectedRowKeys.length} items?`}
                 description="This will restore all selected items and their associated data."
                 onConfirm={handleBulkRestore}
@@ -567,7 +539,7 @@ const RestoreCenter = () => {
                 >
                   Restore Selected ({selectedRowKeys.length})
                 </Button>
-              </Popconfirm>
+              </AppPopconfirm>
             )}
           </div>
         </div>
@@ -599,8 +571,19 @@ const RestoreCenter = () => {
 
         {/* Table */}
         <div className="custom-table">
-          <Table
+          <AppTable
             columns={columns}
+            actions={[
+              {
+                key: 'restore',
+                label: 'Restore',
+                icon: <UndoOutlined />,
+                type: 'primary',
+                loading: (record) => restoring[record.id],
+                confirm: { title: 'Restore this item?', description: 'This will restore the item and its associated data.', okText: 'Restore' },
+                onClick: (record) => handleRestore(record.id),
+              },
+            ]}
             dataSource={items}
             rowKey="id"
             loading={loading}

@@ -1,7 +1,6 @@
 // ReportPreviewModal Component - View report details and download
 import React from "react";
 import {
-  Modal,
   Descriptions,
   Tag,
   Button,
@@ -11,7 +10,8 @@ import {
   Alert,
   Progress,
   Timeline,
-} from "antd";
+} from 'antd';
+import { AppModal } from '../ui';
 import {
   DownloadOutlined,
   FileTextOutlined,
@@ -233,7 +233,7 @@ const ReportPreviewModal = ({
   );
 
   return (
-    <Modal
+    <AppModal
       title={
         <Space>
           {FORMAT_ICONS[report.format] || <FileTextOutlined />}
@@ -331,7 +331,7 @@ const ReportPreviewModal = ({
         Report Timeline
       </Title>
       {renderTimeline()}
-    </Modal>
+    </AppModal>
   );
 };
 

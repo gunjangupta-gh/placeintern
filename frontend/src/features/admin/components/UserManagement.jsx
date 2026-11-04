@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
-  Table,
   Button,
   Modal,
   Form,
@@ -9,13 +8,13 @@ import {
   Select,
   Tag,
   Space,
-  Popconfirm,
   Typography,
   Row,
   Col,
   Statistic,
   Badge,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
 import {
   PlusOutlined,
@@ -48,7 +47,7 @@ const ROLES = [
 const UserManagement = ({ bulkOperationProgress, connected }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
   const [roleStats, setRoleStats] = useState({});
   const [filters, setFilters] = useState({ search: '', role: undefined, isActive: undefined });
   const [modalOpen, setModalOpen] = useState(false);
@@ -269,38 +268,28 @@ const UserManagement = ({ bulkOperationProgress, connected }) => {
       width: 160,
       render: (date) => (date ? new Date(date).toLocaleDateString() : 'Never'),
     },
+  ];
+
+  const rowActions = [
+    { key: 'edit', label: 'Edit', icon: <EditOutlined />, onClick: (record) => handleEdit(record) },
     {
-      title: 'Actions',
-      key: 'actions',
-      width: 200,
-      render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          />
-          <Popconfirm
-            title="Reset password?"
-            description="A new temporary password will be generated."
-            onConfirm={() => handleResetPassword(record.id)}
-            okText="Reset"
-            cancelText="Cancel"
-          >
-            <Button type="link" size="small" icon={<LockOutlined />} />
-          </Popconfirm>
-          <Popconfirm
-            title="Deactivate user?"
-            description="All mentor assignments will be permanently deleted and new assignments will need to be created. Faculty visits will be preserved."
-            onConfirm={() => handleDelete(record.id, false)}
-            okText="Deactivate"
-            cancelText="Cancel"
-          >
-            <Button type="link" size="small" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      ),
+      key: 'reset-password',
+      label: 'Reset password',
+      icon: <LockOutlined />,
+      confirm: { title: 'Reset password?', description: 'A new temporary password will be generated.', okText: 'Reset' },
+      onClick: (record) => handleResetPassword(record.id),
+    },
+    {
+      key: 'deactivate',
+      label: 'Deactivate user',
+      icon: <DeleteOutlined />,
+      danger: true,
+      confirm: {
+        title: 'Deactivate user?',
+        description: 'All mentor assignments will be permanently deleted and new assignments will need to be created. Faculty visits will be preserved.',
+        okText: 'Deactivate',
+      },
+      onClick: (record) => handleDelete(record.id, false),
     },
   ];
 
@@ -416,8 +405,9 @@ const UserManagement = ({ bulkOperationProgress, connected }) => {
 
       {/* Users Table */}
       <Card className="shadow-sm border-border rounded-2xl bg-surface">
-        <Table
+        <AppTable
           columns={columns}
+          actions={rowActions}
           dataSource={users}
           loading={loading}
           rowKey="id"
@@ -433,7 +423,7 @@ const UserManagement = ({ bulkOperationProgress, connected }) => {
       </Card>
 
       {/* Create/Edit User Modal */}
-      <Modal
+      <AppModal
         title={editingUser ? 'Edit User' : 'Create New User'}
         open={modalOpen}
         onCancel={() => {
@@ -511,7 +501,7 @@ const UserManagement = ({ bulkOperationProgress, connected }) => {
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
     </div>
   );
 };

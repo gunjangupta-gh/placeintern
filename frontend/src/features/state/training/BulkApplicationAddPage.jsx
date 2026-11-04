@@ -8,12 +8,12 @@ import {
   Row,
   Space,
   Statistic,
-  Table,
   Tag,
   Typography,
   Upload,
   message,
 } from 'antd';
+import { AppTable } from '../../../components/ui';
 import {
   DownloadOutlined,
   ExclamationCircleOutlined,
@@ -186,7 +186,7 @@ const BulkApplicationAddPage = () => {
           title={<span className="text-sm font-semibold">Processed Rows</span>}
           styles={{ body: { padding: '12px' } }}
         >
-          <Table scroll={{ x: 'max-content' }}
+          <AppTable scroll={{ x: 'max-content' }}
             size="small"
             rowKey="key"
             dataSource={processedRows}
@@ -238,7 +238,7 @@ const BulkApplicationAddPage = () => {
             }
             className="mb-3"
           />
-          <Table scroll={{ x: 'max-content' }}
+          <AppTable scroll={{ x: 'max-content' }}
             size="small"
             rowKey="key"
             dataSource={failedRows}

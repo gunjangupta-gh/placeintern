@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Table, Tag, Typography, Tooltip, Space, Spin, Alert, Progress, Statistic, Row, Col } from 'antd';
+import { Card, Tag, Typography, Tooltip, Space, Spin, Alert, Progress, Statistic, Row, Col } from 'antd';
+import { AppTable } from '../../../components/ui';
 import {
   GlobalOutlined,
   TeamOutlined,
@@ -372,12 +373,12 @@ const MentorOverview = () => {
 
       {/* Table */}
       <Card className="shadow-sm">
-        <Table
+        <AppTable
           columns={columns}
           dataSource={data}
           rowKey="institutionId"
           pagination={{
-            pageSize: 20,
+            pageSize: 10,
             showSizeChanger: true,
             showTotal: (total) => `Total ${total} institutions`,
           }}

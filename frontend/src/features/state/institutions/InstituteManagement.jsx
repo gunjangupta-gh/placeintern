@@ -1,19 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import {
-  Table,
   Button,
   Input,
   Select,
   Typography,
   Tag,
   Space,
-  Modal,
   Tooltip,
   Alert,
-} from 'antd';
-import { toast } from 'react-hot-toast';
+  Row,
+  Col,
+} from "antd";
+import { AppTable, AppModal } from "../../../components/ui";
+import { toast } from "react-hot-toast";
 import {
   BankOutlined,
   SearchOutlined,
@@ -29,10 +30,10 @@ import {
   SafetyCertificateOutlined,
   FilterOutlined,
   ClearOutlined,
-} from '@ant-design/icons';
-import { useDebounce } from 'use-debounce';
+} from "@ant-design/icons";
+import { useDebounce } from "use-debounce";
 
-import InstitutionModal from './InstitutionModal';
+import InstitutionModal from "./InstitutionModal";
 import {
   fetchInstitutions,
   deleteInstitution,
@@ -40,8 +41,8 @@ import {
   selectInstitutionsLoading,
   selectInstitutionsPagination,
   fetchDashboardStats,
-  selectDashboardStats
-} from '../store/stateSlice';
+  selectDashboardStats,
+} from "../store/stateSlice";
 
 const { Text, Title } = Typography;
 
@@ -56,8 +57,8 @@ const InstituteManagement = () => {
   const dashboardStats = useSelector(selectDashboardStats);
 
   // Local State
-  const [searchText, setSearchText] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [showFilters, setShowFilters] = useState(false);
@@ -67,19 +68,21 @@ const InstituteManagement = () => {
   const [editingInstituteId, setEditingInstituteId] = useState(null);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [instituteToDelete, setInstituteToDelete] = useState(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
 
   const [debouncedSearch] = useDebounce(searchText, 500);
 
   // Fetch institutions when filters change
   useEffect(() => {
-    dispatch(fetchInstitutions({
-      page: currentPage,
-      limit: pageSize,
-      search: debouncedSearch,
-      status: statusFilter === 'all' ? undefined : statusFilter,
-    }));
+    dispatch(
+      fetchInstitutions({
+        page: currentPage,
+        limit: pageSize,
+        search: debouncedSearch,
+        status: statusFilter === "all" ? undefined : statusFilter,
+      }),
+    );
   }, [dispatch, currentPage, pageSize, debouncedSearch, statusFilter]);
 
   // Fetch dashboard stats on mount
@@ -88,13 +91,15 @@ const InstituteManagement = () => {
   }, [dispatch]);
 
   const handleRefresh = () => {
-    dispatch(fetchInstitutions({
-      page: currentPage,
-      limit: pageSize,
-      search: debouncedSearch,
-      status: statusFilter === 'all' ? undefined : statusFilter,
-      forceRefresh: true,
-    }));
+    dispatch(
+      fetchInstitutions({
+        page: currentPage,
+        limit: pageSize,
+        search: debouncedSearch,
+        status: statusFilter === "all" ? undefined : statusFilter,
+        forceRefresh: true,
+      }),
+    );
     dispatch(fetchDashboardStats());
   };
 
@@ -114,30 +119,31 @@ const InstituteManagement = () => {
 
   const handleDeleteClick = (record) => {
     setInstituteToDelete(record);
-    setDeleteConfirmText('');
+    setDeleteConfirmText("");
     setDeleteModalVisible(true);
   };
 
   const handleDeleteConfirm = async () => {
-    if (!instituteToDelete || deleteConfirmText !== instituteToDelete.name) return;
+    if (!instituteToDelete || deleteConfirmText !== instituteToDelete.name)
+      return;
 
     setDeleting(true);
     try {
       await dispatch(deleteInstitution(instituteToDelete.id)).unwrap();
-      toast.success('Institution deleted successfully');
+      toast.success("Institution deleted successfully");
       setDeleteModalVisible(false);
       setInstituteToDelete(null);
       handleRefresh();
     } catch (error) {
-      toast.error(error?.message || 'Failed to delete institution');
+      toast.error(error?.message || "Failed to delete institution");
     } finally {
       setDeleting(false);
     }
   };
 
   const clearFilters = () => {
-    setSearchText('');
-    setStatusFilter('all');
+    setSearchText("");
+    setStatusFilter("all");
     setCurrentPage(1);
   };
 
@@ -149,114 +155,139 @@ const InstituteManagement = () => {
   // Table Columns
   const columns = [
     {
-      title: 'Institution',
-      dataIndex: 'name',
-      key: 'name',
+      title: "Institution",
+      dataIndex: "name",
+      key: "name",
       render: (text, record) => (
         <Space>
-          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
-            <BankOutlined />
-          </div>
           <div className="min-w-0">
             <Tooltip title={text}>
               <div className="font-medium truncate max-w-[180px]">{text}</div>
             </Tooltip>
-            <div className="text-gray-500 text-xs truncate max-w-[180px]">{record.code} • {record.address}</div>
+            <div className="text-gray-500 text-xs truncate max-w-[180px]">
+              {record.code} • {record.address}
+            </div>
           </div>
         </Space>
       ),
     },
     {
-      title: 'Type',
-      dataIndex: 'type',
-      key: 'type',
+      title: "Type",
+      dataIndex: "type",
+      key: "type",
       width: 120,
       render: (type) => (
-        <Tag color="blue">
-          {type?.replace('_', ' ') || 'N/A'}
-        </Tag>
+        <Tag color="blue">{type?.replace("_", " ") || "N/A"}</Tag>
       ),
     },
     {
-      title: 'Contact',
-      key: 'contact',
+      title: "Contact",
+      key: "contact",
       width: 220,
       render: (_, record) => (
         <div className="text-sm">
-          {record.contactEmail && <div className="text-gray-600 truncate max-w-[180px]">{record.contactEmail}</div>}
-          {record.contactPhone && <div className="text-gray-500 text-xs">{record.contactPhone}</div>}
+          {record.contactEmail && (
+            <div className="text-gray-600 truncate max-w-[180px]">
+              {record.contactEmail}
+            </div>
+          )}
+          {record.contactPhone && (
+            <div className="text-gray-500 text-xs">{record.contactPhone}</div>
+          )}
         </div>
       ),
     },
     {
-      title: 'Land Info',
-      key: 'landInfo',
+      title: "Land Info",
+      key: "landInfo",
       width: 180,
       render: (_, record) => (
         <div className="text-xs text-gray-500">
-          <div>Land: {record.totalLandAcres != null ? `${record.totalLandAcres} acres` : 'N/A'}</div>
-          <div>Owner: {record.landOwnership ? record.landOwnership.replace(/_/g, ' ') : 'N/A'}</div>
+          <div>
+            Land:{" "}
+            {record.totalLandAcres != null
+              ? `${record.totalLandAcres} acres`
+              : "N/A"}
+          </div>
+          <div>
+            Owner:{" "}
+            {record.landOwnership
+              ? record.landOwnership.replace(/_/g, " ")
+              : "N/A"}
+          </div>
         </div>
       ),
     },
     {
-      title: 'Stats',
-      key: 'stats',
+      title: "Stats",
+      key: "stats",
       width: 120,
       render: (_, record) => (
         <Space size={12}>
           <Tooltip title="Students">
             <span className="text-gray-500">
-              <TeamOutlined /> {record._count?.Student ?? record.studentCount ?? 0}
+              <TeamOutlined />{" "}
+              {record._count?.Student ?? record.studentCount ?? 0}
             </span>
           </Tooltip>
           <Tooltip title="Staff">
             <span className="text-gray-500">
-              <SafetyCertificateOutlined /> {record._count?.users ?? record.facultyCount ?? 0}
+              <SafetyCertificateOutlined />{" "}
+              {record._count?.users ?? record.facultyCount ?? 0}
             </span>
           </Tooltip>
         </Space>
       ),
     },
     {
-      title: 'Status',
-      dataIndex: 'isActive',
-      key: 'isActive',
+      title: "Status",
+      dataIndex: "isActive",
+      key: "isActive",
       width: 100,
       render: (isActive) => (
-        <Tag color={isActive ? 'green' : 'red'}>
-          {isActive ? 'Active' : 'Inactive'}
+        <Tag color={isActive ? "green" : "red"}>
+          {isActive ? "Active" : "Inactive"}
         </Tag>
-      ),
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 120,
-      render: (_, record) => (
-        <Space>
-          <Button type="text" icon={<EyeOutlined />} onClick={() => handleViewInstitution(record)} />
-          <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record.id)} />
-          <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDeleteClick(record)} />
-        </Space>
       ),
     },
   ];
 
-  const hasActiveFilters = searchText || statusFilter !== 'all';
+  const hasActiveFilters = searchText || statusFilter !== "all";
 
   return (
     <div style={{ padding: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-        <Title level={3} style={{ margin: 0 }}>Institution Management</Title>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 12,
+          marginBottom: 16,
+        }}
+      >
+        <Title level={3} style={{ margin: 0 }}>
+          Institution Management
+        </Title>
         <Space>
-          <Button icon={<FilterOutlined />} onClick={() => setShowFilters(!showFilters)}>
+          <Button
+            icon={<FilterOutlined />}
+            onClick={() => setShowFilters(!showFilters)}
+          >
             Filters
           </Button>
-          <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={loading}>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={handleRefresh}
+            loading={loading}
+          >
             Refresh
           </Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={openCreateModal}
+          >
             Add Institute
           </Button>
         </Space>
@@ -286,11 +317,11 @@ const InstituteManagement = () => {
                     setStatusFilter(value);
                     setCurrentPage(1);
                   }}
-                  style={{ width: '100%' }}
+                  style={{ width: "100%" }}
                   options={[
-                    { value: 'all', label: 'All Status' },
-                    { value: 'active', label: 'Active' },
-                    { value: 'inactive', label: 'Inactive' },
+                    { value: "all", label: "All Status" },
+                    { value: "active", label: "Active" },
+                    { value: "inactive", label: "Inactive" },
                   ]}
                 />
               </Col>
@@ -306,12 +337,33 @@ const InstituteManagement = () => {
         )}
 
         <div className="custom-table">
-          <Table
+          <AppTable
             columns={columns}
+            actions={[
+              {
+                key: "view",
+                label: "View",
+                icon: <EyeOutlined />,
+                onClick: (record) => handleViewInstitution(record),
+              },
+              {
+                key: "edit",
+                label: "Edit",
+                icon: <EditOutlined />,
+                onClick: (record) => openEditModal(record.id),
+              },
+              {
+                key: "delete",
+                label: "Delete",
+                icon: <DeleteOutlined />,
+                danger: true,
+                onClick: (record) => handleDeleteClick(record),
+              },
+            ]}
             dataSource={institutions}
             rowKey="id"
             loading={loading}
-            scroll={{ x: 'max-content' }}
+            scroll={{ x: "max-content" }}
             size="small"
             pagination={{
               current: currentPage,
@@ -323,8 +375,9 @@ const InstituteManagement = () => {
               },
               showSizeChanger: true,
               showQuickJumper: true,
-              pageSizeOptions: ['10', '20', '50', '100'],
-              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} institutes`,
+              pageSizeOptions: ["10", "20", "50", "100"],
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} of ${total} institutes`,
             }}
           />
         </div>
@@ -339,7 +392,7 @@ const InstituteManagement = () => {
       />
 
       {/* Delete Confirmation Modal */}
-      <Modal
+      <AppModal
         title={
           <Space className="text-red-600">
             <DeleteOutlined />
@@ -385,12 +438,17 @@ const InstituteManagement = () => {
                 placeholder="Type institute name..."
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
-                status={deleteConfirmText && deleteConfirmText !== instituteToDelete?.name ? "error" : ""}
+                status={
+                  deleteConfirmText &&
+                  deleteConfirmText !== instituteToDelete?.name
+                    ? "error"
+                    : ""
+                }
               />
             </div>
           </div>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

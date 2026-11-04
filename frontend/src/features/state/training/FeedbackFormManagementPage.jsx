@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Button, Card, Col, Form, Input, Modal, Row, Select, Switch, Table, Tag, Tooltip, Typography, message } from 'antd';
-import { FileTextOutlined, PlusOutlined, CheckCircleOutlined, ArrowUpOutlined, ArrowDownOutlined, EditOutlined, DeleteOutlined, EyeOutlined, MinusCircleOutlined, PlusCircleOutlined, SearchOutlined } from '@ant-design/icons';
+import { Button, Card, Col, Form, Input, Row, Select, Switch, Tag, Typography, message } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
+import { FileTextOutlined, PlusOutlined, CheckCircleOutlined, ArrowUpOutlined, ArrowDownOutlined, EditOutlined, DeleteOutlined, EyeOutlined, MinusCircleOutlined, PlusCircleOutlined, SearchOutlined, SendOutlined } from '@ant-design/icons';
 import InputNumber from 'antd/es/input-number';
 import TrainingEmptyState from '../../../components/training/TrainingEmptyState';
 import { TrainingStatSkeleton, TableRowSkeleton } from '../../../components/training/skeletons/TrainingSkeletons';
@@ -160,25 +161,6 @@ const FeedbackFormManagementPage = () => {
           <span className="text-xs text-slate-600">
             {value ? new Date(value).toLocaleDateString() : '-'}
           </span>
-        ),
-      },
-      {
-        title: 'Action',
-        key: 'action',
-        width: 80,
-        render: (_, record) => (
-          <Button
-            size="small"
-            type="link"
-            icon={<EyeOutlined />}
-            onClick={() => {
-              setSelectedResponse(record);
-              setResponseDetailOpen(true);
-            }}
-            className="text-xs"
-          >
-            View
-          </Button>
         ),
       },
     ],
@@ -401,45 +383,6 @@ const FeedbackFormManagementPage = () => {
         ? <Tag color="green" icon={<CheckCircleOutlined />} className="text-xs">Published</Tag>
         : <Tag color="orange" className="text-xs">Draft</Tag>,
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 220,
-      render: (_, record) => (
-        <div className="flex gap-2">
-          <Tooltip title="View Responses">
-            <Button
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => handleViewResponses(record)}
-            />
-          </Tooltip>
-          <Button
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => openEdit(record)}
-          >
-            Edit
-          </Button>
-          {!record.isPublished && (
-            <Button
-              size="small"
-              type="primary"
-              ghost
-              onClick={() => handlePublish(record.id)}
-            >
-              Publish
-            </Button>
-          )}
-          <Button
-            size="small"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.id)}
-          />
-        </div>
-      ),
-    },
   ];
 
   const stats = useMemo(() => {
@@ -515,10 +458,16 @@ const FeedbackFormManagementPage = () => {
           <TableRowSkeleton rows={5} columns={4} />
         ) : filteredForms.length > 0 ? (
           <div className="custom-scrollbar overflow-x-auto">
-            <Table
+            <AppTable
               className="custom-table"
               rowKey="id"
               columns={columns}
+              actions={[
+                { key: 'responses', label: 'View Responses', icon: <EyeOutlined />, onClick: (record) => handleViewResponses(record) },
+                { key: 'edit', label: 'Edit', icon: <EditOutlined />, onClick: (record) => openEdit(record) },
+                { key: 'publish', label: 'Publish', icon: <SendOutlined />, type: 'primary', hidden: (record) => !!record.isPublished, onClick: (record) => handlePublish(record.id) },
+                { key: 'delete', label: 'Delete', icon: <DeleteOutlined />, danger: true, onClick: (record) => handleDelete(record.id), confirm: { title: 'Delete this feedback form?', description: 'This action cannot be undone.' } },
+              ]}
               dataSource={filteredForms}
               loading={feedbackForms.loading}
               size="small"
@@ -551,7 +500,7 @@ const FeedbackFormManagementPage = () => {
       </Card>
 
       {/* Create/Edit Modal */}
-      <Modal
+      <AppModal
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
         footer={null}
@@ -770,10 +719,10 @@ const FeedbackFormManagementPage = () => {
             </div>
           </Form>
         </div>
-      </Modal>
+      </AppModal>
 
       {/* Responses Modal */}
-      <Modal
+      <AppModal
         open={responsesModalOpen}
         onCancel={() => setResponsesModalOpen(false)}
         footer={null}
@@ -825,10 +774,21 @@ const FeedbackFormManagementPage = () => {
                 </div>
               ) : responsesData.length > 0 ? (
                 <div className="custom-scrollbar overflow-x-auto">
-                  <Table
+                  <AppTable
                     className="custom-table"
                     rowKey="id"
                     columns={responseColumns}
+                    actions={[
+                      {
+                        key: 'view',
+                        label: 'View',
+                        icon: <EyeOutlined />,
+                        onClick: (record) => {
+                          setSelectedResponse(record);
+                          setResponseDetailOpen(true);
+                        },
+                      },
+                    ]}
                     dataSource={responsesData}
                     pagination={{
                       current: responsesPagination.current,
@@ -859,10 +819,10 @@ const FeedbackFormManagementPage = () => {
             </div>
           </>
         )}
-      </Modal>
+      </AppModal>
 
       {/* Response Detail Modal */}
-      <Modal
+      <AppModal
         open={responseDetailOpen}
         onCancel={() => setResponseDetailOpen(false)}
         footer={null}
@@ -958,7 +918,7 @@ const FeedbackFormManagementPage = () => {
             </div>
           </>
         )}
-      </Modal>
+      </AppModal>
     </div>
   );
 };

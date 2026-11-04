@@ -1,6 +1,7 @@
 // === src/components/NoticeFormModal.jsx ===
 import React, { useEffect } from "react";
-import { Modal, Form, Input, message } from "antd";
+import { Form, Input, message } from 'antd';
+import { AppModal } from '../ui';
 import API from "../../services/api";
 import { toast } from "react-hot-toast";
 
@@ -45,7 +46,7 @@ const NoticeFormModal = ({ open, onClose, onSuccess, editingNotice }) => {
   };
 
   return (
-    <Modal
+    <AppModal
       title={editingNotice ? "Edit Notice" : "Add Notice"}
       open={open}
       onCancel={onClose}
@@ -69,7 +70,7 @@ const NoticeFormModal = ({ open, onClose, onSuccess, editingNotice }) => {
           <Input.TextArea rows={4} />
         </Form.Item>
       </Form>
-    </Modal>
+    </AppModal>
   );
 };
 

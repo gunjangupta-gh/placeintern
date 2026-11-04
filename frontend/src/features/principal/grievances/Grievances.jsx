@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card,
-  Table,
   Tag,
   Button,
   Space,
   Typography,
   Input,
-  Modal,
   Form,
   Select,
   Tabs,
@@ -20,6 +18,7 @@ import {
   Alert,
   Steps,
 } from 'antd';
+import { AppTable, AppModal } from '../../../components/ui';
 import {
   AlertOutlined,
   SearchOutlined,
@@ -478,44 +477,28 @@ const Grievances = () => {
         </Tooltip>
       ),
     },
+  ];
+
+  const rowActions = [
     {
-      title: 'Actions',
-      key: 'actions',
-      width: 100,
-      fixed: 'right',
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="View Details">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => handleViewDetails(record)}
-            />
-          </Tooltip>
-          {!['RESOLVED', 'CLOSED', 'REJECTED'].includes(record.status) && (
-            <>
-              <Tooltip title="Respond">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<MessageOutlined />}
-                  onClick={() => handleRespond(record)}
-                />
-              </Tooltip>
-              <Tooltip title="Escalate">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<ArrowUpOutlined />}
-                  onClick={() => handleEscalate(record)}
-                  className="text-warning"
-                />
-              </Tooltip>
-            </>
-          )}
-        </Space>
-      ),
+      key: 'view',
+      label: 'View Details',
+      icon: <EyeOutlined />,
+      onClick: (record) => handleViewDetails(record),
+    },
+    {
+      key: 'respond',
+      label: 'Respond',
+      icon: <MessageOutlined />,
+      onClick: (record) => handleRespond(record),
+      hidden: (record) => ['RESOLVED', 'CLOSED', 'REJECTED'].includes(record.status),
+    },
+    {
+      key: 'escalate',
+      label: 'Escalate',
+      icon: <ArrowUpOutlined />,
+      onClick: (record) => handleEscalate(record),
+      hidden: (record) => ['RESOLVED', 'CLOSED', 'REJECTED'].includes(record.status),
     },
   ];
 
@@ -696,8 +679,9 @@ const Grievances = () => {
           items={tabItems}
           className="!px-4 pt-3"
         />
-        <Table
+        <AppTable
           columns={baseColumns}
+          actions={rowActions}
           dataSource={filteredGrievances}
           rowKey="id"
           loading={loading}
@@ -719,7 +703,7 @@ const Grievances = () => {
       </Card>
 
       {/* Details Modal */}
-      <Modal
+      <AppModal
         title={
           <div className="flex items-center gap-2 text-text-primary">
             <FileTextOutlined className="text-primary" />
@@ -872,10 +856,10 @@ const Grievances = () => {
             )}
           </div>
         )}
-      </Modal>
+      </AppModal>
 
       {/* Respond Modal */}
-      <Modal
+      <AppModal
         title={<><MessageOutlined className="text-success mr-2" />Respond to Grievance</>}
         open={respondVisible}
         onCancel={() => setRespondVisible(false)}
@@ -911,10 +895,10 @@ const Grievances = () => {
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
 
       {/* Escalate Modal */}
-      <Modal
+      <AppModal
         title={<><ArrowUpOutlined className="text-warning mr-2" />Escalate Grievance</>}
         open={escalateVisible}
         onCancel={() => setEscalateVisible(false)}
@@ -945,10 +929,10 @@ const Grievances = () => {
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
 
       {/* Assign Modal */}
-      <Modal
+      <AppModal
         title={<><UserOutlined className="text-primary mr-2" />Assign Grievance</>}
         open={assignVisible}
         onCancel={() => setAssignVisible(false)}
@@ -987,7 +971,7 @@ const Grievances = () => {
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
     </div>
   );
 };
