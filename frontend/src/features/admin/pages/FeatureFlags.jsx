@@ -187,7 +187,7 @@ const FeatureFlags = () => {
 
       {/* Features Table */}
       <Card>
-        <Table
+        <Table scroll={{ x: 'max-content' }}
           dataSource={features}
           columns={columns}
           rowKey="key"

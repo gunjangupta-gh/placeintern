@@ -275,14 +275,14 @@ const InternshipReportBulkUpload = ({ onUploaded }) => {
           {validRows.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold mb-2 text-green-600">Valid Records ({validRows.length})</h3>
-              <Table columns={validColumns} dataSource={validRows} rowKey="rowNumber" size="small" pagination={{ pageSize: 5 }} />
+              <Table scroll={{ x: 'max-content' }} columns={validColumns} dataSource={validRows} rowKey="rowNumber" size="small" pagination={{ pageSize: 5 }} />
             </div>
           )}
 
           {invalidRows.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold mb-2 text-red-600">Invalid Records ({invalidRows.length})</h3>
-              <Table columns={invalidColumns} dataSource={invalidRows} rowKey="rowNumber" size="small" pagination={{ pageSize: 5 }} />
+              <Table scroll={{ x: 'max-content' }} columns={invalidColumns} dataSource={invalidRows} rowKey="rowNumber" size="small" pagination={{ pageSize: 5 }} />
             </div>
           )}
 
@@ -351,7 +351,7 @@ const InternshipReportBulkUpload = ({ onUploaded }) => {
               <h3 className="text-lg font-semibold mb-2 text-green-600">
                 <CheckCircleOutlined /> Successfully Created ({uploadResult.successRecords.length})
               </h3>
-              <Table
+              <Table scroll={{ x: 'max-content' }}
                 columns={[
                   { title: 'Row', dataIndex: 'row', key: 'row', width: 60 },
                   { title: 'Student', dataIndex: 'student', key: 'student', render: (t) => t || '-' },
@@ -370,7 +370,7 @@ const InternshipReportBulkUpload = ({ onUploaded }) => {
               <h3 className="text-lg font-semibold mb-2 text-red-600">
                 <CloseCircleOutlined /> Failed Records ({uploadResult.failedRecords.length})
               </h3>
-              <Table
+              <Table scroll={{ x: 'max-content' }}
                 columns={[
                   { title: 'Row', dataIndex: 'row', key: 'row', width: 60 },
                   { title: 'Student', dataIndex: 'student', key: 'student', render: (t) => t || '-' },

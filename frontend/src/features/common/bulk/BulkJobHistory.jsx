@@ -409,7 +409,7 @@ const BulkJobHistory = () => {
           />
         </Space>
 
-        <Table
+        <Table scroll={{ x: 'max-content' }}
           columns={columns}
           dataSource={jobs}
           rowKey="id"
@@ -526,7 +526,7 @@ const BulkJobHistory = () => {
                 <h4 className="font-semibold text-red-600 mb-2">
                   Sample Errors (first 5):
                 </h4>
-                <Table
+                <Table scroll={{ x: 'max-content' }}
                   dataSource={selectedJob.errorReport.slice(0, 5)}
                   columns={[
                     { title: 'Row', dataIndex: 'row', key: 'row', width: 60 },

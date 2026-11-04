@@ -459,7 +459,7 @@ const StaffList = () => {
         </div>
 
         {/* Table */}
-        <Table
+        <Table scroll={{ x: 'max-content' }}
           columns={columns}
           dataSource={list}
           loading={loading}

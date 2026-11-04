@@ -364,7 +364,7 @@ const AlertGenerator = () => {
 
       {/* Alerts Table */}
       <Card>
-        <Table
+        <Table scroll={{ x: 'max-content' }}
           loading={loading}
           dataSource={alerts}
           columns={columns}

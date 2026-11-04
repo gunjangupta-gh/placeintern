@@ -55,7 +55,7 @@ const JoiningLetterTracker = ({ selectedMonth }) => {
 
   if (loading) {
     return (
-      <Card className="rounded-xl border border-border/50 shadow-sm bg-background">
+      <Card className="rounded-xl border border-border shadow-sm bg-background">
         <div className="flex justify-center items-center h-16">
           <Spin />
         </div>
@@ -77,7 +77,7 @@ const JoiningLetterTracker = ({ selectedMonth }) => {
 
   return (
     <Card
-      className="rounded-xl border border-border/50 shadow-sm bg-background"
+      className="rounded-xl border border-border shadow-sm bg-background"
       styles={{ body: { padding: '0' } }}
     >
       <div className="flex items-center justify-between p-4 border-b border-border/50">

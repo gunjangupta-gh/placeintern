@@ -263,7 +263,7 @@ const CoordinatorDashboard = () => {
       {/* Pending Actions Summary */}
       {pending.faculty && pending.faculty.length > 0 && (
         <Card title="Faculty with Pending Actions" className="mb-6">
-          <Table
+          <Table scroll={{ x: 'max-content' }}
             dataSource={pending.faculty.slice(0, 5)}
             rowKey={(record) => record.user.id}
             pagination={false}

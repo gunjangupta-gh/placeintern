@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -17,6 +17,17 @@ import {
   MinLength,
 } from 'class-validator';
 import { ApplicationStatus } from '../../../generated/prisma/client';
+import { STIPEND_FORMAT_MESSAGE, STIPEND_FORMAT_RE, normalizeStipend } from '../stipend.util';
+
+/** A saved stipend is "10,000": a plain amount typed by the user is formatted, anything else is left as is and fails the format check. */
+const StipendField = () =>
+  Transform(({ value }) => {
+    if (typeof value !== 'string' && typeof value !== 'number') return value;
+    const n = normalizeStipend(value);
+    return typeof n === 'string' ? n : n === null ? '' : value;
+  });
+const STIPEND_OK = new RegExp('^$|' + STIPEND_FORMAT_RE.source);
+const STIPEND_RULE = { message: STIPEND_FORMAT_MESSAGE };
 
 export class PageQueryDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
@@ -60,8 +71,8 @@ export class BranchSeatDto {
   @Type(() => Number) @IsInt() @Min(1) @Max(500) positions!: number;
   /** Applications this branch accepts (waiting list). Omit / null = same as positions. */
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(2000) maxApplications?: number | null;
-  /** Stipend for this branch (e.g. "8000 per month"). Empty / null = the opportunity stipend. */
-  @IsOptional() @IsString() @MaxLength(50) stipend?: string | null;
+  /** Stipend for this branch, an amount like 8,000. Empty / null = the opportunity stipend. */
+  @IsOptional() @StipendField() @Matches(STIPEND_OK, STIPEND_RULE) @MaxLength(50) stipend?: string | null;
 }
 
 /** Add one opportunity through the form (the Excel upload is the bulk way). */
@@ -73,7 +84,7 @@ export class CreateOpportunityDto {
   @IsOptional() @IsString() @MaxLength(80) district?: string;
   @Type(() => Number) @IsInt() @Min(1) @Max(24) durationMonths!: number;
   /** Default stipend; a branch can override it. */
-  @IsOptional() @IsString() @MaxLength(50) stipend?: string;
+  @IsOptional() @StipendField() @Matches(STIPEND_OK, STIPEND_RULE) @MaxLength(50) stipend?: string;
   @Matches(DATE_RE, { message: 'startDate must be yyyy-mm-dd' }) startDate!: string;
   @Matches(DATE_RE, { message: 'applicationDeadline must be yyyy-mm-dd' }) applicationDeadline!: string;
   @IsOptional() @IsIn(['DRAFT', 'OPEN']) status?: string;
@@ -96,7 +107,7 @@ export class UpdateOpportunityDto {
   @IsOptional() @IsString() @MaxLength(2000) description?: string;
   @IsOptional() @IsString() @MaxLength(80) district?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(24) durationMonths?: number;
-  @IsOptional() @IsString() @MaxLength(50) stipend?: string;
+  @IsOptional() @StipendField() @Matches(STIPEND_OK, STIPEND_RULE) @MaxLength(50) stipend?: string;
   @IsOptional() @Matches(DATE_RE, { message: 'startDate must be yyyy-mm-dd' }) startDate?: string;
   @IsOptional() @Matches(DATE_RE, { message: 'applicationDeadline must be yyyy-mm-dd' }) applicationDeadline?: string;
   @IsOptional() @IsIn(['DRAFT', 'OPEN', 'CLOSED']) status?: string;

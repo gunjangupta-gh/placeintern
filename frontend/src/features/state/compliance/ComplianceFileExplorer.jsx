@@ -501,7 +501,7 @@ const ComplianceFileExplorer = ({ institutionId, institutionName }) => {
             rowKey="id"
             size="small"
             pagination={paginationConfig}
-            scroll={{ y: 'calc(100vh - 480px)' }}
+            scroll={{ x: 'max-content', y: 'calc(100vh - 480px)' }}
             locale={{
               emptyText: (
                 <Empty

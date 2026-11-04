@@ -104,7 +104,7 @@ const SectionHeader = ({ children }) => (
 // Performance card component
 const PerformanceCard = ({ title, icon, topPerformers, bottomPerformers, loading, renderRow }) => (
   <Card
-    className="rounded-xl border border-border/50 shadow-sm bg-background h-full"
+    className="rounded-xl border border-border shadow-sm bg-background h-full"
     styles={{ body: { padding: '0' } }}
     loading={loading}
   >

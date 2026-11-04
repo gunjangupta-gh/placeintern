@@ -167,7 +167,7 @@ const AdminAnalytics = () => {
         </Col>
         <Col xs={24} md={8}>
           <Card title="Logins by Role">
-            <Table
+            <Table scroll={{ x: 'max-content' }}
               dataSource={loginAnalytics?.byRole || []}
               columns={roleColumns}
               rowKey="role"
@@ -178,7 +178,7 @@ const AdminAnalytics = () => {
         </Col>
         <Col xs={24} md={8}>
           <Card title="Peak Hours">
-            <Table
+            <Table scroll={{ x: 'max-content' }}
               dataSource={(loginAnalytics?.byHour || []).slice(0, 5)}
               columns={hourlyColumns}
               rowKey="hour"

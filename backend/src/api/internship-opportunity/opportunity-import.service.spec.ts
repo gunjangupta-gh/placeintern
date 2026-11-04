@@ -125,8 +125,8 @@ describe('OpportunityImportService', () => {
       const res = await service.validate(Buffer.from(await wb.xlsx.writeBuffer()));
       expect(res.errors).toEqual([]);
       expect(res.rows[0].branchSeats.map((b) => [b.code, b.positions, b.maxApplications, b.stipend])).toEqual([
-        ['ME', 5, 12, '8000 per month'],
-        ['EE', 3, null, '7000 per month'],
+        ['ME', 5, 12, '8,000'],
+        ['EE', 3, null, '7,000'],
       ]);
     });
   });
@@ -212,10 +212,22 @@ describe('OpportunityImportService', () => {
         [{ branchStipends: 'CS:8000', branches: 'ME' }, 'unknown or ambiguous branch "CS"'],
         [{ branchStipends: 'EE:8000', branches: 'ME' }, 'EE is not listed in Eligible Branches'],
         [{ branchStipends: 'ME:1, ME:2', branches: 'ME' }, 'ME is listed more than once'],
+        [{ branchStipends: 'ME:8000 per month', branches: 'ME' }, 'ME must be an amount in rupees such as 8000 or 8,000'],
       ])('rejects bad Branch-wise Stipend input %#', async (over: any, msg) => {
         const { res, errors } = await one({ positions: 4, ...over });
         expect(res.validRows).toBe(0);
         expect(errors).toContain(msg);
+      });
+
+      it.each([['8000 per month'], ['10K'], ['ten thousand'], ['-5']])('rejects stipend %p', async (stipend) => {
+        const { res, errors } = await one({ stipend });
+        expect(res.validRows).toBe(0);
+        expect(errors).toContain('Stipend must be an amount in rupees such as 10000 or 10,000');
+      });
+
+      it('saves the stipend as 10,000', async () => {
+        const { res } = await one({ stipend: '10000' });
+        expect(res.rows[0].stipend).toBe('10,000');
       });
 
       it('treats a limit equal to the positions as "no extra limit"', async () => {
@@ -392,12 +404,12 @@ describe('OpportunityImportService', () => {
     it('saves branch-wise stipends from the dedicated column', async () => {
       const tx = mockTx();
       await service.confirm(
-        await fileWith([good({ positions: '', branches: 'ME:6, EE:4', branchStipends: 'ME:8000 per month, EE:7000' })]),
+        await fileWith([good({ positions: '', branches: 'ME:6, EE:4', branchStipends: 'ME:8000, EE:7,000' })]),
         actor,
         false,
       );
       const data = tx.internshipOpportunity.create.mock.calls[0][0].data;
-      expect(data.branches.create.map((b: any) => b.stipend)).toEqual(['8000 per month', '7000']);
+      expect(data.branches.create.map((b: any) => b.stipend)).toEqual(['8,000', '7,000']);
     });
 
     it('rejects when no valid rows remain', async () => {

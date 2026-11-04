@@ -400,7 +400,7 @@ const MasterData = () => {
             </Button>
           </div>
           <div className="custom-table">
-            <Table
+            <Table scroll={{ x: 'max-content' }}
               columns={batchColumns}
               dataSource={batches}
               rowKey="id"
@@ -432,7 +432,7 @@ const MasterData = () => {
             </Button>
           </div>
           <div className="custom-table">
-            <Table
+            <Table scroll={{ x: 'max-content' }}
               columns={branchColumns}
               dataSource={branches}
               rowKey="id"
@@ -455,7 +455,7 @@ const MasterData = () => {
       children: (
         <div>
           <div className="custom-table">
-            <Table
+            <Table scroll={{ x: 'max-content' }}
               columns={designationColumns}
               dataSource={designations}
               rowKey="key"

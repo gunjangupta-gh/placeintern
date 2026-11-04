@@ -600,7 +600,7 @@ const CompaniesOverview = () => {
 
                       {/* Students Table */}
                       <div className="border-t border-border/60 overflow-hidden mx-0">
-                        <Table
+                        <Table scroll={{ x: 'max-content' }}
                           dataSource={institution.students || []}
                           pagination={{ pageSize: 5, showSizeChanger: false }}
                           size="small"

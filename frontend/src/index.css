@@ -116,10 +116,10 @@ body {
 
 @keyframes today-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 3px rgba(var(--color-primary), 0.05), 0 4px 12px rgba(var(--color-primary), 0.1);
+    box-shadow: 0 0 0 3px rgb(var(--color-primary) / 0.05), 0 4px 12px rgb(var(--color-primary) / 0.1);
   }
   50% {
-    box-shadow: 0 0 0 5px rgba(var(--color-primary), 0.08), 0 4px 16px rgba(var(--color-primary), 0.15);
+    box-shadow: 0 0 0 5px rgb(var(--color-primary) / 0.08), 0 4px 16px rgb(var(--color-primary) / 0.15);
   }
 }
 
@@ -144,7 +144,7 @@ body {
 }
 
 .training-calendar {
-  background: linear-gradient(135deg, rgba(var(--color-primary), 0.02) 0%, rgba(var(--color-primary), 0.05) 100%);
+  background: linear-gradient(135deg, rgb(var(--color-primary) / 0.02) 0%, rgb(var(--color-primary) / 0.05) 100%);
   border-radius: 16px;
   overflow: hidden;
   animation: calendar-fade-in 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -161,7 +161,7 @@ body {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(var(--color-primary), 0.03),
+    rgb(var(--color-primary) / 0.03),
     transparent
   );
   transition: opacity 0.3s ease;
@@ -176,8 +176,8 @@ body {
 
 .training-calendar .ant-picker-calendar-header {
   padding: 20px 24px;
-  border-bottom: 1px solid rgba(var(--color-border), 0.6);
-  background: rgba(var(--color-background), 0.8);
+  border-bottom: 1px solid rgb(var(--color-border) / 0.6);
+  background: rgb(var(--color-background) / 0.8);
   backdrop-filter: blur(10px);
   position: sticky;
   top: 0;
@@ -185,28 +185,28 @@ body {
 }
 
 .training-calendar .ant-picker-calendar-header .ant-select-selector {
-  border: 1px solid rgba(var(--color-border), 0.8);
+  border: 1px solid rgb(var(--color-border) / 0.8);
   border-radius: 10px;
   font-weight: 600;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: rgba(var(--color-background), 0.9);
+  background: rgb(var(--color-background) / 0.9);
 }
 
 .training-calendar .ant-picker-calendar-header .ant-select-selector:hover {
-  border-color: rgba(var(--color-primary), 0.5);
-  box-shadow: 0 0 0 3px rgba(var(--color-primary), 0.08);
+  border-color: rgb(var(--color-primary) / 0.5);
+  box-shadow: 0 0 0 3px rgb(var(--color-primary) / 0.08);
 }
 
 .training-calendar .ant-picker-calendar-header button {
   border-radius: 10px;
-  border: 1px solid rgba(var(--color-border), 0.6);
+  border: 1px solid rgb(var(--color-border) / 0.6);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: rgba(var(--color-background), 0.9);
+  background: rgb(var(--color-background) / 0.9);
 }
 
 .training-calendar .ant-picker-calendar-header button:hover {
-  border-color: rgba(var(--color-primary), 0.5);
-  background: rgba(var(--color-primary), 0.08);
+  border-color: rgb(var(--color-primary) / 0.5);
+  background: rgb(var(--color-primary) / 0.08);
   transform: translateY(-1px);
 }
 
@@ -215,8 +215,8 @@ body {
 }
 
 .training-calendar .ant-picker-calendar-header .ant-select-focused .ant-select-selector {
-  border-color: rgba(var(--color-primary), 0.6);
-  box-shadow: 0 0 0 3px rgba(var(--color-primary), 0.12);
+  border-color: rgb(var(--color-primary) / 0.6);
+  box-shadow: 0 0 0 3px rgb(var(--color-primary) / 0.12);
 }
 
 .training-calendar .ant-picker-calendar-date {
@@ -228,10 +228,10 @@ body {
 }
 
 .training-calendar .ant-picker-calendar-date:hover {
-  background: linear-gradient(135deg, rgba(var(--color-primary), 0.05) 0%, rgba(var(--color-primary), 0.08) 100%);
+  background: linear-gradient(135deg, rgb(var(--color-primary) / 0.05) 0%, rgb(var(--color-primary) / 0.08) 100%);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(var(--color-primary), 0.15);
-  border-color: rgba(var(--color-primary), 0.2);
+  box-shadow: 0 4px 12px rgb(var(--color-primary) / 0.15);
+  border-color: rgb(var(--color-primary) / 0.2);
 }
 
 .training-calendar .ant-picker-calendar-date-content {
@@ -240,9 +240,9 @@ body {
 }
 
 .training-calendar .ant-picker-calendar-date-today {
-  border: 2px solid rgba(var(--color-primary), 0.4);
-  background: linear-gradient(135deg, rgba(var(--color-primary), 0.08) 0%, rgba(var(--color-primary), 0.12) 100%);
-  box-shadow: 0 0 0 3px rgba(var(--color-primary), 0.05), 0 4px 12px rgba(var(--color-primary), 0.1);
+  border: 2px solid rgb(var(--color-primary) / 0.4);
+  background: linear-gradient(135deg, rgb(var(--color-primary) / 0.08) 0%, rgb(var(--color-primary) / 0.12) 100%);
+  box-shadow: 0 0 0 3px rgb(var(--color-primary) / 0.05), 0 4px 12px rgb(var(--color-primary) / 0.1);
   position: relative;
   animation: today-pulse 2s ease-in-out infinite;
 }
@@ -255,7 +255,7 @@ body {
   bottom: -2px;
   left: -2px;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(var(--color-primary), 0.15), rgba(var(--color-primary-600), 0.15));
+  background: linear-gradient(135deg, rgb(var(--color-primary) / 0.15), rgb(var(--color-primary-600) / 0.15));
   z-index: -1;
   opacity: 0;
   transition: opacity 0.3s ease;
@@ -281,12 +281,12 @@ body {
 .training-calendar .ant-picker-calendar-date-today .ant-picker-calendar-date-value {
   background: linear-gradient(135deg, rgb(var(--color-primary)) 0%, rgb(var(--color-primary-600)) 100%);
   color: white;
-  box-shadow: 0 2px 8px rgba(var(--color-primary), 0.35);
+  box-shadow: 0 2px 8px rgb(var(--color-primary) / 0.35);
   font-weight: 800;
 }
 
 .training-calendar .ant-picker-calendar thead {
-  background: rgba(var(--color-background-secondary), 0.5);
+  background: rgb(var(--color-background-secondary) / 0.5);
 }
 
 .training-calendar .ant-picker-calendar thead th {
@@ -296,7 +296,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: rgb(var(--color-text-tertiary));
-  border-bottom: 2px solid rgba(var(--color-border), 0.6);
+  border-bottom: 2px solid rgb(var(--color-border) / 0.6);
 }
 
 /* Calendar Event Badges - Professional Styling */
@@ -321,15 +321,15 @@ body {
   font-weight: 500;
   padding: 2px 6px;
   border-radius: 6px;
-  background: rgba(var(--color-background), 0.7);
+  background: rgb(var(--color-background) / 0.7);
   backdrop-filter: blur(4px);
   transition: all 0.2s ease;
-  border: 1px solid rgba(var(--color-border), 0.3);
+  border: 1px solid rgb(var(--color-border) / 0.3);
 }
 
 .training-calendar .ant-badge:hover .ant-badge-status-text {
-  background: rgba(var(--color-background), 0.95);
-  border-color: rgba(var(--color-border), 0.5);
+  background: rgb(var(--color-background) / 0.95);
+  border-color: rgb(var(--color-border) / 0.5);
   transform: translateX(2px);
 }
 
@@ -339,14 +339,14 @@ body {
 }
 
 .training-calendar .ant-picker-calendar-date-selected {
-  background: linear-gradient(135deg, rgba(var(--color-primary), 0.12) 0%, rgba(var(--color-primary), 0.18) 100%);
-  border-color: rgba(var(--color-primary), 0.4);
+  background: linear-gradient(135deg, rgb(var(--color-primary) / 0.12) 0%, rgb(var(--color-primary) / 0.18) 100%);
+  border-color: rgb(var(--color-primary) / 0.4);
 }
 
 /* Weekend dates subtle highlight */
 .training-calendar .ant-picker-calendar tbody tr td:first-child .ant-picker-calendar-date,
 .training-calendar .ant-picker-calendar tbody tr td:last-child .ant-picker-calendar-date {
-  background: rgba(var(--color-warning), 0.02);
+  background: rgb(var(--color-warning) / 0.02);
 }
 
 /* Calendar body padding */
@@ -366,7 +366,7 @@ body {
 
 /* Grid lines subtle enhancement */
 .training-calendar .ant-picker-calendar tbody td {
-  border-color: rgba(var(--color-border), 0.5);
+  border-color: rgb(var(--color-border) / 0.5);
 }
 
 /* Loading state support */
@@ -383,7 +383,7 @@ body {
   transform: translate(-50%, -50%);
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(var(--color-primary), 0.2);
+  border: 3px solid rgb(var(--color-primary) / 0.2);
   border-top-color: rgb(var(--color-primary));
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -403,18 +403,18 @@ body {
 }
 
 .training-calendar + * .max-h-\\[500px\\]::-webkit-scrollbar-track {
-  background: rgba(var(--color-background-tertiary), 0.3);
+  background: rgb(var(--color-background-tertiary) / 0.3);
   border-radius: 10px;
 }
 
 .training-calendar + * .max-h-\\[500px\\]::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(var(--color-primary), 0.4), rgba(var(--color-primary-600), 0.6));
+  background: linear-gradient(180deg, rgb(var(--color-primary) / 0.4), rgb(var(--color-primary-600) / 0.6));
   border-radius: 10px;
   transition: background 0.3s ease;
 }
 
 .training-calendar + * .max-h-\\[500px\\]::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(var(--color-primary), 0.6), rgba(var(--color-primary-600), 0.8));
+  background: linear-gradient(180deg, rgb(var(--color-primary) / 0.6), rgb(var(--color-primary-600) / 0.8));
 }
 
 /* ============================================
@@ -453,31 +453,31 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(var(--color-background-tertiary), 0.3);
+  background: rgb(var(--color-background-tertiary) / 0.3);
   border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(var(--color-border), 0.8);
+  background: rgb(var(--color-border) / 0.8);
   border-radius: 10px;
   transition: all 0.3s ease;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--color-text-tertiary), 0.5);
+  background: rgb(var(--color-text-tertiary) / 0.5);
 }
 
 /* Dark mode adjustment for custom scrollbar */
 .dark .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(var(--color-background-tertiary), 0.1);
+  background: rgb(var(--color-background-tertiary) / 0.1);
 }
 
 .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(var(--color-border), 0.3);
+  background: rgb(var(--color-border) / 0.3);
 }
 
 .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--color-primary), 0.4);
+  background: rgb(var(--color-primary) / 0.4);
 }
 
 /* Main layout scrollbar */
@@ -581,7 +581,7 @@ body {
    ============================================ */
 /* Selected option in dropdown */
 .ant-select-dropdown .ant-select-item-option-selected {
-  background-color: rgba(var(--color-primary), 0.1) !important;
+  background-color: rgb(var(--color-primary) / 0.1) !important;
   font-weight: 600 !important;
 }
 
@@ -596,7 +596,7 @@ body {
 
 /* Active/hovered option */
 .ant-select-dropdown .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
-  background-color: rgba(var(--color-primary), 0.06) !important;
+  background-color: rgb(var(--color-primary) / 0.06) !important;
 }
 
 /* Dropdown container styling */
@@ -623,8 +623,8 @@ body {
 
 /* Multiple select - selected tags in input */
 .ant-select-multiple .ant-select-selection-item {
-  background-color: rgba(var(--color-primary), 0.1) !important;
-  border: 1px solid rgba(var(--color-primary), 0.3) !important;
+  background-color: rgb(var(--color-primary) / 0.1) !important;
+  border: 1px solid rgb(var(--color-primary) / 0.3) !important;
   border-radius: 6px !important;
   color: rgb(var(--color-primary-700)) !important;
 }
@@ -640,7 +640,7 @@ body {
 /* Focused select border */
 .ant-select-focused .ant-select-selector {
   border-color: rgb(var(--color-primary)) !important;
-  box-shadow: 0 0 0 3px rgba(var(--color-primary), 0.1) !important;
+  box-shadow: 0 0 0 3px rgb(var(--color-primary) / 0.1) !important;
 }
 
 /* Dark mode adjustments for Select */
@@ -654,7 +654,7 @@ body {
 }
 
 .dark .ant-select-dropdown .ant-select-item-option-selected {
-  background-color: rgba(var(--color-primary), 0.2) !important;
+  background-color: rgb(var(--color-primary) / 0.2) !important;
 }
 
 .dark .ant-select-dropdown .ant-select-item-option-selected .ant-select-item-option-content {
@@ -662,12 +662,12 @@ body {
 }
 
 .dark .ant-select-dropdown .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
-  background-color: rgba(var(--color-primary), 0.1) !important;
+  background-color: rgb(var(--color-primary) / 0.1) !important;
 }
 
 .dark .ant-select-multiple .ant-select-selection-item {
-  background-color: rgba(var(--color-primary), 0.2) !important;
-  border-color: rgba(var(--color-primary), 0.4) !important;
+  background-color: rgb(var(--color-primary) / 0.2) !important;
+  border-color: rgb(var(--color-primary) / 0.4) !important;
   color: rgb(var(--color-primary)) !important;
 }
 
@@ -738,7 +738,7 @@ body {
    Ant Design TreeSelect & Tree Styling
    ============================================ */
 .ant-tree .ant-tree-node-selected {
-  background-color: rgba(var(--color-primary), 0.1) !important;
+  background-color: rgb(var(--color-primary) / 0.1) !important;
 }
 
 .ant-tree .ant-tree-node-selected .ant-tree-title {
@@ -746,21 +746,21 @@ body {
 }
 
 .ant-tree-select-dropdown .ant-select-tree-node-selected {
-  background-color: rgba(var(--color-primary), 0.1) !important;
+  background-color: rgb(var(--color-primary) / 0.1) !important;
 }
 
 /* ============================================
    Ant Design Transfer Styling
    ============================================ */
 .ant-transfer-list-content-item-checked {
-  background-color: rgba(var(--color-primary), 0.1) !important;
+  background-color: rgb(var(--color-primary) / 0.1) !important;
 }
 
 /* ============================================
    Ant Design Cascader Styling
    ============================================ */
 .ant-cascader-menu-item-active {
-  background-color: rgba(var(--color-primary), 0.06) !important;
+  background-color: rgb(var(--color-primary) / 0.06) !important;
 }
 
 .ant-cascader-menu-item-active:not(.ant-cascader-menu-item-disabled) {
@@ -788,7 +788,7 @@ body {
 }
 
 .ant-picker-cell-in-range::before {
-  background-color: rgba(var(--color-primary), 0.1) !important;
+  background-color: rgb(var(--color-primary) / 0.1) !important;
 }
 
 .ant-picker-cell-range-start .ant-picker-cell-inner,
@@ -797,7 +797,7 @@ body {
 }
 
 .ant-picker-cell:hover:not(.ant-picker-cell-selected):not(.ant-picker-cell-range-start):not(.ant-picker-cell-range-end) .ant-picker-cell-inner {
-  background-color: rgba(var(--color-primary), 0.1) !important;
+  background-color: rgb(var(--color-primary) / 0.1) !important;
 }
 
 .ant-table {
@@ -1067,7 +1067,7 @@ body {
 /* Selected Item State (including submenus when active) */
 .custom-sidebar-menu .ant-menu-item-selected,
 .custom-sidebar-menu .ant-menu-submenu-selected > .ant-menu-submenu-title {
-  background-color: rgba(var(--color-primary), 0.1) !important;
+  background-color: rgb(var(--color-primary) / 0.1) !important;
 }
 
 .custom-sidebar-menu .ant-menu-item-selected,
@@ -1106,7 +1106,7 @@ body {
 
 .dark .custom-sidebar-menu .ant-menu-item-selected,
 .dark .custom-sidebar-menu .ant-menu-submenu-selected > .ant-menu-submenu-title {
-  background-color: rgba(var(--color-primary), 0.2) !important;
+  background-color: rgb(var(--color-primary) / 0.2) !important;
   color: rgb(var(--color-primary)) !important;
 }
 
@@ -1352,12 +1352,12 @@ body {
 }
 
 .custom-tabs .ant-tabs-tab:hover {
-  background: rgba(var(--color-primary), 0.04) !important;
+  background: rgb(var(--color-primary) / 0.04) !important;
   color: rgb(var(--color-primary)) !important;
 }
 
 .custom-tabs .ant-tabs-tab-active {
-  background: rgba(var(--color-primary), 0.06) !important;
+  background: rgb(var(--color-primary) / 0.06) !important;
 }
 
 .custom-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
@@ -1432,11 +1432,11 @@ body {
 }
 
 .custom-table .ant-table-tbody > tr:hover > td {
-  background: rgba(var(--color-primary), 0.02) !important;
+  background: rgb(var(--color-primary) / 0.02) !important;
 }
 
 .custom-table .ant-table-tbody > tr.ant-table-row-selected > td {
-  background: rgba(var(--color-primary), 0.05) !important;
+  background: rgb(var(--color-primary) / 0.05) !important;
 }
 
 /* Pagination Styling */
@@ -1469,7 +1469,7 @@ body {
 
 /* Smooth focus states */
 *:focus-visible {
-  outline: 2px solid rgba(var(--color-primary), 0.5);
+  outline: 2px solid rgb(var(--color-primary) / 0.5);
   outline-offset: 2px;
 }
 
@@ -1536,7 +1536,7 @@ body {
 .ant-input:focus,
 .ant-input-affix-wrapper:focus,
 .ant-input-affix-wrapper-focused {
-  box-shadow: 0 0 0 3px rgba(var(--color-primary), 0.1) !important;
+  box-shadow: 0 0 0 3px rgb(var(--color-primary) / 0.1) !important;
 }
 
 /* Tab transition improvements */
@@ -1625,11 +1625,11 @@ body {
 
 /* Gradient backgrounds */
 .bg-gradient-primary {
-  background: linear-gradient(135deg, rgba(var(--color-primary), 0.1) 0%, rgba(var(--color-primary), 0.05) 100%);
+  background: linear-gradient(135deg, rgb(var(--color-primary) / 0.1) 0%, rgb(var(--color-primary) / 0.05) 100%);
 }
 
 .bg-gradient-success {
-  background: linear-gradient(135deg, rgba(var(--color-success), 0.1) 0%, rgba(var(--color-success), 0.05) 100%);
+  background: linear-gradient(135deg, rgb(var(--color-success) / 0.1) 0%, rgb(var(--color-success) / 0.05) 100%);
 }
 
 /* Smooth scrolling */
@@ -1822,7 +1822,7 @@ body {
 .ant-picker-focused,
 .ant-select-focused .ant-select-selector {
   border-color: rgb(var(--color-primary)) !important;
-  box-shadow: 0 0 0 2px rgba(var(--color-primary), 0.1) !important;
+  box-shadow: 0 0 0 2px rgb(var(--color-primary) / 0.1) !important;
 }
 
 /* Validation States - Subtle */
@@ -1835,7 +1835,7 @@ body {
 
 .ant-form-item-has-error .ant-input:focus,
 .ant-form-item-has-error .ant-input-number:focus {
-  box-shadow: 0 0 0 2px rgba(var(--color-error), 0.1) !important;
+  box-shadow: 0 0 0 2px rgb(var(--color-error) / 0.1) !important;
 }
 
 .ant-form-item-explain-error {
@@ -1900,19 +1900,19 @@ body {
 
 /* Subtle focus ring */
 *:focus-visible {
-  outline: 2px solid rgba(var(--color-primary), 0.3) !important;
+  outline: 2px solid rgb(var(--color-primary) / 0.3) !important;
   outline-offset: 1px !important;
 }
 
 /* Remove default focus for buttons (they have their own states) */
 .ant-btn:focus-visible {
   outline: none !important;
-  box-shadow: 0 0 0 2px rgba(var(--color-primary), 0.2) !important;
+  box-shadow: 0 0 0 2px rgb(var(--color-primary) / 0.2) !important;
 }
 
 /* Focus within for containers */
 .ant-card:focus-within {
-  border-color: rgba(var(--color-primary), 0.3) !important;
+  border-color: rgb(var(--color-primary) / 0.3) !important;
 }
 
 /* ============================================

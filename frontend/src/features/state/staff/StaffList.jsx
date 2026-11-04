@@ -645,7 +645,7 @@ const StaffList = () => {
         )}
 
         <div className="custom-table">
-          <Table
+          <Table scroll={{ x: 'max-content' }}
             columns={columns}
             dataSource={staffList}
             loading={loading}

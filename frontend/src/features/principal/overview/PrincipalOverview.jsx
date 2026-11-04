@@ -464,7 +464,7 @@ const PrincipalOverview = () => {
         footer={null}
         width={700}
       >
-        <Table className="custom-table"
+        <Table scroll={{ x: 'max-content' }} className="custom-table"
           dataSource={alertDetailModal.data}
           rowKey={(record) => record.studentId || record.grievanceId || record.id || Math.random()}
           pagination={{ pageSize: 10 }}

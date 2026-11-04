@@ -164,7 +164,7 @@ const JoiningLettersModal = ({
       </div>
 
       {/* Faculty Table */}
-      <Table
+      <Table scroll={{ x: 'max-content' }}
         dataSource={byMentor}
         columns={columns}
         rowKey="mentorId"

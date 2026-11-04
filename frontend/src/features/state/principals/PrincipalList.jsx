@@ -257,7 +257,7 @@ const PrincipalList = () => {
         </div>
 
         <div className="custom-table">
-          <Table
+          <Table scroll={{ x: 'max-content' }}
             columns={columns}
             dataSource={principalsList}
             loading={loading}

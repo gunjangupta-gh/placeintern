@@ -305,7 +305,7 @@ const FacultyVisitsModal = ({
       </div>
 
       {/* Faculty Table */}
-      <Table
+      <Table scroll={{ x: 'max-content' }}
         dataSource={facultyVisitData}
         columns={columns}
         rowKey="id"

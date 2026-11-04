@@ -663,7 +663,7 @@ const StudentReportSubmit = () => {
             </Button>
           </Empty>
         ) : (
-          <Table
+          <Table scroll={{ x: 'max-content' }}
             dataSource={reports}
             columns={columns}
             rowKey="id"

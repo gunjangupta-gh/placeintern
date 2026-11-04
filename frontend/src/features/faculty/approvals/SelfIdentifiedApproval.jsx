@@ -393,7 +393,7 @@ const SelfIdentifiedApproval = () => {
         </Badge>
       ),
       children: (
-        <Table
+        <Table scroll={{ x: 'max-content' }}
           dataSource={getPendingApplications()}
           columns={columns}
           rowKey="id"
@@ -418,7 +418,7 @@ const SelfIdentifiedApproval = () => {
         </Badge>
       ),
       children: (
-        <Table
+        <Table scroll={{ x: 'max-content' }}
           dataSource={getApprovedApplications()}
           columns={columns}
           rowKey="id"
@@ -443,7 +443,7 @@ const SelfIdentifiedApproval = () => {
         </Badge>
       ),
       children: (
-        <Table
+        <Table scroll={{ x: 'max-content' }}
           dataSource={applications}
           columns={columns}
           rowKey="id"

@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate } from '../../../services/opportunity.service';
 import ApplicationsReview from './ApplicationsReview';
+import { formatStipend, textSorter, numberSorter, stipendSorter } from '../tableUtils';
 import OpportunityEditModal from './OpportunityEditModal';
 
 const { Title, Text } = Typography;
@@ -119,7 +120,7 @@ const OpportunityDetail = () => {
         <Descriptions size="small" column={{ xs: 1, sm: 2, lg: 3 }}>
           <Descriptions.Item label="District">{opp.district || '-'}</Descriptions.Item>
           <Descriptions.Item label="Duration">{opp.durationMonths} months</Descriptions.Item>
-          <Descriptions.Item label="Stipend">{opp.stipend || '-'}</Descriptions.Item>
+          <Descriptions.Item label="Stipend">{formatStipend(opp.stipend)}</Descriptions.Item>
           <Descriptions.Item label="Starts">{formatDate(opp.startDate)}</Descriptions.Item>
           <Descriptions.Item label="Apply by">{formatDate(opp.applicationDeadline)}</Descriptions.Item>
           <Descriptions.Item label="Industry contact (State only)" span={3}>
@@ -138,8 +139,8 @@ const OpportunityDetail = () => {
           scroll={{ x: 'max-content' }}
           columns={[
             { title: 'S.No', width: 64, render: (_v, _r, i) => i + 1 },
-            { title: 'Branch', render: (_, b) => <span>{b.name} <Text type="secondary">({b.code})</Text></span> },
-            { title: 'Actual positions', dataIndex: 'positions' },
+            { title: 'Branch', sorter: textSorter((b) => b.name), render: (_, b) => <span>{b.name} <Text type="secondary">({b.code})</Text></span> },
+            { title: 'Actual positions', dataIndex: 'positions', sorter: numberSorter((b) => b.positions) },
             {
               title: 'Opened applications',
               render: (_, b) => (
@@ -149,9 +150,9 @@ const OpportunityDetail = () => {
                 </span>
               ),
             },
-            { title: 'Stipend', dataIndex: 'stipend', render: (v) => v || opp.stipend || '-' },
-            { title: 'Selected', dataIndex: 'approvedCount', render: (n) => <Text style={{ color: '#3f8600' }}>{n}</Text> },
-            { title: 'Seats left', dataIndex: 'seatsLeft', render: (n) => <Text type={n === 0 ? 'danger' : undefined}>{n}</Text> },
+            { title: 'Stipend', dataIndex: 'stipend', sortDirections: ['descend', 'ascend'], sorter: stipendSorter((b) => b.stipend || opp.stipend), render: (v) => formatStipend(v || opp.stipend) },
+            { title: 'Selected', dataIndex: 'approvedCount', sorter: numberSorter((b) => b.approvedCount), render: (n) => <Text style={{ color: '#3f8600' }}>{n}</Text> },
+            { title: 'Seats left', dataIndex: 'seatsLeft', sorter: numberSorter((b) => b.seatsLeft), render: (n) => <Text type={n === 0 ? 'danger' : undefined}>{n}</Text> },
           ]}
         />
       </Card>

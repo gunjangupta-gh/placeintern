@@ -306,7 +306,7 @@ const MonthlyReportsModal = ({
       </div>
 
       {/* Faculty Table */}
-      <Table
+      <Table scroll={{ x: 'max-content' }}
         dataSource={facultyReportData}
         columns={columns}
         rowKey="id"

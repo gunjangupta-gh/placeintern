@@ -869,7 +869,7 @@ const MonthlyCompliancePage = () => {
           rowKey="studentId"
           size="small"
           pagination={false}
-          scroll={{ y: "calc(100vh - 380px)" }}
+          scroll={{ x: 'max-content', y: "calc(100vh - 380px)" }}
           locale={{
             emptyText: (
               <Empty
@@ -1278,7 +1278,7 @@ const MonthlyCompliancePage = () => {
               rowKey="id"
               size="small"
               pagination={paginationConfig}
-              scroll={{ y: "calc(100vh - 420px)" }}
+              scroll={{ x: 'max-content', y: "calc(100vh - 420px)" }}
               locale={{
                 emptyText: (
                   <Empty

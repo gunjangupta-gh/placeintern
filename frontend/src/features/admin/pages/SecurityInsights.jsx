@@ -217,7 +217,7 @@ const SecurityInsights = () => {
       {/* Suspicious Activities Table */}
       <Card title="Suspicious Activities">
         {suspiciousActivities.length > 0 ? (
-          <Table
+          <Table scroll={{ x: 'max-content' }}
             dataSource={suspiciousActivities}
             columns={columns}
             rowKey={(record) => `${record.userId}-${record.type}`}

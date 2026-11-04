@@ -7,6 +7,7 @@ import { opportunityService, getErrorMessage, formatDate } from '../../../servic
 import { useDebounce } from '../../../hooks/useDebounce';
 import OpportunityEditModal from './OpportunityEditModal';
 import { DEFAULT_PAGE_SIZE, tablePagination, serialColumn, statusLabel } from '../pagination';
+import { formatStipend, textSorter, numberSorter, dateSorter, stipendSorter } from '../tableUtils';
 
 const STATUS_COLOR = { OPEN: 'green', CLOSED: 'default', DRAFT: 'orange', FILLED: 'blue' };
 
@@ -68,10 +69,11 @@ const OpportunityTable = ({ refreshKey, onChanged }) => {
     {
       title: 'Company',
       dataIndex: ['company', 'name'],
+      sorter: textSorter((r) => r.company?.name),
       render: (t, r) => <a onClick={() => navigate(`/app/internship-opportunities/${r.id}`)}>{t}</a>,
     },
-    { title: 'District', dataIndex: 'district' },
-    { title: 'Stipend', dataIndex: 'stipend', render: (v) => v || '-' },
+    { title: 'District', dataIndex: 'district', sorter: textSorter((r) => r.district) },
+    { title: 'Stipend', dataIndex: 'stipend', sortDirections: ['descend', 'ascend'], sorter: stipendSorter((r) => r.stipend), render: formatStipend },
     {
       title: (
         <Tooltip title="Branch: selected / positions. Hover a branch for its applications.">Branch-wise positions</Tooltip>
@@ -91,10 +93,11 @@ const OpportunityTable = ({ refreshKey, onChanged }) => {
       title: (
         <Tooltip title="Approved / Applied (holding a seat) / Total positions">Seats</Tooltip>
       ),
+      sorter: numberSorter((r) => r.positions),
       render: (_, r) => `${r.approvedCount} / ${r.appliedCount} / ${r.positions}`,
     },
-    { title: 'Deadline', dataIndex: 'applicationDeadline', render: formatDate },
-    { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
+    { title: 'Deadline', dataIndex: 'applicationDeadline', sorter: dateSorter((r) => r.applicationDeadline), render: formatDate },
+    { title: 'Status', dataIndex: 'status', sorter: textSorter((r) => r.status), render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
     {
       title: 'Actions',
       render: (_, r) => (
@@ -150,7 +153,7 @@ const OpportunityTable = ({ refreshKey, onChanged }) => {
           expandedRowRender: (r) => (
             <div>
               <div><b>Industry contact (State only):</b> {[r.contactName, r.contactPhone, r.contactEmail].filter(Boolean).join(' · ') || 'Not provided'}</div>
-              <div><b>Duration:</b> {r.durationMonths} months · <b>Starts:</b> {formatDate(r.startDate)} · <b>Stipend:</b> {r.stipend || '-'}</div>
+              <div><b>Duration:</b> {r.durationMonths} months · <b>Starts:</b> {formatDate(r.startDate)} · <b>Stipend:</b> {formatStipend(r.stipend)}</div>
               {r.description && <div><b>Description:</b> {r.description}</div>}
             </div>
           ),

@@ -789,7 +789,7 @@ const TrainingManagementPage = () => {
         <Card className="rounded-xl border-border shadow-none" styles={{ body: { padding: 0 } }}>
           <div className="p-0 custom-scrollbar">
             {filteredTrainings.length > 0 ? (
-              <Table
+              <Table scroll={{ x: 'max-content' }}
                 rowKey="id"
                 columns={columns}
                 dataSource={filteredTrainings}

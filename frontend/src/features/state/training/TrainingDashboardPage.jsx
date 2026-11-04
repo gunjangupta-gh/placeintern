@@ -533,7 +533,7 @@ const TrainingDashboardPage = () => {
           </Text>
         }
       >
-        <Table
+        <Table scroll={{ x: 'max-content' }}
           rowKey="course"
           columns={courseColumns}
           dataSource={normalizedCourseWiseFaculty}

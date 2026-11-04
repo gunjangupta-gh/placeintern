@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate, formatTime } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { DEFAULT_PAGE_SIZE, tablePagination, serialColumn, statusLabel } from '../pagination';
+import { formatStipend, textSorter, numberSorter, dateSorter, stipendSorter } from '../tableUtils';
 
 const { Title, Paragraph, Text } = Typography;
 const PENDING = ['APPLIED', 'UNDER_REVIEW', 'SHORTLISTED'];
@@ -85,21 +86,21 @@ const InstitutionOpportunities = () => {
   const fetchIncomplete = useCallback((p) => opportunityService.institutionIncompleteProfiles(base, p), [base]);
 
   const opportunityColumns = [
-    { title: 'Company', dataIndex: ['company', 'name'] },
-    { title: 'District', dataIndex: 'district' },
-    { title: 'Stipend', dataIndex: 'stipend', render: (v) => v || '-' },
+    { title: 'Company', dataIndex: ['company', 'name'], sorter: textSorter((r) => r.company?.name) },
+    { title: 'District', dataIndex: 'district', sorter: textSorter((r) => r.district) },
+    { title: 'Stipend', dataIndex: 'stipend', sortDirections: ['descend', 'ascend'], sorter: stipendSorter((r) => r.stipend), render: formatStipend },
     { title: 'Branches', dataIndex: 'branches', render: (b) => b.map((x) => <Tag key={x.id} color={x.approvedCount >= x.positions ? 'red' : undefined}>{x.code} {x.approvedCount}/{x.positions}</Tag>) },
-    { title: 'Seats left', render: (_, r) => `${r.seatsLeft} of ${r.positions}` },
-    { title: 'Deadline', dataIndex: 'applicationDeadline', render: formatDate },
-    { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
+    { title: 'Seats left', sorter: numberSorter((r) => r.seatsLeft), render: (_, r) => `${r.seatsLeft} of ${r.positions}` },
+    { title: 'Deadline', dataIndex: 'applicationDeadline', sorter: dateSorter((r) => r.applicationDeadline), render: formatDate },
+    { title: 'Status', dataIndex: 'status', sorter: textSorter((r) => r.status), render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
   ];
 
   const applicationColumns = [
-    { title: 'Student', render: (_, r) => <div><div>{r.student?.user?.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.rollNumber}</Text></div> },
-    { title: 'Branch', dataIndex: ['student', 'branch', 'name'] },
-    { title: 'Position', render: (_, r) => <div><div>{r.opportunity?.title}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.opportunity?.company?.name}</Text></div> },
-    { title: 'Applied at', dataIndex: 'appliedDate', render: (v) => <div style={{ whiteSpace: 'nowrap' }}><div>{formatDate(v)}</div><Text type="secondary" style={{ fontSize: 12 }}>{formatTime(v)}</Text></div> },
-    { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
+    { title: 'Student', sorter: textSorter((r) => r.student?.user?.name), render: (_, r) => <div><div>{r.student?.user?.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.rollNumber}</Text></div> },
+    { title: 'Branch', dataIndex: ['student', 'branch', 'name'], sorter: textSorter((r) => r.student?.branch?.name) },
+    { title: 'Position', sorter: textSorter((r) => r.opportunity?.title), render: (_, r) => <div><div>{r.opportunity?.title}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.opportunity?.company?.name}</Text></div> },
+    { title: 'Applied at', dataIndex: 'appliedDate', sorter: dateSorter((r) => r.appliedDate), render: (v) => <div style={{ whiteSpace: 'nowrap' }}><div>{formatDate(v)}</div><Text type="secondary" style={{ fontSize: 12 }}>{formatTime(v)}</Text></div> },
+    { title: 'Status', dataIndex: 'status', sorter: textSorter((r) => r.status), render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
     ...(isPrincipal
       ? []
       : [{
@@ -114,9 +115,9 @@ const InstitutionOpportunities = () => {
   ];
 
   const incompleteColumns = [
-    { title: 'Student', render: (_, r) => <div><div>{r.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.rollNumber}</Text></div> },
-    { title: 'Branch', dataIndex: ['branch', 'name'] },
-    { title: 'Year', dataIndex: 'currentYear' },
+    { title: 'Student', sorter: textSorter((r) => r.name), render: (_, r) => <div><div>{r.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.rollNumber}</Text></div> },
+    { title: 'Branch', dataIndex: ['branch', 'name'], sorter: textSorter((r) => r.branch?.name) },
+    { title: 'Year', dataIndex: 'currentYear', sorter: numberSorter((r) => r.currentYear) },
     { title: 'Missing profile fields', dataIndex: 'missing', render: (m) => m.map((f) => <Tag key={f.key} color="orange">{f.label}</Tag>) },
   ];
 

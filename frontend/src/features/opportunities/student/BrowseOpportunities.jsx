@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { DEFAULT_PAGE_SIZE, tablePagination, serialColumn, statusLabel } from '../pagination';
+import { formatStipend, textSorter, numberSorter, dateSorter, stipendSorter } from '../tableUtils';
 
 const { Title, Text } = Typography;
 
@@ -67,7 +68,7 @@ const ApplyModal = ({ item, applying, limit, onCancel, onConfirm }) => (
           <Descriptions.Item label="Company">{item.company?.name}</Descriptions.Item>
           <Descriptions.Item label="Position">{item.title}</Descriptions.Item>
           <Descriptions.Item label="District">{item.district || '-'}</Descriptions.Item>
-          <Descriptions.Item label="Stipend">{item.stipend || 'Not specified'}</Descriptions.Item>
+          <Descriptions.Item label="Stipend">{item.stipend ? formatStipend(item.stipend) : 'Not specified'}</Descriptions.Item>
           <Descriptions.Item label="Duration">{monthsText(item.durationMonths)}</Descriptions.Item>
           <Descriptions.Item label="Starts">{formatDate(item.startDate)}</Descriptions.Item>
           <Descriptions.Item label="Apply by">{formatDate(item.applicationDeadline)}</Descriptions.Item>
@@ -153,15 +154,17 @@ const BrowseOpportunities = () => {
     {
       title: 'Company',
       dataIndex: ['company', 'name'],
+      sorter: textSorter((r) => r.company?.name),
       render: (t, r) => <a onClick={() => setSelected(r)}>{t}</a>,
     },
-    { title: 'District', dataIndex: 'district', render: (v) => v || '-' },
-    { title: 'Stipend', dataIndex: 'stipend', render: (v) => v || 'Not specified' },
-    { title: 'Duration', dataIndex: 'durationMonths', render: monthsText },
-    { title: 'Starts', dataIndex: 'startDate', render: formatDate },
-    { title: 'Apply by', dataIndex: 'applicationDeadline', render: deadlineText },
+    { title: 'District', dataIndex: 'district', sorter: textSorter((r) => r.district), render: (v) => v || '-' },
+    { title: 'Stipend', dataIndex: 'stipend', sortDirections: ['descend', 'ascend'], sorter: stipendSorter((r) => r.stipend), render: (v) => (v ? formatStipend(v) : 'Not specified') },
+    { title: 'Duration', dataIndex: 'durationMonths', sorter: numberSorter((r) => r.durationMonths), render: monthsText },
+    { title: 'Starts', dataIndex: 'startDate', sorter: dateSorter((r) => r.startDate), render: formatDate },
+    { title: 'Apply by', dataIndex: 'applicationDeadline', sorter: dateSorter((r) => r.applicationDeadline), render: deadlineText },
     {
       title: 'Positions left',
+      sorter: numberSorter((r) => r.seatsLeft),
       render: (_, r) => (r.seatsLeft === 0 ? <Tag color="red" style={{ margin: 0 }}>Full</Tag> : `${r.seatsLeft} / ${r.positions}`),
     },
     { title: 'Action', render: (_, r) => <ApplyButton item={r} onClick={setSelected} /> },

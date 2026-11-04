@@ -55,7 +55,7 @@ const CollegeBreakdownModal = ({ visible, onClose, title, loading, data, columns
     {loading ? (
       <div className="flex justify-center py-12"><Spin /></div>
     ) : (
-      <Table
+      <Table scroll={{ x: 'max-content' }}
         dataSource={data}
         columns={columns}
         rowKey={(record) => record.id || record.institutionId || record.name}
@@ -72,7 +72,7 @@ const StatCard = ({ icon: Icon, title, lines = [], onClick, onView, infoTooltip,
 
   return (
     <div
-      className={`rounded-xl p-3 h-full border border-border bg-background-secondary ${onClick ? 'cursor-pointer hover:shadow-sm transition-all' : ''}`}
+      className={`rounded-xl p-3 h-full border border-border outline-none focus:outline-none bg-background-secondary ${onClick ? 'cursor-pointer hover:shadow-sm transition-all' : ''}`}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}

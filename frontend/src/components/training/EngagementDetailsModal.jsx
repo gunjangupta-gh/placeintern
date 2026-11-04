@@ -429,7 +429,7 @@ const EngagementDetailsModal = ({
         {/* Content */}
         <div className="p-5">
           {tableData.length > 0 ? (
-            <Table
+            <Table scroll={{ x: 'max-content' }}
               columns={columns}
               dataSource={tableData}
               rowKey={(record) => isTrainingWise ? record?.trainingId : (record?.itemName || record?.metric)}

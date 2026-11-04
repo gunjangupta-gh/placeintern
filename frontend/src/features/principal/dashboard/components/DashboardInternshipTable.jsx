@@ -1117,7 +1117,7 @@ const DashboardInternshipTable = () => {
                       </Text>
                       {record.monthlyReports &&
                       record.monthlyReports.length > 0 ? (
-                        <Table
+                        <Table scroll={{ x: 'max-content' }}
                           dataSource={record.monthlyReports}
                           rowKey="id"
                           size="small"

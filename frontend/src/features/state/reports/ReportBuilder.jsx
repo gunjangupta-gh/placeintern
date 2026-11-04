@@ -49,6 +49,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import CmReportDownload from './CmReportDownload';
+import ReportBuilderWorkspace from './ReportBuilderWorkspace';
 import toast from 'react-hot-toast';
 import {
   fetchReportCatalog,
@@ -70,8 +71,8 @@ import FilterBuilder from '../../../components/report-builder/FilterBuilder';
 
 const { Title, Text, Paragraph } = Typography;
 /** Plain titled block (replaces the old Card wrappers): heading + optional actions, then content. */
-const Section = ({ title, extra, loading, heading, className, styles, children }) => (
-  <div className={className} style={{ marginBottom: heading ? 0 : 16 }}>
+const Section = ({ title, extra, loading, heading, bordered, className, styles, children }) => (
+  <div className={className} style={{ marginBottom: heading ? 0 : 16, ...(bordered ? { border: "1px solid rgb(var(--color-border))", borderRadius: 8, padding: 16, height: "calc(100% - 16px)" } : {}) }}>
     {(title || extra) && (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
         <div style={{ fontWeight: 600, fontSize: heading ? 20 : 15 }}>{title}</div>
@@ -648,282 +649,9 @@ const ReportBuilder = () => {
     },
   ];
 
-  const renderCatalog = () => (
-    <div className="space-y-4">
-      {Object.entries(catalogByCategory).map(([category, reports]) => (
-        <Section
-          key={category}
-          size="small"
-          title={
-            <Space>
-              {getCategoryIcon(category)}
-              <span>{category}</span>
-              <Badge count={reports.length} style={{ backgroundColor: '#1890ff' }} />
-            </Space>
-          }
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {reports.map((report) => (
-              <div
-                key={report.type}
-                className={`p-3 border rounded-lg cursor-pointer transition-all hover:border-blue-500 hover:shadow-sm ${
-                  selectedType === report.type ? 'border-blue-500 bg-blue-50' : ''
-                }`}
-                onClick={() => handleTypeSelect(report.type)}
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <Text strong>{report.name}</Text>
-                    <Paragraph type="secondary" className="text-xs mb-0 mt-1" ellipsis={{ rows: 2 }}>
-                      {report.description}
-                    </Paragraph>
-                  </div>
-                  {selectedType === report.type && (
-                    <CheckCircleOutlined className="text-blue-500" />
-                  )}
-                </div>
-                <div className="mt-2 flex gap-2">
-                  <Tag size="small">{report.columnsCount || 0} columns</Tag>
-                  <Tag size="small">{report.filtersCount || 0} filters</Tag>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Section>
-      ))}
-    </div>
-  );
-
-  const renderConfiguration = () => {
-    if (!selectedType) {
-      return (
-        <Empty
-          description="Select a report type from the catalog"
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
-      );
-    }
-
-    return (
-      <div className="space-y-6">
-        {/* Templates */}
-        {templates.length > 0 && (
-          <Section size="small" title={<><FolderOpenOutlined /> Saved Templates</>}>
-            <div className="flex flex-wrap gap-2">
-              {templates.map((template) => (
-                <Tag
-                  key={template.id}
-                  className="cursor-pointer"
-                  onClick={() => handleLoadTemplate(template)}
-                  closable
-                  onClose={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleDeleteTemplate(template.id);
-                  }}
-                >
-                  {template.name}
-                </Tag>
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {/* Filters - shown prominently outside collapse */}
-        {availableFilters.length > 0 && (
-          <Section
-            size="small"
-            title={
-              <Space>
-                <FilterOutlined style={{ color: '#1890ff' }} />
-                <span style={{ fontWeight: 600 }}>Filters</span>
-                <Text type="secondary" style={{ fontSize: 11, fontWeight: 400 }}>(Optional - Select to filter data)</Text>
-              </Space>
-            }
-          >
-            <FilterBuilder
-              filters={availableFilters}
-              reportType={selectedType}
-              values={filterValues}
-              onChange={setFilterValues}
-              compact={false}
-            />
-          </Section>
-        )}
-
-        {/* Columns */}
-        <Collapse defaultActiveKey={['columns']} ghost>
-          <Panel
-            header={
-              <Space>
-                <TableOutlined />
-                <span>Columns</span>
-                <Badge count={selectedColumns.length} style={{ backgroundColor: '#52c41a' }} />
-              </Space>
-            }
-            key="columns"
-          >
-            <ColumnSelector
-              columns={availableColumns}
-              selectedColumns={selectedColumns}
-              onChange={setSelectedColumns}
-              showSort={true}
-            />
-          </Panel>
-
-          {/* Grouping & Sorting */}
-          {(groupByOptions.length > 0 || sortableColumns.length > 0) && (
-            <Panel
-              header={
-                <Space>
-                  <GroupOutlined />
-                  <span>Grouping & Sorting</span>
-                </Space>
-              }
-              key="grouping"
-            >
-              <Row gutter={16}>
-                {groupByOptions.length > 0 && (
-                  <Col xs={24} sm={12}>
-                    <Form.Item label="Group By">
-                      <Select
-                        allowClear
-                        placeholder="Select grouping"
-                        value={groupBy}
-                        onChange={setGroupBy}
-                        className="w-full"
-                      >
-                        {groupByOptions.map((opt) => (
-                          <Option key={opt} value={opt}>
-                            {opt.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase())}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                )}
-                {sortableColumns.length > 0 && (
-                  <>
-                    <Col xs={24} sm={8}>
-                      <Form.Item label="Sort By">
-                        <Select
-                          allowClear
-                          placeholder="Select column"
-                          value={sortBy}
-                          onChange={setSortBy}
-                          className="w-full"
-                        >
-                          {sortableColumns.map((col) => {
-                            const colDef = availableColumns.find((c) => c.id === col);
-                            return (
-                              <Option key={col} value={col}>
-                                {colDef?.label || col}
-                              </Option>
-                            );
-                          })}
-                        </Select>
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} sm={4}>
-                      <Form.Item label="Order">
-                        <Select value={sortOrder} onChange={setSortOrder} className="w-full">
-                          <Option value="asc">Asc</Option>
-                          <Option value="desc">Desc</Option>
-                        </Select>
-                      </Form.Item>
-                    </Col>
-                  </>
-                )}
-              </Row>
-            </Panel>
-          )}
-        </Collapse>
-
-        {/* Export Format */}
-        <Section size="small" title={<><SettingOutlined /> Export Settings</>}>
-          <Row gutter={16} align="middle">
-            <Col xs={24} sm={12}>
-              <Form.Item label="Format" className="mb-0">
-                <Select
-                  value={selectedFormat}
-                  onChange={setSelectedFormat}
-                  className="w-full"
-                  size="large"
-                >
-                  {exportFormats.includes('excel') && (
-                    <Option value="excel">
-                      <Space>
-                        <FileExcelOutlined className="text-green-500" />
-                        Excel (.xlsx)
-                      </Space>
-                    </Option>
-                  )}
-                  {exportFormats.includes('csv') && (
-                    <Option value="csv">
-                      <Space>
-                        <FileTextOutlined className="text-blue-500" />
-                        CSV (.csv)
-                      </Space>
-                    </Option>
-                  )}
-                  {exportFormats.includes('pdf') && (
-                    <Option value="pdf">
-                      <Space>
-                        <FilePdfOutlined className="text-red-500" />
-                        PDF (.pdf)
-                      </Space>
-                    </Option>
-                  )}
-                  {exportFormats.includes('json') && (
-                    <Option value="json">
-                      <Space>
-                        <FileTextOutlined className="text-yellow-500" />
-                        JSON (.json)
-                      </Space>
-                    </Option>
-                  )}
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Space className="w-full justify-end">
-                <Button
-                  icon={<SaveOutlined />}
-                  onClick={() => setTemplateModalVisible(true)}
-                  disabled={selectedColumns.length === 0}
-                >
-                  Save Template
-                </Button>
-              </Space>
-            </Col>
-          </Row>
-        </Section>
-
-        {/* Generate Button */}
-        <Button
-          type="primary"
-          size="large"
-          block
-          loading={generating}
-          disabled={!selectedType || selectedColumns.length === 0}
-          icon={<BarChartOutlined />}
-          onClick={handleGenerate}
-        >
-          {generating ? 'Generating Report...' : 'Generate Report'}
-        </Button>
-      </div>
-    );
-  };
-
   return (
-    <div className="">
+    <div style={{ padding: 16 }}>
       <Section title="Report Builder" extra={<CmReportDownload />} heading>
-        <Steps current={currentStep} className="mb-6" size="small">
-        <Steps.Step title="Select Type" description="Choose report" />
-        <Steps.Step title="Configure" description="Set columns & filters" />
-        <Steps.Step title="Generate" description="Queue report" />
-        <Steps.Step title="Download" description="Get your report" />
-      </Steps>
 
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
         <TabPane
@@ -935,40 +663,37 @@ const ReportBuilder = () => {
           }
           key="builder"
         >
-          <Row gutter={24}>
-            <Col xs={24} lg={10}>
-              <Section
-                title={
-                  <Space>
-                    <FolderOpenOutlined />
-                    <span>Report Catalog</span>
-                  </Space>
-                }
-                loading={loading && Object.keys(catalogByCategory).length === 0}
-                className="mb-4"
-                styles={{ body: { maxHeight: 600, overflow: 'auto' } }}
-              >
-                {renderCatalog()}
-              </Section>
-            </Col>
-
-            <Col xs={24} lg={14}>
-              <Section
-                title={
-                  <Space>
-                    <SettingOutlined />
-                    <span>Configuration</span>
-                    {currentReport && (
-                      <Tag color="blue">{currentReport.name || selectedType}</Tag>
-                    )}
-                  </Space>
-                }
-                loading={loading && selectedType && !config}
-              >
-                {renderConfiguration()}
-              </Section>
-            </Col>
-          </Row>
+          <ReportBuilderWorkspace
+            catalogByCategory={catalogByCategory}
+            catalogLoading={loading}
+            configLoading={loading && !!selectedType && !config}
+            selectedType={selectedType}
+            onSelectType={handleTypeSelect}
+            currentReport={currentReport}
+            availableColumns={availableColumns}
+            selectedColumns={selectedColumns}
+            setSelectedColumns={setSelectedColumns}
+            availableFilters={availableFilters}
+            filterValues={filterValues}
+            setFilterValues={setFilterValues}
+            groupByOptions={groupByOptions}
+            groupBy={groupBy}
+            setGroupBy={setGroupBy}
+            sortableColumns={sortableColumns}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            sortOrder={sortOrder}
+            setSortOrder={setSortOrder}
+            exportFormats={exportFormats}
+            selectedFormat={selectedFormat}
+            setSelectedFormat={setSelectedFormat}
+            templates={templates}
+            onLoadTemplate={handleLoadTemplate}
+            onDeleteTemplate={handleDeleteTemplate}
+            onSaveTemplate={() => setTemplateModalVisible(true)}
+            generating={generating}
+            onGenerate={handleGenerate}
+          />
         </TabPane>
 
         <TabPane
@@ -992,7 +717,7 @@ const ReportBuilder = () => {
           <Row gutter={16}>
             {/* Queue Stats */}
             <Col span={24} className="mb-4">
-              <Section size="small">
+              <Section bordered>
                 <Row gutter={16}>
                   <Col xs={12} sm={6}>
                     <div className="text-center">
@@ -1024,7 +749,7 @@ const ReportBuilder = () => {
 
             {/* Active Reports */}
             <Col xs={24} lg={12}>
-              <Section
+              <Section bordered
                 title={
                   <Space>
                     <SyncOutlined spin={activeReports.length > 0} />
@@ -1076,7 +801,7 @@ const ReportBuilder = () => {
 
             {/* Failed Reports */}
             <Col xs={24} lg={12}>
-              <Section
+              <Section bordered
                 title={
                   <Space>
                     <ExclamationCircleOutlined />
@@ -1170,7 +895,7 @@ const ReportBuilder = () => {
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
               />
             ) : (
-              <Table
+              <Table scroll={{ x: 'max-content' }}
                 columns={historyColumns}
                 dataSource={history}
                 rowKey="id"

@@ -334,7 +334,7 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
         </span>
       ),
       children: (
-        <Table
+        <Table scroll={{ x: 'max-content' }}
           dataSource={filteredLowCompliance}
           columns={lowComplianceColumns}
           rowKey="institutionId"
@@ -365,7 +365,7 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
         </span>
       ),
       children: (
-        <Table
+        <Table scroll={{ x: 'max-content' }}
           dataSource={filteredStudentsWithoutMentors}
           columns={studentsWithoutMentorsColumns}
           rowKey="studentId"
@@ -396,7 +396,7 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
         </span>
       ),
       children: (
-        <Table
+        <Table scroll={{ x: 'max-content' }}
           dataSource={filteredMissingReports}
           columns={missingReportsColumns}
           rowKey="studentId"
@@ -427,7 +427,7 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
         </span>
       ),
       children: (
-        <Table
+        <Table scroll={{ x: 'max-content' }}
           dataSource={filteredVisitGaps}
           columns={visitGapsColumns}
           rowKey="institutionId"

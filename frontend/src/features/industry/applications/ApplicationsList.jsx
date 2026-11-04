@@ -272,7 +272,7 @@ const ApplicationsList = () => {
         }
         className="rounded-xl border-border shadow-sm"
       >
-        <Table
+        <Table scroll={{ x: 'max-content' }}
           columns={columns}
           dataSource={applications}
           loading={loading}

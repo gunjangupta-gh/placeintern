@@ -413,7 +413,7 @@ const JoiningLetterPanel = () => {
             }
             styles={{ body: { padding: '0' } }}
           >
-            <Table
+            <Table scroll={{ x: 'max-content' }}
               dataSource={letters}
               columns={columns}
               rowKey="applicationId"

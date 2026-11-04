@@ -231,7 +231,7 @@ const SubmitGrievance = () => {
         {loading ? (
           <div className="flex justify-center py-16"><Spin size="small" /></div>
         ) : (
-          <Table
+          <Table scroll={{ x: 'max-content' }}
             dataSource={grievanceList}
             columns={columns}
             rowKey="id"

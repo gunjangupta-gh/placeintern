@@ -476,7 +476,7 @@ const BulkSelfInternshipUpload = () => {
                 <h3 className="text-lg font-semibold mb-2 text-green-600">
                   Valid Records ({validationResults.valid.length})
                 </h3>
-                <Table
+                <Table scroll={{ x: 'max-content' }}
                   columns={validColumns}
                   dataSource={validationResults.valid}
                   rowKey="rowNumber"
@@ -491,7 +491,7 @@ const BulkSelfInternshipUpload = () => {
                 <h3 className="text-lg font-semibold mb-2 text-red-600">
                   Invalid Records ({validationResults.invalid.length})
                 </h3>
-                <Table
+                <Table scroll={{ x: 'max-content' }}
                   columns={invalidColumns}
                   dataSource={validationResults.invalid}
                   rowKey="rowNumber"
@@ -604,7 +604,7 @@ const BulkSelfInternshipUpload = () => {
                     <h3 className="text-lg font-semibold mb-2 text-green-600">
                       <CheckCircleOutlined /> Successfully Created ({uploadResult.successRecords.length})
                     </h3>
-                    <Table
+                    <Table scroll={{ x: 'max-content' }}
                       columns={[
                         { title: 'Row', dataIndex: 'row', key: 'row', width: 60 },
                         { title: 'Student', dataIndex: 'studentEmail', key: 'studentEmail' },
@@ -624,7 +624,7 @@ const BulkSelfInternshipUpload = () => {
                     <h3 className="text-lg font-semibold mb-2 text-red-600">
                       <CloseCircleOutlined /> Failed Records ({uploadResult.failedRecords.length})
                     </h3>
-                    <Table
+                    <Table scroll={{ x: 'max-content' }}
                       columns={[
                         { title: 'Row', dataIndex: 'row', key: 'row', width: 60 },
                         { title: 'Student', dataIndex: 'studentEmail', key: 'studentEmail', render: (text) => text || '-' },

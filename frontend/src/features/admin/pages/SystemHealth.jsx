@@ -273,7 +273,7 @@ const SystemHealth = () => {
 
       {/* Services Status */}
       <Card title="Service Status" className="mb-6">
-        <Table
+        <Table scroll={{ x: 'max-content' }}
           dataSource={report?.services || []}
           columns={serviceColumns}
           rowKey="name"
@@ -284,7 +284,7 @@ const SystemHealth = () => {
       {/* Recent Alerts */}
       <Card title="Recent Alerts">
         {alerts?.length > 0 ? (
-          <Table
+          <Table scroll={{ x: 'max-content' }}
             dataSource={alerts}
             columns={alertColumns}
             rowKey="id"

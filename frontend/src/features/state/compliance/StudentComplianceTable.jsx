@@ -239,7 +239,7 @@ const StudentComplianceTable = ({ students = [] }) => {
         dataSource={filteredStudents}
         rowKey="studentId"
         size="small"
-        scroll={{ y: 'calc(100vh - 420px)' }}
+        scroll={{ x: 'max-content', y: 'calc(100vh - 420px)' }}
         pagination={false}
         locale={{
           emptyText: (

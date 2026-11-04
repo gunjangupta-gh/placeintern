@@ -186,7 +186,7 @@ const BulkApplicationAddPage = () => {
           title={<span className="text-sm font-semibold">Processed Rows</span>}
           styles={{ body: { padding: '12px' } }}
         >
-          <Table
+          <Table scroll={{ x: 'max-content' }}
             size="small"
             rowKey="key"
             dataSource={processedRows}
@@ -238,7 +238,7 @@ const BulkApplicationAddPage = () => {
             }
             className="mb-3"
           />
-          <Table
+          <Table scroll={{ x: 'max-content' }}
             size="small"
             rowKey="key"
             dataSource={failedRows}

@@ -90,7 +90,7 @@ const VisitsByTypePieChart = ({ selectedMonth }) => {
 
   if (loading) {
     return (
-      <Card className="rounded-xl border border-border/50 shadow-sm bg-background h-full">
+      <Card className="rounded-xl border border-border shadow-sm bg-background h-full">
         <div className="flex justify-center items-center h-full min-h-[150px]">
           <Spin />
         </div>
@@ -104,7 +104,7 @@ const VisitsByTypePieChart = ({ selectedMonth }) => {
 
   return (
     <Card
-      className="rounded-xl border border-border/50 shadow-sm bg-background h-full"
+      className="rounded-xl border border-border shadow-sm bg-background h-full"
       styles={{ body: { padding: '0', height: '100%', display: 'flex', flexDirection: 'column' } }}
     >
       <div className="flex items-center justify-between p-4 border-b border-border/50 shrink-0">

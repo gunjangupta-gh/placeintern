@@ -277,7 +277,7 @@ export default function StudentGrievance() {
             <Spin size="small" />
           </div>
         ) : (
-          <Table
+          <Table scroll={{ x: 'max-content' }}
             dataSource={grievanceList}
             columns={columns}
             rowKey="id"

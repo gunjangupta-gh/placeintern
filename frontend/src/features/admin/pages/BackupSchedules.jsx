@@ -263,7 +263,7 @@ const BackupSchedules = () => {
 
       {/* Schedules Table */}
       <Card title="Custom Schedules">
-        <Table
+        <Table scroll={{ x: 'max-content' }}
           dataSource={schedules}
           columns={columns}
           rowKey="id"

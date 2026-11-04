@@ -300,7 +300,7 @@ const InstitutionDocumentsTab = ({ institutionId, institutionName }) => {
           rowKey="id"
           size="small"
           loading={loading}
-          scroll={{ y: 400 }}
+          scroll={{ x: 'max-content', y: 400 }}
           pagination={{
             pageSize: 20,
             showSizeChanger: true,

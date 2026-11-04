@@ -791,7 +791,7 @@ const MentorAssignment = () => {
             Current Mentor Assignments
           </h3>
           <div className="bg-surface rounded-xl border-border shadow-soft overflow-hidden">
-            <Table
+            <Table scroll={{ x: 'max-content' }}
               columns={assignmentColumns}
               dataSource={uniqueMentorAssignments}
               rowKey={(record) => record.mentor?.id || record.id}
@@ -933,7 +933,7 @@ const MentorAssignment = () => {
               </Text>
             </div>
             <div className="rounded-xl border  overflow-hidden">
-              <Table
+              <Table scroll={{ x: 'max-content' }}
                 rowSelection={rowSelection}
                 columns={[
                   {

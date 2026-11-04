@@ -507,7 +507,7 @@ const MyTickets = () => {
 
         {/* Tickets Table */}
         <Card className="rounded-xl border border-border shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
-          <Table
+          <Table scroll={{ x: 'max-content' }}
             columns={columns}
             dataSource={filteredTickets}
             rowKey="id"

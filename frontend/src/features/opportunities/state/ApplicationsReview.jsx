@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate, formatTime } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { DEFAULT_PAGE_SIZE, tablePagination, serialColumn, statusLabel } from '../pagination';
+import { textSorter, numberSorter, dateSorter } from '../tableUtils';
 
 const { Text } = Typography;
 const PENDING = ['APPLIED', 'UNDER_REVIEW', 'SHORTLISTED'];
@@ -183,11 +184,13 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
         </Tooltip>
       ),
       width: 100,
+      sorter: numberSorter((r) => r.queue?.rank),
       render: (_, r) => <QueueTag r={r} />,
     },
     {
       title: 'Applied at',
       dataIndex: 'appliedDate',
+      sorter: dateSorter((r) => r.appliedDate),
       render: (v) => (
         <div style={{ whiteSpace: 'nowrap' }}>
           <div>{formatDate(v)}</div>
@@ -195,13 +198,14 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
         </div>
       ),
     },
-    { title: 'Institution', dataIndex: ['student', 'Institution', 'name'] },
-    { title: 'Student', render: (_, r) => <div><div>{r.student?.user?.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.rollNumber}</Text></div> },
+    { title: 'Institution', dataIndex: ['student', 'Institution', 'name'], sorter: textSorter((r) => r.student?.Institution?.name) },
+    { title: 'Student', sorter: textSorter((r) => r.student?.user?.name), render: (_, r) => <div><div>{r.student?.user?.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.rollNumber}</Text></div> },
     ...(scoped
       ? [{ title: 'Contact', render: (_, r) => <div style={{ fontSize: 12 }}><div>{r.student?.user?.phoneNo}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.email}</Text></div> }]
       : []),
     {
       title: 'Branch',
+      sorter: textSorter((r) => r.student?.branch?.name),
       render: (_, r) => (
         <div>
           <div>{r.student?.branch?.name}</div>
@@ -216,9 +220,9 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
     ...(scoped
       ? []
       : [
-          { title: 'Position', render: (_, r) => <div><div>{r.opportunity?.title}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.opportunity?.company?.name}</Text></div> },
+          { title: 'Position', sorter: textSorter((r) => r.opportunity?.title), render: (_, r) => <div><div>{r.opportunity?.title}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.opportunity?.company?.name}</Text></div> },
         ]),
-    { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
+    { title: 'Status', dataIndex: 'status', sorter: textSorter((r) => r.status), render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
     {
       title: 'Actions',
       render: (_, r) => (

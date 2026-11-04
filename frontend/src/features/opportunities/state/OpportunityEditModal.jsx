@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage } from '../../../services/opportunity.service';
 import { lookupService } from '../../../services/lookup.service';
+import { STIPEND_FORMAT_RE, STIPEND_FORMAT_MESSAGE, formatStipendInput, stipendToInput } from '../tableUtils';
 
 const FIELD_KEYS = [
   'companyName', 'title', 'district', 'description', 'durationMonths', 'stipend',
@@ -21,11 +22,11 @@ const toFormValues = (o) => ({
   district: o.district || '',
   description: o.description || '',
   durationMonths: o.durationMonths,
-  stipend: o.stipend || '',
+  stipend: stipendToInput(o.stipend),
   startDate: istDate(o.startDate),
   applicationDeadline: istDate(o.applicationDeadline),
   status: o.status === 'FILLED' ? undefined : o.status,
-  branches: (o.branches || []).map((b) => ({ branchId: b.id, positions: b.positions, maxApplications: b.maxApplications ?? null, stipend: b.stipend || '' })),
+  branches: (o.branches || []).map((b) => ({ branchId: b.id, positions: b.positions, maxApplications: b.maxApplications ?? null, stipend: stipendToInput(b.stipend) })),
   contactName: o.contactName || '',
   contactPhone: o.contactPhone || '',
   contactEmail: o.contactEmail || '',
@@ -194,7 +195,9 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
             <Form.Item name="district" label="District" rules={[{ max: 80 }]}><Input /></Form.Item>
           </Col>
           <Col xs={24} md={12}>
-            <Form.Item name="stipend" label="Stipend" rules={[{ max: 50 }]}><Input placeholder="e.g. 8000 per month" /></Form.Item>
+            <Form.Item name="stipend" label="Stipend (per month)" normalize={formatStipendInput} rules={[{ pattern: STIPEND_FORMAT_RE, message: STIPEND_FORMAT_MESSAGE }]}>
+              <Input prefix="₹" inputMode="numeric" placeholder="e.g. 10,000" />
+            </Form.Item>
           </Col>
           <Col span={24}>
             <Form.Item name="description" label="Description" rules={[{ max: 2000 }]}>
@@ -314,8 +317,8 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
                       </Form.Item>
                     </Col>
                     <Col xs={24} md={5}>
-                      <Form.Item name={[name, 'stipend']} rules={[{ max: 50, message: 'Max 50 characters' }]}>
-                        <Input placeholder="= default stipend" />
+                      <Form.Item name={[name, 'stipend']} normalize={formatStipendInput} rules={[{ pattern: STIPEND_FORMAT_RE, message: STIPEND_FORMAT_MESSAGE }]}>
+                        <Input prefix="₹" inputMode="numeric" placeholder="= default stipend" />
                       </Form.Item>
                     </Col>
                     <Col xs={24} md={3}>

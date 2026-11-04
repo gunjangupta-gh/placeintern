@@ -11,6 +11,7 @@ import {
   StarOutlined,
 } from '@ant-design/icons';
 import { formatDisplayDate, getStatusColor } from '../utils/applicationUtils';
+import { formatStipend, stipendSorter } from '../../../opportunities/tableUtils';
 
 const { Text } = Typography;
 
@@ -93,11 +94,8 @@ const ApplicationsTable = ({
       title: 'Stipend',
       key: 'stipend',
       width: 110,
-      render: (_, record) => {
-        const v = record.stipend;
-        if (v === null || v === undefined || v === '') return '-';
-        return /^\d+(\.\d+)?$/.test(String(v).trim()) ? `₹${Number(v).toLocaleString('en-IN')}` : v;
-      },
+      sortDirections: ['descend', 'ascend'], sorter: stipendSorter((r) => r.stipend),
+      render: (_, record) => formatStipend(record.stipend),
     },
     {
       title: 'Duration',

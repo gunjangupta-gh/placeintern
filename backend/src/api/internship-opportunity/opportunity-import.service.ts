@@ -4,6 +4,7 @@ import * as ExcelJS from 'exceljs';
 import { PrismaService } from '../../core/database/prisma.service';
 import { readExcelBuffer } from '../../core/common/utils/excel.util';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { normalizeStipend } from './stipend.util';
 import {
   AuditAction,
   AuditCategory,
@@ -187,10 +188,10 @@ export class OpportunityImportService {
       branches: `${b1}, ${b2}`,
       branchPositions: `${b1}:5, ${b2}:3`,
       branchLimits: `${b1}:12`,
-      branchStipends: `${b1}:8000 per month, ${b2}:7000 per month`,
+      branchStipends: `${b1}:8000, ${b2}:7000`,
       years: '2, 3',
       duration: 6,
-      stipend: '6000 per month',
+      stipend: '6000',
       startDate: plusDays(60),
       deadline: plusDays(30),
       description: 'Shop-floor training in the production line. This row is only an example.',
@@ -212,7 +213,7 @@ export class OpportunityImportService {
       'Optional. How many applications each branch accepts (a waiting list), as CODE:limit. Example: ME:12, EE:8. ' +
       'Must be at least the branch positions. Leave blank to accept applications only up to the positions.';
     header.getCell(colIndex('branchStipends')).note =
-      'Optional. Stipend for each branch, as CODE:amount. Example: ME:8000 per month, EE:7000 per month. ' +
+      'Optional. Stipend for each branch, as CODE:amount. Example: ME:8000, EE:7000 (amount in rupees, without text). ' +
       'A branch not listed gets the "Stipend" column value.';
     header.getCell(positionsCol).note =
       'Optional when every branch has its own count (ME:5, EE:3). Otherwise the total, split equally across the branches.';
@@ -247,12 +248,12 @@ export class OpportunityImportService {
       ['Eligible Branches', 'Yes', 'Branch codes from the Branches sheet, comma separated. Unknown codes are rejected.'],
       ['Branch-wise Positions', 'No', 'Column "Branch-wise Positions": CODE:positions, e.g. "ME:5, EE:3" = 5 Mechanical + 3 Electrical positions. Students only compete with students of their own branch. Every listed branch must be in Eligible Branches; give a count for all branches or none.'],
       ['Max Applications per Branch', 'No', 'Column "Max Applications per Branch": CODE:limit, e.g. "ME:12, EE:8" = Mechanical accepts 12 applications for its positions (a waiting list, first come first served). Must be at least the positions of that branch. Blank = applications capped at the positions. A branch not listed keeps its default.'],
-      ['Branch-wise Stipend', 'No', 'Column "Branch-wise Stipend": CODE:amount, comma separated, e.g. "ME:8000 per month, EE:7000 per month". Max 50 characters each. A branch not listed gets the general Stipend column.'],
+      ['Branch-wise Stipend', 'No', 'Column "Branch-wise Stipend": CODE:amount, comma separated, e.g. "ME:8000, EE:7,000" (rupees, saved as 10,000 style). A branch not listed gets the general Stipend column.'],
       ['Shortcut', 'No', 'Both can also be written inside Eligible Branches as CODE:positions/limit, e.g. "ME:5/12, EE:3". Do not give the same branch in both places.'],
       ['Example', '', 'Eligible Branches "ME, EE" | Branch-wise Positions "ME:5, EE:3" | Max Applications per Branch "ME:12" => ME: 5 positions / 12 applications, EE: 3 positions / 3 applications. Total 8 positions.'],
       ['Eligible Years', 'No', 'Subset of 1, 2, 3 comma separated. Blank = all years.'],
       ['Duration (Months)', 'Yes', `Whole number, 1 to ${MAX_DURATION_MONTHS}.`],
-      ['Stipend', 'No', 'Free text, e.g. 8000 per month. Max 50 characters.'],
+      ['Stipend', 'No', 'Amount in rupees per month, e.g. 10000 or 10,000 (saved as 10,000). No text such as "per month".'],
       ['Start Date', 'Yes', 'Must be after the Application Deadline.'],
       ['Application Deadline', 'Yes', 'Today or later. Students can apply up to the end of this day.'],
       ['Description', 'No', 'Max 2000 characters.'],
@@ -486,9 +487,9 @@ export class OpportunityImportService {
               }
               return out;
             };
-            // "ME:8000 per month, EE:7000": free text after the colon
+            // "ME:8000, EE:7,000": an amount after the colon (commas inside an amount are fine)
             const stipendMap = new Map<string, string>();
-            for (const tok of text('branchStipends').split(/[,;\n]/).map((t) => t.trim()).filter(Boolean)) {
+            for (const tok of text('branchStipends').split(/[;\n]|,(?=\s*[A-Za-z])/).map((t) => t.trim()).filter(Boolean)) {
               const cut = tok.indexOf(':');
               const name = cut >= 0 ? tok.slice(0, cut).trim() : '';
               const value = cut >= 0 ? tok.slice(cut + 1).trim() : '';
@@ -503,10 +504,10 @@ export class OpportunityImportService {
                 msgs.push(`Branch-wise Stipend: ${r.ok[0].code} is not listed in Eligible Branches`);
               } else if (stipendMap.has(r.ok[0].id)) {
                 msgs.push(`Branch-wise Stipend: ${r.ok[0].code} is listed more than once`);
-              } else if (value.length > 50) {
-                msgs.push(`Branch-wise Stipend: ${r.ok[0].code} must be at most 50 characters`);
               } else {
-                stipendMap.set(r.ok[0].id, value);
+                const amount = normalizeStipend(value);
+                if (!amount) msgs.push(`Branch-wise Stipend: ${r.ok[0].code} must be an amount in rupees such as 8000 or 8,000`);
+                else stipendMap.set(r.ok[0].id, amount);
               }
             }
             const posMap = extraMap('branchPositions', 'Branch-wise Positions');
@@ -609,8 +610,13 @@ export class OpportunityImportService {
       }
 
       const stipendRaw = raw.stipend;
-      const stipend = this.cellText(stipendRaw as ExcelJS.CellValue) || null;
-      if (stipend && stipend.length > 50) msgs.push('Stipend must be at most 50 characters');
+      let stipend: string | null = null;
+      const stipendText = this.cellText(stipendRaw as ExcelJS.CellValue);
+      if (stipendText) {
+        const amount = normalizeStipend(stipendText);
+        if (!amount) msgs.push('Stipend must be an amount in rupees such as 10000 or 10,000');
+        else stipend = amount;
+      }
 
       const description = text('description') || null;
       if (description && description.length > 2000) msgs.push('Description must be at most 2000 characters');

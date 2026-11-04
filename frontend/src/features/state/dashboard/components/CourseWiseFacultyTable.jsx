@@ -78,7 +78,7 @@ const CourseWiseFacultyTable = ({ rows = [], loading = false }) => {
 
   return (
     <Card
-      className="rounded-xl border border-border/50 shadow-sm bg-background"
+      className="rounded-xl border border-border shadow-sm bg-background"
       styles={{ body: { padding: '12px' } }}
       title={
         <Text className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">

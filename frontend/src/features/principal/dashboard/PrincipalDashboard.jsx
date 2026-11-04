@@ -474,7 +474,7 @@ const PrincipalDashboard = () => {
           transitionName=""
           maskTransitionName=""
         >
-          <Table
+          <Table scroll={{ x: 'max-content' }}
             dataSource={alertDetailModal.data}
             rowKey={(record) => record.studentId || record.grievanceId || record.id || Math.random()}
             pagination={{ pageSize: 10 }}
@@ -562,7 +562,7 @@ const PrincipalDashboard = () => {
             );
           })()}
 
-          <Table
+          <Table scroll={{ x: 'max-content' }}
             dataSource={dashboardStats?.studentsByBranch || []}
             rowKey={(record) => record.branchId || record.branch || record.id || Math.random()}
             pagination={false}
@@ -665,7 +665,7 @@ const PrincipalDashboard = () => {
               <div className="text-xs text-text-tertiary">Coverage Rate</div>
             </div>
           </div>
-          <Table
+          <Table scroll={{ x: 'max-content' }}
             dataSource={mentorCoverage?.mentorLoadDistribution || []}
             rowKey={(record) => record.mentorId || record.id || Math.random()}
             pagination={{ pageSize: 10 }}
@@ -758,7 +758,7 @@ const PrincipalDashboard = () => {
             </div>
           </div>
 
-          <Table
+          <Table scroll={{ x: 'max-content' }}
             dataSource={internshipStats?.byCompany || []}
             rowKey={(record, index) => record.name || `company-${index}`}
             pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (total) => `Total ${total} companies` }}

@@ -128,7 +128,7 @@ const OpportunityUpload = ({ onImported }) => {
                 style={{ marginBottom: 12 }}
                 message="Some rows have errors. Fix them in the file and upload again, or skip them."
               />
-              <Table
+              <Table scroll={{ x: 'max-content' }}
                 size="small"
                 rowKey="row"
                 pagination={{ pageSize: 10, hideOnSinglePage: true }}

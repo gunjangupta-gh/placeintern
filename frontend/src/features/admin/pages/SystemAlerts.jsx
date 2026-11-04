@@ -220,7 +220,7 @@ const SystemAlerts = () => {
       {/* Alerts Table */}
       <Card>
         {alerts.length > 0 ? (
-          <Table
+          <Table scroll={{ x: 'max-content' }}
             dataSource={alerts}
             columns={columns}
             rowKey="id"
