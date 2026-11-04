@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Col, Modal, Progress, Row, Skeleton, Statistic, Table, Tag, Tooltip, Typography, theme } from 'antd';
+import { Card, Col, Modal, Progress, Row, Skeleton, Statistic, Table, Typography, theme } from 'antd';
 import { EyeOutlined } from '@ant-design/icons';
 import { opportunityService } from '../../../services/opportunity.service';
 
@@ -13,7 +13,7 @@ const Title = ({ children }) => (
 
 /**
  * Four headline cards for the State Directorate (published internships only):
- * total + branch-wise vacancies (wide horizontal card), average stipend, applications, selected.
+ * total vacancies (branch-wise split in a modal behind the eye icon), average stipend, applications, selected.
  */
 const OpportunityStats = ({ refreshKey }) => {
   const { token } = theme.useToken();
@@ -39,8 +39,8 @@ const OpportunityStats = ({ refreshKey }) => {
 
   return (
     <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
-      {/* 1. Vacancies: total + branch-wise, laid out horizontally */}
-      <Col xs={24} xl={9}>
+      {/* 1. Total vacancies (branch-wise split is in the eye-icon modal) */}
+      <Col xs={24} sm={12} xl={6}>
         <Card size="small" style={{ ...cardStyle, position: 'relative' }}>
           <button
             type="button"
@@ -65,28 +65,12 @@ const OpportunityStats = ({ refreshKey }) => {
                 {stats.opportunities} internship{stats.opportunities === 1 ? '' : 's'} · {stats.openOpportunities} open
               </Text>
             </div>
-            <div style={{ flex: 1, minWidth: 180 }}>
-              <Title>Branch-wise</Title>
-              {stats.branchWise.length === 0 ? (
-                <Text type="secondary">No vacancies yet</Text>
-              ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, maxHeight: 92, overflowY: 'auto' }}>
-                  {stats.branchWise.map((b) => (
-                    <Tooltip key={b.code} title={`${b.name}: ${b.positions} vacancies, ${b.selected} selected`}>
-                      <Tag style={{ margin: 0, padding: '2px 8px', fontSize: 13, background: token.colorPrimaryBg, borderColor: 'transparent' }}>
-                        {b.code} <b>{b.positions}</b>
-                      </Tag>
-                    </Tooltip>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         </Card>
       </Col>
 
       {/* 2. Average stipend */}
-      <Col xs={24} sm={12} xl={5}>
+      <Col xs={24} sm={12} xl={6}>
         <Card size="small" style={cardStyle}>
           <Title>Average stipend</Title>
           {stats.averageStipend === null ? (
@@ -103,7 +87,7 @@ const OpportunityStats = ({ refreshKey }) => {
       </Col>
 
       {/* 3. Applications */}
-      <Col xs={24} sm={12} xl={5}>
+      <Col xs={24} sm={12} xl={6}>
         <Card size="small" style={cardStyle}>
           <Title>Applications</Title>
           <Statistic value={stats.applications.received} valueStyle={{ fontSize: 28, fontWeight: 600 }} />
@@ -112,7 +96,7 @@ const OpportunityStats = ({ refreshKey }) => {
       </Col>
 
       {/* 4. Selected students */}
-      <Col xs={24} sm={12} xl={5}>
+      <Col xs={24} sm={12} xl={6}>
         <Card size="small" style={cardStyle}>
           <Title>Selected students</Title>
           <Statistic value={stats.selected} suffix={<span style={{ fontSize: 13, color: token.colorTextSecondary }}>/ {stats.vacancies}</span>} valueStyle={{ fontSize: 28, fontWeight: 600, color: token.colorSuccess }} />
@@ -125,7 +109,7 @@ const OpportunityStats = ({ refreshKey }) => {
         open={showBranches}
         title="Branch-wise vacancies"
         footer={null}
-        width={620}
+        width={760}
         onCancel={() => setShowBranches(false)}
         destroyOnHidden
       >
@@ -137,7 +121,7 @@ const OpportunityStats = ({ refreshKey }) => {
           locale={{ emptyText: 'No vacancies yet' }}
           scroll={{ y: 360 }}
           columns={[
-            { title: 'Branch', render: (_, b) => <span>{b.name} <Text type="secondary">({b.code})</Text></span> },
+            { title: 'Branch', render: (_, b) => <span style={{ whiteSpace: 'nowrap' }}>{b.name} <Text type="secondary">({b.code})</Text></span> },
             { title: 'Vacancies', dataIndex: 'positions', align: 'right', sorter: (a, b) => a.positions - b.positions },
             { title: 'Selected', dataIndex: 'selected', align: 'right', render: (n) => <Text style={{ color: token.colorSuccess }}>{n}</Text> },
             {
