@@ -1,15 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Input, Table, Tabs, Tag, Typography } from 'antd';
+import { Alert, Button, Input, Modal, Table, Tabs, Tag, Typography } from 'antd';
+import { RollbackOutlined } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate, formatTime } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
 
 const { Title, Paragraph, Text } = Typography;
+const PENDING = ['APPLIED', 'UNDER_REVIEW', 'SHORTLISTED'];
 const STATUS_COLOR = { APPLIED: 'blue', UNDER_REVIEW: 'blue', SHORTLISTED: 'cyan', APPROVED: 'green', JOINED: 'green', SELECTED: 'green', COMPLETED: 'default', REJECTED: 'red', OPEN: 'green', FILLED: 'blue' };
 
 /** Generic paginated, searchable, read-only table. */
-const DataTab = ({ fetcher, columns, searchPlaceholder, rowKey = 'id' }) => {
+const DataTab = ({ fetcher, columns, searchPlaceholder, rowKey = 'id', reloadKey = 0 }) => {
   const [rows, setRows] = useState([]);
   const [meta, setMeta] = useState({ total: 0 });
   const [page, setPage] = useState(1);
@@ -30,7 +32,7 @@ const DataTab = ({ fetcher, columns, searchPlaceholder, rowKey = 'id' }) => {
     }
   }, [fetcher, page, debounced]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load, reloadKey]);
   useEffect(() => { setPage(1); }, [debounced]);
 
   return (
@@ -57,6 +59,26 @@ const InstitutionOpportunities = () => {
 
   const fetchOpportunities = useCallback((p) => opportunityService.institutionList(base, p), [base]);
   const fetchApplications = useCallback((p) => opportunityService.institutionApplications(base, p), [base]);
+  // Faculty mentor only: withdraw a mentee's pending application
+  const [withdrawing, setWithdrawing] = useState(null);
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const confirmWithdraw = async () => {
+    setSubmitting(true);
+    try {
+      await opportunityService.withdrawMenteeApplication(withdrawing.id, reason.trim());
+      toast.success('Application withdrawn. The student can no longer be considered for it.');
+      setWithdrawing(null);
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not withdraw the application'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const fetchIncomplete = useCallback((p) => opportunityService.institutionIncompleteProfiles(base, p), [base]);
 
   const opportunityColumns = [
@@ -75,6 +97,17 @@ const InstitutionOpportunities = () => {
     { title: 'Position', render: (_, r) => <div><div>{r.opportunity?.title}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.opportunity?.company?.name}</Text></div> },
     { title: 'Applied at', dataIndex: 'appliedDate', render: (v) => <div style={{ whiteSpace: 'nowrap' }}><div>{formatDate(v)}</div><Text type="secondary" style={{ fontSize: 12 }}>{formatTime(v)}</Text></div> },
     { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={STATUS_COLOR[s]}>{s}</Tag> },
+    ...(isPrincipal
+      ? []
+      : [{
+          title: 'Action',
+          render: (_, r) =>
+            PENDING.includes(r.status) ? (
+              <Button size="small" danger icon={<RollbackOutlined />} onClick={() => { setReason(''); setWithdrawing(r); }}>
+                Withdraw
+              </Button>
+            ) : null,
+        }]),
   ];
 
   const incompleteColumns = [
@@ -92,7 +125,7 @@ const InstitutionOpportunities = () => {
         destroyOnHidden
         items={[
           { key: 'opportunities', label: 'Opportunities', children: <DataTab fetcher={fetchOpportunities} columns={opportunityColumns} searchPlaceholder="Search company or position" /> },
-          { key: 'applications', label: 'Applications', children: <DataTab fetcher={fetchApplications} columns={applicationColumns} searchPlaceholder="Search student name or roll no." /> },
+          { key: 'applications', label: 'Applications', children: <DataTab fetcher={fetchApplications} columns={applicationColumns} searchPlaceholder="Search student name or roll no." reloadKey={reloadKey} /> },
           {
             key: 'incomplete',
             label: 'Incomplete profiles',
@@ -110,6 +143,24 @@ const InstitutionOpportunities = () => {
           },
         ]}
       />
+      <Modal
+        open={!!withdrawing}
+        title="Withdraw this application?"
+        okText="Withdraw"
+        okButtonProps={{ danger: true }}
+        confirmLoading={submitting}
+        onOk={confirmWithdraw}
+        onCancel={() => setWithdrawing(null)}
+        destroyOnHidden
+      >
+        <p>
+          {withdrawing?.student?.user?.name} will be withdrawn from {withdrawing?.opportunity?.title}
+          {withdrawing?.opportunity?.company?.name ? ` at ${withdrawing.opportunity.company.name}` : ''}.
+          The seat is released and the student's application slot is freed, but they cannot apply to this same internship again.
+          Only pending applications can be withdrawn.
+        </p>
+        <Input.TextArea rows={3} maxLength={500} showCount value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" />
+      </Modal>
     </div>
   );
 };

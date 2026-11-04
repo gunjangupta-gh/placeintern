@@ -119,6 +119,11 @@ export class RejectApplicationDto {
   @IsString() @MaxLength(500) reason!: string;
 }
 
+/** Faculty mentor withdrawing a mentee's pending application. */
+export class WithdrawApplicationDto {
+  @IsOptional() @IsString() @MaxLength(500) reason?: string;
+}
+
 export class BulkApplicationActionDto {
   @IsIn(['APPROVE', 'REJECT', 'DELETE']) action!: 'APPROVE' | 'REJECT' | 'DELETE';
   @IsArray() @ArrayMinSize(1) @ArrayMaxSize(200) @IsUUID('all', { each: true }) applicationIds!: string[];

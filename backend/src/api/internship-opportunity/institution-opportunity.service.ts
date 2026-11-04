@@ -1,6 +1,17 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
-import { OpportunityStatus, Prisma, Role } from '../../generated/prisma/client';
+import { CacheService } from '../../core/cache/cache.service';
+import { AuditService } from '../../infrastructure/audit/audit.service';
+import {
+  ApplicationStatus,
+  AuditAction,
+  AuditCategory,
+  AuditSeverity,
+  OpportunityStatus,
+  Prisma,
+  Role,
+} from '../../generated/prisma/client';
+import { PENDING_DECISION_STATUSES } from './opportunity.constants';
 import { applicationCap, countBranchApplications, computeMissingProfileFields, PROFILE_SELECT } from './eligibility.service';
 import {
   IncompleteProfilesQueryDto,
@@ -45,7 +56,72 @@ const PUBLIC_VIEW_SELECT = {
  */
 @Injectable()
 export class InstitutionOpportunityService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(InstitutionOpportunityService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
+    private readonly audit: AuditService,
+  ) {}
+
+  /**
+   * A faculty mentor cancels (withdraws) a PENDING application of one of their own active
+   * mentees, e.g. when the student asks them to. The seat and the student's application slot
+   * are released. Decided applications (approved / selected / joined / completed / rejected)
+   * are not touched; only the State Directorate can undo those.
+   * Anything outside the mentor's scope answers "not found" so other students are not revealed.
+   */
+  async withdrawApplication(v: Viewer, applicationId: string, reason?: string) {
+    if (v.role === Role.PRINCIPAL) throw new BadRequestException('Only the faculty mentor can withdraw an application');
+
+    const app = await this.prisma.internshipApplication.findFirst({
+      where: { id: applicationId, opportunityId: { not: null }, isActive: true, student: this.studentScope(v) },
+      select: {
+        id: true,
+        status: true,
+        studentId: true,
+        student: { select: { institutionId: true, user: { select: { name: true } } } },
+      },
+    });
+    if (!app) throw new NotFoundException('Application not found');
+    if (!PENDING_DECISION_STATUSES.includes(app.status)) {
+      throw new BadRequestException(
+        `Only pending applications can be withdrawn. This one is already ${app.status}.`,
+      );
+    }
+
+    const note = reason?.trim();
+    const now = new Date();
+    // Conditional update guards against the Directorate deciding at the same moment
+    const res = await this.prisma.internshipApplication.updateMany({
+      where: { id: applicationId, status: { in: PENDING_DECISION_STATUSES } },
+      data: {
+        status: ApplicationStatus.WITHDRAWN,
+        isSelected: false,
+        reviewRemarks: note ? `Withdrawn by mentor: ${note}` : 'Withdrawn by mentor',
+        reviewedAt: now,
+        reviewedDate: now,
+      },
+    });
+    if (res.count === 0) throw new ConflictException('Application was updated by someone else. Refresh and retry.');
+
+    await this.cache.invalidateByTags(['applications', `student:${app.studentId}`]).catch(() => undefined);
+    this.audit
+      .log({
+        action: AuditAction.APPLICATION_WITHDRAW,
+        entityType: 'InternshipApplication',
+        entityId: applicationId,
+        userId: v.userId,
+        userRole: v.role,
+        description: `Mentor withdrew internship application of ${app.student?.user?.name ?? 'a student'}`,
+        category: AuditCategory.APPLICATION_PROCESS,
+        severity: AuditSeverity.MEDIUM,
+        institutionId: app.student?.institutionId ?? undefined,
+        newValues: { reason: note },
+      })
+      .catch((e) => this.logger.warn(`Audit failed: ${e?.message}`));
+    return { success: true, applicationId };
+  }
 
   private studentScope(v: Viewer): Prisma.StudentWhereInput {
     if (v.role === Role.PRINCIPAL) {

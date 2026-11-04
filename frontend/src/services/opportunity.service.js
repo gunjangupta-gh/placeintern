@@ -106,6 +106,10 @@ export const opportunityService = {
     const response = await API.get(`/${base}/opportunities/applications`, { params: clean(params) });
     return response.data;
   },
+  async withdrawMenteeApplication(applicationId, reason) {
+    const response = await API.post(`/faculty/opportunities/applications/${applicationId}/withdraw`, { reason: reason || undefined });
+    return response.data;
+  },
   async institutionIncompleteProfiles(base, params) {
     const response = await API.get(`/${base}/opportunities/incomplete-profiles`, { params: clean(params) });
     return response.data;

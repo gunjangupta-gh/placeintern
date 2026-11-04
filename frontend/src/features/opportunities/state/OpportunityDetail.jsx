@@ -139,19 +139,19 @@ const OpportunityDetail = () => {
           scroll={{ x: 'max-content' }}
           columns={[
             { title: 'Branch', render: (_, b) => <span>{b.name} <Text type="secondary">({b.code})</Text></span> },
-            { title: 'Positions', dataIndex: 'positions' },
-            { title: 'Stipend', dataIndex: 'stipend', render: (v) => v || opp.stipend || '-' },
-            { title: 'Selected', dataIndex: 'approvedCount', render: (n) => <Text style={{ color: '#3f8600' }}>{n}</Text> },
-            { title: 'Seats left', dataIndex: 'seatsLeft', render: (n) => <Text type={n === 0 ? 'danger' : undefined}>{n}</Text> },
+            { title: 'Actual positions', dataIndex: 'positions' },
             {
-              title: 'Applications',
+              title: 'Opened applications',
               render: (_, b) => (
                 <span>
-                  {b.appliedCount} / {b.applicationLimit}{' '}
+                  {b.applicationLimit} <Text type="secondary">({b.appliedCount} received)</Text>
                   {b.applicationsLeft === 0 && <Tag color="red" style={{ marginLeft: 4 }}>Full</Tag>}
                 </span>
               ),
             },
+            { title: 'Stipend', dataIndex: 'stipend', render: (v) => v || opp.stipend || '-' },
+            { title: 'Selected', dataIndex: 'approvedCount', render: (n) => <Text style={{ color: '#3f8600' }}>{n}</Text> },
+            { title: 'Seats left', dataIndex: 'seatsLeft', render: (n) => <Text type={n === 0 ? 'danger' : undefined}>{n}</Text> },
           ]}
         />
       </Card>

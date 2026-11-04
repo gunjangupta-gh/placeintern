@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { InternshipModule } from '../../domain/internship/internship.module';
 import { EligibilityService } from './eligibility.service';
-import { InstitutionOpportunityController } from './institution-opportunity.controller';
+import { FacultyOpportunityActionsController, InstitutionOpportunityController } from './institution-opportunity.controller';
 import { InstitutionOpportunityService } from './institution-opportunity.service';
 import { OpportunityExportService } from './opportunity-export.service';
 import { OpportunityImportService } from './opportunity-import.service';
@@ -18,7 +18,12 @@ import { StudentOpportunityService } from './student-opportunity.service';
  */
 @Module({
   imports: [InternshipModule], // ExpectedCycleService
-  controllers: [StateOpportunityController, StudentOpportunityController, InstitutionOpportunityController],
+  controllers: [
+    StateOpportunityController,
+    StudentOpportunityController,
+    InstitutionOpportunityController,
+    FacultyOpportunityActionsController,
+  ],
   providers: [
     EligibilityService,
     OpportunityImportService,
