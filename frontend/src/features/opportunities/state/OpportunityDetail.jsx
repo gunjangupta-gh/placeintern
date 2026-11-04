@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Col, Descriptions, Result, Row, Skeleton, Statistic, Table, Tabs, Tag, Typography } from 'antd';
-import { ArrowLeftOutlined, EditOutlined } from '@ant-design/icons';
+import { Button, Card, Col, Descriptions, Popconfirm, Result, Row, Skeleton, Space, Statistic, Table, Tabs, Tag, Typography } from 'antd';
+import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate } from '../../../services/opportunity.service';
@@ -19,6 +19,7 @@ const OpportunityDetail = () => {
   const [missing, setMissing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -36,6 +37,32 @@ const OpportunityDetail = () => {
 
   // Approve / reject / delete change the seat counts above, so refresh them too.
   const onChanged = () => { load(); setRefreshKey((k) => k + 1); };
+
+  // Same actions as the list page: close / reopen applications, delete
+  const toggleStatus = async () => {
+    setBusy(true);
+    try {
+      await opportunityService.update(opp.id, { status: opp.status === 'OPEN' ? 'CLOSED' : 'OPEN' });
+      toast.success(opp.status === 'OPEN' ? 'Applications closed' : 'Applications reopened');
+      onChanged();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Update failed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    setBusy(true);
+    try {
+      await opportunityService.remove(opp.id);
+      toast.success('Opportunity deleted');
+      navigate('/app/internship-opportunities');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Delete failed'));
+      setBusy(false);
+    }
+  };
 
   if (loading) return <div style={{ padding: 16 }}><Skeleton active paragraph={{ rows: 8 }} /></div>;
   if (missing || !opp) {
@@ -58,7 +85,27 @@ const OpportunityDetail = () => {
         <Title level={3} style={{ margin: 0 }}>{opp.title}</Title>
         <Tag color={STATUS_COLOR[opp.status]}>{opp.status}</Tag>
         <Text type="secondary" strong>{opp.company?.name}</Text>
-        <Button type="primary" icon={<EditOutlined />} style={{ marginLeft: 'auto' }} onClick={() => setEditing(true)}>Edit</Button>
+        <Space wrap style={{ marginLeft: 'auto' }}>
+          <Button type="primary" icon={<EditOutlined />} onClick={() => setEditing(true)}>Edit</Button>
+          {opp.status !== 'FILLED' && (
+            <Button
+              loading={busy}
+              icon={opp.status === 'OPEN' ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
+              onClick={toggleStatus}
+            >
+              {opp.status === 'OPEN' ? 'Close applications' : 'Reopen applications'}
+            </Button>
+          )}
+          <Popconfirm
+            title="Delete this opportunity?"
+            description="Not possible once students have applied."
+            okText="Delete"
+            okButtonProps={{ danger: true }}
+            onConfirm={remove}
+          >
+            <Button danger loading={busy} icon={<DeleteOutlined />}>Delete</Button>
+          </Popconfirm>
+        </Space>
       </div>
 
       <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
