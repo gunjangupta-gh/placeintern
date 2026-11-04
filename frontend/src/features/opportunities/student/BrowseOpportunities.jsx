@@ -60,7 +60,7 @@ const Pill = ({ tone = 'info', icon, children, token }) => {
 const OpportunityCard = ({ item, applying, onApply }) => {
   const { token } = theme.useToken();
   const primaryReason = item.reasons?.[0]?.message;
-  const extraReasons = (item.reasons?.length || 0) - 1;
+  const inlineReasons = (item.reasons || []).filter((r) => r.code !== 'MAX_APPLICATIONS_REACHED');
   const allReasons = (item.reasons || []).map((r) => r.message);
   const cap = item.applicationLimit || 0;
   const received = item.applicationsReceived || 0;
@@ -158,12 +158,6 @@ const OpportunityCard = ({ item, applying, onApply }) => {
         </div>
       )}
 
-      {item.applied && item.queuePosition && (
-        <Text style={{ fontSize: 12 }}>
-          <FieldTimeOutlined /> You applied <b>#{item.queuePosition}</b> among students of your branch. Applications are considered first come, first served.
-        </Text>
-      )}
-
       <div style={{ flex: 1 }} />
 
       {/* Pills + action */}
@@ -190,10 +184,11 @@ const OpportunityCard = ({ item, applying, onApply }) => {
         </div>
       </div>
 
-      {!item.canApply && !item.applied && primaryReason && (
+      {/* The "at most 2 internships" limit is explained by the Apply button tooltip only */}
+      {!item.canApply && !item.applied && inlineReasons.length > 0 && (
         <Text type="secondary" style={{ fontSize: 11, lineHeight: 1.3, marginTop: -4 }}>
-          <InfoCircleOutlined /> {primaryReason}
-          {extraReasons > 0 && <> (+{extraReasons} more)</>}
+          <InfoCircleOutlined /> {inlineReasons[0].message}
+          {inlineReasons.length > 1 && <> (+{inlineReasons.length - 1} more)</>}
         </Text>
       )}
     </Card>
