@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { Tag,   Typography,  theme } from 'antd';
 import { AppTable } from '../../../../components/ui';
-import InternshipTypeBadge from '../../../../components/common/InternshipTypeBadge';
 import {
   EyeOutlined,
   CalendarOutlined,
-  EnvironmentOutlined,
   ClockCircleOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -60,7 +58,6 @@ const ApplicationsTable = ({
               <Text strong className="block truncate">
                 {company?.companyName || 'N/A'}
               </Text>
-              <InternshipTypeBadge isSelfIdentified={record.isSelfIdentified} className="text-[10px] rounded-full" />
               {!isSelfIdentified && (
                 <Text type="secondary" className="text-xs block truncate">
                   {record.internship?.title || 'Internship'}
@@ -72,31 +69,11 @@ const ApplicationsTable = ({
       },
     },
     {
-      title: isSelfIdentified ? 'Role' : 'Position',
-      key: 'position',
-      width: 180,
-      render: (_, record) => (
-        <div>
-          <Text className="block">
-            {isSelfIdentified
-              ? record.jobProfile || 'Not specified'
-              : record.internship?.title || 'N/A'}
-          </Text>
-          {!isSelfIdentified && record.internship?.industry?.address && (
-            <Text type="secondary" className="text-xs flex items-center gap-1">
-              <EnvironmentOutlined />
-              {record.internship.industry.address.split(',')[0]}
-            </Text>
-          )}
-        </div>
-      ),
-    },
-    {
       title: 'Stipend',
       key: 'stipend',
       width: 110,
       sortDirections: ['descend', 'ascend'], sorter: stipendSorter((r) => r.stipend),
-      render: (_, record) => formatStipend(record.stipend),
+      render: (_, record) => (record.stipend ? formatStipend(record.stipend) : 'Not specified'),
     },
     {
       title: 'Duration',
