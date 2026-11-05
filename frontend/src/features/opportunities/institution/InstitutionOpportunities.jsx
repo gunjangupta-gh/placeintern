@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate, formatTime } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { DEFAULT_PAGE_SIZE, tablePagination, serialColumn, statusLabel } from '../pagination';
-import { formatStipend, textSorter, numberSorter, dateSorter, stipendSorter } from '../tableUtils';
+import { formatMyBranchStipend, myBranchStipendAmount, textSorter, numberSorter, dateSorter } from '../tableUtils';
 
 const { Title, Paragraph, Text } = Typography;
 const PENDING = ['APPLIED', 'UNDER_REVIEW', 'SHORTLISTED'];
@@ -89,7 +89,18 @@ const InstitutionOpportunities = () => {
   const opportunityColumns = [
     { title: 'Company', dataIndex: ['company', 'name'], sorter: textSorter((r) => r.company?.name) },
     { title: 'District', dataIndex: 'district', sorter: textSorter((r) => r.district) },
-    { title: 'Stipend', dataIndex: 'stipend', sortDirections: ['descend', 'ascend'], sorter: stipendSorter((r) => r.stipend), render: formatStipend },
+    {
+      title: 'Stipend (your branch)',
+      sortDirections: ['descend', 'ascend'],
+      sorter: (x, y, order) => {
+        const a = myBranchStipendAmount(x), b = myBranchStipendAmount(y);
+        if (a == null && b == null) return 0;
+        if (a == null) return order === 'descend' ? -1 : 1;
+        if (b == null) return order === 'descend' ? 1 : -1;
+        return a - b;
+      },
+      render: (_, r) => formatMyBranchStipend(r),
+    },
     { title: 'Branches', dataIndex: 'branches', render: (b) => b.map((x) => <Tag key={x.id} color={x.approvedCount >= x.positions ? 'red' : undefined}>{x.code} {x.approvedCount}/{x.positions}</Tag>) },
     { title: 'Seats left', sorter: numberSorter((r) => r.seatsLeft), render: (_, r) => `${r.seatsLeft} of ${r.positions}` },
     { title: 'Deadline', dataIndex: 'applicationDeadline', sorter: dateSorter((r) => r.applicationDeadline), render: formatDate },

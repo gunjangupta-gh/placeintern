@@ -8,7 +8,7 @@ import { opportunityService, getErrorMessage, formatDate } from '../../../servic
 import { useDebounce } from '../../../hooks/useDebounce';
 import OpportunityEditModal from './OpportunityEditModal';
 import { DEFAULT_PAGE_SIZE, tablePagination, serialColumn, statusLabel } from '../pagination';
-import { formatStipend, textSorter, numberSorter, dateSorter, stipendSorter } from '../tableUtils';
+import { formatOpportunityStipend, opportunityStipendAmount, textSorter, numberSorter, dateSorter } from '../tableUtils';
 
 const STATUS_COLOR = { OPEN: 'green', CLOSED: 'default', DRAFT: 'orange', FILLED: 'blue' };
 
@@ -74,7 +74,18 @@ const OpportunityTable = ({ refreshKey, onChanged }) => {
       render: (t, r) => <a onClick={() => navigate(`/app/internship-opportunities/${r.id}`)}>{t}</a>,
     },
     { title: 'District', dataIndex: 'district', sorter: textSorter((r) => r.district) },
-    { title: 'Stipend', dataIndex: 'stipend', sortDirections: ['descend', 'ascend'], sorter: stipendSorter((r) => r.stipend), render: formatStipend },
+    {
+      title: <Tooltip title="Shown per branch when branches have different stipends">Stipend</Tooltip>,
+      sortDirections: ['descend', 'ascend'],
+      sorter: (x, y, order) => {
+        const a = opportunityStipendAmount(x), b = opportunityStipendAmount(y);
+        if (a == null && b == null) return 0;
+        if (a == null) return order === 'descend' ? -1 : 1;
+        if (b == null) return order === 'descend' ? 1 : -1;
+        return a - b;
+      },
+      render: (_, r) => formatOpportunityStipend(r),
+    },
     {
       title: (
         <Tooltip title="Branch: selected / positions. Hover a branch for its applications.">Branch-wise positions</Tooltip>
@@ -139,7 +150,7 @@ const OpportunityTable = ({ refreshKey, onChanged }) => {
             <div>
               <div><b>Industry contact (State only):</b> {[r.contactName, r.contactPhone, r.contactEmail].filter(Boolean).join(' · ') || 'Not provided'}</div>
               <div><b>Source institution / POC (State only):</b> {[r.institutionName, r.pocName, r.pocPhone].filter(Boolean).join(' · ') || 'Not provided'}</div>
-              <div><b>Duration:</b> {r.durationMonths} months · <b>Starts:</b> {formatDate(r.startDate)} · <b>Stipend:</b> {formatStipend(r.stipend)}</div>
+              <div><b>Duration:</b> {r.durationMonths} months · <b>Starts:</b> {formatDate(r.startDate)} · <b>Stipend:</b> {formatOpportunityStipend(r)}</div>
               {r.description && <div><b>Description:</b> {r.description}</div>}
             </div>
           ),

@@ -6,7 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate } from '../../../services/opportunity.service';
 import ApplicationsReview from './ApplicationsReview';
-import { formatStipend, textSorter, numberSorter, stipendSorter } from '../tableUtils';
+import { formatStipend, formatOpportunityStipend, textSorter, numberSorter, stipendSorter } from '../tableUtils';
 import OpportunityEditModal from './OpportunityEditModal';
 
 const { Title, Text } = Typography;
@@ -121,7 +121,7 @@ const OpportunityDetail = () => {
         <Descriptions size="small" column={{ xs: 1, sm: 2, lg: 3 }}>
           <Descriptions.Item label="District">{opp.district || '-'}</Descriptions.Item>
           <Descriptions.Item label="Duration">{opp.durationMonths} months</Descriptions.Item>
-          <Descriptions.Item label="Stipend">{formatStipend(opp.stipend)}</Descriptions.Item>
+          <Descriptions.Item label="Stipend">{formatOpportunityStipend(opp)}</Descriptions.Item>
           <Descriptions.Item label="Starts">{formatDate(opp.startDate)}</Descriptions.Item>
           <Descriptions.Item label="Apply by">{formatDate(opp.applicationDeadline)}</Descriptions.Item>
           <Descriptions.Item label="Industry contact (State only)" span={3}>

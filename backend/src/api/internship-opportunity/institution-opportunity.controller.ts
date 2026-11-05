@@ -30,8 +30,8 @@ export class InstitutionOpportunityController {
 
   @Get()
   @ApiOperation({ summary: 'Published internship opportunities (no industry contact details)' })
-  list(@Query() q: ListOpportunitiesQueryDto) {
-    return this.service.listOpportunities(q);
+  list(@Req() req: any, @Query() q: ListOpportunitiesQueryDto) {
+    return this.service.listOpportunities(q, this.viewer(req));
   }
 
   @Get('applications')

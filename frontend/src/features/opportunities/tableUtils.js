@@ -60,3 +60,40 @@ export const dateSorter = (get) => (x, y, order) => blankLast(get(x), get(y), (a
 export const stipendSorter = (get) => (x, y, order) => blankLast(stipendAmount(get(x)), stipendAmount(get(y)), (a, b) => a - b, order);
 /** Stipend columns sort the highest amount first on the first click. */
 export const STIPEND_SORT_ORDER = ['descend', 'ascend'];
+
+// ---- branch-wise stipend ----
+/** Each branch's effective stipend: its own, else the opportunity's. */
+export const branchStipends = (opp) =>
+  (opp?.branches || []).map((b) => ({ code: b.code, name: b.name, stipend: b.stipend || opp.stipend || null }));
+
+/**
+ * Stipend text for a whole opportunity. One amount when every branch gets the same,
+ * otherwise "ME ₹8,000 · EE ₹7,000" (branch-wise).
+ */
+export const formatOpportunityStipend = (opp) => {
+  const list = branchStipends(opp);
+  if (!list.length) return formatStipend(opp?.stipend);
+  const distinct = new Set(list.map((x) => stipendAmount(x.stipend) ?? String(x.stipend ?? '')));
+  if (distinct.size <= 1) return formatStipend(list[0].stipend);
+  return list.map((x) => `${x.code} ${formatStipend(x.stipend)}`).join(' · ');
+};
+
+/** Highest branch stipend, used to sort the column. */
+export const opportunityStipendAmount = (opp) => {
+  const nums = branchStipends(opp).map((x) => stipendAmount(x.stipend)).filter((n) => n !== null);
+  return nums.length ? Math.max(...nums) : stipendAmount(opp?.stipend);
+};
+
+/** Principal / faculty view: stipend of the viewer's own branch(es) only (the API sends others as null). */
+const myBranchStipends = (opp) => (opp?.branches || []).filter((b) => b.mine && b.stipend);
+export const formatMyBranchStipend = (opp) => {
+  const list = myBranchStipends(opp);
+  if (!list.length) return '-';
+  const distinct = new Set(list.map((x) => stipendAmount(x.stipend) ?? String(x.stipend)));
+  if (distinct.size <= 1) return formatStipend(list[0].stipend);
+  return list.map((x) => `${x.code} ${formatStipend(x.stipend)}`).join(' · ');
+};
+export const myBranchStipendAmount = (opp) => {
+  const nums = myBranchStipends(opp).map((x) => stipendAmount(x.stipend)).filter((n) => n !== null);
+  return nums.length ? Math.max(...nums) : null;
+};

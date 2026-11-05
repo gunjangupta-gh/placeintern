@@ -45,6 +45,7 @@ const PUBLIC_VIEW_SELECT = {
       positions: true,
       approvedCount: true,
       maxApplications: true,
+      stipend: true,
       branch: { select: { id: true, code: true, name: true } },
     },
   },
@@ -123,6 +124,23 @@ export class InstitutionOpportunityService {
     return { success: true, applicationId };
   }
 
+  /**
+   * The viewer's own branch(es). Faculty: the branch on their account (else the branches of their
+   * mentees). Principal: the branches their institution's active students are in.
+   */
+  private async viewerBranchIds(v: Viewer): Promise<Set<string>> {
+    if (v.role !== Role.PRINCIPAL) {
+      const u = await this.prisma.user.findUnique({ where: { id: v.userId }, select: { branchId: true } });
+      if (u?.branchId) return new Set([u.branchId]);
+    }
+    const rows = await this.prisma.student.findMany({
+      where: this.studentScope(v),
+      distinct: ['branchId'],
+      select: { branchId: true },
+    });
+    return new Set(rows.map((r) => r.branchId).filter((x): x is string => !!x));
+  }
+
   private studentScope(v: Viewer): Prisma.StudentWhereInput {
     if (v.role === Role.PRINCIPAL) {
       if (!v.institutionId) throw new BadRequestException('Institution not found for this user');
@@ -141,7 +159,8 @@ export class InstitutionOpportunityService {
   }
 
   /** Published opportunities (OPEN / FILLED) with seat usage. Same for every viewer; no contacts. */
-  async listOpportunities(q: ListOpportunitiesQueryDto) {
+  async listOpportunities(q: ListOpportunitiesQueryDto, v?: Viewer) {
+    const myBranchIds = v ? await this.viewerBranchIds(v) : new Set<string>();
     const { page, limit, skip, take } = this.page(q);
     const where: Prisma.InternshipOpportunityWhereInput = {
       isDeleted: false,
@@ -166,15 +185,22 @@ export class InstitutionOpportunityService {
     ]);
     const byBranch = await countBranchApplications(this.prisma, rows.map((r) => r.id));
     return {
-      data: rows.map(({ branches, ...r }) => ({
+      // Stipend is only shown for the viewer's own branch(es): the branch's stipend, else the
+      // opportunity's. Other branches' stipends are not sent.
+      data: rows.map(({ branches, stipend, ...r }) => ({
         ...r,
-        branches: branches.map((b) => ({
-          ...b.branch,
-          positions: b.positions,
-          approvedCount: b.approvedCount,
-          applicationLimit: applicationCap(b),
-          appliedCount: byBranch.get(r.id)?.get(b.branch.id) ?? 0,
-        })),
+        branches: branches.map((b) => {
+          const mine = myBranchIds.has(b.branch.id);
+          return {
+            ...b.branch,
+            positions: b.positions,
+            approvedCount: b.approvedCount,
+            applicationLimit: applicationCap(b),
+            appliedCount: byBranch.get(r.id)?.get(b.branch.id) ?? 0,
+            mine,
+            stipend: mine ? b.stipend ?? stipend : null,
+          };
+        }),
         seatsLeft: branches.reduce((n, b) => n + Math.max(b.positions - b.approvedCount, 0), 0),
       })),
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },

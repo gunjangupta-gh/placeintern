@@ -166,7 +166,8 @@ export class StudentOpportunityService {
         code: b.branch.code,
         name: b.branch.name,
         positions: b.positions,
-        stipend: b.stipend ?? o.stipend,
+        // only the student's own branch stipend is shown
+        stipend: b.branch.id === branchId ? b.stipend ?? o.stipend : null,
         mine: b.branch.id === branchId,
       })),
       applied: appliedToThis,
