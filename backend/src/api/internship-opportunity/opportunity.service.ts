@@ -64,6 +64,9 @@ const DIRECTOR_SELECT = {
   contactName: true,
   contactPhone: true,
   contactEmail: true,
+  institutionName: true,
+  pocName: true,
+  pocPhone: true,
   importBatchId: true,
   createdAt: true,
   company: { select: { id: true, name: true } },
@@ -326,6 +329,9 @@ export class OpportunityService {
           contactName: text(dto.contactName),
           contactPhone: text(dto.contactPhone),
           contactEmail: text(dto.contactEmail),
+          institutionName: text(dto.institutionName),
+          pocName: text(dto.pocName),
+          pocPhone: text(dto.pocPhone),
           createdById: actor.userId,
           branches: {
             create: dto.branches.map((b) => ({
@@ -377,7 +383,7 @@ export class OpportunityService {
       if (!title) throw new BadRequestException('Position title cannot be empty');
       data.title = title;
     }
-    for (const key of ['description', 'district', 'stipend', 'contactName', 'contactPhone', 'contactEmail'] as const) {
+    for (const key of ['description', 'district', 'stipend', 'contactName', 'contactPhone', 'contactEmail', 'institutionName', 'pocName', 'pocPhone'] as const) {
       if (dto[key] !== undefined) (data as any)[key] = dto[key].trim() === '' ? null : dto[key].trim();
     }
     if (dto.durationMonths !== undefined) data.durationMonths = dto.durationMonths;

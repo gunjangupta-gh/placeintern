@@ -1474,6 +1474,7 @@ const AllStudents = () => {
               <Option value="MARKSHEET_12TH">12th Marksheet</Option>
               <Option value="CASTE_CERTIFICATE">Caste Certificate</Option>
               <Option value="PHOTO">Photo</Option>
+              <Option value="RESUME">Resume</Option>
               <Option value="OTHER">Other</Option>
             </Select>
           </Form.Item>

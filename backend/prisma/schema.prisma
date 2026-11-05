@@ -400,6 +400,7 @@ enum DocumentType {
   MARKSHEET_12TH
   CASTE_CERTIFICATE
   PHOTO
+  RESUME
   OTHER
 }
 
@@ -2713,6 +2714,12 @@ model InternshipOpportunity {
   contactName  String?
   contactPhone String?
   contactEmail String?
+
+  // Source of the opportunity: the institution and faculty member (point of contact)
+  // who provided it. State-only (never returned to students/principals/faculty).
+  institutionName String?
+  pocName         String?
+  pocPhone        String?
 
   importBatchId String?
   createdById   String

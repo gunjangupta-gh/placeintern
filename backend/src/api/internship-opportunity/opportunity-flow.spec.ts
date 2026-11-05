@@ -9,7 +9,7 @@ const start = new Date(Date.now() + 40 * 864e5);
 const completeStudent = {
   id: 's1', userId: 'u1', branchId: 'b-me', institutionId: 'i1', currentYear: 2,
   gender: 'MALE', category: 'GENERAL', admissionType: 'REGULAR', parentName: 'P', parentContact: '99',
-  address: 'a', pinCode: '1', tehsil: 't', district: 'd', city: 'c', state: 's',
+  address: 'a', pinCode: '1', tehsil: 't', district: 'd', city: 'c', state: 's', document: [{ id: 'doc-resume' }],
   user: { name: 'A', email: 'a@x.in', phoneNo: '98', dob: new Date('2005-01-01'), active: true, branchId: 'b-me' },
 };
 

@@ -41,6 +41,7 @@ const DOCUMENT_TYPE_LABELS = {
   MARKSHEET_12TH: '12th Marksheet',
   CASTE_CERTIFICATE: 'Caste Certificate',
   PHOTO: 'Photo',
+  RESUME: 'Resume',
   JOINING_LETTER: 'Joining Report',
   MONTHLY_REPORT: 'Monthly Report',
   OTHER: 'Other',

@@ -26,6 +26,7 @@ const completeStudent = (over: Partial<StudentContext> = {}): StudentContext =>
     district: 'D',
     city: 'C',
     state: 'Punjab',
+    document: [{ id: 'doc-resume' }],
     user: { name: 'A', email: 'a@x.in', phoneNo: '9876543210', dob: new Date('2005-01-01'), active: true, branchId: 'b-me' },
     ...over,
   }) as StudentContext;
@@ -61,6 +62,12 @@ describe('computeMissingProfileFields', () => {
     const keys = computeMissingProfileFields(s).map((m) => m.key);
     expect(keys).toEqual(expect.arrayContaining(['parentName', 'tehsil', 'contact', 'dob']));
     expect(keys).not.toContain('name');
+  });
+
+  it('flags a missing resume, and blocks applying without one', () => {
+    const s = completeStudent({ document: [] } as any);
+    expect(computeMissingProfileFields(s).map((m) => m.key)).toEqual(['resume']);
+    expect(codes(input({ student: s }))).toContain('PROFILE_INCOMPLETE');
   });
 });
 

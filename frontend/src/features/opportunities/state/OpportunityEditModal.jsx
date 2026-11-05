@@ -12,6 +12,7 @@ const FIELD_KEYS = [
   'companyName', 'title', 'district', 'description', 'durationMonths', 'stipend',
   'startDate', 'applicationDeadline', 'status', 'branches',
   'contactName', 'contactPhone', 'contactEmail',
+  'institutionName', 'pocName', 'pocPhone',
 ];
 
 /** yyyy-mm-dd of an instant, as the calendar date in India (how the server stores dates). */
@@ -31,6 +32,9 @@ const toFormValues = (o) => ({
   contactName: o.contactName || '',
   contactPhone: o.contactPhone || '',
   contactEmail: o.contactEmail || '',
+  institutionName: o.institutionName || '',
+  pocName: o.pocName || '',
+  pocPhone: o.pocPhone || '',
 });
 
 /** Comparable form of a value, so unchanged fields are not sent. */
@@ -55,6 +59,7 @@ const CREATE_DEFAULTS = {
   startDate: null, applicationDeadline: null, status: 'OPEN',
   branches: [{ branchId: undefined, positions: 1, maxApplications: null, stipend: '' }],
   contactName: '', contactPhone: '', contactEmail: '',
+  institutionName: '', pocName: '', pocPhone: '',
 };
 
 const PHONE_RE = /^[0-9+\-\s()]{7,20}$/;
@@ -348,6 +353,19 @@ const OpportunityEditModal = ({ opportunity, onClose, onSaved }) => {
             </>
           )}
         </Form.List>
+
+        <Divider orientation="left" plain>Source institution / faculty POC (State only)</Divider>
+        <Row gutter={16}>
+          <Col xs={24} md={8}>
+            <Form.Item name="institutionName" label="Institution name" rules={[{ max: 150 }]}><Input /></Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item name="pocName" label="POC name" rules={[{ max: 100 }]}><Input /></Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item name="pocPhone" label="POC phone" rules={[{ pattern: PHONE_RE, message: 'Enter a valid phone number' }]}><Input /></Form.Item>
+          </Col>
+        </Row>
 
         <Divider orientation="left" plain>Industry contact</Divider>
         <Row gutter={16}>

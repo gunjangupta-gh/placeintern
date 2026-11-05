@@ -73,6 +73,7 @@ export const REQUIRED_PROFILE_FIELDS: ReadonlyArray<{ key: string; label: string
   { key: 'state', label: 'State' },
   { key: 'tehsil', label: 'Tehsil' },
   { key: 'district', label: 'District' },
+  { key: 'resume', label: 'Resume (upload it under Documents in your profile)' },
 ];
 
 export const MAX_IMPORT_ROWS = 500;

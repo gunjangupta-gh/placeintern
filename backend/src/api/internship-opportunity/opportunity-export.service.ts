@@ -161,6 +161,7 @@ export class OpportunityExportService {
       select: {
         id: true, title: true, district: true, positions: true, approvedCount: true, status: true, durationMonths: true,
         stipend: true, startDate: true, applicationDeadline: true, contactName: true, contactPhone: true, contactEmail: true,
+        institutionName: true, pocName: true, pocPhone: true,
         company: { select: { name: true } },
         branches: {
           select: { positions: true, approvedCount: true, maxApplications: true, stipend: true, branch: { select: { code: true } } },
@@ -195,6 +196,9 @@ export class OpportunityExportService {
       { header: 'Contact Name', key: 'cname', width: 20 },
       { header: 'Contact Phone', key: 'cphone', width: 15 },
       { header: 'Contact Email', key: 'cemail', width: 26 },
+      { header: 'Institution Name', key: 'inst', width: 28 },
+      { header: 'POC Name', key: 'pname', width: 20 },
+      { header: 'POC Phone', key: 'pphone', width: 15 },
     ];
     opps.forEach((o, i) => {
       const applied = holding.get(o.id) ?? 0;
@@ -218,6 +222,9 @@ export class OpportunityExportService {
         cname: safe(o.contactName),
         cphone: safe(o.contactPhone),
         cemail: safe(o.contactEmail),
+        inst: safe(o.institutionName),
+        pname: safe(o.pocName),
+        pphone: safe(o.pocPhone),
       });
     });
     this.style(os);

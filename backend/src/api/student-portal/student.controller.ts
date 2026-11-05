@@ -22,7 +22,7 @@ import { StudentService } from './student.service';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
-import { Role } from '../../generated/prisma/client';
+import { DocumentType, Role } from '../../generated/prisma/client';
 import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
 import { CreateStudentPlacementInterestDto, UpdateStudentPlacementInterestDto, SubmitPPODto } from './dto/student-placement-interest.dto';
 
@@ -393,6 +393,11 @@ export class StudentController {
   ) {
     if (!file) {
       throw new BadRequestException('No file provided');
+    }
+    if (!documentDto?.type || !Object.values(DocumentType).includes(documentDto.type)) {
+      throw new BadRequestException(
+        `Invalid document type. Allowed: ${Object.values(DocumentType).join(', ')}`,
+      );
     }
 
     // Get student info for proper file path

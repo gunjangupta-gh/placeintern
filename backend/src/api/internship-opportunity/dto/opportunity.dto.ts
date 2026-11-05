@@ -94,6 +94,10 @@ export class CreateOpportunityDto {
   @IsOptional() @IsString() @MaxLength(100) contactName?: string;
   @IsOptional() @Matches(/^$|^[0-9+\-\s()]{7,20}$/, { message: 'contactPhone is not a valid phone number' }) contactPhone?: string;
   @IsOptional() @Matches(/^$|^[^\s@]{1,64}@[^\s@]+\.[^\s@]+$/, { message: 'contactEmail is not a valid email' }) @MaxLength(100) contactEmail?: string;
+  /** Institution and faculty point of contact who provided this opportunity (state-only). */
+  @IsOptional() @IsString() @MaxLength(150) institutionName?: string;
+  @IsOptional() @IsString() @MaxLength(100) pocName?: string;
+  @IsOptional() @Matches(/^$|^[0-9+\-\s()]{7,20}$/, { message: 'pocPhone is not a valid phone number' }) pocPhone?: string;
 }
 
 /**
@@ -118,6 +122,10 @@ export class UpdateOpportunityDto {
   @IsOptional() @IsString() @MaxLength(100) contactName?: string;
   @IsOptional() @Matches(/^$|^[0-9+\-\s()]{7,20}$/, { message: 'contactPhone is not a valid phone number' }) contactPhone?: string;
   @IsOptional() @Matches(/^$|^[^\s@]{1,64}@[^\s@]+\.[^\s@]+$/, { message: 'contactEmail is not a valid email' }) @MaxLength(100) contactEmail?: string;
+  /** Institution and faculty point of contact who provided this opportunity (state-only). */
+  @IsOptional() @IsString() @MaxLength(150) institutionName?: string;
+  @IsOptional() @IsString() @MaxLength(100) pocName?: string;
+  @IsOptional() @Matches(/^$|^[0-9+\-\s()]{7,20}$/, { message: 'pocPhone is not a valid phone number' }) pocPhone?: string;
 }
 
 export class ApproveApplicationDto {

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
-import { ApplicationStatus, OpportunityStatus, Prisma } from '../../generated/prisma/client';
+import { ApplicationStatus, DocumentType, OpportunityStatus, Prisma } from '../../generated/prisma/client';
 import {
   CONFIRMED_STATUSES,
   MAX_PENDING_APPLICATIONS,
@@ -23,6 +23,8 @@ export const PROFILE_SELECT = {
   city: true,
   state: true,
   user: { select: { name: true, email: true, phoneNo: true, dob: true } },
+  /** A resume on the profile is required to apply (at least one active RESUME document). */
+  document: { where: { type: DocumentType.RESUME, isDeleted: false }, select: { id: true }, take: 1 },
 } satisfies Prisma.StudentSelect;
 
 export const STUDENT_CONTEXT_SELECT = {
@@ -95,6 +97,7 @@ export function computeMissingProfileFields(
     state: s.state,
     tehsil: s.tehsil,
     district: s.district,
+    resume: s.document?.length ? 'uploaded' : null,
   };
   return REQUIRED_PROFILE_FIELDS.filter((f) => !isFilled(values[f.key])).map((f) => ({
     key: f.key,

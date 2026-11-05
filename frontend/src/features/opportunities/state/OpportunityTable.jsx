@@ -138,6 +138,7 @@ const OpportunityTable = ({ refreshKey, onChanged }) => {
           expandedRowRender: (r) => (
             <div>
               <div><b>Industry contact (State only):</b> {[r.contactName, r.contactPhone, r.contactEmail].filter(Boolean).join(' · ') || 'Not provided'}</div>
+              <div><b>Source institution / POC (State only):</b> {[r.institutionName, r.pocName, r.pocPhone].filter(Boolean).join(' · ') || 'Not provided'}</div>
               <div><b>Duration:</b> {r.durationMonths} months · <b>Starts:</b> {formatDate(r.startDate)} · <b>Stipend:</b> {formatStipend(r.stipend)}</div>
               {r.description && <div><b>Description:</b> {r.description}</div>}
             </div>

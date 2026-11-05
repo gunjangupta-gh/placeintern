@@ -505,6 +505,7 @@ const AssignedStudentsList = () => {
     { value: 'MARKSHEET_12TH', label: '12th Marksheet' },
     { value: 'CASTE_CERTIFICATE', label: 'Caste Certificate' },
     { value: 'PHOTO', label: 'Photo' },
+    { value: 'RESUME', label: 'Resume' },
     { value: 'OTHER', label: 'Other' },
   ];
 

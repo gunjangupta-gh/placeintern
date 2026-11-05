@@ -37,6 +37,7 @@ const DOCUMENT_TYPE_LABELS = {
   MARKSHEET_12TH: '12th Marksheet',
   CASTE_CERTIFICATE: 'Caste Certificate',
   PHOTO: 'Photo',
+  RESUME: 'Resume',
   OTHER: 'Other Document',
 };
 
@@ -45,6 +46,7 @@ const DOCUMENT_TYPE_COLORS = {
   MARKSHEET_12TH: 'cyan',
   CASTE_CERTIFICATE: 'purple',
   PHOTO: 'green',
+  RESUME: 'gold',
   OTHER: 'default',
 };
 
@@ -251,6 +253,7 @@ const InstitutionDocumentsTab = ({ institutionId, institutionName }) => {
             <Select.Option value="MARKSHEET_12TH">12th Marksheet</Select.Option>
             <Select.Option value="CASTE_CERTIFICATE">Caste Certificate</Select.Option>
             <Select.Option value="PHOTO">Photo</Select.Option>
+            <Select.Option value="RESUME">Resume</Select.Option>
             <Select.Option value="OTHER">Other</Select.Option>
           </Select>
         </div>

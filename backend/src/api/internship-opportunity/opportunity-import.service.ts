@@ -53,6 +53,9 @@ const COLUMNS: ReadonlyArray<{ header: string; key: string; width: number }> = [
   { header: 'Contact Name', key: 'contactName', width: 20 },
   { header: 'Contact Phone', key: 'contactPhone', width: 16 },
   { header: 'Contact Email', key: 'contactEmail', width: 26 },
+  { header: 'Institution Name', key: 'institutionName', width: 30 },
+  { header: 'POC Name', key: 'pocName', width: 22 },
+  { header: 'POC Phone', key: 'pocPhone', width: 16 },
 ];
 
 const normHeader = (s: string) => s.replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -84,6 +87,9 @@ export interface ParsedOpportunityRow {
   contactName: string | null;
   contactPhone: string | null;
   contactEmail: string | null;
+  institutionName: string | null;
+  pocName: string | null;
+  pocPhone: string | null;
 }
 
 export interface RowError {
@@ -198,6 +204,9 @@ export class OpportunityImportService {
       contactName: 'Mr. Sharma (HR)',
       contactPhone: '9876543210',
       contactEmail: 'hr@example.com',
+      institutionName: 'Govt. Polytechnic College, Mohali',
+      pocName: 'Prof. Kaur (Faculty)',
+      pocPhone: '9812345678',
     };
     example.font = { italic: true, color: { argb: 'FF7F7F7F' } };
     example.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } };
@@ -258,6 +267,7 @@ export class OpportunityImportService {
       ['Application Deadline', 'Yes', 'Today or later. Students can apply up to the end of this day.'],
       ['Description', 'No', 'Max 2000 characters.'],
       ['Contact Name/Phone/Email', 'No', 'Industry contact. Visible to State Directorate only - never shown to students.'],
+      ['Institution Name / POC Name / POC Phone', 'No', 'Institution and faculty member (point of contact) who provided this opportunity, so State can track the source. POC Phone: 7-20 digits. Visible to State Directorate only.'],
       ['Limits', '', `Maximum ${MAX_IMPORT_ROWS} rows per upload. The upload is previewed first; nothing is saved until you confirm.`],
     ].forEach(([field, required, rule]) => is.addRow({ field, required, rule }));
 
@@ -639,6 +649,12 @@ export class OpportunityImportService {
       const contactName = text('contactName') || null;
       const contactPhone = text('contactPhone') || null;
       const contactEmail = text('contactEmail') || null;
+      const institutionName = text('institutionName') || null;
+      const pocName = text('pocName') || null;
+      const pocPhone = text('pocPhone') || null;
+      if (institutionName && institutionName.length > 150) msgs.push('Institution Name must be at most 150 characters');
+      if (pocName && pocName.length > 100) msgs.push('POC Name must be at most 100 characters');
+      if (pocPhone && !/^[0-9+\-\s()]{7,20}$/.test(pocPhone)) msgs.push('POC Phone is not a valid phone number');
       if (contactName && contactName.length > 100) msgs.push('Contact Name must be at most 100 characters');
       if (contactPhone && !/^[0-9+\-\s()]{7,20}$/.test(contactPhone)) msgs.push('Contact Phone is not a valid phone number');
       if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) msgs.push('Contact Email is not a valid email');
@@ -676,6 +692,9 @@ export class OpportunityImportService {
         contactName,
         contactPhone,
         contactEmail,
+        institutionName,
+        pocName,
+        pocPhone,
       });
     }
 
@@ -767,6 +786,9 @@ export class OpportunityImportService {
               contactName: r.contactName,
               contactPhone: r.contactPhone,
               contactEmail: r.contactEmail,
+              institutionName: r.institutionName,
+              pocName: r.pocName,
+              pocPhone: r.pocPhone,
               importBatchId,
               createdById: actor.userId,
               branches: {

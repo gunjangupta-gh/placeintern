@@ -127,6 +127,9 @@ const OpportunityDetail = () => {
           <Descriptions.Item label="Industry contact (State only)" span={3}>
             {[opp.contactName, opp.contactPhone, opp.contactEmail].filter(Boolean).join(' · ') || 'Not provided'}
           </Descriptions.Item>
+          <Descriptions.Item label="Source institution / POC (State only)" span={3}>
+            {[opp.institutionName, opp.pocName, opp.pocPhone].filter(Boolean).join(' · ') || 'Not provided'}
+          </Descriptions.Item>
           {opp.description && <Descriptions.Item label="Description" span={3}>{opp.description}</Descriptions.Item>}
         </Descriptions>
       </Card>
