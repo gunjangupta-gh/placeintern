@@ -27,6 +27,7 @@ const completeStudent = (over: Partial<StudentContext> = {}): StudentContext =>
     city: 'C',
     state: 'Punjab',
     document: [{ id: 'doc-resume' }],
+    mentorAssignments: [{ id: 'ma-1' }],
     user: { name: 'A', email: 'a@x.in', phoneNo: '9876543210', dob: new Date('2005-01-01'), active: true, branchId: 'b-me' },
     ...over,
   }) as StudentContext;
@@ -186,6 +187,11 @@ describe('evaluateEligibility', () => {
     expect(c).not.toContain('APPLICATIONS_FULL');
     expect(c).not.toContain('MAX_APPLICATIONS_REACHED');
     expect(c).not.toContain('HAS_INTERNSHIP');
+  });
+
+  it('blocks students without an active mentor', () => {
+    const s = completeStudent({ mentorAssignments: [] } as any);
+    expect(codes(input({ student: s }))).toEqual(['NO_MENTOR']);
   });
 
   it('blocks inactive accounts', () => {

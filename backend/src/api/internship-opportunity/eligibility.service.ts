@@ -33,6 +33,8 @@ export const STUDENT_CONTEXT_SELECT = {
   branchId: true,
   institutionId: true,
   currentYear: true,
+  /** An active mentor assignment is required to apply. */
+  mentorAssignments: { where: { isActive: true }, select: { id: true }, take: 1 },
   ...PROFILE_SELECT,
   user: {
     select: { name: true, email: true, phoneNo: true, dob: true, active: true, branchId: true },
@@ -44,6 +46,7 @@ export type StudentContext = Prisma.StudentGetPayload<{ select: typeof STUDENT_C
 export interface EligibilityReason {
   code:
     | 'PROFILE_INCOMPLETE'
+    | 'NO_MENTOR'
     | 'ACCOUNT_INACTIVE'
     | 'NO_BRANCH'
     | 'BRANCH_NOT_ELIGIBLE'
@@ -156,6 +159,13 @@ export function evaluateEligibility(input: EvaluationInput): EligibilityReason[]
     reasons.push({
       code: 'PROFILE_INCOMPLETE',
       message: `Complete your profile first. Missing: ${missing.map((m) => m.label).join(', ')}`,
+    });
+  }
+
+  if (!student.mentorAssignments?.length) {
+    reasons.push({
+      code: 'NO_MENTOR',
+      message: 'You have no active mentor assigned. Contact your institution to get a faculty mentor assigned before applying',
     });
   }
 
