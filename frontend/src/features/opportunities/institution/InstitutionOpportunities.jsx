@@ -6,7 +6,7 @@ import { useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate, formatTime } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
-import { DEFAULT_PAGE_SIZE, tablePagination, serialColumn, statusLabel } from '../pagination';
+import { usePersistedPagination, useResetPageOnChange, tablePagination, serialColumn, statusLabel } from '../pagination';
 import { formatMyBranchStipend, myBranchStipendAmount, textSorter, numberSorter, dateSorter } from '../tableUtils';
 
 const { Title, Paragraph, Text } = Typography;
@@ -17,8 +17,7 @@ const STATUS_COLOR = { APPLIED: 'blue', UNDER_REVIEW: 'blue', SHORTLISTED: 'cyan
 const DataTab = ({ fetcher, columns, searchPlaceholder, rowKey = 'id', reloadKey = 0 }) => {
   const [rows, setRows] = useState([]);
   const [meta, setMeta] = useState({ total: 0 });
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { page, pageSize, setPage, setPageSize } = usePersistedPagination('institution');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const debounced = useDebounce(search, 300);
@@ -38,7 +37,7 @@ const DataTab = ({ fetcher, columns, searchPlaceholder, rowKey = 'id', reloadKey
   }, [fetcher, page, pageSize, debounced]);
 
   useEffect(() => { load(); }, [load, reloadKey]);
-  useEffect(() => { setPage(1); }, [debounced]);
+  useResetPageOnChange(setPage, [debounced]);
 
   return (
     <>

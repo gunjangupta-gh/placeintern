@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
 import OpportunityEditModal from './OpportunityEditModal';
-import { DEFAULT_PAGE_SIZE, tablePagination, serialColumn, statusLabel } from '../pagination';
+import { usePersistedPagination, useResetPageOnChange, tablePagination, serialColumn, statusLabel } from '../pagination';
 import { formatOpportunityStipend, opportunityStipendAmount, textSorter, numberSorter, dateSorter } from '../tableUtils';
 
 const STATUS_COLOR = { OPEN: 'green', CLOSED: 'default', DRAFT: 'orange', FILLED: 'blue' };
@@ -16,8 +16,7 @@ const OpportunityTable = ({ refreshKey, onChanged }) => {
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [meta, setMeta] = useState({ total: 0 });
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { page, pageSize, setPage, setPageSize } = usePersistedPagination('state-opportunities');
   const [status, setStatus] = useState();
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
@@ -40,7 +39,7 @@ const OpportunityTable = ({ refreshKey, onChanged }) => {
   }, [page, pageSize, status, debounced]);
 
   useEffect(() => { load(); }, [load, refreshKey]);
-  useEffect(() => { setPage(1); }, [status, debounced]);
+  useResetPageOnChange(setPage, [status, debounced]);
 
   const openEdit = (row) => setEditing(row);
 

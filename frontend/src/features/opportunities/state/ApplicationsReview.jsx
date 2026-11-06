@@ -5,7 +5,7 @@ import { CheckOutlined, CloseOutlined, DeleteOutlined, DownloadOutlined, DownOut
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate, formatTime } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
-import { DEFAULT_PAGE_SIZE, tablePagination, serialColumn, statusLabel } from '../pagination';
+import { usePersistedPagination, useResetPageOnChange, tablePagination, serialColumn, statusLabel } from '../pagination';
 import { textSorter, numberSorter, dateSorter } from '../tableUtils';
 
 const { Text } = Typography;
@@ -53,8 +53,7 @@ const QueueTag = ({ r }) => {
 const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }) => {
   const [rows, setRows] = useState([]);
   const [meta, setMeta] = useState({ total: 0 });
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { page, pageSize, setPage, setPageSize } = usePersistedPagination('applications-review');
   const [group, setGroup] = useState(fixedGroup || 'ALL');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
@@ -89,7 +88,7 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
   }, [filters, page, pageSize]);
 
   useEffect(() => { load(); }, [load, refreshKey]);
-  useEffect(() => { setPage(1); }, [activeGroup, debounced, opportunityId]);
+  useResetPageOnChange(setPage, [activeGroup, debounced, opportunityId]);
 
   const done = async () => { await load(); onChanged?.(); };
 

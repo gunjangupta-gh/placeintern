@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
-import { DEFAULT_PAGE_SIZE, tablePagination, serialColumn, statusLabel } from '../pagination';
+import { usePersistedPagination, useResetPageOnChange, tablePagination, serialColumn, statusLabel } from '../pagination';
 import { formatStipend, textSorter, numberSorter, dateSorter, stipendSorter } from '../tableUtils';
 
 const { Title, Text } = Typography;
@@ -102,8 +102,7 @@ const BrowseOpportunities = () => {
     loading: true, data: [], meta: { total: 0 }, profile: null,
     applications: [], applicationLimit: 2, pendingApplications: 0, hasConfirmedInternship: false,
   });
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { page, pageSize, setPage, setPageSize } = usePersistedPagination('student-browse');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null); // the internship shown in the apply modal
   const [applying, setApplying] = useState(false);
@@ -130,7 +129,7 @@ const BrowseOpportunities = () => {
   }, [page, pageSize, debounced]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { setPage(1); }, [debounced]);
+  useResetPageOnChange(setPage, [debounced]);
 
   const handleApply = async (item) => {
     setApplying(true);
