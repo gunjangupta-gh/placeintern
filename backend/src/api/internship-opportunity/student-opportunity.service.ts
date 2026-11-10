@@ -61,6 +61,9 @@ const STUDENT_VIEW_SELECT = {
   },
 } satisfies Prisma.InternshipOpportunitySelect;
 
+/** How long a student's browse list is cached (seconds). */
+const STUDENT_LIST_TTL_SECONDS = 30;
+
 type StudentViewRow = Prisma.InternshipOpportunityGetPayload<{ select: typeof STUDENT_VIEW_SELECT }>;
 
 @Injectable()
@@ -180,6 +183,22 @@ export class StudentOpportunityService {
 
   /** Branch-filtered list of opportunities the student can see, annotated with eligibility. */
   async listForStudent(userId: string, q: PageQueryDto) {
+    // Short-lived per-student cache. Checked before ANY database work, so a hit costs ~0 queries.
+    // Invalidated by the existing tags: 'applications' (opportunity/application changes, apply) and
+    // `student:<id>` (profile / document upload / delete). Mentor assignment changes are picked up
+    // within the TTL. apply() re-validates under lock, so a stale list can never let a bad apply through.
+    const key = `student-opps:${userId}:${q.page ?? 1}:${q.limit ?? 20}:${(q.search ?? '').trim().toLowerCase()}`;
+    const cached = await this.cache.get<Awaited<ReturnType<StudentOpportunityService['buildStudentList']>>['result']>(key).catch(() => undefined);
+    if (cached) return cached;
+
+    const { result, studentId } = await this.buildStudentList(userId, q);
+    await this.cache
+      .setWithTags(key, result, ['applications', `student:${studentId}`], STUDENT_LIST_TTL_SECONDS)
+      .catch(() => undefined);
+    return result;
+  }
+
+  private async buildStudentList(userId: string, q: PageQueryDto) {
     const student = await this.eligibility.getStudentContext(userId);
     const branchId = this.branchOf(student);
     const missing = computeMissingProfileFields(student);
@@ -200,7 +219,7 @@ export class StudentOpportunityService {
       data: [] as any[],
       meta: { page: q.page ?? 1, limit: q.limit ?? 20, total: 0, totalPages: 0 },
     };
-    if (!branchId) return empty;
+    if (!branchId) return { result: empty, studentId: student.id };
 
     const page = q.page ?? 1;
     const limit = q.limit ?? 20;
@@ -242,25 +261,31 @@ export class StudentOpportunityService {
       }),
     ]);
     const ids = rows.map((r) => r.id);
-    const used = await countBranchApplications(this.prisma, ids);
-    const mineRows = await this.prisma.internshipApplication.findMany({
-      where: { studentId: student.id, opportunityId: { in: ids } },
-      select: { opportunityId: true, status: true },
-    });
+    // Independent of each other, so run them concurrently instead of one round-trip after another
+    const [used, mineRows] = await Promise.all([
+      countBranchApplications(this.prisma, ids),
+      this.prisma.internshipApplication.findMany({
+        where: { studentId: student.id, opportunityId: { in: ids } },
+        select: { opportunityId: true, status: true },
+      }),
+    ]);
     const mineById = new Map(mineRows.map((m) => [m.opportunityId as string, { status: m.status }]));
     const queueById = new Map<string, number | null>();
-    for (const m of mineRows) {
-      if (SEAT_HOLDING_STATUSES.includes(m.status)) {
-        queueById.set(m.opportunityId as string, await this.queuePosition(student.id, m.opportunityId as string, branchId));
-      }
-    }
+    const holdingMine = mineRows.filter((m) => SEAT_HOLDING_STATUSES.includes(m.status));
+    const positions = await Promise.all(
+      holdingMine.map((m) => this.queuePosition(student.id, m.opportunityId as string, branchId)),
+    );
+    holdingMine.forEach((m, i) => queueById.set(m.opportunityId as string, positions[i]));
 
     return {
-      ...empty,
-      data: rows.map((r) =>
-        this.present(r, student, used.get(r.id) ?? new Map(), mineById.get(r.id) ?? null, summary, queueById.get(r.id) ?? null),
-      ),
-      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      studentId: student.id,
+      result: {
+        ...empty,
+        data: rows.map((r) =>
+          this.present(r, student, used.get(r.id) ?? new Map(), mineById.get(r.id) ?? null, summary, queueById.get(r.id) ?? null),
+        ),
+        meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      },
     };
   }
 

@@ -744,6 +744,8 @@ model AuditLog {
   // Performance Indexes
   @@index([userId])
   @@index([entityType, entityId])
+  // Report file-version history: filter by entity, order by timestamp
+  @@index([entityType, entityId, timestamp])
   @@index([timestamp])
   @@index([category, timestamp])
   @@index([institutionId])

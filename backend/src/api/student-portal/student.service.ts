@@ -133,33 +133,97 @@ export class StudentService {
     return countedStatuses.includes(status as MonthlyReportStatus);
   }
 
+  /**
+   * Attach fileVersions to every report using ONE audit-log query for the whole list
+   * (instead of one query per report).
+   */
+  private async withFileVersions<
+    T extends { id: string; reportFileUrl?: string | null; status?: MonthlyReportStatus | string | null },
+  >(reports: T[]) {
+    const logs = reports.length
+      ? await this.prisma.auditLog.findMany({
+          where: {
+            entityType: 'MonthlyReport',
+            entityId: { in: reports.map((r) => r.id) },
+            action: {
+              in: [
+                AuditAction.MONTHLY_REPORT_SUBMIT,
+                AuditAction.MONTHLY_REPORT_UPDATE,
+                AuditAction.MONTHLY_REPORT_APPROVE,
+                AuditAction.MONTHLY_REPORT_REJECT,
+              ],
+            },
+          },
+          select: {
+            entityId: true,
+            action: true,
+            timestamp: true,
+            userName: true,
+            userRole: true,
+            newValues: true,
+          },
+          orderBy: { timestamp: 'asc' },
+        })
+      : [];
+
+    const byReport = new Map<string, typeof logs>();
+    for (const log of logs) {
+      if (!log.entityId) continue;
+      const list = byReport.get(log.entityId);
+      if (list) list.push(log);
+      else byReport.set(log.entityId, [log]);
+    }
+
+    return Promise.all(
+      reports.map(async (report) => ({
+        ...report,
+        fileVersions: await this.getReportFileVersions(
+          report.id,
+          report.reportFileUrl,
+          report.status,
+          byReport.get(report.id) ?? [],
+        ),
+      })),
+    );
+  }
+
   private async getReportFileVersions(
     reportId: string,
     currentFileUrl?: string | null,
     currentStatus?: MonthlyReportStatus | string | null,
+    /** Pre-loaded audit logs (ascending by timestamp). When omitted they are fetched for this report. */
+    preloadedLogs?: Array<{
+      action: AuditAction;
+      timestamp: Date;
+      userName: string | null;
+      userRole: Role;
+      newValues: Prisma.JsonValue | null;
+    }>,
   ) {
-    const logs = await this.prisma.auditLog.findMany({
-      where: {
-        entityType: 'MonthlyReport',
-        entityId: reportId,
-        action: {
-          in: [
-            AuditAction.MONTHLY_REPORT_SUBMIT,
-            AuditAction.MONTHLY_REPORT_UPDATE,
-            AuditAction.MONTHLY_REPORT_APPROVE,
-            AuditAction.MONTHLY_REPORT_REJECT,
-          ],
+    const logs =
+      preloadedLogs ??
+      (await this.prisma.auditLog.findMany({
+        where: {
+          entityType: 'MonthlyReport',
+          entityId: reportId,
+          action: {
+            in: [
+              AuditAction.MONTHLY_REPORT_SUBMIT,
+              AuditAction.MONTHLY_REPORT_UPDATE,
+              AuditAction.MONTHLY_REPORT_APPROVE,
+              AuditAction.MONTHLY_REPORT_REJECT,
+            ],
+          },
         },
-      },
-      select: {
-        action: true,
-        timestamp: true,
-        userName: true,
-        userRole: true,
-        newValues: true,
-      },
-      orderBy: { timestamp: 'asc' },
-    });
+        select: {
+          action: true,
+          timestamp: true,
+          userName: true,
+          userRole: true,
+          newValues: true,
+        },
+        orderBy: { timestamp: 'asc' },
+      }));
 
     const versions: Array<{
       version: number;
@@ -2248,12 +2312,7 @@ export class StudentService {
       return true;
     });
 
-    const reportsWithVersions = await Promise.all(
-      validReports.map(async (report) => ({
-        ...report,
-        fileVersions: await this.getReportFileVersions(report.id, report.reportFileUrl, report.status),
-      }))
-    );
+    const reportsWithVersions = await this.withFileVersions(validReports);
 
     return {
       reports: reportsWithVersions,
@@ -2463,12 +2522,7 @@ export class StudentService {
       orderBy: [{ reportYear: "asc" }, { reportMonth: "asc" }],
     });
 
-    const reportsWithVersions = await Promise.all(
-      reports.map(async (report) => ({
-        ...report,
-        fileVersions: await this.getReportFileVersions(report.id, report.reportFileUrl, report.status),
-      }))
-    );
+    const reportsWithVersions = await this.withFileVersions(reports);
 
     return this.formatReportsWithStatus(reportsWithVersions, application);
   }
