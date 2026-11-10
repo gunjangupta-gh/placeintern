@@ -243,10 +243,24 @@ export default function StudentProfile() {
       { key: "category", label: "Category" },
     ];
 
-    const missingFields = requiredFields.filter(
-      (field) =>
-        !student[field.key] || student[field.key].toString().trim() === "",
-    );
+    // name/email/contact live on student.user (email/phoneNo) in the API response
+    const valueOf = (key) => {
+      switch (key) {
+        case "name":
+          return student.user?.name ?? student.name;
+        case "email":
+          return student.user?.email ?? student.email;
+        case "contact":
+          return student.user?.phoneNo ?? student.contact;
+        default:
+          return student[key];
+      }
+    };
+
+    const missingFields = requiredFields.filter((field) => {
+      const v = valueOf(field.key);
+      return !v || v.toString().trim() === "";
+    });
 
     if (missingFields.length > 0) {
       const toastId = toast.error(

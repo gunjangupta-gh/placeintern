@@ -20,6 +20,7 @@ import {
 import {
   EligibilityReason,
   EligibilityService,
+  STUDENT_CONTEXT_SELECT,
   StudentContext,
   applicationCap,
   computeMissingProfileFields,
@@ -303,12 +304,7 @@ export class StudentOpportunityService {
       // Re-read everything after the locks are held
       const student = await tx.student.findUnique({
         where: { id: ctx.id },
-        select: {
-          id: true, userId: true, branchId: true, institutionId: true, currentYear: true,
-          gender: true, category: true, admissionType: true, parentName: true, parentContact: true,
-          address: true, pinCode: true, tehsil: true, district: true, city: true, state: true,
-          user: { select: { name: true, email: true, phoneNo: true, dob: true, active: true, branchId: true } },
-        },
+        select: STUDENT_CONTEXT_SELECT,
       });
       const opp = await tx.internshipOpportunity.findFirst({
         where: { id: opportunityId, isDeleted: false },
@@ -345,7 +341,7 @@ export class StudentOpportunityService {
       ]);
 
       const reasons = evaluateEligibility({
-        student: student as StudentContext,
+        student,
         opportunity: {
           status: opp.status,
           isDeleted: opp.isDeleted,
