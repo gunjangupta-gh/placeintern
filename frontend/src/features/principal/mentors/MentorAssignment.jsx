@@ -107,6 +107,7 @@ const MentorAssignment = () => {
       staff?.list?.filter(
         (s) =>
           s.role === 'TEACHER' ||
+          s.role === 'FACULTY_COORDINATOR' ||
           s.role === 'mentor' ||
           s.role === 'faculty'
       ) || []

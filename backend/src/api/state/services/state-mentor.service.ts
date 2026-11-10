@@ -32,7 +32,7 @@ export class StateMentorService {
         const [mentors, allAssignments, lookupData] = await Promise.all([
           this.prisma.user.findMany({
             where: {
-              role: { in: [Role.TEACHER] },
+              role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
               active: true,
               ...(params?.institutionId ? { institutionId: params.institutionId } : {}),
               ...(params?.search
@@ -101,7 +101,7 @@ export class StateMentorService {
       this.prisma.user.findMany({
         where: {
           institutionId,
-          role: { in: [Role.TEACHER] },
+          role: { in: [Role.TEACHER, Role.FACULTY_COORDINATOR] },
           active: true,
         },
         select: {

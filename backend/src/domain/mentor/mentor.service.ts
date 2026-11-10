@@ -54,8 +54,8 @@ export class MentorService {
         throw new NotFoundException('Mentor not found');
       }
 
-      if (mentor.role !== Role.TEACHER) {
-        throw new BadRequestException('Mentor must be a faculty supervisor');
+      if (mentor.role !== Role.TEACHER && mentor.role !== Role.FACULTY_COORDINATOR) {
+        throw new BadRequestException('Mentor must be a faculty supervisor or faculty coordinator');
       }
 
       // Note: Cross-institution mentoring is allowed - faculty can mentor students from other institutions

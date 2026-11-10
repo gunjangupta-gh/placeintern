@@ -117,7 +117,7 @@ const SelfIdentifiedInternship = () => {
   useEffect(() => {
     if (institute?.users) {
       const mentors = institute.users.filter(
-        (user) => user.role === "TEACHER"
+        (user) => user.role === "TEACHER" || user.role === "FACULTY_COORDINATOR"
       );
       setFacultyMentors(mentors);
     }
