@@ -202,9 +202,73 @@ export class StudentController {
   @Post('self-identified')
   @Roles(Role.STUDENT)
   @ApiOperation({ summary: 'Submit self-identified internship' })
+  @ApiConsumes('multipart/form-data', 'application/json')
   @ApiResponse({ status: 201, description: 'Self-identified internship submitted successfully' })
-  async submitSelfIdentified(@Req() req, @Body() selfIdentifiedDto: any) {
-    return this.studentService.submitSelfIdentified(req.user.userId, selfIdentifiedDto);
+  @UseInterceptors(FileInterceptor('joiningLetter', { storage: memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }))
+  async submitSelfIdentified(
+    @Req() req,
+    @Body() body: Record<string, any> | undefined,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    const b = body ?? {};
+    const text = (k: string) => (typeof b[k] === 'string' && b[k].trim() !== '' ? b[k].trim() : undefined);
+    const date = (k: string) => {
+      const v = text(k);
+      if (!v) return undefined;
+      const d = new Date(v);
+      if (Number.isNaN(d.getTime())) throw new BadRequestException(`${k} is not a valid date`);
+      return d;
+    };
+
+    const companyName = text('companyName');
+    if (!companyName) throw new BadRequestException('Company name is required');
+
+    // The joining report is optional on manual add. When given it must be a PDF (max 5MB).
+    let joiningLetterUrl: string | undefined;
+    if (file) {
+      if (file.mimetype !== 'application/pdf') throw new BadRequestException('Only PDF files are allowed');
+      const profile = await this.studentService.getProfile(req.user.userId);
+      const institutionName = (profile as any).Institution?.name || 'default';
+      const result = await this.fileStorageService.uploadStudentDocument(file, {
+        institutionName,
+        rollNumber: profile.user?.rollNumber || profile.id,
+        documentType: 'joining-letter',
+      });
+      joiningLetterUrl = result.url;
+    }
+
+    // Only known fields are accepted (the student, status and phase are set by the server)
+    const dto: Record<string, any> = {
+      companyName,
+      companyAddress: text('companyAddress'),
+      companyContact: text('companyContact'),
+      companyEmail: text('companyEmail'),
+      jobProfile: text('jobProfile'),
+      internshipDuration: text('internshipDuration'),
+      hrName: text('hrName'),
+      hrContact: text('hrContact'),
+      hrEmail: text('hrEmail'),
+      hrDesignation: text('hrDesignation'),
+      stipend: text('stipend'),
+      startDate: date('startDate'),
+      endDate: date('endDate'),
+      notes: text('notes'),
+      joiningLetterUrl,
+    };
+    const mentorId = text('mentorId');
+    if (mentorId) {
+      Object.assign(dto, {
+        mentorId,
+        mentorAssignedAt: new Date(),
+        mentorAssignedBy: req.user.userId,
+        facultyMentorName: text('facultyMentorName'),
+        facultyMentorContact: text('facultyMentorContact'),
+        facultyMentorEmail: text('facultyMentorEmail'),
+        facultyMentorDesignation: text('facultyMentorDesignation'),
+      });
+    }
+    Object.keys(dto).forEach((k) => dto[k] === undefined && delete dto[k]);
+    return this.studentService.submitSelfIdentified(req.user.userId, dto as any);
   }
 
   @Get('self-identified')

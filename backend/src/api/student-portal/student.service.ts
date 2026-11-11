@@ -1413,7 +1413,7 @@ export class StudentService {
 
     // Self-identified internships are auto-approved
     // If joiningLetterUrl is provided, auto-approve joining as well
-    const hasJoiningLetter = !!selfIdentifiedDto.joiningLetterUrl;
+    const hasJoiningLetter = !!selfIdentifiedDto?.joiningLetterUrl;
     const now = new Date();
     const application = await this.prisma.internshipApplication.create({
       data: {
