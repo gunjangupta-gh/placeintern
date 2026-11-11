@@ -1,31 +1,36 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Input, Tabs, Tag, Typography } from 'antd';
+import { Alert, Button, Input, Select, Space, Tabs, Tag, Typography } from 'antd';
 import { AppTable, AppModal } from '../../../components/ui';
 import { RollbackOutlined } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate, formatTime } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
-import { usePersistedPagination, useResetPageOnChange, tablePagination, serialColumn, statusLabel } from '../pagination';
-import { formatMyBranchStipend, myBranchStipendAmount, textSorter, numberSorter, dateSorter } from '../tableUtils';
+import { usePersistedPagination, useResetPageOnChange, useServerSort, tablePagination, serialColumn, statusLabel } from '../pagination';
+import { formatMyBranchStipend } from '../tableUtils';
 
 const { Title, Paragraph, Text } = Typography;
 const PENDING = ['APPLIED', 'UNDER_REVIEW', 'SHORTLISTED'];
 const STATUS_COLOR = { APPLIED: 'blue', UNDER_REVIEW: 'blue', SHORTLISTED: 'cyan', APPROVED: 'green', JOINED: 'green', SELECTED: 'green', COMPLETED: 'default', REJECTED: 'red', OPEN: 'green', FILLED: 'blue' };
 
+const OPPORTUNITY_STATUS_OPTIONS = ['OPEN', 'FILLED'].map((s) => ({ value: s, label: statusLabel(s) }));
+const APPLICATION_STATUS_OPTIONS = ['APPLIED', 'UNDER_REVIEW', 'SHORTLISTED', 'APPROVED', 'SELECTED', 'JOINED', 'COMPLETED', 'REJECTED', 'WITHDRAWN'].map((s) => ({ value: s, label: statusLabel(s) }));
+
 /** Generic paginated, searchable, read-only table. */
-const DataTab = ({ fetcher, columns, searchPlaceholder, rowKey = 'id', reloadKey = 0 }) => {
+const DataTab = ({ fetcher, columns, searchPlaceholder, rowKey = 'id', reloadKey = 0, statusOptions }) => {
   const [rows, setRows] = useState([]);
   const [meta, setMeta] = useState({ total: 0 });
   const { page, pageSize, setPage, setPageSize } = usePersistedPagination('institution');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState();
   const debounced = useDebounce(search, 300);
+  const { sortBy, sortOrder, onSortChange, col } = useServerSort(setPage);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetcher({ page, limit: pageSize, search: debounced });
+      const res = await fetcher({ page, limit: pageSize, search: debounced, status, sortBy, sortOrder });
       if (page > 1 && (res.data || []).length === 0 && res.meta?.total > 0) { setPage(page - 1); return; }
       setRows(res.data || []);
       setMeta(res.meta || { total: 0 });
@@ -34,20 +39,26 @@ const DataTab = ({ fetcher, columns, searchPlaceholder, rowKey = 'id', reloadKey
     } finally {
       setLoading(false);
     }
-  }, [fetcher, page, pageSize, debounced]);
+  }, [fetcher, page, pageSize, debounced, status, sortBy, sortOrder]);
 
   useEffect(() => { load(); }, [load, reloadKey]);
-  useResetPageOnChange(setPage, [debounced]);
+  useResetPageOnChange(setPage, [debounced, status]);
 
   return (
     <>
-      <Input.Search allowClear placeholder={searchPlaceholder} style={{ width: 300, marginBottom: 12 }} value={search} onChange={(e) => setSearch(e.target.value)} />
+      <Space style={{ marginBottom: 12 }} wrap>
+        <Input.Search allowClear placeholder={searchPlaceholder} style={{ width: 300 }} value={search} onChange={(e) => setSearch(e.target.value)} />
+        {statusOptions && (
+          <Select allowClear placeholder="Status" style={{ width: 170 }} value={status} onChange={setStatus} options={statusOptions} />
+        )}
+      </Space>
       <AppTable
         rowKey={rowKey}
         size="middle"
         loading={loading}
         dataSource={rows}
-        columns={[serialColumn(page, pageSize), ...columns]}
+        columns={[serialColumn(page, pageSize), ...columns(col)]}
+        onChange={onSortChange}
         scroll={{ x: 'max-content' }}
         pagination={tablePagination({ page, pageSize, total: meta.total, onChange: (p, ps) => { setPage(p); setPageSize(ps); } })}
       />
@@ -85,33 +96,27 @@ const InstitutionOpportunities = () => {
 
   const fetchIncomplete = useCallback((p) => opportunityService.institutionIncompleteProfiles(base, p), [base]);
 
-  const opportunityColumns = [
-    { title: 'Company', dataIndex: ['company', 'name'], sorter: textSorter((r) => r.company?.name) },
-    { title: 'District', dataIndex: 'district', sorter: textSorter((r) => r.district) },
+  const opportunityColumns = (col) => [
+    { title: 'Company', dataIndex: ['company', 'name'], ...col('company') },
+    { title: 'District', dataIndex: 'district', ...col('district') },
     {
       title: 'Stipend (your branch)',
       sortDirections: ['descend', 'ascend'],
-      sorter: (x, y, order) => {
-        const a = myBranchStipendAmount(x), b = myBranchStipendAmount(y);
-        if (a == null && b == null) return 0;
-        if (a == null) return order === 'descend' ? -1 : 1;
-        if (b == null) return order === 'descend' ? 1 : -1;
-        return a - b;
-      },
+      ...col('stipend'),
       render: (_, r) => formatMyBranchStipend(r),
     },
     { title: 'Branches', dataIndex: 'branches', render: (b) => b.map((x) => <Tag key={x.id} color={x.approvedCount >= x.positions ? 'red' : undefined}>{x.code} {x.approvedCount}/{x.positions}</Tag>) },
-    { title: 'Seats left', sorter: numberSorter((r) => r.seatsLeft), render: (_, r) => `${r.seatsLeft} of ${r.positions}` },
-    { title: 'Deadline', dataIndex: 'applicationDeadline', sorter: dateSorter((r) => r.applicationDeadline), render: formatDate },
-    { title: 'Status', dataIndex: 'status', sorter: textSorter((r) => r.status), render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
+    { title: 'Seats left', ...col('seatsLeft'), render: (_, r) => `${r.seatsLeft} of ${r.positions}` },
+    { title: 'Deadline', dataIndex: 'applicationDeadline', ...col('deadline'), render: formatDate },
+    { title: 'Status', dataIndex: 'status', ...col('status'), render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
   ];
 
-  const applicationColumns = [
-    { title: 'Student', sorter: textSorter((r) => r.student?.user?.name), render: (_, r) => <div><div>{r.student?.user?.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.rollNumber}</Text></div> },
-    { title: 'Branch', dataIndex: ['student', 'branch', 'name'], sorter: textSorter((r) => r.student?.branch?.name) },
-    { title: 'Position', sorter: textSorter((r) => r.opportunity?.title), render: (_, r) => <div><div>{r.opportunity?.title}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.opportunity?.company?.name}</Text></div> },
-    { title: 'Applied at', dataIndex: 'appliedDate', sorter: dateSorter((r) => r.appliedDate), render: (v) => <div style={{ whiteSpace: 'nowrap' }}><div>{formatDate(v)}</div><Text type="secondary" style={{ fontSize: 12 }}>{formatTime(v)}</Text></div> },
-    { title: 'Status', dataIndex: 'status', sorter: textSorter((r) => r.status), render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
+  const applicationColumns = (col) => [
+    { title: 'Student', ...col('student'), render: (_, r) => <div><div>{r.student?.user?.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.rollNumber}</Text></div> },
+    { title: 'Branch', dataIndex: ['student', 'branch', 'name'], ...col('branch') },
+    { title: 'Position', ...col('position'), render: (_, r) => <div><div>{r.opportunity?.title}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.opportunity?.company?.name}</Text></div> },
+    { title: 'Applied at', dataIndex: 'appliedDate', ...col('appliedDate'), render: (v) => <div style={{ whiteSpace: 'nowrap' }}><div>{formatDate(v)}</div><Text type="secondary" style={{ fontSize: 12 }}>{formatTime(v)}</Text></div> },
+    { title: 'Status', dataIndex: 'status', ...col('status'), render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
     ...(isPrincipal
       ? []
       : [{
@@ -125,10 +130,10 @@ const InstitutionOpportunities = () => {
         }]),
   ];
 
-  const incompleteColumns = [
-    { title: 'Student', sorter: textSorter((r) => r.name), render: (_, r) => <div><div>{r.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.rollNumber}</Text></div> },
-    { title: 'Branch', dataIndex: ['branch', 'name'], sorter: textSorter((r) => r.branch?.name) },
-    { title: 'Year', dataIndex: 'currentYear', sorter: numberSorter((r) => r.currentYear) },
+  const incompleteColumns = (col) => [
+    { title: 'Student', ...col('student'), render: (_, r) => <div><div>{r.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.rollNumber}</Text></div> },
+    { title: 'Branch', dataIndex: ['branch', 'name'], ...col('branch') },
+    { title: 'Year', dataIndex: 'currentYear', ...col('year') },
     { title: 'Missing profile fields', dataIndex: 'missing', render: (m) => m.map((f) => <Tag key={f.key} color="orange">{f.label}</Tag>) },
   ];
 
@@ -139,8 +144,8 @@ const InstitutionOpportunities = () => {
       <Tabs
         destroyOnHidden
         items={[
-          { key: 'opportunities', label: 'Opportunities', children: <DataTab fetcher={fetchOpportunities} columns={opportunityColumns} searchPlaceholder="Search company or district" /> },
-          { key: 'applications', label: 'Applications', children: <DataTab fetcher={fetchApplications} columns={applicationColumns} searchPlaceholder="Search student name or roll no." reloadKey={reloadKey} /> },
+          { key: 'opportunities', label: 'Opportunities', children: <DataTab fetcher={fetchOpportunities} columns={opportunityColumns} searchPlaceholder="Search company or district" statusOptions={OPPORTUNITY_STATUS_OPTIONS} /> },
+          { key: 'applications', label: 'Applications', children: <DataTab fetcher={fetchApplications} columns={applicationColumns} searchPlaceholder="Search student name or roll no." reloadKey={reloadKey} statusOptions={APPLICATION_STATUS_OPTIONS} /> },
           {
             key: 'incomplete',
             label: 'Incomplete profiles',

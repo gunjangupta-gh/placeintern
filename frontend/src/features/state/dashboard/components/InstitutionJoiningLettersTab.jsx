@@ -292,7 +292,7 @@ const InstitutionJoiningLettersTab = ({ institutionId, institutionName }) => {
             pageSize: 10,
             showSizeChanger: true,
             showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
-            pageSizeOptions: ['10', '20', '50', '100'],
+            pageSizeOptions: ['10', '15', '20', '50', '100'],
           }}
           locale={{
             emptyText: (

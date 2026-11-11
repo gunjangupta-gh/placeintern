@@ -5,8 +5,7 @@ import { CheckOutlined, CloseOutlined, DeleteOutlined, DownloadOutlined, DownOut
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate, formatTime } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
-import { usePersistedPagination, useResetPageOnChange, tablePagination, serialColumn, statusLabel } from '../pagination';
-import { textSorter, numberSorter, dateSorter } from '../tableUtils';
+import { usePersistedPagination, useResetPageOnChange, useServerSort, tablePagination, serialColumn, statusLabel } from '../pagination';
 
 const { Text } = Typography;
 const PENDING = ['APPLIED', 'UNDER_REVIEW', 'SHORTLISTED'];
@@ -63,6 +62,7 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
   const [remarks, setRemarks] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const debounced = useDebounce(search, 300);
+  const { sortBy, sortOrder, onSortChange, col } = useServerSort(setPage);
   const activeGroup = fixedGroup || group;
   const scoped = !!opportunityId;
 
@@ -74,7 +74,7 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await opportunityService.listApplications({ ...filters(), page, limit: pageSize });
+      const res = await opportunityService.listApplications({ ...filters(), page, limit: pageSize, sortBy, sortOrder });
       // the last row of the last page was removed: step back instead of showing an empty page
       if (page > 1 && (res.data || []).length === 0 && res.meta?.total > 0) { setPage(page - 1); return; }
       setRows(res.data || []);
@@ -85,7 +85,7 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
     } finally {
       setLoading(false);
     }
-  }, [filters, page, pageSize]);
+  }, [filters, page, pageSize, sortBy, sortOrder]);
 
   useEffect(() => { load(); }, [load, refreshKey]);
   useResetPageOnChange(setPage, [activeGroup, debounced, opportunityId]);
@@ -184,13 +184,13 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
         </Tooltip>
       ),
       width: 100,
-      sorter: numberSorter((r) => r.queue?.rank),
+      ...col('rank'),
       render: (_, r) => <QueueTag r={r} />,
     },
     {
       title: 'Applied at',
       dataIndex: 'appliedDate',
-      sorter: dateSorter((r) => r.appliedDate),
+      ...col('appliedDate'),
       render: (v) => (
         <div style={{ whiteSpace: 'nowrap' }}>
           <div>{formatDate(v)}</div>
@@ -198,14 +198,14 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
         </div>
       ),
     },
-    { title: 'Institution', dataIndex: ['student', 'Institution', 'name'], sorter: textSorter((r) => r.student?.Institution?.name) },
-    { title: 'Student', sorter: textSorter((r) => r.student?.user?.name), render: (_, r) => <div><div>{r.student?.user?.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.rollNumber}</Text></div> },
+    { title: 'Institution', dataIndex: ['student', 'Institution', 'name'], ...col('institution') },
+    { title: 'Student', ...col('student'), render: (_, r) => <div><div>{r.student?.user?.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.rollNumber}</Text></div> },
     ...(scoped
       ? [{ title: 'Contact', render: (_, r) => <div style={{ fontSize: 12 }}><div>{r.student?.user?.phoneNo}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.student?.user?.email}</Text></div> }]
       : []),
     {
       title: 'Branch',
-      sorter: textSorter((r) => r.student?.branch?.name),
+      ...col('branch'),
       render: (_, r) => (
         <div>
           <div>{r.student?.branch?.name}</div>
@@ -220,9 +220,9 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
     ...(scoped
       ? []
       : [
-          { title: 'Position', sorter: textSorter((r) => r.opportunity?.title), render: (_, r) => <div><div>{r.opportunity?.title}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.opportunity?.company?.name}</Text></div> },
+          { title: 'Position', ...col('position'), render: (_, r) => <div><div>{r.opportunity?.title}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.opportunity?.company?.name}</Text></div> },
         ]),
-    { title: 'Status', dataIndex: 'status', sorter: textSorter((r) => r.status), render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
+    { title: 'Status', dataIndex: 'status', ...col('status'), render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
   ];
 
   const rowActions = [
@@ -307,6 +307,7 @@ const ApplicationsReview = ({ refreshKey, onChanged, opportunityId, fixedGroup }
         columns={columns}
         actions={rowActions}
         scroll={{ x: 'max-content' }}
+        onChange={onSortChange}
         rowSelection={{ selectedRowKeys: selected, onChange: setSelected }}
         pagination={tablePagination({ page, pageSize, total: meta.total, label: 'applications', onChange: (p, ps) => { setPage(p); setPageSize(ps); } })}
       />

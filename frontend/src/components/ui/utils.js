@@ -1,6 +1,6 @@
 /** Small helpers shared by the common UI components. */
 
-export const PAGE_SIZE_OPTIONS = ['10', '20', '50', '100'];
+export const PAGE_SIZE_OPTIONS = ['10', '15', '20', '50', '100'];
 
 /** UNDER_REVIEW -> "Under review" */
 export const statusLabel = (s) => {
@@ -9,13 +9,13 @@ export const statusLabel = (s) => {
 };
 
 /**
- * Pagination look shared by every table (same as the PIMS tables): "1–10 of 50" on the left, and on the
- * right previous / "Page 1 / 5" / next. No page-number list and no page-size dropdown. It is forced on top of
- * whatever a page passes, but the page keeps control of current, pageSize, total and onChange.
+ * Pagination look shared by every table: "1–10 of 50" on the left, page numbers and a page-size selector
+ * (10 / 15 / 20 / 50 / 100) on the right. It is forced on top of whatever a page passes, but the page keeps
+ * control of current, pageSize, total and onChange.
  */
 export const pagerLook = {
-  simple: { readOnly: true },
-  showSizeChanger: false,
+  showSizeChanger: true,
+  pageSizeOptions: PAGE_SIZE_OPTIONS,
   showQuickJumper: false,
   hideOnSinglePage: false,
   showTotal: (total, range) => (total ? `${range[0]}–${range[1]} of ${total}` : '0 records'),

@@ -12,6 +12,8 @@ import {
   Role,
 } from '../../generated/prisma/client';
 import { PENDING_DECISION_STATUSES } from './opportunity.constants';
+import { applicationOrderBy } from './opportunity.service';
+import { sortByComputed, stipendNumber, toOrder } from './list-sort.util';
 import { applicationCap, countBranchApplications, computeMissingProfileFields, PROFILE_SELECT } from './eligibility.service';
 import {
   IncompleteProfilesQueryDto,
@@ -166,6 +168,7 @@ export class InstitutionOpportunityService {
       isDeleted: false,
       status: { in: [OpportunityStatus.OPEN, OpportunityStatus.FILLED] },
     };
+    if (q.status === 'OPEN' || q.status === 'FILLED') where.status = q.status as OpportunityStatus;
     if (q.branchId) where.branches = { some: { branchId: q.branchId } };
     if (q.search) {
       where.OR = [
@@ -173,16 +176,49 @@ export class InstitutionOpportunityService {
         { company: { name: { contains: q.search, mode: 'insensitive' } } },
       ];
     }
-    const [total, rows] = await Promise.all([
-      this.prisma.internshipOpportunity.count({ where }),
-      this.prisma.internshipOpportunity.findMany({
+    const order = toOrder(q.sortOrder);
+    const direct: Record<string, Prisma.InternshipOpportunityOrderByWithRelationInput> = {
+      company: { company: { name: order } },
+      district: { district: order },
+      deadline: { applicationDeadline: order },
+      status: { status: order },
+    };
+    const tieBreak: Prisma.InternshipOpportunityOrderByWithRelationInput[] = [{ applicationDeadline: 'asc' }, { id: 'asc' }];
+
+    let total: number;
+    let rows: Prisma.InternshipOpportunityGetPayload<{ select: typeof PUBLIC_VIEW_SELECT }>[];
+    if (q.sortBy === 'stipend' || q.sortBy === 'seatsLeft') {
+      // Computed columns (the viewer's own branch stipend, seats left): order the whole filtered set
+      // in memory, then load only the requested page.
+      const all = await this.prisma.internshipOpportunity.findMany({
         where,
-        select: PUBLIC_VIEW_SELECT,
-        orderBy: { applicationDeadline: 'asc' },
-        skip,
-        take,
-      }),
-    ]);
+        select: {
+          id: true,
+          stipend: true,
+          branches: { select: { positions: true, approvedCount: true, stipend: true, branchId: true } },
+        },
+        orderBy: tieBreak,
+      });
+      total = all.length;
+      const key = (o: (typeof all)[number]) => {
+        if (q.sortBy === 'seatsLeft') return o.branches.reduce((n, b) => n + Math.max(b.positions - b.approvedCount, 0), 0);
+        const nums = o.branches
+          .filter((b) => myBranchIds.has(b.branchId))
+          .map((b) => stipendNumber(b.stipend ?? o.stipend))
+          .filter((n): n is number => n !== null);
+        return nums.length ? Math.max(...nums) : null;
+      };
+      const pageIds = sortByComputed(all, key, order).slice(skip, skip + take).map((o) => o.id);
+      const found = await this.prisma.internshipOpportunity.findMany({ where: { id: { in: pageIds } }, select: PUBLIC_VIEW_SELECT });
+      const byId = new Map(found.map((o) => [o.id, o]));
+      rows = pageIds.map((id) => byId.get(id)).filter((o): o is NonNullable<typeof o> => !!o);
+    } else {
+      const orderBy = q.sortBy && direct[q.sortBy] ? [direct[q.sortBy], ...tieBreak] : tieBreak;
+      [total, rows] = await Promise.all([
+        this.prisma.internshipOpportunity.count({ where }),
+        this.prisma.internshipOpportunity.findMany({ where, select: PUBLIC_VIEW_SELECT, orderBy, skip, take }),
+      ]);
+    }
     const byBranch = await countBranchApplications(this.prisma, rows.map((r) => r.id));
     return {
       // Stipend is only shown for the viewer's own branch(es): the branch's stipend, else the
@@ -246,7 +282,7 @@ export class InstitutionOpportunityService {
             },
           },
         },
-        orderBy: [{ appliedDate: 'asc' }, { id: 'asc' }],
+        orderBy: applicationOrderBy(q.sortBy, toOrder(q.sortOrder)),
         skip,
         take,
       }),
@@ -291,11 +327,17 @@ export class InstitutionOpportunityService {
         missing: computeMissingProfileFields(s),
       }))
       .filter((s) => s.missing.length > 0)
-      .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+    const byName = sortByComputed(incomplete, (s) => s.name, 'asc');
+    const keys: Record<string, (s: (typeof incomplete)[number]) => string | number | null | undefined> = {
+      student: (s) => s.name,
+      branch: (s) => s.branch?.name,
+      year: (s) => s.currentYear,
+    };
+    const sorted = q.sortBy && keys[q.sortBy] ? sortByComputed(byName, keys[q.sortBy], toOrder(q.sortOrder)) : byName;
 
-    const total = incomplete.length;
+    const total = sorted.length;
     return {
-      data: incomplete.slice((page - 1) * limit, page * limit),
+      data: sorted.slice((page - 1) * limit, page * limit),
       meta: { page, limit, total, totalPages: Math.ceil(total / limit), studentsChecked: students.length },
     };
   }

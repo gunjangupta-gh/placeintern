@@ -33,6 +33,9 @@ export class PageQueryDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
   @IsOptional() @IsString() @MaxLength(100) search?: string;
+  /** Column to sort by (validated per list; unknown keys fall back to the default order). Applies to the whole result, not one page. */
+  @IsOptional() @IsString() @MaxLength(30) sortBy?: string;
+  @IsOptional() @IsIn(['asc', 'desc']) sortOrder?: 'asc' | 'desc';
 }
 
 export class ListOpportunitiesQueryDto extends PageQueryDto {

@@ -178,17 +178,12 @@ const SelfIdentifiedInternship = () => {
     try {
       // Get login data
       const loginData = getStoredLoginResponse();
-      const studentId = loginData?.user?.studentId;
+      // The backend resolves the student from the auth token, so the id is
+      // only sent as a best-effort hint and must never block submission.
+      const loginUser = loginData?.user || loginData?.data?.user;
+      const studentId = loginUser?.studentId || loginData?.studentId || "";
       const assignerId =
-        loginData?.user?.id ||
-        loginData?.user?.userId ||
-        loginData?.user?.staffId;
-
-      if (!studentId) {
-        toast.error("Student ID not found. Please login again.");
-        setLoading(false);
-        return;
-      }
+        loginUser?.id || loginUser?.userId || loginUser?.staffId;
 
       // Prevent creating a new self-identified internship if student already has
       // an active application. Only applications with status === 'WITHDRAWN'
@@ -214,7 +209,7 @@ const SelfIdentifiedInternship = () => {
       const formData = new FormData();
 
       // Append basic fields
-      formData.append("studentId", studentId);
+      if (studentId) formData.append("studentId", studentId);
       formData.append("companyName", values.companyName || "");
       formData.append("companyAddress", values.companyAddress || "");
       formData.append("companyContact", values.companyContact || "");

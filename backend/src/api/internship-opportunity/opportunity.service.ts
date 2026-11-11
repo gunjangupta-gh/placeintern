@@ -32,6 +32,7 @@ import {
 } from './opportunity-dates.util';
 import { buildApplicationWhere } from './application-filters';
 import { parseMonthlyStipend } from './stipend.util';
+import { sortByComputed, stipendNumber, toOrder } from './list-sort.util';
 import { applicationCap, countBranchApplications, studentInBranch } from './eligibility.service';
 import {
   ApproveApplicationDto,
@@ -40,6 +41,21 @@ import {
   ListOpportunitiesQueryDto,
   UpdateOpportunityDto,
 } from './dto/opportunity.dto';
+
+/** Column sort for application lists (State view). Unknown keys keep first-come-first-served. */
+export function applicationOrderBy(sortBy: string | undefined, order: 'asc' | 'desc'): Prisma.InternshipApplicationOrderByWithRelationInput[] {
+  const tie: Prisma.InternshipApplicationOrderByWithRelationInput[] = [{ appliedDate: 'asc' }, { id: 'asc' }];
+  const map: Record<string, Prisma.InternshipApplicationOrderByWithRelationInput> = {
+    rank: { appliedDate: order },
+    appliedDate: { appliedDate: order },
+    institution: { student: { Institution: { name: order } } },
+    student: { student: { user: { name: order } } },
+    branch: { student: { branch: { name: order } } },
+    position: { opportunity: { title: order } },
+    status: { status: order },
+  };
+  return sortBy && map[sortBy] ? [map[sortBy], ...tie] : tie;
+}
 
 export interface Actor {
   userId: string;
@@ -161,16 +177,42 @@ export class OpportunityService {
         { district: { contains: q.search, mode: 'insensitive' } },
       ];
     }
-    const [total, items] = await Promise.all([
-      this.prisma.internshipOpportunity.count({ where }),
-      this.prisma.internshipOpportunity.findMany({
+    const order = toOrder(q.sortOrder);
+    const direct: Record<string, Prisma.InternshipOpportunityOrderByWithRelationInput> = {
+      company: { company: { name: order } },
+      district: { district: order },
+      seats: { positions: order },
+      deadline: { applicationDeadline: order },
+      status: { status: order },
+    };
+    const tieBreak: Prisma.InternshipOpportunityOrderByWithRelationInput[] = [{ createdAt: 'desc' }, { id: 'asc' }];
+
+    let total: number;
+    let items: Prisma.InternshipOpportunityGetPayload<{ select: typeof DIRECTOR_SELECT }>[];
+    if (q.sortBy === 'stipend') {
+      // Stipend is free text with a computed "highest branch amount", so order the whole filtered
+      // set in memory (ids only) and then load just the requested page.
+      const all = await this.prisma.internshipOpportunity.findMany({
         where,
-        select: DIRECTOR_SELECT,
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take,
-      }),
-    ]);
+        select: { id: true, stipend: true, branches: { select: { stipend: true } } },
+        orderBy: tieBreak,
+      });
+      total = all.length;
+      const amount = (o: (typeof all)[number]) => {
+        const nums = o.branches.map((b) => stipendNumber(b.stipend ?? o.stipend)).filter((n): n is number => n !== null);
+        return nums.length ? Math.max(...nums) : stipendNumber(o.stipend);
+      };
+      const pageIds = sortByComputed(all, amount, order).slice(skip, skip + take).map((o) => o.id);
+      const found = await this.prisma.internshipOpportunity.findMany({ where: { id: { in: pageIds } }, select: DIRECTOR_SELECT });
+      const byId = new Map(found.map((o) => [o.id, o]));
+      items = pageIds.map((id) => byId.get(id)).filter((o): o is NonNullable<typeof o> => !!o);
+    } else {
+      const orderBy = q.sortBy && direct[q.sortBy] ? [direct[q.sortBy], ...tieBreak] : tieBreak;
+      [total, items] = await Promise.all([
+        this.prisma.internshipOpportunity.count({ where }),
+        this.prisma.internshipOpportunity.findMany({ where, select: DIRECTOR_SELECT, orderBy, skip, take }),
+      ]);
+    }
     const ids = items.map((i) => i.id);
     const counts = await this.appliedCounts(ids);
     const byBranch = await countBranchApplications(this.prisma, ids);
@@ -593,8 +635,8 @@ export class OpportunityService {
             },
           },
         },
-        // First come, first served; id breaks an exact timestamp tie so paging is stable
-        orderBy: [{ appliedDate: 'asc' }, { id: 'asc' }],
+        // First come, first served unless a column sort is asked for; id breaks ties so paging is stable
+        orderBy: applicationOrderBy(q.sortBy, toOrder(q.sortOrder)),
         skip,
         take,
       }),

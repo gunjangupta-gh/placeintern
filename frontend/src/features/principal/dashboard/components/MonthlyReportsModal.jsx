@@ -313,7 +313,7 @@ const MonthlyReportsModal = ({
         pagination={{
           pageSize: 10,
           showSizeChanger: true,
-          pageSizeOptions: ['5', '10', '20'],
+          pageSizeOptions: ['5', '10', '15', '20'],
           showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} mentors`,
         }}
         size="small"

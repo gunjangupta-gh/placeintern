@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 
-export const PAGE_SIZE_OPTIONS = ['10', '20', '50', '100'];
+export const PAGE_SIZE_OPTIONS = ['10', '15', '20', '50', '100'];
 export const DEFAULT_PAGE_SIZE = 10;
 
 export const tablePagination = ({ page, pageSize, total, onChange, label = 'item(s)' }) => ({
@@ -63,4 +63,32 @@ export const useResetPageOnChange = (setPage, deps) => {
     if (now !== prev.current) { prev.current = now; setPage(1); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
+};
+
+/**
+ * Server-side column sorting. The API sorts the whole result set, so a sort applies to every page.
+ * Use: const { sortBy, sortOrder, onSortChange, col } = useServerSort(setPage);
+ *   column: { title, ...col('company') }   table: onChange={onSortChange}
+ * Clicking a column sorts asc -> desc -> back to the default order. The page resets to 1 on a sort change.
+ */
+export const useServerSort = (setPage) => {
+  const [sort, setSort] = useState({ sortBy: undefined, sortOrder: undefined });
+  const current = useRef(sort);
+  const onSortChange = useCallback((_p, _f, sorter) => {
+    const s = Array.isArray(sorter) ? sorter[0] : sorter;
+    const next = s?.order && s?.columnKey
+      ? { sortBy: String(s.columnKey), sortOrder: s.order === 'descend' ? 'desc' : 'asc' }
+      : { sortBy: undefined, sortOrder: undefined };
+    // antd also calls onChange for plain page changes: only react when the sort really changed
+    if (current.current.sortBy === next.sortBy && current.current.sortOrder === next.sortOrder) return;
+    current.current = next;
+    setSort(next);
+    setPage(1);
+  }, [setPage]);
+  const col = useCallback((key) => ({
+    key,
+    sorter: true,
+    sortOrder: sort.sortBy === key ? (sort.sortOrder === 'desc' ? 'descend' : 'ascend') : null,
+  }), [sort]);
+  return { ...sort, onSortChange, col };
 };

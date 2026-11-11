@@ -853,7 +853,7 @@ const MentorAssignment = () => {
                 total: students?.pagination?.total || 0,
                 showSizeChanger: true,
                 showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} students`,
-                pageSizeOptions: ['10', '20', '50', '100'],
+                pageSizeOptions: ['10', '15', '20', '50', '100'],
               }}
               scroll={{ x: 'max-content' }}
               size="middle"
