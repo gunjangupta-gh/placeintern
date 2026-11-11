@@ -19,6 +19,7 @@ import {
 } from 'antd';
 import { AppTable, AppModal, AppPopconfirm } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import {
   UserAddOutlined,
   SearchOutlined,
@@ -34,6 +35,7 @@ import {
   SwapOutlined,
   BankOutlined,
   GlobalOutlined,
+  UploadOutlined,
 } from '@ant-design/icons';
 import {
   fetchStaff,
@@ -60,6 +62,7 @@ const { Text } = Typography;
 
 const MentorAssignment = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
@@ -757,6 +760,9 @@ const MentorAssignment = () => {
                 </Button>
               </AppPopconfirm>
             )}
+            <Button icon={<UploadOutlined />} onClick={() => navigate('/app/mentors/bulk')} className="rounded-lg">
+              Bulk Assign (Excel)
+            </Button>
             <Button
               type="primary"
               icon={<UserAddOutlined />}

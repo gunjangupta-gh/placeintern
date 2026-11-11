@@ -342,6 +342,12 @@ export const menuConfig = {
         icon: <UploadOutlined />,
         path: "/app/bulk/self-internships",
       },
+      {
+        key: "bulk-mentor-assignment",
+        label: "Bulk Mentor Assignment",
+        icon: <UploadOutlined />,
+        path: "/app/mentors/bulk",
+      },
       // { key: 'bulk-job-history', label: 'Job History', icon: <HistoryOutlined />, path: '/app/bulk/job-history' },
     ],
   },

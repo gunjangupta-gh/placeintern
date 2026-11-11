@@ -21,6 +21,8 @@
     "seed": "ts-node prisma/seed.ts",
     "seed:master-data": "ts-node prisma/seed-master-data.ts",
     "seed:scholarships": "ts-node prisma/seed-scholarships.ts",
+    "seed:demo-institute": "ts-node prisma/seed-demo-institute.ts",
+    "seed:demo-institute:dry": "ts-node prisma/seed-demo-institute.ts -- --dry-run",
     "seed:faculty-training-feedback": "ts-node prisma/seed-faculty-training-feedback-form.ts",
     "seed:faculty-trainings-2026": "ts-node prisma/seed-faculty-trainings-2026.ts",
     "seed:training-nominations": "ts-node prisma/seed-training-nominations.ts",

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { BulkUserModule } from './bulk-user/bulk-user.module';
 import { BulkStudentModule } from './bulk-student/bulk-student.module';
 import { BulkInstitutionModule } from './bulk-institution/bulk-institution.module';
+import { BulkMentorModule } from './bulk-mentor/bulk-mentor.module';
 import { TemplateController } from './templates/template.controller';
 import { BulkValidationService } from './shared/bulk-validation.service';
 import { BulkProcessor } from './shared/bulk.processor';
@@ -21,6 +22,7 @@ import { QueueModule } from '../core/queue/queue.module';
     BulkUserModule,
     BulkStudentModule,
     BulkInstitutionModule,
+    BulkMentorModule,
     // Import QueueModule which exports BullModule with bulk-operations queue
     // This ensures consistent configuration with hash tag prefix for Redis Cluster
     QueueModule,
@@ -37,6 +39,7 @@ import { QueueModule } from '../core/queue/queue.module';
     BulkUserModule,
     BulkStudentModule,
     BulkInstitutionModule,
+    BulkMentorModule,
     BulkValidationService,
     BulkJobService,
     BulkQueueService,

@@ -131,6 +131,28 @@ export const bulkService = {
     return response.data;
   },
 
+  // Principal: bulk mentor assignment
+  async downloadMentorAssignmentTemplate() {
+    const response = await API.get('/bulk/mentor-assignments/template', { responseType: 'blob' });
+    return response.data;
+  },
+  async validateMentorAssignments(file) {
+    const formData = new FormData();
+    formData.append('file', resolveRawFile(file));
+    const response = await API.post('/bulk/mentor-assignments/validate', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+  async uploadMentorAssignments(file) {
+    const formData = new FormData();
+    formData.append('file', resolveRawFile(file));
+    const response = await API.post('/bulk/mentor-assignments/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
   // Generic template download (used by principal portal)
   async downloadTemplate(type) {
     const response = await API.get(`/bulk/templates/${type}`, {

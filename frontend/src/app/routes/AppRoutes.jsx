@@ -93,6 +93,7 @@ import AllStudents from '../../features/principal/students/AllStudents';
 import StaffList from '../../features/principal/staff/StaffList';
 import PrincipalInstitutionDetails from '../../features/principal/institution/InstitutionDetails';
 import MentorAssignment from '../../features/principal/mentors/MentorAssignment';
+import BulkMentorAssignment from '../../features/principal/mentors/BulkMentorAssignment';
 import BulkUpload from '../../features/principal/bulk/BulkUpload';
 import FacultyProgress from '../../features/principal/faculty/FacultyProgress';
 import PrincipalVisitLogs from '../../features/principal/faculty/PrincipalVisitLogs';
@@ -820,6 +821,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
               <InternshipReportList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="mentors/bulk"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
+              <BulkMentorAssignment />
             </ProtectedRoute>
           }
         />
