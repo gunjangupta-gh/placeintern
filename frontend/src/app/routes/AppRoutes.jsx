@@ -101,7 +101,7 @@ import PrincipalFeedback from '../../features/principal/faculty/PrincipalFeedbac
 import Grievances from '../../features/principal/grievances/Grievances';
 import SelfIdentifiedInternships from '../../features/principal/internships/SelfIdentifiedInternships';
 import BulkSelfInternshipUpload from '../../features/principal/bulk/BulkSelfInternshipUpload';
-import InternshipReportList from '../../features/principal/internship-reports/InternshipReportList';
+// import InternshipReportList from '../../features/principal/internship-reports/InternshipReportList'; // Internship Confirmation (principal) - hidden for now
 import InternshipReportOverview from '../../features/state/internship-reports/InternshipReportOverview';
 import BulkJobHistory from '../../features/common/bulk/BulkJobHistory';
 import PrincipalTrainingOverviewPage from '../../features/principal/training/TrainingOverviewPage';
@@ -816,6 +816,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+        {/* Internship Confirmation (principal) - hidden for now
         <Route
           path="internship-reports"
           element={
@@ -824,6 +825,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+        */}
         <Route
           path="mentors/bulk"
           element={

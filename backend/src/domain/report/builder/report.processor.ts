@@ -6,6 +6,15 @@ import {
   STUDENT_PROFILE_FIELDS,
   profileFieldColumnId,
 } from './constants/student-profile-fields';
+import {
+  COLLEGE_SUMMARY_ALL_COLUMNS,
+  COLLEGE_SUMMARY_PCT_FIELDS,
+  COLLEGE_SUMMARY_SHEET1_COLUMNS,
+  COLLEGE_SUMMARY_SHEET1_NAME,
+  COLLEGE_SUMMARY_SHEET2_COLUMNS,
+  COLLEGE_SUMMARY_SHEET2_NAME,
+  COLLEGE_SUMMARY_SUMMARY_NAME,
+} from './constants/college-summary-columns';
 import { ReportGeneratorService } from './report-generator.service';
 import { ExcelService } from './export/excel.service';
 import { PdfService } from './export/pdf.service';
@@ -100,7 +109,13 @@ export class ReportProcessor extends WorkerHost {
 
       switch (format) {
         case ExportFormat.EXCEL:
-          if (reportType === 'student-profile-completion') {
+          if (reportType === 'college-wise-summary') {
+            const sheets = this.buildCollegeSummarySheets(config, data);
+            fileBuffer = await this.excelService.generateMultiSheetExcel(
+              config.title,
+              sheets,
+            );
+          } else if (reportType === 'student-profile-completion') {
             const sheets = this.buildProfileCompletionSheets(config, data);
             fileBuffer = await this.excelService.generateMultiSheetExcel(
               config.title,
@@ -336,6 +351,7 @@ export class ReportProcessor extends WorkerHost {
       'student_directory': 'Student Directory Report',
       'student_placement_interest_ppo': 'Student Placement Interest & PPO Report',
       'student_profile_completion': 'Student Profile Completion Report',
+      'college_wise_summary': 'College-wise Compliance Summary',
       'internship': 'Internship Report',
       'internship_applications': 'Internship Applications Report',
       'internship_status': 'Internship Status Report',
@@ -368,6 +384,12 @@ export class ReportProcessor extends WorkerHost {
 
     // Column mapping - matches actual data fields from generator
     const reportColumns: Record<string, any[]> = {
+      'college_wise_summary': COLLEGE_SUMMARY_ALL_COLUMNS.map((c) => ({
+        field: c.id,
+        header: c.label,
+        type: c.type,
+        width: c.width,
+      })),
       // Student reports - matches generateStudentProgressReport output
       'student_progress': [
         { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
@@ -1248,6 +1270,88 @@ export class ReportProcessor extends WorkerHost {
           columns: collegeColumns,
           data: collegeRows,
         },
+      },
+    ];
+  }
+
+  /**
+   * College-wise compliance workbook:
+   *  - Summary (state-level totals + filters)
+   *  - Profile, Login & Mentor (per college + Grand Total)
+   *  - Internship Status (per college + Grand Total)
+   */
+  private buildCollegeSummarySheets(
+    config: ExportConfig,
+    data: any[],
+  ): { name: string; config: ExportConfig }[] {
+    const selected = new Set(config.columns.map((c) => c.field));
+    const keep = (cols: { id: string; label: string; type: 'string' | 'number'; width: number }[]) =>
+      cols
+        .filter((c) => selected.has(c.id) || c.id === 'sNo' || c.id === 'institutionName')
+        .map((c) => ({ field: c.id, header: c.label, type: c.type, width: c.width }));
+
+    // Grand total: sum numeric counts, recompute percentages/averages from totals
+    const sum = (field: string) =>
+      data.reduce((acc, r) => acc + (Number(r[field]) || 0), 0);
+    const total: Record<string, unknown> = { sNo: '', institutionName: 'Grand Total', institutionCode: '', district: '' };
+    COLLEGE_SUMMARY_ALL_COLUMNS.forEach((c) => {
+      if (c.type === 'number' && c.id !== 'sNo') total[c.id] = sum(c.id);
+    });
+    const ratio = (n: number, d: number, dp: number) =>
+      d > 0 ? Math.round((n / d) * 10 ** dp) / 10 ** dp : 0;
+    Object.entries(COLLEGE_SUMMARY_PCT_FIELDS).forEach(([field, { num, den }]) => {
+      total[field] = ratio(Number(total[num]) * 100, Number(total[den]), 1);
+    });
+    const totalStudents = Number(total.totalStudents);
+    total.avgLogins = ratio(Number(total.totalLogins), totalStudents, 1);
+    total.avgProfilePct = totalStudents > 0
+      ? Math.round((data.reduce((a, r) => a + (Number(r.avgProfilePct) || 0) * (Number(r.totalStudents) || 0), 0) / totalStudents) * 10) / 10
+      : 0;
+    const rows = data.length > 0 ? [...data, total] : [];
+
+    const f = config.metadata?.filters || {};
+    const filterText = Object.entries(f)
+      .filter(([, v]) => v !== undefined && v !== null && v !== '')
+      .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(' to ') : String(v)}`)
+      .join('; ') || 'None';
+    const t = total as Record<string, number>;
+    const summaryRows = [
+      { metric: 'Report Generated At', value: new Date().toISOString() },
+      { metric: 'Filters Applied', value: filterText },
+      { metric: 'Colleges Covered', value: data.length },
+      { metric: 'Total Active Students', value: t.totalStudents ?? 0 },
+      { metric: 'Profile Complete (Count)', value: t.profileComplete ?? 0 },
+      { metric: 'Profile Complete (%)', value: t.profileCompletePct ?? 0 },
+      { metric: 'Logged In (Count)', value: t.loggedIn ?? 0 },
+      { metric: 'Logged In (%)', value: t.loggedInPct ?? 0 },
+      { metric: 'Mentor Assigned (Count)', value: t.mentorAssigned ?? 0 },
+      { metric: 'Mentor Assigned (%)', value: t.mentorAssignedPct ?? 0 },
+      { metric: 'Students Applied (Count)', value: t.appliedStudents ?? 0 },
+      { metric: 'Students Applied (%)', value: t.applicationPct ?? 0 },
+      { metric: 'Self-Identified Applications', value: t.selfTotal ?? 0 },
+      { metric: 'State Opportunity Applications', value: t.stateTotal ?? 0 },
+    ];
+
+    return [
+      {
+        name: COLLEGE_SUMMARY_SUMMARY_NAME,
+        config: {
+          ...config,
+          title: `${config.title} - Summary`,
+          columns: [
+            { field: 'metric', header: 'Metric', type: 'string' as const, width: 36 },
+            { field: 'value', header: 'Value', type: 'string' as const, width: 40 },
+          ],
+          data: summaryRows,
+        },
+      },
+      {
+        name: COLLEGE_SUMMARY_SHEET1_NAME,
+        config: { ...config, title: `${config.title} - ${COLLEGE_SUMMARY_SHEET1_NAME}`, columns: keep(COLLEGE_SUMMARY_SHEET1_COLUMNS), data: rows },
+      },
+      {
+        name: COLLEGE_SUMMARY_SHEET2_NAME,
+        config: { ...config, title: `${config.title} - ${COLLEGE_SUMMARY_SHEET2_NAME}`, columns: keep(COLLEGE_SUMMARY_SHEET2_COLUMNS), data: rows },
       },
     ];
   }

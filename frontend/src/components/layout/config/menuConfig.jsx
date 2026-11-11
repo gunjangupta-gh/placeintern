@@ -317,12 +317,13 @@ export const menuConfig = {
         icon: <AlertOutlined />,
         path: "/app/grievances",
       },
-      {
-        key: "internship-reports",
-        label: "Internship Confirmation",
-        icon: <AuditOutlined />,
-        path: "/app/internship-reports",
-      },
+      // Hidden for now: Internship Confirmation (principal)
+      // {
+      //   key: "internship-reports",
+      //   label: "Internship Confirmation",
+      //   icon: <AuditOutlined />,
+      //   path: "/app/internship-reports",
+      // },
     ],
   },
   PRINCIPAL_OPERATIONS: {

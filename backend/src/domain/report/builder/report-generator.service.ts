@@ -47,7 +47,7 @@ const INSTITUTION_REQUIRED_REPORTS = [
  * Reports that allow viewing all institutions for admin users
  * When institutionId is not provided, returns data from all institutions
  */
-const INSTITUTION_OPTIONAL_REPORTS = ["student", "industry"];
+const INSTITUTION_OPTIONAL_REPORTS = ["student", "industry", "college"];
 
 /**
  * Reports that can be run without institution filter (admin-only)
@@ -908,6 +908,275 @@ export class ReportGeneratorService {
       row.completionPercentage = Math.round((filled / total) * 1000) / 10;
       row.missingFields = missing.join(", ");
       return row;
+    });
+  }
+
+  /**
+   * College-wise compliance summary: one row per college combining
+   * profile completion, login, mentor assignment and internship application
+   * (self-identified vs state opportunity) metrics. The report processor
+   * splits these fields into separate Excel sheets.
+   */
+  async generateCollegeWiseSummaryReport(filters: any): Promise<any[]> {
+    const institutionWhere: any = {};
+    if (filters?.institutionId) institutionWhere.id = filters.institutionId;
+    if (filters?.district) institutionWhere.district = filters.district;
+
+    const institutions = await this.prisma.institution.findMany({
+      where: institutionWhere,
+      select: { id: true, name: true, code: true, district: true },
+      orderBy: { name: "asc" },
+    });
+    if (institutions.length === 0) return [];
+
+    const studentWhere: any = {
+      institutionId: { in: institutions.map((i) => i.id) },
+    };
+    if (
+      filters?.currentYear !== undefined &&
+      filters?.currentYear !== null &&
+      filters?.currentYear !== ""
+    ) {
+      studentWhere.currentYear = Number(filters.currentYear);
+    }
+    const isActiveValue = this.parseBooleanLike(filters?.isActive);
+    studentWhere.user = {
+      active: isActiveValue !== undefined ? isActiveValue : true,
+    };
+
+    const students = await this.prisma.student.findMany({
+      where: studentWhere,
+      select: {
+        id: true,
+        institutionId: true,
+        gender: true,
+        category: true,
+        admissionType: true,
+        parentName: true,
+        parentContact: true,
+        address: true,
+        city: true,
+        tehsil: true,
+        district: true,
+        state: true,
+        pinCode: true,
+        profileImage: true,
+        user: {
+          select: {
+            name: true,
+            email: true,
+            phoneNo: true,
+            dob: true,
+            loginCount: true,
+          },
+        },
+        mentorAssignments: {
+          where: { isActive: true },
+          select: { id: true },
+          take: 1,
+        },
+      },
+    });
+
+    const applicationWhere: any = { student: studentWhere };
+    const dateFilter: Record<string, Date> = {};
+    if (filters?.applicationDateStart)
+      dateFilter.gte = new Date(filters.applicationDateStart);
+    if (filters?.applicationDateEnd)
+      dateFilter.lte = new Date(filters.applicationDateEnd);
+    if (Object.keys(dateFilter).length > 0)
+      applicationWhere.applicationDate = dateFilter;
+
+    const applications = await this.prisma.internshipApplication.findMany({
+      where: applicationWhere,
+      select: {
+        studentId: true,
+        status: true,
+        isSelfIdentified: true,
+        opportunityId: true,
+        internshipPhase: true,
+        isActive: true,
+        student: { select: { institutionId: true } },
+      },
+    });
+
+    const isFilled = (v: unknown) =>
+      v !== null && v !== undefined && String(v).trim() !== "";
+    const pct = (num: number, den: number) =>
+      den > 0 ? Math.round((num / den) * 1000) / 10 : 0;
+    const avg = (sum: number, den: number) =>
+      den > 0 ? Math.round((sum / den) * 10) / 10 : 0;
+
+    type Agg = Record<string, number>;
+    const newAgg = (): Agg => ({
+      totalStudents: 0,
+      profileComplete: 0,
+      profilePartial: 0,
+      profileNotStarted: 0,
+      sumProfilePct: 0,
+      loggedIn: 0,
+      neverLoggedIn: 0,
+      totalLogins: 0,
+      mentorAssigned: 0,
+      appliedStudents: 0,
+      selfTotal: 0,
+      selfApplied: 0,
+      selfApproved: 0,
+      selfJoined: 0,
+      selfCompleted: 0,
+      selfRejected: 0,
+      stateTotal: 0,
+      stateApplied: 0,
+      stateUnderReview: 0,
+      stateSelected: 0,
+      stateJoined: 0,
+      stateRejected: 0,
+      selfStudents: 0,
+      stateStudents: 0,
+      bothStudents: 0,
+      activeInternship: 0,
+    });
+    const aggs = new Map<string, Agg>(
+      institutions.map((i) => [i.id, newAgg()]),
+    );
+
+    for (const s of students) {
+      const a = aggs.get(s.institutionId as string);
+      if (!a) continue;
+      const values = [
+        s.user?.name,
+        s.user?.email,
+        s.user?.phoneNo,
+        s.user?.dob,
+        s.gender,
+        s.category,
+        s.admissionType,
+        s.parentName,
+        s.parentContact,
+        s.address,
+        s.city,
+        s.tehsil,
+        s.district,
+        s.state,
+        s.pinCode,
+        s.profileImage,
+      ];
+      const filled = values.filter(isFilled).length;
+      a.totalStudents++;
+      a.sumProfilePct += (filled / values.length) * 100;
+      if (filled === values.length) a.profileComplete++;
+      else if (filled > 0) a.profilePartial++;
+      else a.profileNotStarted++;
+      const logins = s.user?.loginCount ?? 0;
+      a.totalLogins += logins;
+      if (logins > 0) a.loggedIn++;
+      else a.neverLoggedIn++;
+      if (s.mentorAssignments.length > 0) a.mentorAssigned++;
+    }
+
+    const perStudent = new Map<
+      string,
+      { self: boolean; state: boolean; active: boolean }
+    >();
+    for (const app of applications) {
+      const instId = app.student?.institutionId;
+      const a = instId ? aggs.get(instId) : undefined;
+      if (!a) continue;
+      const kind = app.isSelfIdentified
+        ? "self"
+        : app.opportunityId
+          ? "state"
+          : null;
+      if (!kind) continue;
+      const st = perStudent.get(app.studentId) ?? {
+        self: false,
+        state: false,
+        active: false,
+      };
+      st[kind] = true;
+      if (app.internshipPhase === "ACTIVE" && app.isActive) st.active = true;
+      perStudent.set(app.studentId, st);
+
+      a[`${kind}Total`]++;
+      switch (app.status) {
+        case "APPLIED":
+          a[`${kind}Applied`]++;
+          break;
+        case "APPROVED":
+          if (kind === "self") a.selfApproved++;
+          break;
+        case "SELECTED":
+          if (kind === "self") a.selfApproved++;
+          else a.stateSelected++;
+          break;
+        case "UNDER_REVIEW":
+        case "SHORTLISTED":
+          if (kind === "state") a.stateUnderReview++;
+          break;
+        case "JOINED":
+          a[`${kind}Joined`]++;
+          break;
+        case "COMPLETED":
+          if (kind === "self") a.selfCompleted++;
+          break;
+        case "REJECTED":
+          a[`${kind}Rejected`]++;
+          break;
+      }
+    }
+    for (const s of students) {
+      const st = perStudent.get(s.id);
+      const a = aggs.get(s.institutionId as string);
+      if (!st || !a) continue;
+      a.appliedStudents++;
+      if (st.self) a.selfStudents++;
+      if (st.state) a.stateStudents++;
+      if (st.self && st.state) a.bothStudents++;
+      if (st.active) a.activeInternship++;
+    }
+
+    return institutions.map((inst, idx) => {
+      const a = aggs.get(inst.id)!;
+      const total = a.totalStudents;
+      return {
+        sNo: idx + 1,
+        institutionName: inst.name ?? "",
+        institutionCode: inst.code ?? "",
+        district: inst.district ?? "",
+        totalStudents: total,
+        profileComplete: a.profileComplete,
+        profileCompletePct: pct(a.profileComplete, total),
+        profilePartial: a.profilePartial,
+        profileNotStarted: a.profileNotStarted,
+        avgProfilePct: avg(a.sumProfilePct, total),
+        loggedIn: a.loggedIn,
+        loggedInPct: pct(a.loggedIn, total),
+        neverLoggedIn: a.neverLoggedIn,
+        totalLogins: a.totalLogins,
+        avgLogins: avg(a.totalLogins, total),
+        mentorAssigned: a.mentorAssigned,
+        mentorAssignedPct: pct(a.mentorAssigned, total),
+        mentorNotAssigned: total - a.mentorAssigned,
+        appliedStudents: a.appliedStudents,
+        notAppliedStudents: total - a.appliedStudents,
+        applicationPct: pct(a.appliedStudents, total),
+        selfTotal: a.selfTotal,
+        selfApplied: a.selfApplied,
+        selfApproved: a.selfApproved,
+        selfJoined: a.selfJoined,
+        selfCompleted: a.selfCompleted,
+        selfRejected: a.selfRejected,
+        stateTotal: a.stateTotal,
+        stateApplied: a.stateApplied,
+        stateUnderReview: a.stateUnderReview,
+        stateSelected: a.stateSelected,
+        stateJoined: a.stateJoined,
+        stateRejected: a.stateRejected,
+        selfStudents: a.selfStudents,
+        stateStudents: a.stateStudents,
+        bothStudents: a.bothStudents,
+        activeInternship: a.activeInternship,
+      };
     });
   }
 
@@ -2883,6 +3152,8 @@ export class ReportGeneratorService {
         );
       case "student-profile-completion":
         return this.generateStudentProfileCompletionReport(filters, pagination);
+      case "college-wise-summary":
+        return this.generateCollegeWiseSummaryReport(filters);
       case "student-placement-interest-ppo":
         return this.generateStudentPlacementInterestPpoReport(
           filters,

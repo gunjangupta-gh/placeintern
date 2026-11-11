@@ -1,4 +1,5 @@
 import { ReportDefinition } from '../interfaces/report-definition.interface';
+import { COLLEGE_SUMMARY_ALL_COLUMNS } from '../constants/college-summary-columns';
 
 export const complianceReportDefinitions: Record<string, ReportDefinition> = {
   'faculty-visit-compliance': {
@@ -237,4 +238,38 @@ export const complianceReportDefinitions: Record<string, ReportDefinition> = {
     sortableColumns: ['mentorName', 'studentName', 'visitDate', 'institutionName', 'reportMonth'],
     exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
+};
+
+complianceReportDefinitions['college-wise-summary'] = {
+  type: 'college-wise-summary',
+  name: 'College-wise Compliance Summary',
+  description:
+    'Workbook with college-wise profile completion, login and mentor assignment, plus internship application status (self-identified vs state opportunity)',
+  category: 'Compliance',
+  icon: 'bar-chart',
+  availableFor: ['STATE_DIRECTORATE', 'PRINCIPAL', 'SYSTEM_ADMIN'],
+  columns: COLLEGE_SUMMARY_ALL_COLUMNS.map((c) => ({
+    id: c.id,
+    label: c.label,
+    type: c.type,
+    default: true,
+  })),
+  filters: [
+    { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false, placeholder: 'All Institutions' },
+    { id: 'district', label: 'District', type: 'text', required: false },
+    { id: 'currentYear', label: 'Year', type: 'select', required: false, options: [
+      { label: '1st Year', value: 1 },
+      { label: '2nd Year', value: 2 },
+      { label: '3rd Year', value: 3 },
+      { label: '4th Year', value: 4 },
+    ]},
+    { id: 'applicationDateRange', label: 'Application Date Range', type: 'dateRange', required: false },
+    { id: 'isActive', label: 'Student Status', type: 'select', required: false, options: [
+      { label: 'Active', value: true },
+      { label: 'Inactive', value: false },
+    ]},
+  ],
+  groupBy: ['institutionName', 'district'],
+  sortableColumns: ['institutionName', 'totalStudents'],
+  exportFormats: ['excel', 'csv', 'pdf', 'json'],
 };
