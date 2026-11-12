@@ -273,20 +273,13 @@ export class PrincipalService {
             select: { companyName: true },
             distinct: ['companyName'],
           }),
-          // Count students with self-identified internships (approved or active) but no active mentor assignment
-          // Uses MentorAssignment table (source of truth) instead of InternshipApplication.mentorId
-          // Includes APPROVED/SELECTED/JOINED/COMPLETED status and NOT_STARTED/ACTIVE phase
+          // Count ALL active students (current batch) with no active mentor assignment.
+          // Uses MentorAssignment table (source of truth); does not depend on internship status,
+          // so newly uploaded students without internships yet are still counted.
           this.prisma.student.count({
             where: {
               institutionId,
               user: { active: true },
-              internshipApplications: {
-                some: {
-                  ...INTERNSHIP_RECORD_WHERE,
-                  status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED, ApplicationStatus.COMPLETED] },
-                  internshipPhase: { in: [InternshipPhase.NOT_STARTED, InternshipPhase.ACTIVE] },
-                },
-              },
               mentorAssignments: { none: { isActive: true } },
             },
           }),
@@ -5229,11 +5222,12 @@ export class PrincipalService {
 
     // Get current compliance metrics (MentorRate + JoiningLetterRate)
     const [studentsWithActiveMentors, joiningLettersUploaded] = await Promise.all([
-      // Count students with active mentor assignments
-      this.prisma.mentorAssignment.count({
+      // Count distinct students with an active mentor assignment
+      this.prisma.student.count({
         where: {
-          student: { institutionId, user: { active: true } },
-          isActive: true,
+          institutionId,
+          user: { active: true },
+          mentorAssignments: { some: { isActive: true } },
         },
       }),
       // Count joining letters uploaded (non-empty joiningLetterUrl)
@@ -5288,10 +5282,11 @@ export class PrincipalService {
           },
         }),
         // Mentor assignments (current snapshot)
-        this.prisma.mentorAssignment.count({
+        this.prisma.student.count({
           where: {
-            student: { institutionId, user: { active: true } },
-            isActive: true,
+            institutionId,
+            user: { active: true },
+            mentorAssignments: { some: { isActive: true } },
           },
         }),
         // Joining letters uploaded
@@ -5489,18 +5484,10 @@ export class PrincipalService {
       },
     };
 
-    // Students with self-identified internships (approved or active) but no active mentor assignment
-    // Includes APPROVED/SELECTED/JOINED/COMPLETED status and NOT_STARTED/ACTIVE phase
+    // All active students with no active mentor assignment (consistent with the dashboard card)
     const unassignedStudentsWhere: Prisma.StudentWhereInput = {
       institutionId,
       user: { active: true },
-      internshipApplications: {
-        some: {
-          ...INTERNSHIP_RECORD_WHERE,
-          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED, ApplicationStatus.COMPLETED] },
-          internshipPhase: { in: [InternshipPhase.NOT_STARTED, InternshipPhase.ACTIVE] },
-        },
-      },
       mentorAssignments: {
         none: { isActive: true },
       },

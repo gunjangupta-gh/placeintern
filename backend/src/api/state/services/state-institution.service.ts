@@ -132,6 +132,39 @@ export class StateInstitutionService {
   }
 
   /**
+   * Lightweight institution directory for sidebar lists (no pagination needed - the
+   * number of institutions is small). Selects only the fields the list shows and one
+   * active-student count, and is cached to keep repeated page opens cheap.
+   */
+  async getInstitutionDirectory(status: 'active' | 'inactive' | 'all' = 'all') {
+    const cacheKey = `state:institutions:directory:${status}`;
+    return this.cache.getOrSet(
+      cacheKey,
+      async () => {
+        const where: Prisma.InstitutionWhereInput =
+          status === 'active' ? { isActive: true } : status === 'inactive' ? { isActive: false } : {};
+        const rows = await this.prisma.institution.findMany({
+          where,
+          orderBy: { name: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            code: true,
+            isActive: true,
+            _count: { select: { Student: { where: { user: { active: true } } } } },
+          },
+        });
+        return {
+          data: rows.map(({ _count, ...i }) => ({ ...i, studentCount: _count.Student })),
+          total: rows.length,
+        };
+      },
+      { ttl: 300, tags: ['state', 'institutions'] },
+    );
+  }
+
+  /**
    * Get institutions with comprehensive statistics for dashboard
    * Includes: students, internships, assignments, visits, reports
    * Cached for 5 minutes to reduce database load

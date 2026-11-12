@@ -2,6 +2,7 @@ import React, {
   useEffect,
   useState,
   useMemo,
+  useCallback,
 } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
@@ -18,7 +19,7 @@ import {
   Select,
   List,
   Tag,
-  Grid
+  Grid,
 } from "antd";
 import {
   BankOutlined,
@@ -30,18 +31,16 @@ import {
   MenuUnfoldOutlined,
 } from "@ant-design/icons";
 import {
-  fetchInstitutions,
-  selectInstitutions,
   selectSelectedInstitute,
-  selectInstitutionsLoading,
   setSelectedInstitute,
-  selectInstitutionsTotalStudents,
 } from "../store/stateSlice";
+import stateService from "../../../services/state.service";
 import { InstituteDetailView } from "../dashboard/components";
 
 const { Text, Title } = Typography;
 const { Option } = Select;
 const { useBreakpoint } = Grid;
+
 
 /**
  * InstitutionOverview - A page with sidebar showing institutions list
@@ -53,10 +52,11 @@ const InstitutionOverview = () => {
   const { token } = theme.useToken();
   const screens = useBreakpoint();
   const [searchParams, setSearchParams] = useSearchParams();
-  const institutions = useSelector(selectInstitutions);
+  // Own lightweight list (id, name, code, status, student count) - independent of the
+  // paginated store list used by the Institutes page, so it always shows every institution.
+  const [institutions, setInstitutions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const selectedInstitute = useSelector(selectSelectedInstitute);
-  const loading = useSelector(selectInstitutionsLoading);
-  const apiTotalStudents = useSelector(selectInstitutionsTotalStudents);
   const [initialTab, setInitialTab] = useState(null);
 
   // Filters state
@@ -68,12 +68,21 @@ const InstitutionOverview = () => {
   const urlInstitutionId = searchParams.get("id");
   const urlTab = searchParams.get("tab");
 
-  // Fetch institutions on mount
-  useEffect(() => {
-    if (institutions.length === 0 && !loading) {
-      dispatch(fetchInstitutions({ limit: 100 }));
+  const loadInstitutions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await stateService.getInstitutionDirectory("all");
+      setInstitutions(res?.data || []);
+    } catch {
+      setInstitutions([]);
+    } finally {
+      setLoading(false);
     }
-  }, [dispatch, institutions.length, loading]);
+  }, []);
+
+  useEffect(() => {
+    loadInstitutions();
+  }, [loadInstitutions]);
 
   // Auto-select institution from URL param
   useEffect(() => {
@@ -103,15 +112,14 @@ const InstitutionOverview = () => {
   ]);
 
   const handleRefresh = () => {
-    dispatch(fetchInstitutions({ limit: 100, force: true }));
+    loadInstitutions();
   };
 
   // Calculate total students
   const totalStudents = useMemo(
     () =>
-      apiTotalStudents ??
-      institutions.reduce((sum, inst) => sum + (inst._count?.Student || 0), 0),
-    [apiTotalStudents, institutions],
+      institutions.reduce((sum, inst) => sum + (inst.studentCount || 0), 0),
+    [institutions],
   );
 
   const displayInstitution = institutions.find(
@@ -247,7 +255,7 @@ const InstitutionOverview = () => {
                         description={
                           <div style={{ fontSize: 10, color: token.colorTextDescription, display: "flex", gap: 8 }}>
                             {inst.code && <span style={{ fontFamily: "monospace" }}>{inst.code}</span>}
-                            {inst._count?.Student > 0 && <span>{inst._count.Student} students</span>}
+                            {inst.studentCount > 0 && <span>{inst.studentCount} students</span>}
                           </div>
                         }
                       />
@@ -256,6 +264,7 @@ const InstitutionOverview = () => {
                 />
               )}
             </div>
+
           </div>
         </div>
 

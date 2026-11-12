@@ -56,6 +56,10 @@ export class StateService {
     return this.dashboardService.getDashboard(params);
   }
 
+  async getInstitutionDirectory(status?: 'active' | 'inactive' | 'all') {
+    return this.institutionService.getInstitutionDirectory(status);
+  }
+
   async getCriticalAlerts() {
     // Pass getInstitutionsWithStats method for internal use
     return this.dashboardService.getCriticalAlerts(

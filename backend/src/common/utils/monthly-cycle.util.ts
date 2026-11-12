@@ -4,7 +4,7 @@
  * Implements the Fixed Monthly Cycle system for internship compliance tracking:
  * - Reports and visits are aligned with calendar months
  * - Visit Inclusion Rule: First month = any days, last month requires >10 days
- * - Report Inclusion Rule: January month ALWAYS skipped, last month requires >10 days
+ * - Report Inclusion Rule: same as visits - first month = any days, last month requires >10 days
  * - Report Due Date: 5th of the next month (e.g., January report due Feb 5)
  * - Visit Due Date: Last day of the month at 11:59:59 PM (NO grace period)
  * - Minimum internship: 16 weeks (4 months typically)
@@ -24,12 +24,12 @@
  * Total: 5 visits
  *
  * REPORTS:
- * - January: SKIP (January month always excluded)
+ * - January: 17 days (first month, any days) -> INCLUDE -> Report due Feb 5
  * - February: 28 days (full month) -> INCLUDE -> Report due Mar 5
  * - March: 31 days -> INCLUDE -> Report due Apr 5
  * - April: 30 days -> INCLUDE -> Report due May 5
  * - May: 15 days (>10) -> INCLUDE -> Report due Jun 5
- * Total: 4 reports
+ * Total: 5 reports
  */
 
 import { MONTHLY_CYCLE_CONFIG } from '../../config/monthly-cycle.config';
@@ -291,7 +291,7 @@ export function isVisitMonthIncluded(
 
 /**
  * Check if a specific month is included for report expectations
- * Report Rule: Skip January entirely, last month requires >10 days
+ * Report Rule: same as visits - first month = any days, last month requires >10 days
  *
  * @param startDate - Internship start date
  * @param endDate - Internship end date
@@ -307,7 +307,6 @@ export function isReportMonthIncluded(
 ): boolean {
   if (!startDate || !endDate) return false;
   if (month < 1 || month > 12) return false;
-  if (month === 1) return false; // Skip January entirely
 
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -321,7 +320,12 @@ export function isReportMonthIncluded(
   const daysInMonth = calculateDaysInMonth(year, month, start, end);
   if (daysInMonth <= 0) return false;
 
+  const isFirst = year === start.getFullYear() && month === start.getMonth() + 1;
   const isLast = year === end.getFullYear() && month === end.getMonth() + 1;
+
+  if (isFirst) {
+    return true; // First month: any days count (same as visits)
+  }
 
   if (isLast) {
     return daysInMonth > MIN_DAYS_FOR_INCLUSION; // Last month: require >10 days
@@ -657,8 +661,7 @@ export function getTotalExpectedVisits(startDate: Date, endDate: Date): number {
 
 /**
  * Get total expected reports for an internship
- * Report Rule: SKIP January month entirely (students join companies in January at various dates), 
- * then count other months, last month requires >10 days
+ * Report Rule: same as visits - first month = any days, last month requires >10 days
  *
  * @param startDate - Internship start date
  * @param endDate - Internship end date
@@ -709,24 +712,20 @@ export function getTotalExpectedReports(startDate: Date, endDate: Date): number 
     monthCount++;
   }
 
-  // Apply report rules: SKIP January month, count other months, last month >10 days
+  // Apply report rules (same as visits): first month = any days, last month >10 days
   for (let i = 0; i < allMonths.length; i++) {
-    const { month, days } = allMonths[i];
+    const { days } = allMonths[i];
+    const isFirst = i === 0;
     const isLast = i === allMonths.length - 1;
 
-    // Skip January month entirely (monthNumber === 1)
-    if (month === 1) {
-      continue;
-    }
-
-    if (isLast) {
-      // Last month: require >10 days
+    if (isFirst) {
+      count++; // First month: any days count
+    } else if (isLast) {
       if (days > MIN_DAYS_FOR_INCLUSION) {
-        count++;
+        count++; // Last month: require >10 days
       }
     } else {
-      // Other months: always count
-      count++;
+      count++; // Middle months: always count
     }
   }
 

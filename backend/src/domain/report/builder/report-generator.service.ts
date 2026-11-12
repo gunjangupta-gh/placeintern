@@ -252,7 +252,7 @@ export class ReportGeneratorService {
 
   /**
    * Determine eligible months using the same monthly-cycle rule used by dashboard cards.
-   * For reports, January is excluded.
+   * Reports and visits use the same inclusion rule.
    */
   private getEligibleMonthsForYearByCycle(
     startDate: Date | string | null | undefined,
@@ -274,7 +274,6 @@ export class ReportGeneratorService {
     for (let month = 1; month <= 12; month++) {
       const cycle = getMonthCycle(year, month, parsedStart, effectiveEnd);
       if (!cycle) continue;
-      if (mode === "report" && month === 1) continue;
       eligibleMonths.add(month);
     }
 

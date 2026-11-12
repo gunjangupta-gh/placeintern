@@ -255,6 +255,12 @@ export class StateController {
     });
   }
 
+  @Get('institutions/directory')
+  @ApiOperation({ summary: 'Lightweight institution list (id, name, code, status, student count) for sidebars' })
+  async getInstitutionDirectory(@Query('status') status?: 'active' | 'inactive' | 'all') {
+    return this.stateService.getInstitutionDirectory(status);
+  }
+
   @Get('institutions/dashboard-stats')
   @ApiOperation({ summary: 'Get institutions with comprehensive stats for dashboard' })
   async getInstitutionsWithStats(

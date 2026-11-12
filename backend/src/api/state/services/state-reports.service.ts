@@ -426,10 +426,8 @@ export class StateReportsService {
             if (monthCycle) {
               // This internship qualifies - expects 1 visit for this month
               expectedVisitsMap.set(instId, (expectedVisitsMap.get(instId) || 0) + 1);
-              // Reports are not expected in January
-              if (targetMonth !== 1) {
-                expectedReportsMap.set(instId, (expectedReportsMap.get(instId) || 0) + 1);
-              }
+              // Reports expected for every included month (same as visits)
+              expectedReportsMap.set(instId, (expectedReportsMap.get(instId) || 0) + 1);
             }
           } catch (error) {
             // Skip internships with invalid dates

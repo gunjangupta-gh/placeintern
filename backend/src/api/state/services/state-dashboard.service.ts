@@ -474,9 +474,7 @@ export class StateDashboardService {
             if (monthCycle) {
               // This internship qualifies for the filtered month
               // So it expects 1 report and 1 visit for this month
-              if (targetMonth !== 1) {
-                expectedReportsThisMonth++;
-              }
+              expectedReportsThisMonth++;
               expectedVisitsThisMonth++;
             }
           } catch (error) {
@@ -1488,8 +1486,8 @@ export class StateDashboardService {
                   internshipStart,
                   internshipEnd,
                 );
-                // Apply same rules as main stats: skip January for reports, require monthly cycle inclusion
-                if (monthCycle && targetMonth !== 1) {
+                // Same rule as visits: require monthly cycle inclusion
+                if (monthCycle) {
                   const instId = i.student.institutionId;
                   const count = expectedByInstitution.get(instId) || 0;
                   expectedByInstitution.set(instId, count + 1);

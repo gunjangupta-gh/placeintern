@@ -65,7 +65,7 @@ export class ExpectedCycleService {
 
       // Calculate expected counts using monthly cycle utility
       // Visits: First month = any days (always count), last month >10 days
-      // Reports: SKIP January month only (students join in Jan at various dates), last month >10 days
+      // Reports: same as visits - first month = any days, last month >10 days
       const totalExpectedReports = getTotalExpectedReports(startDate, endDate);
       const totalExpectedVisits = getTotalExpectedVisits(startDate, endDate);
 

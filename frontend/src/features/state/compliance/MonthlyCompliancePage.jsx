@@ -1374,6 +1374,16 @@ const MonthlyCompliancePage = () => {
               Error
             </Tag>
           )}
+          <DatePicker
+            picker="month"
+            size="small"
+            value={selectedDate}
+            onChange={(d) => d && handleMonthChange(d)}
+            allowClear={false}
+            format="MMMM YYYY"
+            style={{ width: 140 }}
+            disabledDate={(d) => d && d.isAfter(dayjs(), "month")}
+          />
           <Tooltip title="Refresh">
             <Button
               size="small"

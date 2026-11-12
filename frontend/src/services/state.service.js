@@ -89,6 +89,11 @@ export const stateService = {
     return response.data;
   },
 
+  async getInstitutionDirectory(status = 'all') {
+    const response = await API.get(`/state/institutions/directory?status=${status}`);
+    return response.data;
+  },
+
   async getInstitutionsWithStats(params = {}) {
     const cleanParams = Object.fromEntries(
       Object.entries(params).filter(([, v]) => v != null && v !== '')
