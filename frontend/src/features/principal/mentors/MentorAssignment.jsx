@@ -19,7 +19,7 @@ import {
 } from 'antd';
 import { AppTable, AppModal, AppPopconfirm } from '../../../components/ui';
 import { toast } from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   UserAddOutlined,
   SearchOutlined,
@@ -71,12 +71,15 @@ const MentorAssignment = () => {
   const [newMentorId, setNewMentorId] = useState(null);
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(false);
-  const [assignmentFilter, setAssignmentFilter] = useState('all');
+  // Deep link from the dashboard: /app/mentors?filter=unassigned opens pre-filtered
+  const [searchParams] = useSearchParams();
+  const initialUnassigned = searchParams.get('filter') === 'unassigned';
+  const [assignmentFilter, setAssignmentFilter] = useState(initialUnassigned ? 'unassigned' : 'all');
   const [filters, setFilters] = useState({
     page: 1,
     limit: 10,
     search: '',
-    hasMentor: '',
+    hasMentor: initialUnassigned ? 'false' : '',
     batchId: '',
     branchId: '',
     mentorId: '',

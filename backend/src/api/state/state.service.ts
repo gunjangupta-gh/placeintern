@@ -173,6 +173,7 @@ export class StateService {
       search?: string;
       filter: 'assigned' | 'unassigned' | 'all';
       branch?: string;
+      batchId?: string;
       companyId?: string;
       reportStatus?: 'all' | 'submitted' | 'pending' | 'not_submitted';
       visitStatus?: 'all' | 'visited' | 'pending';

@@ -858,7 +858,7 @@ const PrincipalDashboard = () => {
           open={unassignedModal.visible}
           onCancel={() => setUnassignedModal({ visible: false })}
           footer={
-            <Button onClick={() => { setUnassignedModal({ visible: false }); navigate('/app/mentor-assignments'); }}>
+            <Button onClick={() => { setUnassignedModal({ visible: false }); navigate('/app/mentors?filter=unassigned'); }}>
               Go to Mentor Assignments
             </Button>
           }
@@ -873,7 +873,7 @@ const PrincipalDashboard = () => {
               <CheckCircleOutlined className="text-5xl text-success mb-4" />
               <Title level={4} className="mb-2! text-success">All Students Assigned!</Title>
               <Text type="secondary">
-                All students with active internships have been assigned to mentors.
+                All students have been assigned to mentors.
               </Text>
             </div>
           ) : (
@@ -882,13 +882,8 @@ const PrincipalDashboard = () => {
                 {dashboardStats?.unassignedStudents || 0}
               </div>
               <Text className="text-lg">
-                students with active internships need mentor assignment
+                students without a mentor assignment
               </Text>
-              <div className="mt-4 p-4 bg-warning-light rounded-lg">
-                <Text type="secondary">
-                  These students have joined internships but have not been assigned a faculty mentor yet.
-                </Text>
-              </div>
             </div>
           )}
         </AppModal>

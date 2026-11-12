@@ -84,9 +84,9 @@ const OpportunityDetail = () => {
       </Button>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-        <Title level={3} style={{ margin: 0 }}>{opp.title}</Title>
+        <Title level={3} style={{ margin: 0 }}>{opp.company?.name}</Title>
         <Tag color={STATUS_COLOR[opp.status]}>{opp.status}</Tag>
-        <Text type="secondary" strong>{opp.company?.name}</Text>
+        <Text type="secondary" strong>{opp.title}</Text>
         <Space wrap style={{ marginLeft: 'auto' }}>
           <Button type="primary" icon={<EditOutlined />} onClick={() => setEditing(true)}>Edit</Button>
           {opp.status !== 'FILLED' && (

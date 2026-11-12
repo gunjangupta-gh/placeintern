@@ -1858,6 +1858,7 @@ export class StateInstitutionService {
       search?: string;
       filter: 'assigned' | 'unassigned' | 'all';
       branch?: string;
+      batchId?: string;
       companyId?: string;
       reportStatus?: 'submitted' | 'pending' | 'not_submitted' | 'all';
       visitStatus?: 'visited' | 'pending' | 'all';
@@ -1865,7 +1866,7 @@ export class StateInstitutionService {
       status?: 'active' | 'inactive' | 'all';
     },
   ) {
-    const { cursor, limit, search, filter, branch, companyId, reportStatus, visitStatus, selfIdentified, status } = params;
+    const { cursor, limit, search, filter, branch, batchId, companyId, reportStatus, visitStatus, selfIdentified, status } = params;
 
     // Verify institution exists
     const institution = await this.prisma.institution.findUnique({
@@ -1911,6 +1912,11 @@ export class StateInstitutionService {
     // Apply branch filter - now on User model
     if (branch && branch !== 'all') {
       userAndConditions.push({ branchName: branch });
+    }
+
+    // Apply batch filter
+    if (batchId && batchId !== 'all') {
+      where.batchId = batchId;
     }
 
     // Apply status filter (active/inactive) - now on User model
@@ -2078,7 +2084,7 @@ export class StateInstitutionService {
     }
 
     // Execute queries in parallel
-    const [students, total, branches] = await Promise.all([
+    const [students, total, branches, batches] = await Promise.all([
       this.prisma.student.findMany(query),
       this.prisma.student.count({ where }),
       // Get unique branches for filter dropdown - now on User model
@@ -2088,6 +2094,12 @@ export class StateInstitutionService {
       }).then(results => {
         const uniqueBranches = new Set(results.map(r => r.user?.branchName).filter(Boolean));
         return Array.from(uniqueBranches).map(branchName => ({ branchName }));
+      }),
+      // Batches that have students in this institution (for the batch filter dropdown)
+      this.prisma.batch.findMany({
+        where: { students: { some: { institutionId: id } } },
+        select: { id: true, name: true, isActive: true },
+        orderBy: { name: 'desc' },
       }),
     ]);
 
@@ -2182,6 +2194,7 @@ export class StateInstitutionService {
       hasMore,
       filters: {
         branches: branches.map((b: any) => b.branchName).filter(Boolean),
+        batches,
       },
     };
   }

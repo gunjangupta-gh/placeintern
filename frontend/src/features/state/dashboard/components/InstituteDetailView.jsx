@@ -1218,6 +1218,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
   // Filters
   const [studentFilter, setStudentFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
+  const [batchFilter, setBatchFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selfIdentifiedFilter, setSelfIdentifiedFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
@@ -1239,9 +1240,13 @@ const InstituteDetailView = ({ defaultTab = null }) => {
   // Track if search effects have skipped their first run (to prevent duplicate with tab fetch)
   const studentSearchInitializedRef = useRef(false);
 
-  // Get available branches
+  // Get available branches / batches
   const availableBranches = useMemo(
     () => students.filters?.branches || [],
+    [students.filters],
+  );
+  const availableBatches = useMemo(
+    () => students.filters?.batches || [],
     [students.filters],
   );
 
@@ -1259,6 +1264,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
       setStudentSearchInput("");
       setStudentFilter("all");
       setBranchFilter("all");
+      setBatchFilter("all");
       setStatusFilter("all");
       setSelfIdentifiedFilter("all");
       // Reset to summary tab (new first tab)
@@ -1320,6 +1326,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
       debouncedStudentSearch ||
       studentFilter !== "all" ||
       branchFilter !== "all" ||
+      batchFilter !== "all" ||
       statusFilter !== "all" ||
       selfIdentifiedFilter !== "all";
 
@@ -1338,6 +1345,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
         search: debouncedStudentSearch || undefined,
         filter: studentFilter,
         branch: branchFilter !== "all" ? branchFilter : undefined,
+        batchId: batchFilter !== "all" ? batchFilter : undefined,
         status: statusFilter !== "all" ? statusFilter : undefined,
         selfIdentified:
           selfIdentifiedFilter !== "all" ? selfIdentifiedFilter : undefined,
@@ -1351,6 +1359,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
     dispatch,
     studentFilter,
     branchFilter,
+    batchFilter,
     statusFilter,
     selfIdentifiedFilter,
   ]);
@@ -1366,6 +1375,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
         search: studentSearchInput || undefined,
         filter: studentFilter,
         branch: branchFilter !== "all" ? branchFilter : undefined,
+        batchId: batchFilter !== "all" ? batchFilter : undefined,
         status: statusFilter !== "all" ? statusFilter : undefined,
         selfIdentified:
           selfIdentifiedFilter !== "all" ? selfIdentifiedFilter : undefined,
@@ -1377,6 +1387,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
     studentSearchInput,
     studentFilter,
     branchFilter,
+    batchFilter,
     statusFilter,
     selfIdentifiedFilter,
   ]);
@@ -1385,6 +1396,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
   const resetFilters = useCallback(() => {
     setStudentFilter("all");
     setBranchFilter("all");
+    setBatchFilter("all");
     setStatusFilter("all");
     setSelfIdentifiedFilter("all");
     setStudentSearchInput("");
@@ -1414,6 +1426,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
         search: studentSearchInput || undefined,
         filter: studentFilter,
         branch: branchFilter !== "all" ? branchFilter : undefined,
+        batchId: batchFilter !== "all" ? batchFilter : undefined,
         status: statusFilter !== "all" ? statusFilter : undefined,
         selfIdentified:
           selfIdentifiedFilter !== "all" ? selfIdentifiedFilter : undefined,
@@ -1429,6 +1442,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
     studentSearchInput,
     studentFilter,
     branchFilter,
+    batchFilter,
     statusFilter,
     selfIdentifiedFilter,
   ]);
@@ -2182,6 +2196,19 @@ const InstituteDetailView = ({ defaultTab = null }) => {
                         {availableBranches.map((b) => (
                           <Select.Option key={b} value={b}>
                             {b}
+                          </Select.Option>
+                        ))}
+                      </Select>
+                      <Select
+                        value={batchFilter}
+                        onChange={setBatchFilter}
+                        size="small"
+                        className="w-28"
+                      >
+                        <Select.Option value="all">All Batches</Select.Option>
+                        {availableBatches.map((b) => (
+                          <Select.Option key={b.id} value={b.id}>
+                            {b.name}
                           </Select.Option>
                         ))}
                       </Select>

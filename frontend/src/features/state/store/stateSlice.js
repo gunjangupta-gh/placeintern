@@ -1008,11 +1008,11 @@ export const fetchInstituteOverview = createAsyncThunk(
 
 export const fetchInstituteStudents = createAsyncThunk(
   'state/fetchInstituteStudents',
-  async ({ institutionId, cursor, limit, search, filter, branch, companyId, reportStatus, visitStatus, selfIdentified, status, loadMore = false, forceRefresh = false }, { getState, rejectWithValue }) => {
+  async ({ institutionId, cursor, limit, search, filter, branch, batchId, companyId, reportStatus, visitStatus, selfIdentified, status, loadMore = false, forceRefresh = false }, { getState, rejectWithValue }) => {
     try {
       const state = getState();
       const lastFetched = state.state.lastFetched.instituteStudents?.[institutionId];
-      const hasFilters = search || (filter && filter !== 'all') || (branch && branch !== 'all') ||
+      const hasFilters = search || (filter && filter !== 'all') || (branch && branch !== 'all') || (batchId && batchId !== 'all') ||
                         companyId || (reportStatus && reportStatus !== 'all') ||
                         (visitStatus && visitStatus !== 'all') || (selfIdentified && selfIdentified !== 'all') ||
                         (status && status !== 'all');
@@ -1028,6 +1028,7 @@ export const fetchInstituteStudents = createAsyncThunk(
         search,
         filter,
         branch,
+        batchId,
         companyId,
         reportStatus,
         visitStatus,
@@ -1518,7 +1519,7 @@ const stateSlice = createSlice({
       if (oldId !== newId) {
         // Clear cached data for the new institution to force fresh fetch
         state.instituteOverview = { data: null, loading: true, error: null };
-        state.instituteStudents = { list: [], cursor: null, hasMore: true, total: 0, filters: { branches: [] }, loading: true, loadingMore: false, error: null };
+        state.instituteStudents = { list: [], cursor: null, hasMore: true, total: 0, filters: { branches: [], batches: [] }, loading: true, loadingMore: false, error: null };
         state.instituteCompanies = { list: [], total: 0, summary: null, loading: true, error: null };
         state.instituteFacultyPrincipal = { principal: null, faculty: [], summary: null, loading: true, error: null };
 
