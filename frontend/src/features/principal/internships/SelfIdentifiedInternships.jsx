@@ -374,7 +374,7 @@ const SelfIdentifiedInternships = () => {
       "Type": item.isSelfIdentified === false ? "State Opportunity" : "Self-Identified",
       "Company Address": item.companyAddress || "",
       "Job Profile": item.jobProfile || "",
-      "Stipend": item.stipend ? `₹${item.stipend}/month` : "Unpaid",
+      "Stipend": Number(item.stipend) > 0 ? `₹${item.stipend}/month` : "Free",
       "Start Date": item.startDate ? dayjs(item.startDate).format("DD-MM-YYYY") : "",
       "End Date": item.endDate ? dayjs(item.endDate).format("DD-MM-YYYY") : "",
       "Duration": item.duration || "",
@@ -729,13 +729,13 @@ const SelfIdentifiedInternships = () => {
       key: "stipend",
       responsive: ["lg"],
       render: (_, record) =>
-        record.stipend ? (
+        Number(record.stipend) > 0 ? (
           <Tag color="green" className="rounded-full">
             ₹{record.stipend}/mo
           </Tag>
         ) : (
           <Tag color="default" className="rounded-full">
-            Unpaid
+            Free
           </Tag>
         ),
     },
@@ -1439,10 +1439,10 @@ const SelfIdentifiedInternships = () => {
                   {selectedInternship.jobProfile || "N/A"}
                 </Descriptions.Item>
                 <Descriptions.Item label="Stipend">
-                  {selectedInternship.stipend ? (
+                  {Number(selectedInternship.stipend) > 0 ? (
                     <Tag color="green">{selectedInternship.stipend}/month</Tag>
                   ) : (
-                    <Tag color="default">Unpaid</Tag>
+                    <Tag color="default">Free</Tag>
                   )}
                 </Descriptions.Item>
                 {selectedInternship.companyAddress && (

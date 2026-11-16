@@ -52,6 +52,7 @@ const SelfIdentifiedInternship = () => {
   }, [applications]);
 
   const [form] = Form.useForm();
+  const internshipType = Form.useWatch("internshipType", form);
   const [loading, setLoading] = useState(false);
   const [joiningLetterFile, setJoiningLetterFile] = useState(null);
   const [facultyMentors, setFacultyMentors] = useState([]);
@@ -220,10 +221,11 @@ const SelfIdentifiedInternship = () => {
       formData.append("hrContact", values.hrContact || "");
       formData.append("hrEmail", values.hrEmail || "");
 
-      // Append optional fields only if they have values
-      if (values.stipend) {
-        formData.append("stipend", values.stipend.toString());
-      }
+      // Paid internship sends its amount; a free internship is saved with stipend 0
+      formData.append(
+        "stipend",
+        values.internshipType === "PAID" ? values.stipend.toString() : "0"
+      );
 
       if (values.startDate) {
         formData.append("startDate", values.startDate.toISOString());
@@ -499,11 +501,47 @@ const SelfIdentifiedInternship = () => {
                 </Col>
 
                 <Col xs={24} md={12}>
-                  <Form.Item label={<span className="font-medium text-text-primary">Stipend (₹ per month)</span>} name="stipend">
+                  <Form.Item
+                    label={<span className="font-medium text-text-primary">Internship Type</span>}
+                    name="internshipType"
+                    rules={[{ required: true, message: "Please select Paid or Free" }]}
+                  >
+                    <Select
+                      placeholder="Is this internship paid or free?"
+                      className="rounded-lg h-11"
+                      onChange={(type) =>
+                        form.setFieldsValue({ stipend: type === "FREE" ? 0 : undefined })
+                      }
+                    >
+                      <Option value="PAID">Paid (with stipend)</Option>
+                      <Option value="FREE">Free (no stipend)</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    label={<span className="font-medium text-text-primary">Stipend (₹ per month)</span>}
+                    name="stipend"
+                    rules={
+                      internshipType === "PAID"
+                        ? [
+                            { required: true, message: "Please enter stipend amount" },
+                            { type: "number", min: 1, message: "Amount must be more than 0" },
+                          ]
+                        : []
+                    }
+                    extra={
+                      internshipType === "FREE" ? (
+                        <Text className="text-[10px] text-text-tertiary">Free internship - stipend is saved as 0</Text>
+                      ) : null
+                    }
+                  >
                     <InputNumber
                       className="w-full rounded-lg h-11 bg-background border-border flex items-center"
-                      placeholder="Amount (0 if unpaid)"
+                      placeholder={internshipType === "PAID" ? "Stipend amount per month" : "Select internship type first"}
                       min={0}
+                      disabled={internshipType !== "PAID"}
                     />
                   </Form.Item>
                 </Col>

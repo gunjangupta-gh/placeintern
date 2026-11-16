@@ -237,6 +237,12 @@ export class StudentController {
       joiningLetterUrl = result.url;
     }
 
+    // Stipend is mandatory: an amount for a paid internship, 0 marks the internship as free
+    const stipendValue = Number(text('stipend'));
+    if (text('stipend') === undefined || !Number.isFinite(stipendValue) || stipendValue < 0) {
+      throw new BadRequestException('Stipend is required: enter the amount for a paid internship, or 0 for a free one');
+    }
+
     // Only known fields are accepted (the student, status and phase are set by the server)
     const dto: Record<string, any> = {
       companyName,
@@ -249,7 +255,7 @@ export class StudentController {
       hrContact: text('hrContact'),
       hrEmail: text('hrEmail'),
       hrDesignation: text('hrDesignation'),
-      stipend: text('stipend'),
+      stipend: String(stipendValue),
       startDate: date('startDate'),
       endDate: date('endDate'),
       notes: text('notes'),
