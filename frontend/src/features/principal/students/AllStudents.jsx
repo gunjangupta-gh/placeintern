@@ -16,12 +16,11 @@ import {
   Tabs,
   Empty,
   Dropdown,
-  Switch,
-  InputNumber,
   theme,
   Grid,
 } from 'antd';
 import { AppModal } from '../../../components/ui';
+import PlacementStatusModal from './PlacementStatusModal';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -83,6 +82,18 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 const { useBreakpoint } = Grid;
 
+const PLAN_LABELS = {
+  PRIVATE_JOB: 'Private Job',
+  BTECH: 'B.Tech (Higher Education)',
+  GOVT_JOB_PREPARATION: 'Government Job Preparation',
+};
+const LOCATION_LABELS = { WITHIN_PUNJAB: 'Within Punjab', OUTSIDE_PUNJAB: 'Outside Punjab' };
+const SALARY_LABELS = {
+  RANGE_10K_15K: '₹10,000 - ₹15,000',
+  RANGE_15K_20K: '₹15,000 - ₹20,000',
+  RANGE_20K_PLUS: '₹20,000+',
+};
+
 const AllStudents = () => {
   const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
@@ -102,6 +113,8 @@ const AllStudents = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedStudentFull, setSelectedStudentFull] = useState(null);
   const [loadingStudentDetails, setLoadingStudentDetails] = useState(false);
+  const [placementInterest, setPlacementInterest] = useState(null);
+  const [placementInterestLoading, setPlacementInterestLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState(null);
   const [uploadModal, setUploadModal] = useState(false);
@@ -126,8 +139,6 @@ const AllStudents = () => {
 
   // Placement confirmation modal (opened from the profile actions)
   const [placementModal, setPlacementModal] = useState(false);
-  const [placementForm, setPlacementForm] = useState({ isPlaced: false, placedCompany: '', placedPackage: null });
-  const [placementSubmitting, setPlacementSubmitting] = useState(false);
   const listRef = useRef(null);
   const PAGE_SIZE = 50;
 
@@ -337,44 +348,37 @@ const AllStudents = () => {
   // Placement action (from the profile actions)
   const openPlacementModal = () => {
     if (!selectedStudent) return;
-    setPlacementForm({
-      isPlaced: displayStudent?.isPlaced ?? false,
-      placedCompany: displayStudent?.placedCompany || '',
-      placedPackage: displayStudent?.placedPackage ?? null,
-    });
     setPlacementModal(true);
   };
 
   const closePlacementModal = () => setPlacementModal(false);
 
-  const handleConfirmPlacement = async () => {
-    if (!selectedStudent) return;
-    if (placementForm.isPlaced && !placementForm.placedCompany?.trim()) {
-      toast.error('Company name is required when marking a student as placed');
+  const handlePlacementSaved = (placed) => {
+    setSelectedStudent(prev => ({ ...prev, ...placed }));
+    setSelectedStudentFull(prev => prev ? { ...prev, ...placed } : null);
+    loadPlacementInterest(selectedStudent?.id);
+    handleRefresh();
+  };
+
+  const loadPlacementInterest = useCallback(async (studentId) => {
+    if (!studentId) {
+      setPlacementInterest(null);
       return;
     }
-
-    setPlacementSubmitting(true);
+    setPlacementInterestLoading(true);
     try {
-      await dispatch(updateStudent({
-        id: selectedStudent.id,
-        data: {
-          isPlaced: placementForm.isPlaced,
-          placedCompany: placementForm.isPlaced ? placementForm.placedCompany.trim() : undefined,
-          placedPackage: placementForm.isPlaced ? placementForm.placedPackage : undefined,
-        },
-      })).unwrap();
-      toast.success(placementForm.isPlaced ? 'Student marked as placed' : 'Placement status cleared');
-      setSelectedStudent(prev => ({ ...prev, isPlaced: placementForm.isPlaced }));
-      setSelectedStudentFull(prev => prev ? { ...prev, isPlaced: placementForm.isPlaced } : null);
-      closePlacementModal();
-      handleRefresh();
-    } catch (error) {
-      toast.error(error || 'Failed to update placement status');
+      const res = await principalService.getStudentPlacementInterest(studentId);
+      setPlacementInterest(res?.data ?? null);
+    } catch {
+      setPlacementInterest(null);
     } finally {
-      setPlacementSubmitting(false);
+      setPlacementInterestLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadPlacementInterest(selectedStudent?.id);
+  }, [selectedStudent?.id, loadPlacementInterest]);
 
   const handleClearanceStatusChange = async (newStatus) => {
     if (!selectedStudent) return;
@@ -1098,6 +1102,72 @@ const AllStudents = () => {
         </div>
       ),
     },
+    {
+      key: '6',
+      label: (
+        <span>
+          <TrophyOutlined /> Placement
+          {displayStudent?.isPlaced && (
+            <Tag color="success" bordered={false} style={{ marginLeft: 8 }}>Placed</Tag>
+          )}
+        </span>
+      ),
+      children: displayStudent && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24, padding: 16 }}>
+          <Card title="Placement Status" bordered={false} style={{ backgroundColor: token.colorBgLayout }} size="small">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', rowGap: 12 }}>
+              <div style={{ color: token.colorTextSecondary }}>Status</div>
+              <div>
+                <Tag color={displayStudent.isPlaced ? 'success' : 'default'} bordered={false}>
+                  {displayStudent.isPlaced ? 'Placed' : 'Not Placed'}
+                </Tag>
+              </div>
+              {displayStudent.isPlaced && (
+                <>
+                  <div style={{ color: token.colorTextSecondary }}>Company</div>
+                  <div>{displayStudent.placedCompany || 'N/A'}</div>
+
+                  <div style={{ color: token.colorTextSecondary }}>Package</div>
+                  <div>{displayStudent.placedPackage != null ? `${displayStudent.placedPackage} LPA` : 'N/A'}</div>
+                </>
+              )}
+            </div>
+          </Card>
+
+          <Card
+            title="Placement Interest"
+            bordered={false}
+            style={{ backgroundColor: token.colorBgLayout }}
+            size="small"
+            extra={<Button size="small" type="link" onClick={openPlacementModal}>{placementInterest ? 'Edit' : 'Fill'}</Button>}
+          >
+            {placementInterestLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}><Spin /></div>
+            ) : placementInterest ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', rowGap: 12 }}>
+                <div style={{ color: token.colorTextSecondary }}>Plan after diploma</div>
+                <div>{PLAN_LABELS[placementInterest.planAfterDiploma] || placementInterest.planAfterDiploma}</div>
+
+                {placementInterest.planAfterDiploma === 'PRIVATE_JOB' && (
+                  <>
+                    <div style={{ color: token.colorTextSecondary }}>Preferred location</div>
+                    <div>{LOCATION_LABELS[placementInterest.interestedForPrivateJob] || 'N/A'}</div>
+
+                    <div style={{ color: token.colorTextSecondary }}>Expected salary</div>
+                    <div>{SALARY_LABELS[placementInterest.expectedSalary] || 'N/A'}</div>
+                  </>
+                )}
+
+                <div style={{ color: token.colorTextSecondary }}>Last updated</div>
+                <div>{formatDate(placementInterest.updatedAt)}</div>
+              </div>
+            ) : (
+              <Empty description="Placement interest not filled yet" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            )}
+          </Card>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -1415,48 +1485,12 @@ const AllStudents = () => {
       />
 
       {/* Placement confirmation modal - opened from the profile actions */}
-      <AppModal
-        title="Placement Status"
+      <PlacementStatusModal
         open={placementModal}
-        onCancel={closePlacementModal}
-        onOk={handleConfirmPlacement}
-        okText="Save"
-        okButtonProps={{ loading: placementSubmitting }}
-        cancelButtonProps={{ disabled: placementSubmitting }}
-        destroyOnClose
-      >
-        <p>Placement status for <strong>{selectedStudent?.user?.name}</strong></p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-          <Switch
-            checked={placementForm.isPlaced}
-            onChange={(checked) => setPlacementForm(prev => ({ ...prev, isPlaced: checked }))}
-          />
-          <span>{placementForm.isPlaced ? 'Placed' : 'Not Placed'}</span>
-        </div>
-        {placementForm.isPlaced && (
-          <>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ marginBottom: 4, fontSize: 13, color: token.colorTextSecondary }}>Company</div>
-              <Input
-                placeholder="Company name"
-                value={placementForm.placedCompany}
-                onChange={(e) => setPlacementForm(prev => ({ ...prev, placedCompany: e.target.value }))}
-              />
-            </div>
-            <div>
-              <div style={{ marginBottom: 4, fontSize: 13, color: token.colorTextSecondary }}>Package (LPA)</div>
-              <InputNumber
-                style={{ width: '100%' }}
-                min={0}
-                step={0.1}
-                placeholder="e.g. 3.5"
-                value={placementForm.placedPackage}
-                onChange={(value) => setPlacementForm(prev => ({ ...prev, placedPackage: value }))}
-              />
-            </div>
-          </>
-        )}
-      </AppModal>
+        student={selectedStudent ? { ...selectedStudent, ...displayStudent, id: selectedStudent.id, name: selectedStudent?.user?.name || selectedStudent?.name } : null}
+        onClose={closePlacementModal}
+        onSaved={handlePlacementSaved}
+      />
 
       {/* Upload Document Modal */}
       <AppModal

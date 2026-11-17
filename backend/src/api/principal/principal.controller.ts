@@ -26,6 +26,7 @@ import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { Role } from '../../generated/prisma/client';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
+import { CreateStudentPlacementInterestDto } from '../student-portal/dto/student-placement-interest.dto';
 import { ToggleStudentStatusDto } from '../../core/common/dto/toggle-student-status.dto';
 import { SetSemesterStatusDto } from '../../core/common/dto/set-semester-status.dto';
 import { CreateStaffDto } from './dto/create-staff.dto';
@@ -175,6 +176,22 @@ export class PrincipalController {
   @ApiOperation({ summary: 'Get student details by ID' })
   async getStudentById(@Request() req, @Param('id') id: string) {
     return this.principalService.getStudentById(req.user.userId, id);
+  }
+
+  @Get('students/:id/placement-interest')
+  @ApiOperation({ summary: "Get a student's placement interest (null if the student has not filled it)" })
+  async getStudentPlacementInterest(@Request() req, @Param('id') id: string) {
+    return this.principalService.getStudentPlacementInterest(req.user.userId, id);
+  }
+
+  @Put('students/:id/placement-interest')
+  @ApiOperation({ summary: "Set a student's placement interest on their behalf (creates or updates)" })
+  async setStudentPlacementInterest(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() dto: CreateStudentPlacementInterestDto,
+  ) {
+    return this.principalService.setStudentPlacementInterest(req.user.userId, id, dto);
   }
 
   @Get('students/:id/unmasked-contact')

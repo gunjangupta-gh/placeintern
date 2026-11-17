@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Button, Tag, Avatar, Input, Select, Card, Modal, Tooltip, Switch, InputNumber, theme } from 'antd';
+import { Button, Tag, Avatar, Input, Select, Card, Modal, Tooltip, theme } from 'antd';
 import { AppModal } from '../../../components/ui';
+import PlacementStatusModal from './PlacementStatusModal';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -99,8 +100,6 @@ const StudentList = () => {
 
   // Placement confirmation modal (opened from the Actions column)
   const [placementModal, setPlacementModal] = useState({ open: false, record: null });
-  const [placementForm, setPlacementForm] = useState({ isPlaced: false, placedCompany: '', placedPackage: null });
-  const [placementSubmitting, setPlacementSubmitting] = useState(false);
 
   const handleOpenModal = (studentId = null) => {
     setEditingStudentId(studentId);
@@ -260,11 +259,6 @@ const StudentList = () => {
 
   // --- Placement action (from the Actions column) ---
   const openPlacementModal = (record) => {
-    setPlacementForm({
-      isPlaced: record.isPlaced ?? false,
-      placedCompany: record.placedCompany || '',
-      placedPackage: record.placedPackage ?? null,
-    });
     setPlacementModal({ open: true, record });
   };
 
@@ -272,31 +266,6 @@ const StudentList = () => {
     setPlacementModal({ open: false, record: null });
   };
 
-  const handleConfirmPlacement = async () => {
-    if (!placementModal.record) return;
-    if (placementForm.isPlaced && !placementForm.placedCompany?.trim()) {
-      toast.error('Company name is required when marking a student as placed');
-      return;
-    }
-
-    setPlacementSubmitting(true);
-    try {
-      await dispatch(updateStudent({
-        id: placementModal.record.id,
-        data: {
-          isPlaced: placementForm.isPlaced,
-          placedCompany: placementForm.isPlaced ? placementForm.placedCompany.trim() : undefined,
-          placedPackage: placementForm.isPlaced ? placementForm.placedPackage : undefined,
-        },
-      })).unwrap();
-      toast.success(placementForm.isPlaced ? 'Student marked as placed' : 'Placement status cleared');
-      closePlacementModal();
-    } catch (error) {
-      toast.error(error || 'Failed to update placement status');
-    } finally {
-      setPlacementSubmitting(false);
-    }
-  };
 
   // Memoized columns definition
   const columns = useMemo(() => [
@@ -508,50 +477,11 @@ const StudentList = () => {
       />
 
       {/* Placement confirmation modal - opened from the Actions column */}
-      <AppModal
-        title="Placement Status"
+      <PlacementStatusModal
         open={placementModal.open}
-        onCancel={closePlacementModal}
-        onOk={handleConfirmPlacement}
-        okText="Save"
-        okButtonProps={{ loading: placementSubmitting }}
-        cancelButtonProps={{ disabled: placementSubmitting }}
-        destroyOnClose
-      >
-        <p>
-          Placement status for <strong>{placementModal.record?.user?.name || placementModal.record?.name}</strong>
-        </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-          <Switch
-            checked={placementForm.isPlaced}
-            onChange={(checked) => setPlacementForm(prev => ({ ...prev, isPlaced: checked }))}
-          />
-          <span>{placementForm.isPlaced ? 'Placed' : 'Not Placed'}</span>
-        </div>
-        {placementForm.isPlaced && (
-          <>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ marginBottom: 4, fontSize: 13, color: token.colorTextSecondary }}>Company</div>
-              <Input
-                placeholder="Company name"
-                value={placementForm.placedCompany}
-                onChange={(e) => setPlacementForm(prev => ({ ...prev, placedCompany: e.target.value }))}
-              />
-            </div>
-            <div>
-              <div style={{ marginBottom: 4, fontSize: 13, color: token.colorTextSecondary }}>Package (LPA)</div>
-              <InputNumber
-                style={{ width: '100%' }}
-                min={0}
-                step={0.1}
-                placeholder="e.g. 3.5"
-                value={placementForm.placedPackage}
-                onChange={(value) => setPlacementForm(prev => ({ ...prev, placedPackage: value }))}
-              />
-            </div>
-          </>
-        )}
-      </AppModal>
+        student={placementModal.record ? { ...placementModal.record, name: placementModal.record?.user?.name || placementModal.record?.name } : null}
+        onClose={closePlacementModal}
+      />
     </div>
   );
 };

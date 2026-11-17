@@ -1843,6 +1843,93 @@ export class PrincipalService {
   }
 
   /**
+   * Find a student of the principal's own institution (throws if not found)
+   */
+  private async getOwnStudentForPlacement(principalId: string, studentId: string) {
+    const principal = await this.prisma.user.findUnique({ where: { id: principalId } });
+    if (!principal || !principal.institutionId) {
+      throw new NotFoundException('Institution not found');
+    }
+    const student = await this.prisma.student.findFirst({
+      where: { id: studentId, institutionId: principal.institutionId },
+      select: { id: true, institutionId: true, user: { select: { name: true } } },
+    });
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+    return { principal, student };
+  }
+
+  /**
+   * Get a student's placement interest (data is null if not filled yet)
+   */
+  async getStudentPlacementInterest(principalId: string, studentId: string) {
+    const { student } = await this.getOwnStudentForPlacement(principalId, studentId);
+    const data = await this.prisma.studentPlacementInterest.findUnique({
+      where: { studentId: student.id },
+    });
+    return { data, isFilled: !!data };
+  }
+
+  /**
+   * Principal fills or changes a student's placement interest on their behalf.
+   * Job-specific fields are only kept when the plan is PRIVATE_JOB.
+   */
+  async setStudentPlacementInterest(
+    principalId: string,
+    studentId: string,
+    dto: { planAfterDiploma: string; interestedForPrivateJob?: string; expectedSalary?: string },
+  ) {
+    const { principal, student } = await this.getOwnStudentForPlacement(principalId, studentId);
+
+    const isPrivateJob = dto.planAfterDiploma === 'PRIVATE_JOB';
+    if (isPrivateJob && (!dto.interestedForPrivateJob || !dto.expectedSalary)) {
+      throw new BadRequestException('Job location and expected salary are required for a private job plan');
+    }
+    const values: any = {
+      planAfterDiploma: dto.planAfterDiploma,
+      interestedForPrivateJob: isPrivateJob ? dto.interestedForPrivateJob : null,
+      expectedSalary: isPrivateJob ? dto.expectedSalary : null,
+    };
+
+    const existing = await this.prisma.studentPlacementInterest.findUnique({
+      where: { studentId: student.id },
+    });
+    const saved = await this.prisma.studentPlacementInterest.upsert({
+      where: { studentId: student.id },
+      create: { studentId: student.id, ...values },
+      update: values,
+    });
+
+    this.auditService
+      .log({
+        action: AuditAction.STUDENT_PROFILE_UPDATE,
+        entityType: 'StudentPlacementInterest',
+        entityId: saved.id,
+        userId: principalId,
+        userName: principal.name,
+        userRole: principal.role,
+        description: `Placement interest ${existing ? 'updated' : 'filled'} by principal for ${student.user?.name ?? studentId}`,
+        category: AuditCategory.PROFILE_MANAGEMENT,
+        severity: AuditSeverity.LOW,
+        institutionId: student.institutionId || undefined,
+        oldValues: existing
+          ? {
+              planAfterDiploma: existing.planAfterDiploma,
+              interestedForPrivateJob: existing.interestedForPrivateJob,
+              expectedSalary: existing.expectedSalary,
+            }
+          : undefined,
+        newValues: values,
+      })
+      .catch(() => {});
+
+    await this.cache.invalidateByTags(['students', `student:${student.id}`, `student:dashboard:${student.id}`]);
+
+    return { success: true, message: 'Placement interest saved', data: saved };
+  }
+
+  /**
    * Update student details
    */
   async updateStudent(principalId: string, studentId: string, updateStudentDto: UpdateStudentDto) {

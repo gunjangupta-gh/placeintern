@@ -516,6 +516,7 @@ export class StudentService {
               isSelfIdentified: true,
               companyName: true,
               jobProfile: true,
+              stipend: true,
               startDate: true,
               endDate: true,
               hrContact: true,

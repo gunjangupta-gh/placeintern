@@ -100,6 +100,16 @@ export const principalService = {
     return response.data;
   },
 
+  async getStudentPlacementInterest(studentId) {
+    const response = await API.get(`/principal/students/${studentId}/placement-interest`);
+    return response.data;
+  },
+
+  async setStudentPlacementInterest(studentId, data) {
+    const response = await API.put(`/principal/students/${studentId}/placement-interest`, data);
+    return response.data;
+  },
+
   async deleteStudent(id) {
     const response = await API.delete(`/principal/students/${id}`);
     return response.data;
