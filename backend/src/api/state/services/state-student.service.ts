@@ -302,6 +302,7 @@ export class StateStudentService {
         name: student.user?.name,
         email: student.user?.email,
         rollNumber: student.user?.rollNumber,
+        profileImage: student.profileImage ?? null,
         phoneNo: student.user?.phoneNo,
         branchName: student.user?.branchName,
         active: student.user?.active ?? true,

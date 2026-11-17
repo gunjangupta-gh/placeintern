@@ -1,3 +1,4 @@
+import ProfileAvatar from "../../../components/common/ProfileAvatar";
 import React, { useEffect, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -255,7 +256,7 @@ const StudentsList = () => {
       key: "student",
       render: (_, record) => (
         <Space>
-          <Avatar size={32} icon={<UserOutlined />} />
+          <ProfileAvatar size={32} profileImage={record.profileImage} />
           <div>
             <div className="font-medium text-sm">{record.name}</div>
             <div className="text-gray-500 text-xs">{record.rollNumber}</div>
@@ -535,7 +536,7 @@ const StudentsList = () => {
             {/* Profile Header - Clean Design */}
             <div className="border-b border-border bg-surface !p-4">
               <div className="flex items-center !gap-3">
-                <Avatar size={56} icon={<UserOutlined />} className="bg-primary/10 text-primary border border-border" />
+                <ProfileAvatar size={56} profileImage={selectedStudent.profileImage} className="bg-primary/10 text-primary border border-border" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Title level={5} className="!mb-0 truncate">

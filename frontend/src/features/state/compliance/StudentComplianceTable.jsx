@@ -1,3 +1,4 @@
+import ProfileAvatar from "../../../components/common/ProfileAvatar";
 import React, { useState, useMemo } from 'react';
 import { Tag, Input, Typography, Tooltip, Empty, Button, Badge } from 'antd';
 import { AppTable } from '../../../components/ui';
@@ -76,9 +77,14 @@ const StudentComplianceTable = ({ students = [] }) => {
         return (
           <div className="flex items-center gap-3 py-1">
             <div className="relative">
-              <div className="w-9 h-9 rounded-lg bg-background-tertiary flex items-center justify-center text-text-tertiary">
+              <ProfileAvatar
+                size={36}
+                shape="square"
+                profileImage={record.profileImage}
+                className="rounded-lg bg-background-tertiary text-text-tertiary"
+              >
                 {record.studentName?.charAt(0)?.toUpperCase() || '?'}
-              </div>
+              </ProfileAvatar>
               <div
                 className={`
                   absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white

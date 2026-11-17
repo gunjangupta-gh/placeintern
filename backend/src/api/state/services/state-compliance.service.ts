@@ -352,6 +352,7 @@ export class StateComplianceService {
             student: {
               select: {
                 id: true,
+                profileImage: true,
                 user: {
                   select: {
                     name: true,
@@ -457,6 +458,7 @@ export class StateComplianceService {
             studentId: internship.student.id,
             studentName: internship.student.user.name,
             rollNumber: internship.student.user.rollNumber,
+            profileImage: internship.student.profileImage ?? null,
             email: internship.student.user.email,
             branch: internship.student.branch?.shortName || internship.student.branch?.name || 'N/A',
             companyName: internship.companyName || 'N/A',
