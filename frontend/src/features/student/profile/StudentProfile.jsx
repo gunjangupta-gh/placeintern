@@ -241,6 +241,9 @@ export default function StudentProfile() {
       { key: "tehsil", label: "Tehsil" },
       { key: "district", label: "District" },
       { key: "category", label: "Category" },
+      { key: "admissionType", label: "Admission Type" },
+      { key: "dob", label: "Date of Birth" },
+      { key: "profileImage", label: "Profile Photo" },
     ];
 
     // name/email/contact live on student.user (email/phoneNo) in the API response
@@ -252,6 +255,9 @@ export default function StudentProfile() {
           return student.user?.email ?? student.email;
         case "contact":
           return student.user?.phoneNo ?? student.contact;
+        case "dob":
+          // DOB is masked in the profile response; any non-empty value counts as filled
+          return student.user?.dob ?? student.dob;
         default:
           return student[key];
       }
@@ -326,7 +332,9 @@ export default function StudentProfile() {
       setImageUploading(true);
 
       // Step 1: Update profile data using Redux (text fields)
-      await dispatch(updateProfile(values)).unwrap();
+      // profilePhoto is a UI-only validation field, not a backend attribute
+      const { profilePhoto: _profilePhoto, ...profileValues } = values;
+      await dispatch(updateProfile(profileValues)).unwrap();
       // Contact details may have changed - refetch real values on next reveal/edit
       unmaskedDataRef.current = null;
       if (values.dob) setOwnDob(String(values.dob).slice(0, 10));
@@ -1251,6 +1259,18 @@ export default function StudentProfile() {
             {/* Profile Image Upload */}
             <Col span={24}>
               <Form.Item
+                name="profilePhoto"
+                required
+                rules={[
+                  {
+                    validator: () =>
+                      student?.profileImage || profileImageList.length > 0
+                        ? Promise.resolve()
+                        : Promise.reject(
+                            new Error("Please upload a profile photo"),
+                          ),
+                  },
+                ]}
                 label={
                   <span
                     className="text-xs font-medium"
@@ -1279,9 +1299,11 @@ export default function StudentProfile() {
                     <Upload
                       listType="picture-card"
                       fileList={profileImageList}
-                      onChange={({ fileList: newFileList }) =>
-                        setProfileImageList(newFileList)
-                      }
+                      onChange={({ fileList: newFileList }) => {
+                        setProfileImageList(newFileList);
+                        form.setFieldsValue({ profilePhoto: newFileList.length });
+                        form.validateFields(["profilePhoto"]).catch(() => {});
+                      }}
                       beforeUpload={(file) => {
                         const isJpgOrPng =
                           file.type === "image/jpeg" ||
