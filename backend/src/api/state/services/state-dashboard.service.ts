@@ -19,6 +19,20 @@ import {
 } from "../../../common/utils/monthly-cycle.util";
 import { INTERNSHIP_RECORD_WHERE } from '../../../core/common/utils/internship-record.filter';
 
+/** Only count activity tied to an active, confirmed internship record */
+const ACTIVE_APPLICATION_WHERE = {
+  ...INTERNSHIP_RECORD_WHERE,
+  isActive: true,
+  status: {
+    in: [
+      ApplicationStatus.APPROVED,
+      ApplicationStatus.JOINED,
+      ApplicationStatus.SELECTED,
+      ApplicationStatus.COMPLETED,
+    ],
+  },
+};
+
 @Injectable()
 export class StateDashboardService {
   private readonly logger = new Logger(StateDashboardService.name);
@@ -289,6 +303,7 @@ export class StateDashboardService {
               status: "COMPLETED",
               visitDate: { gte: startOfTargetMonth, lte: endOfTargetMonth },
               application: {
+                ...ACTIVE_APPLICATION_WHERE,
                 startDate: { lte: endOfTargetMonth },
                 student: {
                   user: { active: true },
@@ -304,6 +319,7 @@ export class StateDashboardService {
               status: "COMPLETED",
               visitDate: { gte: startOfPrevMonth, lte: endOfPrevMonth },
               application: {
+                ...ACTIVE_APPLICATION_WHERE,
                 startDate: { lte: endOfPrevMonth },
                 student: {
                   user: { active: true },
@@ -318,6 +334,7 @@ export class StateDashboardService {
               isDeleted: false,
               status: "COMPLETED",
               application: {
+                ...ACTIVE_APPLICATION_WHERE,
                 startDate: { lte: endOfTargetMonth },
                 student: {
                   user: { active: true },
@@ -330,6 +347,7 @@ export class StateDashboardService {
           this.prisma.monthlyReport.count({
             where: {
               isDeleted: false,
+              application: ACTIVE_APPLICATION_WHERE,
               ...reportPeriodFilter,
               status: { in: ["SUBMITTED", "UNDER_REVIEW", "APPROVED"] },
               student: {
@@ -342,6 +360,7 @@ export class StateDashboardService {
           this.prisma.monthlyReport.count({
             where: {
               isDeleted: false,
+              application: ACTIVE_APPLICATION_WHERE,
               reportMonth: prevMonth,
               reportYear: prevMonthYear,
               status: { in: ["SUBMITTED", "UNDER_REVIEW", "APPROVED"] },
@@ -355,6 +374,7 @@ export class StateDashboardService {
           this.prisma.monthlyReport.count({
             where: {
               isDeleted: false,
+              application: ACTIVE_APPLICATION_WHERE,
               status: { in: ["SUBMITTED", "UNDER_REVIEW"] },
               student: {
                 user: { active: true },
@@ -366,6 +386,7 @@ export class StateDashboardService {
           this.prisma.monthlyReport.count({
             where: {
               isDeleted: false,
+              application: ACTIVE_APPLICATION_WHERE,
               ...reportPeriodFilter,
               status: { in: ["SUBMITTED", "UNDER_REVIEW", "APPROVED"] },
               student: {
@@ -378,6 +399,7 @@ export class StateDashboardService {
           this.prisma.monthlyReport.count({
             where: {
               isDeleted: false,
+              application: ACTIVE_APPLICATION_WHERE,
               status: { in: ["SUBMITTED", "UNDER_REVIEW", "APPROVED"] },
               student: {
                 user: { active: true },
@@ -1051,6 +1073,7 @@ export class StateDashboardService {
               isDeleted: false,
               visitDate: { gte: startOfMonth },
               application: {
+                ...ACTIVE_APPLICATION_WHERE,
                 student: {
                   user: { active: true },
                   Institution: { isActive: true },
@@ -1062,6 +1085,7 @@ export class StateDashboardService {
           this.prisma.monthlyReport.count({
             where: {
               isDeleted: false,
+              application: ACTIVE_APPLICATION_WHERE,
               reportMonth: currentMonth,
               reportYear: currentYear,
               status: { in: ["SUBMITTED", "UNDER_REVIEW", "APPROVED"] },
@@ -1284,6 +1308,7 @@ export class StateDashboardService {
             status: "COMPLETED",
             visitDate: { gte: startOfMonth, lte: endOfMonth },
             application: {
+              ...ACTIVE_APPLICATION_WHERE,
               student: {
                 user: { active: true },
                 Institution: { isActive: true },
@@ -1397,46 +1422,42 @@ export class StateDashboardService {
             });
 
             // Get active internship counts per institution (active students with active users from active institutions, active applications)
-            const internshipCounts =
-              await this.prisma.internshipApplication.groupBy({
-                by: ["studentId"],
+            // Counted per application so the total matches the "Active Internships" card
+            const internshipApps =
+              await this.prisma.internshipApplication.findMany({
                 where: {
-                  ...INTERNSHIP_RECORD_WHERE,
-                  isActive: true,
-                  status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.COMPLETED] },
+                  ...ACTIVE_APPLICATION_WHERE,
                   student: {
                     user: { active: true },
                     Institution: { isActive: true },
                   },
                 },
+                select: { student: { select: { institutionId: true } } },
               });
 
-            // Get student institutionIds for internships (already filtered above, but add Institution check)
-            const studentsWithInternships = await this.prisma.student.findMany({
-              where: {
-                id: { in: internshipCounts.map((i) => i.studentId) },
-                user: { active: true },
-                Institution: { isActive: true },
-              },
-              select: { institutionId: true },
-            });
-
-            // Count internships per institution
             const internshipsByInstitution = new Map<string, number>();
-            for (const s of studentsWithInternships) {
-              const count = internshipsByInstitution.get(s.institutionId) || 0;
-              internshipsByInstitution.set(s.institutionId, count + 1);
+            for (const a of internshipApps) {
+              const instId = a.student.institutionId;
+              internshipsByInstitution.set(
+                instId,
+                (internshipsByInstitution.get(instId) || 0) + 1,
+              );
             }
 
-            return institutions.map((inst) => ({
-              id: inst.id,
-              institutionName: inst.name,
-              institutionCode: inst.code,
-              totalStudents:
+            return institutions.map((inst) => {
+              const activeCount =
                 studentCounts.find((c) => c.institutionId === inst.id)?._count
-                  .id || 0,
-              activeInternships: internshipsByInstitution.get(inst.id) || 0,
-            }));
+                  .id || 0;
+              return {
+                id: inst.id,
+                institutionName: inst.name,
+                institutionCode: inst.code,
+                // studentCounts already only includes active students
+                totalStudents: activeCount,
+                activeStudents: activeCount,
+                activeInternships: internshipsByInstitution.get(inst.id) || 0,
+              };
+            });
           }
 
           case "reports": {
@@ -1444,6 +1465,7 @@ export class StateDashboardService {
             const reportsThisMonth = await this.prisma.monthlyReport.findMany({
               where: {
                 isDeleted: false,
+              application: ACTIVE_APPLICATION_WHERE,
                 ...reportPeriodFilter,
                 status: { in: ["SUBMITTED", "UNDER_REVIEW", "APPROVED"] },
                 student: {
@@ -1680,6 +1702,7 @@ export class StateDashboardService {
                 status: "COMPLETED",
                 visitDate: { gte: startOfMonth, lte: endOfMonth },
                 application: {
+                  ...ACTIVE_APPLICATION_WHERE,
                   startDate: { lte: endOfMonth },
                   student: {
                     user: { active: true },

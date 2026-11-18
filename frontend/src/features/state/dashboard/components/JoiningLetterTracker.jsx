@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Progress, Spin, Empty, Typography } from 'antd';
+import { Card, Progress, Spin, Empty, Typography, Modal, Table } from 'antd';
 import { BankOutlined, EyeOutlined } from '@ant-design/icons';
 import {
   fetchJoiningLetterStats,
@@ -13,7 +13,11 @@ const { Text } = Typography;
 
 // Progress metric component
 const ProgressMetric = ({ label, current, total, color }) => {
-  const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+  // Never show 100% unless everything is actually complete (e.g. 1,686/1,691 = 99.7%)
+  const exact = total > 0 ? (current / total) * 100 : 0;
+  const percent =
+    total > 0 && current >= total ? 100 : Math.min(99.9, Math.floor(exact * 10) / 10);
+  const percentLabel = Number.isInteger(percent) ? percent : percent.toFixed(1);
 
   return (
     <div className="flex-1">
@@ -22,7 +26,7 @@ const ProgressMetric = ({ label, current, total, color }) => {
         <Text className="text-lg font-bold text-text-primary">
           {current.toLocaleString()} / {total.toLocaleString()}
         </Text>
-        <Text className={`text-lg font-bold ${color}`}>{percent}%</Text>
+        <Text className={`text-lg font-bold ${color}`}>{percentLabel}%</Text>
       </div>
       <Progress
         percent={percent}
@@ -38,6 +42,7 @@ const ProgressMetric = ({ label, current, total, color }) => {
 
 const JoiningLetterTracker = ({ selectedMonth }) => {
   const dispatch = useDispatch();
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const stats = useSelector(selectJoiningLetterStats);
   const dashboardStats = useSelector(selectDashboardStats);
   const loading = useSelector(selectJoiningLettersLoading);
@@ -87,7 +92,12 @@ const JoiningLetterTracker = ({ selectedMonth }) => {
           </div>
           <Text className="font-semibold text-text-primary">Joining Report & Student Mapping</Text>
         </div>
-        <button className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-background-tertiary transition-colors">
+        <button
+          type="button"
+          aria-label="View institution-wise joining reports"
+          onClick={() => setDetailsOpen(true)}
+          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-background-tertiary transition-colors"
+        >
           <EyeOutlined className="text-text-tertiary text-sm" />
         </button>
       </div>
@@ -112,6 +122,30 @@ const JoiningLetterTracker = ({ selectedMonth }) => {
           <Empty description="No data available" className="!my-4" />
         )}
       </div>
+
+      <Modal
+        title="Institution-wise Joining Reports"
+        open={detailsOpen}
+        onCancel={() => setDetailsOpen(false)}
+        footer={null}
+        width={800}
+      >
+        <Table
+          size="small"
+          rowKey="institutionId"
+          dataSource={stats?.byInstitution || []}
+          pagination={{ pageSize: 10, showSizeChanger: false, size: 'small' }}
+          scroll={{ x: 'max-content' }}
+          columns={[
+            { title: 'Institution', dataIndex: 'institutionName' },
+            { title: 'Total', dataIndex: 'total', align: 'center' },
+            { title: 'Submitted', align: 'center', render: (_, r) => (r.total || 0) - (r.noLetter || 0) },
+            { title: 'Not Submitted', dataIndex: 'noLetter', align: 'center' },
+            { title: 'Verified', dataIndex: 'verified', align: 'center' },
+            { title: 'Pending Review', dataIndex: 'pendingReview', align: 'center' },
+          ]}
+        />
+      </Modal>
     </Card>
   );
 };

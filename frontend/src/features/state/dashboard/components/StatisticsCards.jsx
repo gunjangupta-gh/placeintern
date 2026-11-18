@@ -306,8 +306,8 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
     switch (type) {
       case 'students':
         return [...baseColumns,
-          { title: 'Total', dataIndex: 'totalStudents', align: 'center', render: (val) => <Text className="font-semibold">{safeLocaleString(val)}</Text> },
-          { title: 'Active', dataIndex: 'activeStudents', align: 'center', render: (val) => <Text className="font-semibold text-green-600 dark:text-green-400">{safeLocaleString(val)}</Text> },
+          { title: 'Active Students', dataIndex: 'activeStudents', align: 'center', render: (val, record) => <Text className="font-semibold">{safeLocaleString(val ?? record.totalStudents)}</Text> },
+          { title: 'Active Internships', dataIndex: 'activeInternships', align: 'center', render: (val) => <Text className="font-semibold text-green-600 dark:text-green-400">{safeLocaleString(val)}</Text> },
         ];
       case 'mentors':
         return [...baseColumns,

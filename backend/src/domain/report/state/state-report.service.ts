@@ -341,7 +341,7 @@ export class StateReportService {
               ...INTERNSHIP_RECORD_WHERE,
               isActive: true,
               status: ApplicationStatus.APPROVED,
-              student: { user: { active: true } },
+              student: { user: { active: true }, Institution: { isActive: true } },
             },
             select: {
               joiningLetterUrl: true,
