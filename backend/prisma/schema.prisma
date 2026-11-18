@@ -1019,10 +1019,15 @@ model InternshipApplication {
 
   // Additional Details
   internshipDuration String?
-  stipend            String?
+  stipend            String? // monthly stipend; only meaningful when internshipType = WITH_STIPEND
   startDate          DateTime?
   endDate            DateTime?
   jobProfile         String?
+
+  // Compensation type of the internship. null = student has not told us yet (shown as incomplete data).
+  internshipType   InternshipCompensationType?
+  // Amount the student pays to the company; only set when internshipType = PAID_BY_STUDENT
+  studentFeeAmount Float?
 
   // Review Details
   reviewedAt    DateTime?
@@ -1066,6 +1071,7 @@ model InternshipApplication {
   @@index([studentId, internshipPhase])
   @@index([status, internshipPhase])
   @@index([opportunityId, status])
+  @@index([internshipType])
   @@map("internship_applications")
 }
 
@@ -1356,6 +1362,13 @@ enum ApplicationStatus {
   JOINED
   COMPLETED
   WITHDRAWN
+}
+
+// How an internship is compensated
+enum InternshipCompensationType {
+  WITH_STIPEND // company pays the student a stipend
+  WITHOUT_STIPEND // unpaid, no money changes hands
+  PAID_BY_STUDENT // student pays a fee to the company
 }
 
 enum InternshipPhase {

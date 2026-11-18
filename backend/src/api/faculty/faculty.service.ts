@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { LruCacheService } from '../../core/cache/lru-cache.service';
+import { normalizeCompensation, missingCompensationFields, INCOMPLETE_COMPENSATION_WHERE } from '../../common/utils/internship-compensation.util';
 import { Prisma, ApplicationStatus, MonthlyReportStatus, AuditAction, AuditCategory, AuditSeverity, Role, InternshipPhase, DeactivationReason } from '../../generated/prisma/client';
 import { ToggleStudentStatusDto } from '../../core/common/dto/toggle-student-status.dto';
 import { AuditService } from '../../infrastructure/audit/audit.service';
@@ -467,6 +468,66 @@ export class FacultyService {
     }
 
     return student;
+  }
+
+  /**
+   * Documents (resume, marksheets, ...) of a student this faculty mentors.
+   * SECURITY: same assigned-mentor check as every other per-student read.
+   */
+  async getStudentDocuments(studentId: string, facultyId: string) {
+    const isAuthorized = await this.prisma.mentorAssignment.findFirst({
+      where: { studentId, mentorId: facultyId, isActive: true },
+      select: { id: true },
+    });
+    if (!isAuthorized) {
+      throw new NotFoundException('Student not found or you are not the assigned mentor');
+    }
+
+    return this.prisma.document.findMany({
+      where: { studentId, isDeleted: false },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, fileName: true, fileUrl: true, type: true, createdAt: true },
+    });
+  }
+
+  /**
+   * Mentees whose internship has no type (or is missing the stipend / fee that goes with its type).
+   * Drives the "please complete internship details" pop-up on the faculty dashboard.
+   */
+  async getIncompleteInternshipDetails(facultyId: string) {
+    const applications = await this.prisma.internshipApplication.findMany({
+      where: {
+        // Only self-identified internships: a State opportunity's stipend is set by the Directorate
+        isSelfIdentified: true,
+        isActive: true,
+        status: { notIn: [ApplicationStatus.REJECTED, ApplicationStatus.WITHDRAWN] },
+        student: {
+          user: { active: true },
+          mentorAssignments: { some: { mentorId: facultyId, isActive: true } },
+        },
+        ...INCOMPLETE_COMPENSATION_WHERE,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 500, // safety cap
+      select: {
+        id: true,
+        companyName: true,
+        internshipType: true,
+        stipend: true,
+        studentFeeAmount: true,
+        student: { select: { id: true, user: { select: { name: true, rollNumber: true } } } },
+      },
+    });
+
+    const items = applications.map((a) => ({
+      applicationId: a.id,
+      studentId: a.student.id,
+      studentName: a.student.user?.name ?? null,
+      rollNumber: a.student.user?.rollNumber ?? null,
+      companyName: a.companyName,
+      missing: missingCompensationFields(a),
+    }));
+    return { total: items.length, items };
   }
 
   /**
@@ -2026,6 +2087,8 @@ export class FacultyService {
       startDate: application.startDate,
       endDate: application.endDate,
       stipend: application.stipend,
+      internshipType: application.internshipType,
+      studentFeeAmount: application.studentFeeAmount,
     };
 
     // Build update data - only include fields that are provided
@@ -2058,7 +2121,20 @@ export class FacultyService {
     // Internship details
     if (updateDto.startDate) updateData.startDate = new Date(updateDto.startDate);
     if (updateDto.endDate) updateData.endDate = new Date(updateDto.endDate);
-    if (updateDto.stipend !== undefined) updateData.stipend = String(updateDto.stipend);
+    // Compensation: type + its matching amount are validated together; the unrelated amount is cleared
+    if (updateDto.internshipType !== undefined) {
+      const compensation = normalizeCompensation({
+        internshipType: updateDto.internshipType,
+        stipend: updateDto.stipend,
+        studentFeeAmount: updateDto.studentFeeAmount,
+      });
+      updateData.internshipType = compensation.internshipType;
+      updateData.stipend = compensation.stipend;
+      updateData.studentFeeAmount = compensation.studentFeeAmount;
+    } else if (updateDto.stipend !== undefined) {
+      // Legacy callers that only send a stipend keep working
+      updateData.stipend = updateDto.stipend === null || updateDto.stipend === '' ? null : String(updateDto.stipend);
+    }
     if (updateDto.jobProfile !== undefined) updateData.jobProfile = updateDto.jobProfile;
     if (updateDto.internshipDuration !== undefined) updateData.internshipDuration = updateDto.internshipDuration;
 

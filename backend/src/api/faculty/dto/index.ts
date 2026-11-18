@@ -14,6 +14,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { InternshipCompensationType } from '../../../generated/prisma/client';
 
 // Enum for visit types (should match your schema)
 export enum VisitType {
@@ -794,11 +795,22 @@ export class UpdateInternshipDto {
   @MaxLength(255)
   hrEmail?: string;
 
-  @ApiPropertyOptional({ description: 'Stipend amount' })
+  @ApiPropertyOptional({ enum: InternshipCompensationType, description: 'How the internship is compensated' })
+  @IsOptional()
+  @IsEnum(InternshipCompensationType)
+  internshipType?: InternshipCompensationType;
+
+  @ApiPropertyOptional({ description: 'Monthly stipend amount (required when internshipType is WITH_STIPEND)' })
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
   stipend?: number;
+
+  @ApiPropertyOptional({ description: 'Fee the student pays the company (required when internshipType is PAID_BY_STUDENT)' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  studentFeeAmount?: number;
 
   @ApiPropertyOptional({ description: 'Job profile/description' })
   @IsOptional()

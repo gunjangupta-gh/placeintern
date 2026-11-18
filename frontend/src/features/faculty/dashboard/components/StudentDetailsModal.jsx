@@ -62,6 +62,9 @@ import {
 } from '../../store/facultySlice';
 import { openFileWithPresignedUrl } from '../../../../utils/imageUtils';
 import ProfileAvatar from '../../../../components/common/ProfileAvatar';
+import InternshipCompensationTag from '../../../../components/common/InternshipCompensationTag';
+import InternshipCompensationFields from '../../../../components/common/InternshipCompensationFields';
+import { compensationFormValues, compensationPayload } from '../../../../utils/internshipCompensation';
 import MaskedField from '../../../../components/common/MaskedField';
 import { getTotalExpectedCount } from '../../../../utils/monthlyCycle';
 import UnifiedVisitLogModal from '../../visits/UnifiedVisitLogModal';
@@ -302,7 +305,7 @@ const StudentDetailsModal = ({
       // Internship Details
       startDate: app?.startDate ? dayjs(app.startDate) : null,
       endDate: app?.endDate ? dayjs(app.endDate) : null,
-      stipend: app?.stipend ? Number(app.stipend) : null,
+      ...compensationFormValues(app),
       internshipDuration: app?.internshipDuration,
       jobProfile: app?.jobProfile,
       // Notes
@@ -339,7 +342,7 @@ const StudentDetailsModal = ({
         // Internship Duration & Compensation
         startDate: values.startDate?.toISOString(),
         endDate: values.endDate?.toISOString(),
-        stipend: values.stipend,
+        ...compensationPayload(values),
         // Note: internshipDuration is not sent - it's auto-calculated from start/end dates
         jobProfile: values.jobProfile,
         // Notes
@@ -684,9 +687,7 @@ const StudentDetailsModal = ({
                       <Form.Item name="endDate" label="End Date" rules={[{ required: true }]} className="mb-2">
                         <DatePicker className="w-full" format="DD MMM YYYY" />
                       </Form.Item>
-                      <Form.Item name="stipend" label="Stipend (₹/month)" className="mb-2">
-                        <InputNumber className="w-full" placeholder="e.g., 15000" min={0} />
-                      </Form.Item>
+                      <InternshipCompensationFields form={editForm} compact />
                       <Form.Item name="internshipDuration" label="Duration (Auto-calculated)" className="mb-2">
                         <Input placeholder="Select start & end dates" disabled />
                       </Form.Item>
@@ -727,8 +728,8 @@ const StudentDetailsModal = ({
                         <Text className="text-sm">{effectiveInternship?.jobProfile || 'N/A'}</Text>
                       </div>
                       <div>
-                        <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Stipend (₹/month)</Text>
-                        <Text className="text-sm">{effectiveInternship?.stipend ? `₹${Number(effectiveInternship.stipend).toLocaleString('en-IN')}` : 'N/A'}</Text>
+                        <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Internship Type</Text>
+                        <InternshipCompensationTag application={effectiveInternship} />
                       </div>
                     </div>
 

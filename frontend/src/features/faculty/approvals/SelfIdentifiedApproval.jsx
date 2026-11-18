@@ -47,6 +47,7 @@ import {
   selectLastFetched,
 } from "../store/facultySlice";
 
+import InternshipCompensationTag from '../../../components/common/InternshipCompensationTag';
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
 
@@ -271,7 +272,7 @@ const SelfIdentifiedApproval = () => {
       ),
     },
     {
-      title: "Duration & Stipend",
+      title: "Duration & Type",
       key: "details",
       width: "15%",
       render: (_, record) => (
@@ -282,10 +283,9 @@ const SelfIdentifiedApproval = () => {
               {record.internshipDuration}
             </div>
           )}
-          {record.stipend && (
-            <div className="text-sm flex items-center" style={{ color: token.colorSuccess }}>
-              <DollarOutlined className="mr-1" />
-              ₹{record.stipend}
+          {(record.internshipType || record.stipend) && (
+            <div className="text-sm flex items-center">
+              <InternshipCompensationTag application={record} />
             </div>
           )}
           {record.startDate && (
@@ -630,8 +630,8 @@ const SelfIdentifiedApproval = () => {
                         <Text className="font-medium" style={{ color: token.colorText }}>{selectedApplication.internshipDuration || "N/A"}</Text>
                       </div>
                       <div className="text-right">
-                        <Text className="text-[10px] uppercase font-bold block leading-none mb-1" style={{ color: token.colorTextTertiary }}>Stipend</Text>
-                        <Text className="font-bold" style={{ color: token.colorSuccess }}>{selectedApplication.stipend ? `₹${selectedApplication.stipend}` : "N/A"}</Text>
+                        <Text className="text-[10px] uppercase font-bold block leading-none mb-1" style={{ color: token.colorTextTertiary }}>Internship Type</Text>
+                        <InternshipCompensationTag application={selectedApplication} />
                       </div>
                     </div>
                     <div>

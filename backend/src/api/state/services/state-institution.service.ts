@@ -2042,6 +2042,8 @@ export class StateInstitutionService {
             hrName: true,
             jobProfile: true,
             stipend: true,
+            internshipType: true,
+            studentFeeAmount: true,
             internshipDuration: true,
             startDate: true,
             endDate: true,
@@ -2142,6 +2144,8 @@ export class StateInstitutionService {
           companyEmail: selfIdentifiedApp.companyEmail,
           jobProfile: selfIdentifiedApp.jobProfile,
           stipend: selfIdentifiedApp.stipend,
+          internshipType: selfIdentifiedApp.internshipType ?? null,
+          studentFeeAmount: selfIdentifiedApp.studentFeeAmount ?? null,
           duration: selfIdentifiedApp.internshipDuration,
           isSelfIdentified: selfIdentifiedApp.isSelfIdentified,
         };
@@ -2160,6 +2164,8 @@ export class StateInstitutionService {
           hrName: selfIdentifiedApp.hrName,
           jobProfile: selfIdentifiedApp.jobProfile,
           stipend: selfIdentifiedApp.stipend,
+          internshipType: selfIdentifiedApp.internshipType ?? null,
+          studentFeeAmount: selfIdentifiedApp.studentFeeAmount ?? null,
           duration: selfIdentifiedApp.internshipDuration,
           startDate: selfIdentifiedApp.startDate,
           endDate: selfIdentifiedApp.endDate,
@@ -2238,6 +2244,8 @@ export class StateInstitutionService {
         companyEmail: true,
         jobProfile: true,
         stipend: true,
+        internshipType: true,
+        studentFeeAmount: true,
         status: true,
         joiningLetterUrl: true,
         joiningDate: true,
@@ -2290,6 +2298,8 @@ export class StateInstitutionService {
           joiningLetterStatus: resolveJoiningLetterStatus(app),
           jobProfile: app.jobProfile,
           stipend: app.stipend,
+          internshipType: app.internshipType ?? null,
+          studentFeeAmount: app.studentFeeAmount ?? null,
         });
       }
     });

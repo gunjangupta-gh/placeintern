@@ -11,6 +11,8 @@ import {
 } from '@ant-design/icons';
 import { formatDisplayDate, getStatusColor } from '../utils/applicationUtils';
 import { formatStipend, stipendSorter } from '../../../opportunities/tableUtils';
+import InternshipCompensationTag from '../../../../components/common/InternshipCompensationTag';
+import { compensationAmount } from '../../../../utils/internshipCompensation';
 
 const { Text } = Typography;
 
@@ -69,11 +71,18 @@ const ApplicationsTable = ({
       },
     },
     {
-      title: 'Stipend',
+      title: 'Internship Type',
       key: 'stipend',
-      width: 110,
-      sortDirections: ['descend', 'ascend'], sorter: stipendSorter((r) => r.stipend),
-      render: (_, record) => (record.stipend ? formatStipend(record.stipend) : 'Not specified'),
+      width: 190,
+      sortDirections: ['descend', 'ascend'], sorter: stipendSorter((r) => compensationAmount(r) ?? r.stipend),
+      render: (_, record) =>
+        record.internshipType ? (
+          <InternshipCompensationTag application={record} />
+        ) : record.stipend ? (
+          formatStipend(record.stipend)
+        ) : (
+          'Not specified'
+        ),
     },
     {
       title: 'Duration',

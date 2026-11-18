@@ -639,15 +639,10 @@ const StudentDashboard = () => {
       if (!application.jobProfile) pendingFields.push("Job Profile");
       if (!application.startDate) pendingFields.push("Start Date");
       if (!application.endDate) pendingFields.push("End Date");
-      // Stipend "0" is valid (free internship); only an empty value is pending
-      if (
-        application.stipend === null ||
-        application.stipend === undefined ||
-        String(application.stipend).trim() === ""
-      )
-        pendingFields.push("Stipend");
+      // Internship type / stipend / fee is filled in by the mentor for older records,
+      // so it is deliberately not treated as pending data for the student.
 
-      const totalChecked = 5;
+      const totalChecked = 4;
       if (pendingFields.length === 0)
         return { status: "complete", pendingFields: [] };
       return {

@@ -77,6 +77,7 @@ import StudentModal from './StudentModal';
 import dayjs from 'dayjs';
 import { getPresignedUrl } from '../../../utils/imageUtils';
 import InternshipTypeBadge from '../../../components/common/InternshipTypeBadge';
+import InternshipCompensationTag from '../../../components/common/InternshipCompensationTag';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -743,12 +744,12 @@ const AllStudents = () => {
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 13 }}>
-                    {app.stipend && (
-                      <div>
-                        <span style={{ color: token.colorTextSecondary }}>Stipend:</span>
-                        <span style={{ marginLeft: 4, fontWeight: 500 }}>₹{app.stipend}/mo</span>
-                      </div>
-                    )}
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <span style={{ color: token.colorTextSecondary }}>Internship Type:</span>
+                      <span style={{ marginLeft: 4 }}>
+                        <InternshipCompensationTag application={app} />
+                      </span>
+                    </div>
                     {app.internshipDuration && (
                       <div>
                         <span style={{ color: token.colorTextSecondary }}>Duration:</span>

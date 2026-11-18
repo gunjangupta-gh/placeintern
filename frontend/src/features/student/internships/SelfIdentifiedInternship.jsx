@@ -30,6 +30,8 @@ import { getStoredLoginResponse } from "../../../utils/authStorage";
 import { selectApplicationsList } from "../store/studentSelectors";
 import { submitSelfIdentified, fetchApplications } from "../store/studentSlice";
 import studentService from "../../../services/student.service";
+import InternshipCompensationFields from "../../../components/common/InternshipCompensationFields";
+import { compensationPayload } from "../../../utils/internshipCompensation";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -52,7 +54,6 @@ const SelfIdentifiedInternship = () => {
   }, [applications]);
 
   const [form] = Form.useForm();
-  const internshipType = Form.useWatch("internshipType", form);
   const [loading, setLoading] = useState(false);
   const [joiningLetterFile, setJoiningLetterFile] = useState(null);
   const [facultyMentors, setFacultyMentors] = useState([]);
@@ -221,11 +222,13 @@ const SelfIdentifiedInternship = () => {
       formData.append("hrContact", values.hrContact || "");
       formData.append("hrEmail", values.hrEmail || "");
 
-      // Paid internship sends its amount; a free internship is saved with stipend 0
-      formData.append(
-        "stipend",
-        values.internshipType === "PAID" ? values.stipend.toString() : "0"
-      );
+      // Internship type plus the one amount that belongs to it (stipend, or the fee the student pays)
+      const compensation = compensationPayload(values);
+      formData.append("internshipType", compensation.internshipType);
+      if (compensation.stipend != null) formData.append("stipend", String(compensation.stipend));
+      if (compensation.studentFeeAmount != null) {
+        formData.append("studentFeeAmount", String(compensation.studentFeeAmount));
+      }
 
       if (values.startDate) {
         formData.append("startDate", values.startDate.toISOString());
@@ -500,51 +503,14 @@ const SelfIdentifiedInternship = () => {
                   </Form.Item>
                 </Col>
 
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    label={<span className="font-medium text-text-primary">Internship Type</span>}
-                    name="internshipType"
-                    rules={[{ required: true, message: "Please select Paid or Free" }]}
-                  >
-                    <Select
-                      placeholder="Is this internship paid or free?"
-                      className="rounded-lg h-11"
-                      onChange={(type) =>
-                        form.setFieldsValue({ stipend: type === "FREE" ? 0 : undefined })
-                      }
-                    >
-                      <Option value="PAID">Paid (with stipend)</Option>
-                      <Option value="FREE">Free (no stipend)</Option>
-                    </Select>
-                  </Form.Item>
-                </Col>
-
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    label={<span className="font-medium text-text-primary">Stipend (₹ per month)</span>}
-                    name="stipend"
-                    rules={
-                      internshipType === "PAID"
-                        ? [
-                            { required: true, message: "Please enter stipend amount" },
-                            { type: "number", min: 1, message: "Amount must be more than 0" },
-                          ]
-                        : []
-                    }
-                    extra={
-                      internshipType === "FREE" ? (
-                        <Text className="text-[10px] text-text-tertiary">Free internship - stipend is saved as 0</Text>
-                      ) : null
-                    }
-                  >
-                    <InputNumber
-                      className="w-full rounded-lg h-11 bg-background border-border flex items-center"
-                      placeholder={internshipType === "PAID" ? "Stipend amount per month" : "Select internship type first"}
-                      min={0}
-                      disabled={internshipType !== "PAID"}
-                    />
-                  </Form.Item>
-                </Col>
+                <InternshipCompensationFields
+                  form={form}
+                  renderItem={(node) => (
+                    <Col xs={24} md={12} key={node.key}>
+                      {node}
+                    </Col>
+                  )}
+                />
               </Row>
             </div>
 

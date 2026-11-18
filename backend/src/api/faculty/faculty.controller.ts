@@ -109,6 +109,22 @@ export class FacultyController {
     return this.facultyService.getStudentProgress(studentId, req.user.userId);
   }
 
+  @Get('students/:id/documents')
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
+  @ApiOperation({ summary: 'List documents of an assigned student' })
+  @ApiResponse({ status: 200, description: 'Documents retrieved successfully' })
+  async getStudentDocuments(@Param('id') studentId: string, @Req() req) {
+    return this.facultyService.getStudentDocuments(studentId, req.user.userId);
+  }
+
+  @Get('incomplete-internship-details')
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
+  @ApiOperation({ summary: 'Mentees whose internship type / stipend / fee is not filled in yet' })
+  @ApiResponse({ status: 200, description: 'Incomplete internship details retrieved successfully' })
+  async getIncompleteInternshipDetails(@Req() req) {
+    return this.facultyService.getIncompleteInternshipDetails(req.user.userId);
+  }
+
   @Get('students/:id/unmasked-contact')
   @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR, Role.PRINCIPAL)
   @ApiOperation({ summary: 'Get unmasked contact details for a student (requires verification)' })

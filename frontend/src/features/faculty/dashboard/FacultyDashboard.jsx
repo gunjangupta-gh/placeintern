@@ -17,6 +17,7 @@ import {
   MonthlyReportsCard,
   StudentDetailsModal,
   JoiningLettersCard,
+  IncompleteInternshipDetailsModal,
 } from './components';
 import QuickVisitModal from '../visits/QuickVisitModal';
 import UnifiedVisitLogModal from '../visits/UnifiedVisitLogModal';
@@ -255,6 +256,9 @@ const FacultyDashboard = () => {
           </div>
         </div>
       </Spin>
+
+      {/* Reminder: mentees whose internship type / stipend / fee is not filled in (teachers only) */}
+      <IncompleteInternshipDetailsModal />
 
       {/* Unified Visit Log Modal */}
       <UnifiedVisitLogModal

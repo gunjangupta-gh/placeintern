@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons';
 import { formatDisplayDate, formatCurrency } from '../../utils/applicationUtils';
 import ProfileAvatar from '../../../../../components/common/ProfileAvatar';
+import InternshipCompensationTag from '../../../../../components/common/InternshipCompensationTag';
 
 const { Text } = Typography;
 
@@ -47,6 +48,15 @@ const ApplicationDetailsTab = ({ application, isSelfIdentified, internship, indu
                 </Text>
               </div>
             </div>
+            {isSelfIdentified && (
+              <div className="flex items-center gap-2">
+                <StarOutlined className="text-yellow-500" />
+                <div>
+                  <Text type="secondary" className="block text-xs">Internship Type</Text>
+                  <InternshipCompensationTag application={application} />
+                </div>
+              </div>
+            )}
             {!isSelfIdentified && internship?.stipend && (
               <div className="flex items-center gap-2">
                 <StarOutlined className="text-yellow-500" />

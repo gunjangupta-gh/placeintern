@@ -6,3 +6,4 @@ export { default as MonthlyReportsCard } from './MonthlyReportsCard';
 export { default as JoiningLettersCard } from './JoiningLettersCard';
 export { default as JoiningLettersOverviewModal } from './JoiningLettersOverviewModal';
 export { default as StudentDetailsModal } from './StudentDetailsModal';
+export { default as IncompleteInternshipDetailsModal } from './IncompleteInternshipDetailsModal';

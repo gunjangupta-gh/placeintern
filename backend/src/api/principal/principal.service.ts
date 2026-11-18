@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { LruCacheService } from '../../core/cache/lru-cache.service';
-import { Prisma, ApplicationStatus, Role, GrievanceStatus, MonthlyReportStatus, AuditAction, AuditCategory, AuditSeverity, InternshipPhase, DeactivationReason } from '../../generated/prisma/client';
+import { Prisma, ApplicationStatus, Role, GrievanceStatus, MonthlyReportStatus, AuditAction, AuditCategory, AuditSeverity, InternshipPhase, DeactivationReason, InternshipCompensationType } from '../../generated/prisma/client';
+import { findIncompleteStudents } from '../internship-opportunity/incomplete-data.util';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { ToggleStudentStatusDto } from '../../core/common/dto/toggle-student-status.dto';
@@ -105,7 +106,7 @@ export class PrincipalService {
           applicationCounters,
           studentsByBranch,
           joiningLetterApplications,
-          partnerCompanyNames,
+          incompleteDataResult,
           unassignedStudentsCount,
         ] = await Promise.all([
           this.prisma.student.count({ where: { institutionId, user: { active: true } } }),
@@ -247,7 +248,8 @@ export class PrincipalService {
                 where: {
                   isActive: true, // Count students with active internship applications
                 },
-                select: { id: true },
+                select: { id: true, internshipType: true },
+                orderBy: { createdAt: 'desc' },
                 take: 1,
               },
             },
@@ -261,18 +263,8 @@ export class PrincipalService {
               joiningLetterUrl: { not: null, notIn: [''] },
             },
           }),
-          // Get unique partner company names
-          this.prisma.internshipApplication.findMany({
-            where: {
-              student: { institutionId, user: { active: true } },
-              ...INTERNSHIP_RECORD_WHERE,
-              isActive: true,
-              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED, ApplicationStatus.COMPLETED] },
-              companyName: { not: null, notIn: [''] },
-            },
-            select: { companyName: true },
-            distinct: ['companyName'],
-          }),
+          // Students whose profile or internship type / stipend / fee is still incomplete
+          findIncompleteStudents(this.prisma, { institutionId, user: { active: true } }),
           // Count ALL active students (current batch) with no active mentor assignment.
           // Uses MentorAssignment table (source of truth); does not depend on internship status,
           // so newly uploaded students without internships yet are still counted.
@@ -284,9 +276,6 @@ export class PrincipalService {
             },
           }),
         ]);
-
-        // Count unique partner companies
-        const totalPartnerCompanies = partnerCompanyNames.length;
 
         // Joining letter stats - simple: total vs uploaded
         const joiningLetterTotal = totalSelfIdentifiedInternships;
@@ -305,6 +294,9 @@ export class PrincipalService {
           totalStudents: number;
           activeStudents: number;
           withInternship: number;
+          withStipend: number;
+          withoutStipend: number;
+          paidByStudent: number;
         }>();
 
         // Process each student and group by branch
@@ -319,6 +311,9 @@ export class PrincipalService {
               totalStudents: 0,
               activeStudents: 0,
               withInternship: 0,
+              withStipend: 0,
+              withoutStipend: 0,
+              paidByStudent: 0,
             });
           }
 
@@ -331,6 +326,18 @@ export class PrincipalService {
 
           if (student.internshipApplications && student.internshipApplications.length > 0) {
             branchData.withInternship += 1;
+            // A student is counted once, under the type of their latest internship
+            switch (student.internshipApplications[0].internshipType) {
+              case InternshipCompensationType.WITH_STIPEND:
+                branchData.withStipend += 1;
+                break;
+              case InternshipCompensationType.WITHOUT_STIPEND:
+                branchData.withoutStipend += 1;
+                break;
+              case InternshipCompensationType.PAID_BY_STUDENT:
+                branchData.paidByStudent += 1;
+                break;
+            }
           }
         }
 
@@ -457,8 +464,8 @@ export class PrincipalService {
             pending: pendingJoiningLetters,
             uploadRate: joiningLetterTotal > 0 ? Math.round((joiningLetterUploaded / joiningLetterTotal) * 100) : 0,
           },
-          // Partner companies count
-          partnerCompanies: totalPartnerCompanies,
+          // Students with incomplete profile / internship details (shown on the Incomplete Data card)
+          incompleteData: { total: incompleteDataResult.incomplete.length },
           // Students grouped by branch/course
           studentsByBranch: formattedStudentsByBranch,
           // Students with active internships but no mentor assigned
@@ -897,6 +904,8 @@ export class PrincipalService {
               companyEmail: true,
               jobProfile: true,
               stipend: true,
+              internshipType: true,
+              studentFeeAmount: true,
               internshipDuration: true,
               startDate: true,
               endDate: true,
@@ -1213,6 +1222,8 @@ export class PrincipalService {
           // Internship details (from self-identified fields)
           workLocation: (application as any).companyAddress,
           stipendAmount: (application as any).stipend,
+          internshipType: (application as any).internshipType ?? null,
+          studentFeeAmount: (application as any).studentFeeAmount ?? null,
           duration: (application as any).internshipDuration,
           startDate: (application as any).startDate,
           endDate: (application as any).endDate,
@@ -1508,6 +1519,8 @@ export class PrincipalService {
                 companyEmail: true,
                 jobProfile: true,
                 stipend: true,
+                internshipType: true,
+                studentFeeAmount: true,
                 internshipDuration: true,
                 startDate: true,
                 endDate: true,
@@ -4909,6 +4922,8 @@ export class PrincipalService {
                 companyEmail: true,
                 jobProfile: true,
                 stipend: true,
+                internshipType: true,
+                studentFeeAmount: true,
                 internshipDuration: true,
                 startDate: true,
                 endDate: true,
@@ -5090,6 +5105,8 @@ export class PrincipalService {
         companyName: (app as any)?.companyName || null,
         jobProfile: (app as any)?.jobProfile || null,
         stipend: (app as any)?.stipend || null,
+        internshipType: (app as any)?.internshipType || null,
+        studentFeeAmount: (app as any)?.studentFeeAmount ?? null,
         internshipDuration: (app as any)?.internshipDuration || null,
         startDate: startDate || null,
         endDate: endDate || null,

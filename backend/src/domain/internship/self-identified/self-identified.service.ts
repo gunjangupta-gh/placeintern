@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
-import { ApplicationStatus, InternshipPhase, AuditAction, AuditCategory, AuditSeverity } from '../../../generated/prisma/client';
+import { ApplicationStatus, InternshipPhase, AuditAction, AuditCategory, AuditSeverity, InternshipCompensationType } from '../../../generated/prisma/client';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { CacheService } from '../../../core/cache/cache.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
@@ -89,7 +89,10 @@ export class SelfIdentifiedService {
           companyEmail: data.companyEmail,
           companyContact: data.companyPhone,
           jobProfile: data.role,
-          stipend: data.stipend !== undefined ? String(data.stipend) : null,
+          // A positive stipend means WITH_STIPEND; otherwise the type is left for the mentor to fill in
+          ...(data.stipend !== undefined && Number(data.stipend) > 0
+            ? { internshipType: InternshipCompensationType.WITH_STIPEND, stipend: String(data.stipend) }
+            : { stipend: null }),
           startDate: data.startDate,
           endDate: data.endDate,
           additionalInfo: data.description,

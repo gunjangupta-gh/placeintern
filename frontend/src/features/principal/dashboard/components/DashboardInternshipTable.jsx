@@ -67,6 +67,9 @@ import ProfileAvatar from "../../../../components/common/ProfileAvatar";
 
 dayjs.extend(relativeTime);
 
+import InternshipCompensationTag from '../../../../components/common/InternshipCompensationTag';
+import { INTERNSHIP_TYPE_LABELS, formatCompensation } from '../../../../utils/internshipCompensation';
+
 const { Text, Paragraph } = Typography;
 const { RangePicker } = DatePicker;
 
@@ -139,6 +142,8 @@ const DashboardInternshipTable = () => {
             companyEmail: company?.email,
             jobProfile: application?.jobProfile || application?.internshipTitle,
             stipend: application?.stipendAmount,
+            internshipType: application?.internshipType,
+            studentFeeAmount: application?.studentFeeAmount,
             startDate: application?.startDate,
             endDate: application?.endDate,
             duration: application?.duration,
@@ -393,7 +398,8 @@ const DashboardInternshipTable = () => {
       "Company Name": item.companyName || "",
       "Company Address": item.companyAddress || "",
       "Job Profile": item.jobProfile || "",
-      "Stipend": item.stipend || "Unpaid",
+      "Internship Type": INTERNSHIP_TYPE_LABELS[item.internshipType] || "Not specified",
+      "Stipend / Fee": item.internshipType ? formatCompensation(item) : "",
       "Start Date": item.startDate ? dayjs(item.startDate).format("DD-MM-YYYY") : "",
       "End Date": item.endDate ? dayjs(item.endDate).format("DD-MM-YYYY") : "",
       "Status": item.status || "",
@@ -741,20 +747,10 @@ const DashboardInternshipTable = () => {
       },
     },
     {
-      title: "Stipend",
-      key: "stipend",
-      // width: 90,
+      title: "Internship Type",
+      key: "internshipType",
       responsive: ["lg"],
-      render: (_, record) =>
-        record.stipend ? (
-          <Tag color="green" className="rounded-full">
-            ₹{record.stipend}/mo
-          </Tag>
-        ) : (
-          <Tag color="default" className="rounded-full">
-            Unpaid
-          </Tag>
-        ),
+      render: (_, record) => <InternshipCompensationTag application={record} className="rounded-full" />,
     },
     {
       title: "Joining Reports",
@@ -1323,12 +1319,8 @@ const DashboardInternshipTable = () => {
                 <Descriptions.Item label="Job Profile">
                   {selectedInternship.jobProfile || "N/A"}
                 </Descriptions.Item>
-                <Descriptions.Item label="Stipend">
-                  {selectedInternship.stipend ? (
-                    <Tag color="green">{selectedInternship.stipend}/month</Tag>
-                  ) : (
-                    <Tag color="default">Unpaid</Tag>
-                  )}
+                <Descriptions.Item label="Internship Type">
+                  <InternshipCompensationTag application={selectedInternship} />
                 </Descriptions.Item>
                 {selectedInternship.companyAddress && (
                   <Descriptions.Item label="Address" span={2}>

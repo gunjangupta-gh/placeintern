@@ -55,6 +55,17 @@ export const facultyService = {
     return response.data;
   },
 
+  async getStudentDocuments(studentId) {
+    const response = await API.get(`/faculty/students/${studentId}/documents`);
+    return response.data;
+  },
+
+  /** Mentees whose internship type / stipend / fee is still empty */
+  async getIncompleteInternshipDetails() {
+    const response = await API.get('/faculty/incomplete-internship-details');
+    return response.data;
+  },
+
   // Student Management
   async updateStudent(studentId, data) {
     const response = await API.put(`/faculty/students/${studentId}`, data);

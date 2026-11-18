@@ -52,6 +52,8 @@ import { fetchAllStudents, fetchStudentsSummary } from "../store/stateSlice";
 import stateService from "../../../services/state.service";
 import dayjs from "dayjs";
 
+import InternshipCompensationTag from '../../../components/common/InternshipCompensationTag';
+import { INTERNSHIP_TYPE_LABELS, formatCompensation } from '../../../utils/internshipCompensation';
 const { Text, Title } = Typography;
 
 const StudentsList = () => {
@@ -176,7 +178,8 @@ const StudentsList = () => {
         "Internship Status": student.internshipStatus || "",
         "Company Name": student.companyName || "",
         "Job Profile": student.jobProfile || "",
-        Stipend: student.stipend || "",
+        "Internship Type": INTERNSHIP_TYPE_LABELS[student.internshipType] || "",
+        "Stipend / Fee": student.internshipType ? formatCompensation(student) : student.stipend || "",
         "Internship Start Date": student.startDate
           ? dayjs(student.startDate).format("DD-MM-YYYY")
           : "",
@@ -690,11 +693,9 @@ const StudentsList = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               <div>
-                                <div className="text-text-tertiary text-[10px]">Stipend</div>
+                                <div className="text-text-tertiary text-[10px]">Internship Type</div>
                                 <div className="font-medium">
-                                  {selectedStudent.internship.stipend
-                                    ? `₹${selectedStudent.internship.stipend}/month`
-                                    : "N/A"}
+                                  <InternshipCompensationTag application={selectedStudent.internship} />
                                 </div>
                               </div>
                               <div>

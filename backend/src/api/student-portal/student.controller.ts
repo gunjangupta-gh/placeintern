@@ -23,6 +23,7 @@ import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { DocumentType, Role } from '../../generated/prisma/client';
+import { normalizeCompensation } from '../../common/utils/internship-compensation.util';
 import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
 import { CreateStudentPlacementInterestDto, UpdateStudentPlacementInterestDto, SubmitPPODto } from './dto/student-placement-interest.dto';
 
@@ -237,11 +238,12 @@ export class StudentController {
       joiningLetterUrl = result.url;
     }
 
-    // Stipend is mandatory: an amount for a paid internship, 0 marks the internship as free
-    const stipendValue = Number(text('stipend'));
-    if (text('stipend') === undefined || !Number.isFinite(stipendValue) || stipendValue < 0) {
-      throw new BadRequestException('Stipend is required: enter the amount for a paid internship, or 0 for a free one');
-    }
+    // Internship type is mandatory; its matching amount (stipend, or the fee the student pays) is validated with it
+    const compensation = normalizeCompensation({
+      internshipType: text('internshipType'),
+      stipend: text('stipend'),
+      studentFeeAmount: text('studentFeeAmount'),
+    });
 
     // Only known fields are accepted (the student, status and phase are set by the server)
     const dto: Record<string, any> = {
@@ -255,7 +257,9 @@ export class StudentController {
       hrContact: text('hrContact'),
       hrEmail: text('hrEmail'),
       hrDesignation: text('hrDesignation'),
-      stipend: String(stipendValue),
+      internshipType: compensation.internshipType,
+      stipend: compensation.stipend,
+      studentFeeAmount: compensation.studentFeeAmount,
       startDate: date('startDate'),
       endDate: date('endDate'),
       notes: text('notes'),

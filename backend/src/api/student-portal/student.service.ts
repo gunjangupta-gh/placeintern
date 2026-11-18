@@ -23,6 +23,7 @@ import {
   ExpectedSalaryRange,
   AdmissionType,
   Category,
+  InternshipCompensationType,
 } from "../../generated/prisma/client";
 import { AuditService } from "../../infrastructure/audit/audit.service";
 import { StudentSemesterStatusService } from "../../domain/academic/semester-status/student-semester-status.service";
@@ -1344,7 +1345,9 @@ export class StudentService {
       hrContact?: string;
       hrEmail?: string;
       internshipDuration?: string;
-      stipend?: string;
+      internshipType?: InternshipCompensationType;
+      stipend?: string | null;
+      studentFeeAmount?: number | null;
       startDate?: Date;
       endDate?: Date;
       jobProfile?: string;

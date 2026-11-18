@@ -10,6 +10,7 @@ import {
   FileTextOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
+  FileExclamationOutlined,
 } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -155,13 +156,13 @@ export const BasicStatisticsGrid = ({
   totalStudents = 0,
   totalMentors = 0,
   unassignedStudents = 0,
-  partnerCompanies = 0,
+  incompleteData = 0,
   staffBreakdown = { totalStaff: 0, mentors: 0, adminStaff: 0 },
   loading = false,
   onViewStudents,
   onViewMentors,
   onViewUnassigned,
-  onViewCompanies,
+  onViewIncompleteData,
 }) => {
   const cards = [
     {
@@ -203,15 +204,16 @@ export const BasicStatisticsGrid = ({
       isWarning: true,
     },
     {
-      title: 'Partner Companies',
-      value: partnerCompanies,
-      subtitle: 'Active industry engagements',
-      icon: <BankOutlined />,
-      iconBgClass: 'bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
+      title: 'Incomplete Data',
+      value: incompleteData,
+      subtitle: 'Students with missing profile or internship details',
+      icon: <FileExclamationOutlined />,
+      iconBgClass: 'bg-warning-light',
       iconColorClass: '',
-      valueColorClass: 'text-purple-600 dark:text-purple-400',
+      valueColorClass: 'text-warning',
       hasViewMore: true,
-      onViewMore: onViewCompanies,
+      onViewMore: onViewIncompleteData,
+      isWarning: incompleteData > 0,
     },
   ];
 

@@ -69,12 +69,16 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { useSearchParams } from 'react-router-dom';
 import StudentDetailsModal from '../dashboard/components/StudentDetailsModal';
 import UnifiedVisitLogModal from '../visits/UnifiedVisitLogModal';
 import FacultyStudentModal from './FacultyStudentModal';
 import MaskedField from '../../../components/common/MaskedField';
 import { facultyService } from '../../../services/faculty.service';
 import InternshipTypeBadge from '../../../components/common/InternshipTypeBadge';
+import InternshipCompensationTag from '../../../components/common/InternshipCompensationTag';
+import EditStudentInternshipModal from './EditStudentInternshipModal';
+import { getPresignedUrl } from '../../../utils/imageUtils';
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -94,6 +98,7 @@ const AssignedStudentsList = () => {
 
   // Local state
   const [search, setSearch] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [visitModalVisible, setVisitModalVisible] = useState(false);
@@ -138,6 +143,14 @@ const AssignedStudentsList = () => {
   // Unmasked data cache
   const [unmaskedData, setUnmaskedData] = useState(null);
 
+  // Internship edit modal (application being edited, or null when closed)
+  const [editingApplication, setEditingApplication] = useState(null);
+
+  // Student documents (read-only list, same as the principal's Documents tab)
+  const [studentDocuments, setStudentDocuments] = useState([]);
+  const [documentUrls, setDocumentUrls] = useState({});
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+
   // Function to reveal masked contact details
   const handleRevealContact = async (fieldName) => {
     // If we already have unmasked data for this student, return the specific field
@@ -158,6 +171,42 @@ const AssignedStudentsList = () => {
   useEffect(() => {
     setUnmaskedData(null);
   }, [selectedStudent?.id]);
+
+  // Load the selected student's documents (and signed links to open them)
+  const loadStudentDocuments = useCallback(async (studentId) => {
+    if (!studentId) {
+      setStudentDocuments([]);
+      setDocumentUrls({});
+      return;
+    }
+    setDocumentsLoading(true);
+    try {
+      const docs = (await facultyService.getStudentDocuments(studentId)) || [];
+      setStudentDocuments(docs);
+      const entries = await Promise.all(
+        docs
+          .filter((doc) => doc.fileUrl)
+          .map(async (doc) => {
+            try {
+              return [doc.id, await getPresignedUrl(doc.fileUrl)];
+            } catch {
+              return [doc.id, doc.fileUrl];
+            }
+          }),
+      );
+      setDocumentUrls(Object.fromEntries(entries));
+    } catch (error) {
+      console.error('Failed to load documents:', error);
+      setStudentDocuments([]);
+      setDocumentUrls({});
+    } finally {
+      setDocumentsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStudentDocuments(selectedStudent?.id);
+  }, [selectedStudent?.id, loadStudentDocuments]);
 
   // Initial fetch
   useEffect(() => {
@@ -204,6 +253,26 @@ const AssignedStudentsList = () => {
       handleStudentSelect(filteredStudents[0]);
     }
   }, [filteredStudents, screens.md]);
+
+  // Deep link from the dashboard reminder: /app/assigned-students?studentId=...
+  useEffect(() => {
+    const wanted = searchParams.get('studentId');
+    if (!wanted || processedStudents.length === 0) return;
+    const match = processedStudents.find((s) => s.id === wanted);
+    if (match) {
+      setSelectedStudent(match);
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [processedStudents, searchParams]);
+
+  // Keep the open student in sync when the list is refreshed (e.g. after editing an internship)
+  useEffect(() => {
+    if (!selectedStudent?.id) return;
+    const fresh = processedStudents.find((s) => s.id === selectedStudent.id);
+    if (fresh) setSelectedStudent(fresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [processedStudents]);
 
   const handleStudentSelect = (student) => {
     setSelectedStudent(student);
@@ -378,6 +447,7 @@ const AssignedStudentsList = () => {
         type: values.documentType
       })).unwrap();
       toast.success('Document uploaded successfully');
+      loadStudentDocuments(selectedStudent.id);
       setUploadDocumentModal(false);
       uploadForm.resetFields();
       setFileList([]);
@@ -676,6 +746,64 @@ const AssignedStudentsList = () => {
       ),
     },
     {
+      key: 'documents',
+      label: <span><FileTextOutlined /> Documents ({studentDocuments.length})</span>,
+      children: (
+        <div style={{ padding: 16 }}>
+          {documentsLoading ? (
+            <div style={{ textAlign: 'center', padding: 48 }}><Spin /></div>
+          ) : studentDocuments.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 16 }}>
+              {studentDocuments.map((doc) => (
+                <Card
+                  key={doc.id}
+                  hoverable
+                  style={{ borderRadius: token.borderRadiusLG, overflow: 'hidden', border: `1px solid ${token.colorBorderSecondary}` }}
+                  cover={
+                    <div style={{ height: 160, backgroundColor: token.colorBgLayout, padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {documentUrls[doc.id] ? (
+                        <img
+                          src={documentUrls[doc.id]}
+                          alt={doc.fileName}
+                          style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                      ) : (
+                        <Spin />
+                      )}
+                      <div style={{ display: 'none', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: token.colorTextDescription }}>
+                        <FileTextOutlined style={{ fontSize: 32 }} />
+                        <span style={{ marginTop: 8, fontSize: 12 }}>Preview unavailable</span>
+                      </div>
+                    </div>
+                  }
+                  onClick={() => {
+                    if (documentUrls[doc.id]) window.open(documentUrls[doc.id], '_blank');
+                  }}
+                >
+                  <Card.Meta
+                    title={<div style={{ textAlign: 'center', fontSize: 14 }}>{doc.type?.replaceAll('_', ' ')}</div>}
+                    description={<div style={{ textAlign: 'center', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.fileName}</div>}
+                  />
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', color: token.colorTextDescription, padding: 48, backgroundColor: token.colorBgLayout, borderRadius: token.borderRadiusLG }}>
+              <FileTextOutlined style={{ fontSize: 32, marginBottom: 12, color: token.colorTextDisabled }} />
+              <div>No documents uploaded</div>
+              <Button type="link" onClick={() => setUploadDocumentModal(true)}>
+                Upload a document
+              </Button>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
       key: '2',
       label: <span><LaptopOutlined /> Internships ({selectedStudent?.internshipApplications?.length || 0})</span>,
       children: (
@@ -717,16 +845,25 @@ const AssignedStudentsList = () => {
                         {app.internshipPhase || app.status}
                       </Tag>
                       <InternshipTypeBadge isSelfIdentified={app.isSelfIdentified} />
+                      <Button
+                        type="link"
+                        size="small"
+                        icon={<EditOutlined />}
+                        style={{ padding: 0, height: 'auto' }}
+                        onClick={() => setEditingApplication(app)}
+                      >
+                        Edit
+                      </Button>
                     </div>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 13 }}>
-                    {app.stipend && (
-                      <div>
-                        <span style={{ color: token.colorTextSecondary }}>Stipend:</span>
-                        <span style={{ marginLeft: 4, fontWeight: 500 }}>₹{app.stipend}/mo</span>
-                      </div>
-                    )}
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <span style={{ color: token.colorTextSecondary }}>Internship Type:</span>
+                      <span style={{ marginLeft: 4 }}>
+                        <InternshipCompensationTag application={app} />
+                      </span>
+                    </div>
                     {app.internshipDuration && (
                       <div>
                         <span style={{ color: token.colorTextSecondary }}>Duration:</span>
@@ -1171,6 +1308,14 @@ const AssignedStudentsList = () => {
         onClose={() => setDetailModalVisible(false)}
         onRefresh={handleRefresh}
         loading={loading}
+      />
+
+      {/* Edit Internship Modal */}
+      <EditStudentInternshipModal
+        open={!!editingApplication}
+        application={editingApplication}
+        onClose={() => setEditingApplication(null)}
+        onSaved={handleRefresh}
       />
 
       {/* Unified Visit Log Modal */}

@@ -13,7 +13,6 @@ import {
   Alert,
   Tag,
   Table,
-  Empty,
   Tabs,
 } from 'antd';
 import { AppTable, AppModal } from '../../../components/ui';
@@ -30,7 +29,6 @@ import { useNotifications } from '../../common/notifications';
 import {
   fetchPrincipalDashboard,
   fetchMentorCoverage,
-  fetchInternshipStats,
   fetchFacultyWorkload,
   fetchJoiningLettersByMentor,
   selectDashboardStats,
@@ -39,8 +37,6 @@ import {
   selectMentorCoverage,
   selectMentorCoverageLoading,
   selectMostRecentFetch,
-  selectInternshipStats,
-  selectInternshipStatsLoading,
 } from '../store/principalSlice';
 import { fetchPrincipalTrainingDashboard } from '../store/principalTrainingSlice';
 import FacultyWorkloadCard from './components/FacultyWorkloadCard';
@@ -95,7 +91,6 @@ const PrincipalDashboard = () => {
   const [dismissedAlerts, setDismissedAlerts] = useState([]);
   const [studentsModal, setStudentsModal] = useState({ visible: false });
   const [mentorsModal, setMentorsModal] = useState({ visible: false });
-  const [companiesModal, setCompaniesModal] = useState({ visible: false });
   const [reportsModal, setReportsModal] = useState({ visible: false });
   const [visitsModal, setVisitsModal] = useState({ visible: false });
   const [joiningLettersModal, setJoiningLettersModal] = useState({ visible: false });
@@ -109,8 +104,6 @@ const PrincipalDashboard = () => {
   const mentorCoverage = useSelector(selectMentorCoverage);
   const mentorCoverageLoading = useSelector(selectMentorCoverageLoading);
   const lastFetched = useSelector(selectMostRecentFetch);
-  const internshipStats = useSelector(selectInternshipStats);
-  const internshipStatsLoading = useSelector(selectInternshipStatsLoading);
   const trainingDashboard = useSelector((state) => state.principalTraining?.reports?.dashboard);
   const trainingDashboardLoading = useSelector((state) => state.principalTraining?.reports?.loading);
 
@@ -140,7 +133,7 @@ const PrincipalDashboard = () => {
       monthlyReports: dashboardStats.monthlyReports || { submitted: 0, expected: 0, month: null, year: null },
       facultyVisits: dashboardStats.facultyVisits || { completed: 0, expected: 0, month: null, year: null },
       joiningLetterStats: dashboardStats.joiningLetterStats || { total: 0, uploaded: 0, pending: 0, uploadRate: 0 },
-      partnerCompanies: dashboardStats.partnerCompanies || 0,
+      incompleteData: dashboardStats.incompleteData?.total || 0,
     };
   }, [dashboardStats]);
 
@@ -187,7 +180,7 @@ const PrincipalDashboard = () => {
     totalStudents: stats?.students?.active || 0,
     totalMentors: stats?.staff?.teachers || mentorCoverage?.totalMentors || 0,
     unassignedStudents: dashboardStats?.unassignedStudents || 0,
-    partnerCompanies: stats?.partnerCompanies || 0,
+    incompleteData: stats?.incompleteData || 0,
     // Staff breakdown for the modal
     staffBreakdown: {
       totalStaff: stats?.staff?.total || 0,
@@ -370,10 +363,7 @@ const PrincipalDashboard = () => {
               setMentorsModal({ visible: true });
             }}
             onViewUnassigned={() => setUnassignedModal({ visible: true })}
-            onViewCompanies={() => {
-              dispatch(fetchInternshipStats({ forceRefresh: true }));
-              setCompaniesModal({ visible: true });
-            }}
+            onViewIncompleteData={() => navigate('/app/opportunities?tab=incomplete')}
           />
         </div>
 
@@ -534,7 +524,7 @@ const PrincipalDashboard = () => {
               View All Students
             </Button>
           }
-          width={700}
+          width={920}
           centered
           destroyOnClose
           transitionName=""
@@ -602,11 +592,33 @@ const PrincipalDashboard = () => {
                   <Tag color="purple">{typeof val === 'number' ? val : 0}</Tag>
                 ),
               },
+              {
+                title: 'With Stipend',
+                dataIndex: 'withStipend',
+                key: 'withStipend',
+                align: 'center',
+                render: (val) => <Tag color="green">{val || 0}</Tag>,
+              },
+              {
+                title: 'Without Stipend',
+                dataIndex: 'withoutStipend',
+                key: 'withoutStipend',
+                align: 'center',
+                render: (val) => <Tag>{val || 0}</Tag>,
+              },
+              {
+                title: 'Paid by Student',
+                dataIndex: 'paidByStudent',
+                key: 'paidByStudent',
+                align: 'center',
+                render: (val) => <Tag color="orange">{val || 0}</Tag>,
+              },
             ]}
             summary={() => {
               // Calculate totals from studentsByBranch data
               const branchData = dashboardStats?.studentsByBranch || [];
               const totalWithInternship = branchData.reduce((sum, b) => sum + (b.withInternship || 0), 0);
+              const sumOf = (key) => branchData.reduce((sum, b) => sum + (b[key] || 0), 0);
               return (
                 <Table.Summary fixed>
                   <Table.Summary.Row>
@@ -621,6 +633,15 @@ const PrincipalDashboard = () => {
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={3} align="center">
                       <Text strong>{totalWithInternship}</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={4} align="center">
+                      <Text strong>{sumOf('withStipend')}</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={5} align="center">
+                      <Text strong>{sumOf('withoutStipend')}</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={6} align="center">
+                      <Text strong>{sumOf('paidByStudent')}</Text>
                     </Table.Summary.Cell>
                   </Table.Summary.Row>
                 </Table.Summary>
@@ -711,117 +732,6 @@ const PrincipalDashboard = () => {
                 },
               },
             ]}
-          />
-        </AppModal>
-
-        {/* Partner Companies Modal */}
-        <AppModal
-          title={
-            <div className="flex items-center gap-2">
-              <BankOutlined className="text-blue-500" />
-              <span>Partner Companies</span>
-              <Badge count={internshipStats?.totalUniqueCompanies || 0} style={{ backgroundColor: '#3b82f6' }} />
-            </div>
-          }
-          open={companiesModal.visible}
-          onCancel={() => setCompaniesModal({ visible: false })}
-          width={900}
-          centered
-          destroyOnClose
-          transitionName=""
-          maskTransitionName=""
-        >
-          <div className="mb-4 grid grid-cols-4 gap-3">
-            <div className="text-center p-3 bg-info-light rounded-lg">
-              <div className="text-xl font-bold text-info">
-                {internshipStats?.totalUniqueCompanies || 0}
-              </div>
-              <div className="text-xs text-text-tertiary">Total Companies</div>
-            </div>
-            <div className="text-center p-3 bg-success-light rounded-lg">
-              <div className="text-xl font-bold text-success">
-                {internshipStats?.approved || 0}
-              </div>
-              <div className="text-xs text-text-tertiary">Approved</div>
-            </div>
-            <div className="text-center p-3 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-              <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
-                {internshipStats?.total || 0}
-              </div>
-              <div className="text-xs text-text-tertiary">Total Applications</div>
-            </div>
-            <div className="text-center p-3 bg-warning-light rounded-lg">
-              <div className="text-xl font-bold text-warning">
-                {internshipStats?.activeRate || 0}%
-              </div>
-              <div className="text-xs text-text-tertiary">Active Rate</div>
-            </div>
-          </div>
-
-          <AppTable scroll={{ x: 'max-content' }}
-            dataSource={internshipStats?.byCompany || []}
-            rowKey={(record, index) => record.name || `company-${index}`}
-            pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (total) => `Total ${total} companies` }}
-            size="small"
-            loading={internshipStatsLoading}
-            columns={[
-              {
-                title: 'Company Name',
-                dataIndex: 'name',
-                key: 'name',
-                width: '50%',
-                render: (text, record) => (
-                  <div>
-                    <Text strong className="text-sm">{text || 'Unknown Company'}</Text>
-                    {record.location && (
-                      <Text type="secondary" className="block text-xs mt-0.5">
-                        📍 {record.location}
-                      </Text>
-                    )}
-                  </div>
-                ),
-              },
-              {
-                title: 'Students Placed',
-                dataIndex: 'count',
-                key: 'count',
-                width: '25%',
-                align: 'center',
-                sorter: (a, b) => (a.count || 0) - (b.count || 0),
-                defaultSortOrder: 'descend',
-                render: (val) => (
-                  <Tag color="blue" className="text-sm font-medium px-3 py-1">
-                    {val || 0}
-                  </Tag>
-                ),
-              },
-              {
-                title: 'Location',
-                dataIndex: 'location',
-                key: 'location',
-                width: '25%',
-                render: (text) => (
-                  <Text type="secondary" className="text-xs">
-                    {text || '-'}
-                  </Text>
-                ),
-              },
-            ]}
-            locale={{
-              emptyText: (
-                <Empty
-                  description={
-                    <div className="py-4">
-                      <Text type="secondary">No partner companies found</Text>
-                      <div className="mt-2 text-xs text-text-tertiary">
-                        Companies will appear here once students apply for internships
-                      </div>
-                    </div>
-                  }
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                />
-              )
-            }}
           />
         </AppModal>
 

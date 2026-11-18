@@ -5,7 +5,7 @@ import {
   BulkSelfInternshipResultDto,
   BulkSelfInternshipValidationResultDto,
 } from './dto/bulk-self-internship.dto';
-import { ApplicationStatus, InternshipPhase, AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
+import { ApplicationStatus, InternshipPhase, AuditAction, AuditCategory, AuditSeverity, InternshipCompensationType } from '../../generated/prisma/client';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { ExcelUtils } from '../../core/common/utils/excel.util';
 
@@ -453,7 +453,11 @@ export class BulkSelfInternshipService {
 
             // Internship details
             jobProfile: internship.jobProfile || null,
-            stipend: internship.stipend || null,
+            // A positive stipend in the sheet means WITH_STIPEND; anything else leaves the type empty so the
+            // mentor is asked to fill it in (shown as incomplete data)
+            ...(Number(String(internship.stipend ?? '').replace(/,/g, '')) > 0
+              ? { internshipType: InternshipCompensationType.WITH_STIPEND, stipend: String(Number(String(internship.stipend).replace(/,/g, ''))) }
+              : { stipend: null }),
             startDate: internship.startDate ? new Date(internship.startDate) : null,
             endDate: internship.endDate ? new Date(internship.endDate) : null,
             internshipDuration: internship.duration || null,

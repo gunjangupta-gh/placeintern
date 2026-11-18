@@ -13,8 +13,9 @@ import {
 } from '../../generated/prisma/client';
 import { PENDING_DECISION_STATUSES } from './opportunity.constants';
 import { applicationOrderBy } from './opportunity.service';
+import { findIncompleteStudents } from './incomplete-data.util';
 import { sortByComputed, stipendNumber, toOrder } from './list-sort.util';
-import { applicationCap, countBranchApplications, computeMissingProfileFields, PROFILE_SELECT } from './eligibility.service';
+import { applicationCap, countBranchApplications } from './eligibility.service';
 import {
   IncompleteProfilesQueryDto,
   ListApplicationsQueryDto,
@@ -305,40 +306,19 @@ export class InstitutionOpportunityService {
       };
     }
 
-    const students = await this.prisma.student.findMany({
-      where,
-      take: 5000, // safety cap
-      select: {
-        id: true,
-        currentYear: true,
-        branch: { select: { name: true, code: true } },
-        ...PROFILE_SELECT,
-        user: { select: { name: true, email: true, phoneNo: true, dob: true, rollNumber: true } },
-      },
-    });
-
-    const incomplete = students
-      .map((s) => ({
-        studentId: s.id,
-        name: s.user?.name ?? null,
-        rollNumber: s.user?.rollNumber ?? null,
-        branch: s.branch,
-        currentYear: s.currentYear,
-        missing: computeMissingProfileFields(s),
-      }))
-      .filter((s) => s.missing.length > 0)
+    const { checked, incomplete } = await findIncompleteStudents(this.prisma, where);
     const byName = sortByComputed(incomplete, (s) => s.name, 'asc');
     const keys: Record<string, (s: (typeof incomplete)[number]) => string | number | null | undefined> = {
       student: (s) => s.name,
       branch: (s) => s.branch?.name,
-      year: (s) => s.currentYear,
+      mentor: (s) => s.mentor?.name,
     };
     const sorted = q.sortBy && keys[q.sortBy] ? sortByComputed(byName, keys[q.sortBy], toOrder(q.sortOrder)) : byName;
 
     const total = sorted.length;
     return {
       data: sorted.slice((page - 1) * limit, page * limit),
-      meta: { page, limit, total, totalPages: Math.ceil(total / limit), studentsChecked: students.length },
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit), studentsChecked: checked },
     };
   }
 }

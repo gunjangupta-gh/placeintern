@@ -50,6 +50,8 @@ import principalService from "../../../services/principal.service";
 import ProfileAvatar from "../../../components/common/ProfileAvatar";
 import { calculateExpectedMonths, getMonthName } from "../../../utils/monthlyCycle";
 
+import InternshipCompensationTag from '../../../components/common/InternshipCompensationTag';
+
 const { Text, Title } = Typography;
 const { RangePicker } = DatePicker;
 const { useBreakpoint } = Grid;
@@ -494,14 +496,11 @@ const FacultyProgress = () => {
             {record.internshipDuration && (
               <span>{record.internshipDuration}</span>
             )}
-            {record.stipend && (
-              <Tag
-                color="green"
-                bordered={false}
+            {(record.internshipType || record.stipend) && (
+              <InternshipCompensationTag
+                application={record}
                 style={{ fontSize: 10, margin: 0 }}
-              >
-                ₹{record.stipend}/mo
-              </Tag>
+              />
             )}
           </div>
         </div>

@@ -3,6 +3,7 @@ import { Alert, Button, Input, Select, Space, Tabs, Tag, Typography } from 'antd
 import { AppTable, AppModal } from '../../../components/ui';
 import { RollbackOutlined } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { opportunityService, getErrorMessage, formatDate, formatTime } from '../../../services/opportunity.service';
 import { useDebounce } from '../../../hooks/useDebounce';
@@ -71,6 +72,11 @@ const InstitutionOpportunities = () => {
   const isPrincipal = role === 'PRINCIPAL';
   const base = isPrincipal ? 'principal' : 'faculty';
   const scopeText = isPrincipal ? 'students of your institution' : 'your assigned mentees';
+  // The dashboard's Incomplete Data card links here with ?tab=incomplete
+  const [searchParams, setSearchParams] = useSearchParams();
+  const TAB_KEYS = ['opportunities', 'applications', 'incomplete'];
+  const requestedTab = searchParams.get('tab');
+  const activeTab = TAB_KEYS.includes(requestedTab) ? requestedTab : 'opportunities';
 
   const fetchOpportunities = useCallback((p) => opportunityService.institutionList(base, p), [base]);
   const fetchApplications = useCallback((p) => opportunityService.institutionApplications(base, p), [base]);
@@ -133,8 +139,13 @@ const InstitutionOpportunities = () => {
   const incompleteColumns = (col) => [
     { title: 'Student', ...col('student'), render: (_, r) => <div><div>{r.name}</div><Text type="secondary" style={{ fontSize: 12 }}>{r.rollNumber}</Text></div> },
     { title: 'Branch', dataIndex: ['branch', 'name'], ...col('branch') },
-    { title: 'Year', dataIndex: 'currentYear', ...col('year') },
-    { title: 'Missing profile fields', dataIndex: 'missing', render: (m) => m.map((f) => <Tag key={f.key} color="orange">{f.label}</Tag>) },
+    {
+      title: 'Assigned Mentor',
+      dataIndex: ['mentor', 'name'],
+      ...col('mentor'),
+      render: (name) => name || <Text type="secondary">Not assigned</Text>,
+    },
+    { title: 'Missing details', dataIndex: 'missing', render: (m) => m.map((f) => <Tag key={f.key} color="orange">{f.label}</Tag>) },
   ];
 
   return (
@@ -143,6 +154,8 @@ const InstitutionOpportunities = () => {
       <Paragraph type="secondary">Read-only view of published internships and applications by {scopeText}.</Paragraph>
       <Tabs
         destroyOnHidden
+        activeKey={activeTab}
+        onChange={(key) => setSearchParams(key === 'opportunities' ? {} : { tab: key }, { replace: true })}
         items={[
           { key: 'opportunities', label: 'Opportunities', children: <DataTab fetcher={fetchOpportunities} columns={opportunityColumns} searchPlaceholder="Search company or district" statusOptions={OPPORTUNITY_STATUS_OPTIONS} /> },
           { key: 'applications', label: 'Applications', children: <DataTab fetcher={fetchApplications} columns={applicationColumns} searchPlaceholder="Search student name or roll no." reloadKey={reloadKey} statusOptions={APPLICATION_STATUS_OPTIONS} /> },
@@ -155,7 +168,7 @@ const InstitutionOpportunities = () => {
                   type="warning"
                   showIcon
                   style={{ marginBottom: 12 }}
-                  message="These students cannot apply for internships until their profile is complete. Please ask them to update My Profile."
+                  message="Students with an incomplete profile cannot apply for internships; ask them to update My Profile. A missing internship type, stipend or fee is filled in by the assigned mentor."
                 />
                 <DataTab fetcher={fetchIncomplete} columns={incompleteColumns} rowKey="studentId" searchPlaceholder="Search student name or roll no." />
               </>
