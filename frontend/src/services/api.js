@@ -5,6 +5,12 @@ import { tokenStorage, isTokenExpired, isTokenExpiringSoon } from '../utils/toke
 // Store reference for dispatching actions
 let storeRef = null;
 let refreshPromise = null;
+// Once the session is known to be dead we log out exactly once and send NO further requests.
+// Without this, every request already queued (a page fires many on load) still reaches the server
+// without a valid session and each one is recorded as an UNAUTHORIZED_ACCESS security event.
+let isLoggingOut = false;
+
+const sessionEndedError = () => new axios.CanceledError('Session ended');
 
 export const setStore = (store) => {
   storeRef = store;
@@ -58,6 +64,9 @@ const refreshAuthToken = async () => {
 
 // Logout and redirect - comprehensive cleanup
 const handleLogout = (message) => {
+  if (isLoggingOut) return; // already logging out: one toast, one redirect
+  isLoggingOut = true;
+
   // Clear all storage (localStorage, sessionStorage, cookies) except theme
   tokenStorage.clear();
 
@@ -72,6 +81,11 @@ const handleLogout = (message) => {
 // Request interceptor
 API.interceptors.request.use(
   async (config) => {
+    // Session already ended: do not send anything else to the server
+    if (isLoggingOut) {
+      return Promise.reject(sessionEndedError());
+    }
+
     // Skip token handling for auth endpoints (prevents interference during auth flows)
     if (
       config.url?.includes('/auth/login') ||
@@ -89,8 +103,10 @@ API.interceptors.request.use(
         token = await refreshAuthToken();
       } catch (error) {
         handleLogout('Session expired. Please login again.');
-        return Promise.reject(new Error('Token expired'));
+        return Promise.reject(sessionEndedError());
       }
+      // Logged out while this request was waiting for the refresh
+      if (isLoggingOut) return Promise.reject(sessionEndedError());
     }
     // Proactively refresh if expiring soon (within 5 minutes)
     else if (token && isTokenExpiringSoon(token, 5)) {
@@ -151,6 +167,11 @@ API.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Our own cancellation (session ended): nothing to handle or toast
+    if (axios.isCancel(error)) {
+      return Promise.reject(error);
+    }
+
     // Skip token refresh logic for auth endpoints - let them handle their own errors
     if (isAuthEndpoint(originalRequest?.url)) {
       return Promise.reject(error);
@@ -158,6 +179,7 @@ API.interceptors.response.use(
 
     // Handle 401 - attempt token refresh once
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isLoggingOut) return Promise.reject(error);
       originalRequest._retry = true;
 
       try {

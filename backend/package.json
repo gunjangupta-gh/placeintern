@@ -21,6 +21,8 @@
     "seed": "ts-node prisma/seed.ts",
     "seed:master-data": "ts-node prisma/seed-master-data.ts",
     "seed:scholarships": "ts-node prisma/seed-scholarships.ts",
+    "seed:internship-type": "ts-node prisma/seed-internship-type.ts",
+    "seed:internship-type:dry": "ts-node prisma/seed-internship-type.ts -- --dry-run",
     "seed:demo-institute": "ts-node prisma/seed-demo-institute.ts",
     "seed:demo-institute:dry": "ts-node prisma/seed-demo-institute.ts -- --dry-run",
     "seed:faculty-training-feedback": "ts-node prisma/seed-faculty-training-feedback-form.ts",
