@@ -13,6 +13,8 @@ import {
   getExpectedReportsAsOfToday,
   getExpectedVisitsAsOfToday,
   getMonthCycle,
+  getTotalExpectedReports,
+  getTotalExpectedVisits,
   MONTHLY_CYCLE,
 } from "../../../common/utils/monthly-cycle.util";
 import { INTERNSHIP_RECORD_WHERE } from '../../../core/common/utils/internship-record.filter';
@@ -36,36 +38,40 @@ export class StateDashboardService {
   async getDashboardStats(params?: { month?: number; year?: number }) {
     const now = new Date();
 
-    // Use provided month/year or default to current
-    const targetMonth = params?.month ?? now.getMonth() + 1;
-    const targetYear = params?.year ?? now.getFullYear();
+    // Overall (all-time) mode when no month/year filter is supplied.
+    // Internships may start in a future year, so a "current month" default
+    // would show almost nothing. Overall mode aggregates the full program.
+    const isOverall = params?.month == null || params?.year == null;
 
-    // This prevents stale cache when no filter is passed vs explicit same-month filter
-    const cacheKey = `state:dashboard:stats:${targetMonth}-${targetYear}`;
+    // Use provided month/year, or current month only as a reference for prev-month math
+    const targetMonth = isOverall ? now.getMonth() + 1 : (params!.month as number);
+    const targetYear = isOverall ? now.getFullYear() : (params!.year as number);
+
+    const cacheKey = isOverall
+      ? `state:dashboard:stats:overall`
+      : `state:dashboard:stats:${targetMonth}-${targetYear}`;
 
     return this.cache.getOrSet(
       cacheKey,
       async () => {
         const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const lastMonthDate = new Date(
-          now.getTime() - 30 * 24 * 60 * 60 * 1000,
-        );
 
         // Target and previous month dates for detailed stats
         const prevMonth = targetMonth === 1 ? 12 : targetMonth - 1;
         const prevMonthYear = targetMonth === 1 ? targetYear - 1 : targetYear;
 
-        // Start/end of target month and previous month
-        const startOfTargetMonth = new Date(targetYear, targetMonth - 1, 1);
-        const endOfTargetMonth = new Date(
-          targetYear,
-          targetMonth,
-          0,
-          23,
-          59,
-          59,
-          999,
-        );
+        // Start/end of target period. In overall mode this is a very wide window
+        // so every date-range query covers the whole program.
+        const startOfTargetMonth = isOverall
+          ? new Date(2000, 0, 1)
+          : new Date(targetYear, targetMonth - 1, 1);
+        const endOfTargetMonth = isOverall
+          ? new Date(2100, 0, 1)
+          : new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
+        // Period filter for monthly reports (none in overall mode)
+        const reportPeriodFilter = isOverall
+          ? {}
+          : { reportMonth: targetMonth, reportYear: targetYear };
         const startOfPrevMonth = new Date(prevMonthYear, prevMonth - 1, 1);
         const endOfPrevMonth = new Date(targetYear, targetMonth - 1, 0);
 
@@ -320,12 +326,11 @@ export class StateDashboardService {
               },
             },
           }),
-          // Monthly reports - submitted for target month (ACTIVE institutions, active users)
+          // Monthly reports - submitted for target month / all-time (ACTIVE institutions, active users)
           this.prisma.monthlyReport.count({
             where: {
               isDeleted: false,
-              reportMonth: targetMonth,
-              reportYear: targetYear,
+              ...reportPeriodFilter,
               status: { in: ["SUBMITTED", "UNDER_REVIEW", "APPROVED"] },
               student: {
                 user: { active: true },
@@ -357,12 +362,11 @@ export class StateDashboardService {
               },
             },
           }),
-          // Monthly reports - approved for target month (ACTIVE institutions, active users)
+          // Monthly reports - approved for target month / all-time (ACTIVE institutions, active users)
           this.prisma.monthlyReport.count({
             where: {
               isDeleted: false,
-              reportMonth: targetMonth,
-              reportYear: targetYear,
+              ...reportPeriodFilter,
               status: { in: ["SUBMITTED", "UNDER_REVIEW", "APPROVED"] },
               student: {
                 user: { active: true },
@@ -461,7 +465,17 @@ export class StateDashboardService {
             const startDate = internship.startDate!;
             const endDate =
               internship.endDate ||
-              new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000); // Default 6 months if no end date
+              new Date(
+                Math.max(now.getTime(), startDate.getTime()) +
+                  180 * 24 * 60 * 60 * 1000,
+              ); // Default 6 months if no end date (relative to start for future internships)
+
+            if (isOverall) {
+              // Overall: full-program expectation across the internship's whole duration
+              expectedReportsThisMonth += getTotalExpectedReports(startDate, endDate);
+              expectedVisitsThisMonth += getTotalExpectedVisits(startDate, endDate);
+              continue;
+            }
 
             // Check if this internship has the filtered month as an included month (monthly rules)
             const monthCycle = getMonthCycle(
@@ -506,6 +520,7 @@ export class StateDashboardService {
         );
 
         return {
+          mode: isOverall ? "overall" : "month",
           institutions: {
             total: totalInstitutions,
             active: activeInstitutions,
@@ -1243,25 +1258,23 @@ export class StateDashboardService {
    */
   async getVisitsByType(params?: { month?: number; year?: number }) {
     const now = new Date();
-    const targetMonth = params?.month ?? now.getMonth() + 1;
-    const targetYear = params?.year ?? now.getFullYear();
+    const isOverall = params?.month == null || params?.year == null;
+    const targetMonth = isOverall ? now.getMonth() + 1 : (params!.month as number);
+    const targetYear = isOverall ? now.getFullYear() : (params!.year as number);
 
-   // Always use month-specific cache key to stay consistent with dashboard stats
-    const cacheKey = `state:dashboard:visits-by-type:${targetMonth}-${targetYear}`;
+    const cacheKey = isOverall
+      ? `state:dashboard:visits-by-type:overall`
+      : `state:dashboard:visits-by-type:${targetMonth}-${targetYear}`;
 
     return this.cache.getOrSet(
       cacheKey,
       async () => {
-        const startOfMonth = new Date(targetYear, targetMonth - 1, 1);
-        const endOfMonth = new Date(
-          targetYear,
-          targetMonth,
-          0,
-          23,
-          59,
-          59,
-          999,
-        );
+        const startOfMonth = isOverall
+          ? new Date(2000, 0, 1)
+          : new Date(targetYear, targetMonth - 1, 1);
+        const endOfMonth = isOverall
+          ? new Date(2100, 0, 1)
+          : new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
 
         // Get visits grouped by type for the target month
         const visitsByType = await this.prisma.facultyVisitLog.groupBy({
@@ -1337,27 +1350,28 @@ export class StateDashboardService {
     type: "students" | "reports" | "mentors" | "visits",
     params?: { month?: number; year?: number },
   ) {
-    // Use provided month/year or default to current
+    // Overall (all-time) mode when no month/year is supplied
     const now = new Date();
-    const targetMonth = params?.month ?? now.getMonth() + 1;
-    const targetYear = params?.year ?? now.getFullYear();
+    const isOverall = params?.month == null || params?.year == null;
+    const targetMonth = isOverall ? now.getMonth() + 1 : (params!.month as number);
+    const targetYear = isOverall ? now.getFullYear() : (params!.year as number);
 
-    // Always use month-specific cache key to stay consistent with dashboard stats
-    const cacheKey = `state:dashboard:college-breakdown:${type}:${targetMonth}-${targetYear}`;
+    const cacheKey = isOverall
+      ? `state:dashboard:college-breakdown:${type}:overall`
+      : `state:dashboard:college-breakdown:${type}:${targetMonth}-${targetYear}`;
 
     return this.cache.getOrSet(
       cacheKey,
       async () => {
-        const startOfMonth = new Date(targetYear, targetMonth - 1, 1);
-        const endOfMonth = new Date(
-          targetYear,
-          targetMonth,
-          0,
-          23,
-          59,
-          59,
-          999,
-        );
+        const startOfMonth = isOverall
+          ? new Date(2000, 0, 1)
+          : new Date(targetYear, targetMonth - 1, 1);
+        const endOfMonth = isOverall
+          ? new Date(2100, 0, 1)
+          : new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
+        const reportPeriodFilter = isOverall
+          ? {}
+          : { reportMonth: targetMonth, reportYear: targetYear };
 
         // Get all active institutions
         const institutions = await this.prisma.institution.findMany({
@@ -1430,8 +1444,7 @@ export class StateDashboardService {
             const reportsThisMonth = await this.prisma.monthlyReport.findMany({
               where: {
                 isDeleted: false,
-                reportMonth: targetMonth,
-                reportYear: targetYear,
+                ...reportPeriodFilter,
                 status: { in: ["SUBMITTED", "UNDER_REVIEW", "APPROVED"] },
                 student: {
                   user: { active: true },
@@ -1479,7 +1492,19 @@ export class StateDashboardService {
                 const internshipStart = i.startDate!;
                 const internshipEnd =
                   i.endDate ||
-                  new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
+                  new Date(
+                    Math.max(now.getTime(), internshipStart.getTime()) +
+                      180 * 24 * 60 * 60 * 1000,
+                  );
+                if (isOverall) {
+                  const instId = i.student.institutionId;
+                  expectedByInstitution.set(
+                    instId,
+                    (expectedByInstitution.get(instId) || 0) +
+                      getTotalExpectedReports(internshipStart, internshipEnd),
+                  );
+                  continue;
+                }
                 const monthCycle = getMonthCycle(
                   targetYear,
                   targetMonth,
@@ -1706,7 +1731,19 @@ export class StateDashboardService {
                 const internshipStart = i.startDate!;
                 const internshipEnd =
                   i.endDate ||
-                  new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
+                  new Date(
+                    Math.max(now.getTime(), internshipStart.getTime()) +
+                      180 * 24 * 60 * 60 * 1000,
+                  );
+                if (isOverall) {
+                  const instId = i.student.institutionId;
+                  expectedByInstitution.set(
+                    instId,
+                    (expectedByInstitution.get(instId) || 0) +
+                      getTotalExpectedVisits(internshipStart, internshipEnd),
+                  );
+                  continue;
+                }
                 const monthCycle = getMonthCycle(
                   targetYear,
                   targetMonth,

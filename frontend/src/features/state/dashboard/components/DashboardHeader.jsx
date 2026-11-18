@@ -22,10 +22,10 @@ const DashboardHeader = ({
 
       <div className="flex items-center gap-3">
         <DatePicker.MonthPicker
-          placeholder="Select Month"
+          placeholder="All time (select month to filter)"
           onChange={onMonthChange}
           value={selectedMonth}
-          format="MMMM YYYY [(Current Month)]"
+          format="MMMM YYYY"
           className="w-56 h-9 rounded-lg"
           allowClear
         />

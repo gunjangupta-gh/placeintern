@@ -221,7 +221,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
 
   const displayMonth = selectedMonth
     ? selectedMonth.format('MMM YYYY')
-    : new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    : 'All time';
 
   // Fetch college-wise breakdown
   const fetchCollegeBreakdown = async (type) => {
@@ -583,7 +583,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
             lines={[
               { label: 'Submitted', value: `${reportsSubmitted}/${reportsExpected}` },
               { label: 'Coverage', value: `${reportsPercent}%` },
-              { label: 'Month', value: displayMonth },
+              { label: 'Period', value: displayMonth },
             ]}
             variant="success"
             onClick={() => fetchCollegeBreakdown('reports')}
@@ -623,7 +623,7 @@ const StatisticsCards = ({ stats, selectedMonth, trainingDashboard = null, train
             lines={[
               { label: 'Completed', value: `${visitsCompleted}/${visitsExpected}` },
                { label: 'Coverage', value: `${visitsPercent}%` },
-              { label: 'Month', value: displayMonth },
+              { label: 'Period', value: displayMonth },
             ]}
             variant="rose"
             onClick={() => fetchCollegeBreakdown('visits')}
