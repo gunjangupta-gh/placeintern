@@ -678,6 +678,22 @@ export class FileStorageService implements OnModuleInit {
     this.logger.log(`Deleted: ${normalizedKey}`);
   }
 
+  /**
+   * Best-effort delete of a stored file given its URL (or key).
+   * Never throws: DB state is the source of truth, a storage failure is only logged.
+   * Returns true when the object was removed.
+   */
+  async deleteFileByUrl(urlOrKey?: string | null): Promise<boolean> {
+    if (!urlOrKey) return false;
+    try {
+      await this.deleteFile(urlOrKey);
+      return true;
+    } catch (error) {
+      this.logger.warn(`Failed to delete file from storage (${urlOrKey}): ${error.message}`);
+      return false;
+    }
+  }
+
   // SECURITY: Maximum presigned URL expiry time (1 hour)
   private readonly MAX_PRESIGNED_EXPIRY = 3600;
 

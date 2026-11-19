@@ -117,6 +117,18 @@ export class FacultyController {
     return this.facultyService.getStudentDocuments(studentId, req.user.userId);
   }
 
+  @Delete('students/:id/documents/:documentId')
+  @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
+  @ApiOperation({ summary: "Delete a mentored student's document (also removes the stored file)" })
+  @ApiResponse({ status: 200, description: 'Document deleted successfully' })
+  async deleteStudentDocument(
+    @Param('id') studentId: string,
+    @Param('documentId') documentId: string,
+    @Req() req,
+  ) {
+    return this.facultyService.deleteStudentDocument(studentId, documentId, req.user.userId);
+  }
+
   @Get('incomplete-internship-details')
   @Roles(Role.TEACHER, Role.FACULTY_COORDINATOR)
   @ApiOperation({ summary: 'Mentees whose internship type / stipend / fee is not filled in yet' })

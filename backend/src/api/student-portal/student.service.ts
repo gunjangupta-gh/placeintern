@@ -27,6 +27,7 @@ import {
 } from "../../generated/prisma/client";
 import { AuditService } from "../../infrastructure/audit/audit.service";
 import { StudentSemesterStatusService } from "../../domain/academic/semester-status/student-semester-status.service";
+import { FileStorageService } from "../../infrastructure/file-storage/file-storage.service";
 import {
   calculateExpectedMonths,
   MonthlyCycle,
@@ -72,6 +73,7 @@ export class StudentService {
     private readonly auditService: AuditService,
     private readonly expectedCycleService: ExpectedCycleService,
     private readonly semesterStatusService: StudentSemesterStatusService,
+    private readonly fileStorageService: FileStorageService,
   ) {}
 
   /** Read-only semester-wise result status for the logged-in student (their own record only). */
@@ -1279,6 +1281,7 @@ export class StudentService {
 
     // Handle joining letter
     if (updateDto.deleteJoiningLetter) {
+      await this.fileStorageService.deleteFileByUrl(application.joiningLetterUrl);
       updateData.joiningLetterUrl = null;
       updateData.joiningLetterUploadedAt = null;
     } else if (updateDto.joiningLetterUrl !== undefined) {
@@ -2180,15 +2183,16 @@ export class StudentService {
       throw new NotFoundException("Student not found");
     }
 
+    // SECURITY: a student may only delete their own documents
     const document = await this.prisma.document.findFirst({
-      where: { id, isDeleted: false },
+      where: { id, studentId: student.id, isDeleted: false },
     });
 
     if (!document) {
       throw new NotFoundException("Document not found");
     }
 
-    // Soft delete instead of hard delete
+    // Soft delete the record (keeps the audit trail)
     await this.prisma.document.update({
       where: { id },
       data: {
@@ -2196,6 +2200,15 @@ export class StudentService {
         deletedAt: new Date(),
       },
     });
+
+    // Remove the file from storage, unless another live record still points at the same object
+    // (re-uploads of the same type reuse the same storage key)
+    const stillReferenced = await this.prisma.document.count({
+      where: { fileUrl: document.fileUrl, isDeleted: false },
+    });
+    if (stillReferenced === 0) {
+      await this.fileStorageService.deleteFileByUrl(document.fileUrl);
+    }
 
     // Audit document deletion
     this.auditService

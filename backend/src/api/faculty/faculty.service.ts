@@ -31,6 +31,7 @@ export class FacultyService {
     private readonly expectedCycleService: ExpectedCycleService,
     private readonly authService: AuthService,
     private readonly semesterStatusService: StudentSemesterStatusService,
+    private readonly fileStorageService: FileStorageService,
   ) {}
 
   private normalizeVisitType(visitType?: string): string | undefined {
@@ -488,6 +489,59 @@ export class FacultyService {
       orderBy: { createdAt: 'desc' },
       select: { id: true, fileName: true, fileUrl: true, type: true, createdAt: true },
     });
+  }
+
+  /**
+   * Delete a document of a mentored student: soft-deletes the record and removes the file from storage.
+   * SECURITY: same assigned-mentor check as every other per-student operation.
+   */
+  async deleteStudentDocument(studentId: string, documentId: string, facultyId: string) {
+    const isAuthorized = await this.prisma.mentorAssignment.findFirst({
+      where: { studentId, mentorId: facultyId, isActive: true },
+      select: { id: true },
+    });
+    if (!isAuthorized) {
+      throw new NotFoundException('Student not found or you are not the assigned mentor');
+    }
+
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, studentId, isDeleted: false },
+    });
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    await this.prisma.document.update({
+      where: { id: documentId },
+      data: { isDeleted: true, deletedAt: new Date() },
+    });
+
+    // Re-uploads of the same type reuse the same storage key; only delete the object when nothing live uses it
+    const stillReferenced = await this.prisma.document.count({
+      where: { fileUrl: document.fileUrl, isDeleted: false },
+    });
+    if (stillReferenced === 0) {
+      await this.fileStorageService.deleteFileByUrl(document.fileUrl);
+    }
+
+    const faculty = await this.prisma.user.findUnique({ where: { id: facultyId } });
+    this.auditService.log({
+      action: AuditAction.STUDENT_DOCUMENT_DELETE,
+      entityType: 'Document',
+      entityId: documentId,
+      userId: facultyId,
+      userName: faculty?.name,
+      userRole: faculty?.role || Role.TEACHER,
+      description: `Document deleted by mentor: ${document.fileName}`,
+      category: AuditCategory.PROFILE_MANAGEMENT,
+      severity: AuditSeverity.MEDIUM,
+      institutionId: faculty?.institutionId || undefined,
+      oldValues: { documentId, studentId, fileName: document.fileName, type: document.type, isDeleted: false },
+      newValues: { isDeleted: true, deletedAt: new Date() },
+    }).catch(() => {});
+
+    await this.cache.invalidateByTags(['documents', `student:${studentId}`]);
+    return { success: true, message: 'Document deleted successfully' };
   }
 
   /**
@@ -2760,6 +2814,9 @@ export class FacultyService {
       studentName: application.student?.user?.name,
       joiningLetterUrl: application.joiningLetterUrl,
     };
+
+    // Remove the file from storage as well as the DB reference
+    await this.fileStorageService.deleteFileByUrl(application.joiningLetterUrl);
 
     const updated = await this.prisma.internshipApplication.update({
       where: { id },

@@ -82,6 +82,11 @@ export const facultyService = {
     return response.data;
   },
 
+  async deleteStudentDocument(studentId, documentId) {
+    const response = await API.delete(`/faculty/students/${studentId}/documents/${documentId}`);
+    return response.data;
+  },
+
   async getStudentSemesterStatus(studentId) {
     const response = await API.get(`/faculty/students/${studentId}/semester-status`);
     return response.data;

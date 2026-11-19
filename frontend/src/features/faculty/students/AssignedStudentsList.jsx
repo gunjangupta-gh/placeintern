@@ -429,6 +429,19 @@ const AssignedStudentsList = () => {
     }
   };
 
+  // Delete a student's document (also removes the stored file)
+  const handleDeleteDocument = async (documentId) => {
+    if (!selectedStudent?.id) return;
+    try {
+      await facultyService.deleteStudentDocument(selectedStudent.id, documentId);
+      toast.success('Document deleted successfully');
+      loadStudentDocuments(selectedStudent.id);
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : error?.response?.data?.message || error?.message || 'Failed to delete document';
+      toast.error(errorMessage);
+    }
+  };
+
   // Handle document upload
   const handleDocumentUpload = async () => {
     try {
@@ -783,6 +796,22 @@ const AssignedStudentsList = () => {
                   onClick={() => {
                     if (documentUrls[doc.id]) window.open(documentUrls[doc.id], '_blank');
                   }}
+                  actions={[
+                    <span key="delete" onClick={(e) => e.stopPropagation()}>
+                      <AppPopconfirm
+                        title="Delete Document"
+                        description="This permanently removes the file. Continue?"
+                        onConfirm={() => handleDeleteDocument(doc.id)}
+                        okText="Delete"
+                        okButtonProps={{ danger: true }}
+                        cancelText="Cancel"
+                      >
+                        <Button type="text" danger size="small" icon={<DeleteOutlined />}>
+                          Delete
+                        </Button>
+                      </AppPopconfirm>
+                    </span>,
+                  ]}
                 >
                   <Card.Meta
                     title={<div style={{ textAlign: 'center', fontSize: 14 }}>{doc.type?.replaceAll('_', ' ')}</div>}

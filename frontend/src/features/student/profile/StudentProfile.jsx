@@ -30,6 +30,7 @@ import {
   Input,
   Select,
   Upload,
+  Popconfirm,
   theme,
 } from 'antd';
 import { AppModal } from '../../../components/ui';
@@ -42,6 +43,7 @@ import {
   CalendarOutlined,
   FileTextOutlined,
   EditOutlined,
+  DeleteOutlined,
   TeamOutlined,
   UploadOutlined,
   BulbOutlined,
@@ -423,6 +425,16 @@ export default function StudentProfile() {
     uploadForm.resetFields();
     setFileList([]);
     setUploadModal(true);
+  };
+
+  const handleDeleteDocument = async (documentId) => {
+    try {
+      await studentService.deleteDocument(documentId);
+      toast.success("Document deleted successfully");
+      fetchDocuments();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete document");
+    }
   };
 
   const handleUpload = async (values) => {
@@ -1033,6 +1045,27 @@ export default function StudentProfile() {
                               >
                                 {(doc.type || "Document").replaceAll("_", " ")}
                               </Text>
+                              <div
+                                className="mt-1 text-right"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Popconfirm
+                                  title="Delete document?"
+                                  description="This permanently removes the file."
+                                  onConfirm={() => handleDeleteDocument(doc.id)}
+                                  okText="Delete"
+                                  okButtonProps={{ danger: true }}
+                                  cancelText="Cancel"
+                                >
+                                  <Button
+                                    type="text"
+                                    danger
+                                    size="small"
+                                    icon={<DeleteOutlined />}
+                                    aria-label="Delete document"
+                                  />
+                                </Popconfirm>
+                              </div>
                             </Card>
                           </Col>
                         ))}
