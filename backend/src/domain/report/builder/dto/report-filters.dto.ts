@@ -158,6 +158,12 @@ export class SelfIdentifiedInternshipFilterDto extends InternshipReportFilterDto
   @TransformBoolean()
   @IsBoolean({ message: 'isActive must be a boolean value' })
   isActive?: boolean;
+
+  @IsOptional()
+  @IsIn(['WITH_STIPEND', 'WITHOUT_STIPEND', 'PAID_BY_STUDENT'], {
+    message: 'Internship type must be WITH_STIPEND, WITHOUT_STIPEND or PAID_BY_STUDENT',
+  })
+  internshipType?: string;
 }
 
 /**

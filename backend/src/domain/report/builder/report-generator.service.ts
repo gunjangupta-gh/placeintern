@@ -12,6 +12,7 @@ import {
 } from "./constants/student-profile-fields";
 import { getMonthCycle } from "../../../common/utils/monthly-cycle.util";
 import { INTERNSHIP_RECORD_WHERE } from '../../../core/common/utils/internship-record.filter';
+import { COMPENSATION_LABELS, isCompensationType } from '../../../common/utils/internship-compensation.util';
 
 /**
  * Pagination options for report generation
@@ -1390,6 +1391,11 @@ export class ReportGeneratorService {
       where.mentorId = filters.mentorId;
     }
 
+    // Handle internship type (compensation) filter
+    if (isCompensationType(filters?.internshipType)) {
+      where.internshipType = filters.internshipType;
+    }
+
     // Handle verification status filter
     if (filters?.verificationStatus) {
       where.verificationStatus = filters.verificationStatus;
@@ -1516,6 +1522,24 @@ export class ReportGeneratorService {
         mentor: {
           select: { id: true, name: true, email: true, phoneNo: true },
         },
+        opportunity: {
+          select: {
+            title: true,
+            stipend: true,
+            contactName: true,
+            contactPhone: true,
+            contactEmail: true,
+            company: {
+              select: {
+                name: true,
+                address: true,
+                city: true,
+                contact: true,
+                email: true,
+              },
+            },
+          },
+        },
         _count: { select: { monthlyReports: true } },
       },
       take,
@@ -1525,9 +1549,28 @@ export class ReportGeneratorService {
 
     this.warnOnLargeResultSet(applications.length, "InternshipReport");
 
-    return applications.map((application) => {
+    return applications.map((rawApplication) => {
+      // For opportunity-based internships the company details live on the opportunity,
+      // so fall back to them where the application's own (self-identified) fields are empty.
+      const opp = rawApplication.opportunity;
+      const application = {
+        ...rawApplication,
+        companyName: rawApplication.companyName ?? opp?.company?.name ?? null,
+        companyAddress:
+          rawApplication.companyAddress ?? opp?.company?.address ?? null,
+        companyContact:
+          rawApplication.companyContact ?? opp?.company?.contact ?? null,
+        companyEmail:
+          rawApplication.companyEmail ?? opp?.company?.email ?? null,
+        hrName: rawApplication.hrName ?? opp?.contactName ?? null,
+        hrContact: rawApplication.hrContact ?? opp?.contactPhone ?? null,
+        hrEmail: rawApplication.hrEmail ?? opp?.contactEmail ?? null,
+        jobProfile: rawApplication.jobProfile ?? opp?.title ?? null,
+        stipend: rawApplication.stipend ?? opp?.stipend ?? null,
+      };
+
       // Parse city from companyAddress (e.g., "123 Street, City, State" -> "City")
-      let companyCity = "";
+      let companyCity = opp?.company?.city ?? "";
       if (application.companyAddress) {
         const addressParts = application.companyAddress
           .split(",")
@@ -1644,7 +1687,11 @@ export class ReportGeneratorService {
         hrContact: application.hrContact ?? "N/A",
         hrEmail: application.hrEmail ?? "N/A",
         jobProfile: application.jobProfile ?? "N/A",
+        internshipType: application.internshipType
+          ? COMPENSATION_LABELS[application.internshipType]
+          : "N/A",
         stipend: stipendValue,
+        studentFeeAmount: application.studentFeeAmount ?? 0,
         // Use createdAt as the applied date since it's properly migrated from source data
         // (appliedDate and applicationDate both default to migration timestamp)
         appliedDate: application.createdAt
@@ -1676,6 +1723,11 @@ export class ReportGeneratorService {
         reportsSubmitted: application._count.monthlyReports ?? 0,
         location: application.companyAddress ?? "N/A",
         isSelfIdentified: application.isSelfIdentified ?? false,
+        internshipSource: application.isSelfIdentified
+          ? "Self-Identified"
+          : application.opportunityId
+            ? "State Opportunity"
+            : "Other",
         isActive: application.student.user?.active ?? false,
         userActive: application.student.user?.active ?? true,
       };
@@ -3171,11 +3223,9 @@ export class ReportGeneratorService {
       case "internship-by-institution":
         return this.generateInternshipByInstitutionReport(filters, pagination);
       case "self-identified-internships":
-        // Set filter to only show self-identified internships
-        return this.generateInternshipReport(
-          { ...filters, isSelfIdentified: true },
-          pagination,
-        );
+        // "Internships Report": all internships (self-identified + state opportunities).
+        // Narrow via the optional isSelfIdentified filter. (Type id kept for saved reports.)
+        return this.generateInternshipReport(filters, pagination);
 
       // ==================== Compliance Reports (4) ====================
       case "faculty-visit-compliance":
