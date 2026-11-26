@@ -3275,6 +3275,8 @@ export class ReportGeneratorService {
           filters,
           pagination,
         );
+      case "paid-internships-by-industry":
+        return this.generatePaidInternshipsByIndustryReport(filters, pagination);
       case "top-institutes-per-industry":
         return this.generateTopInstitutesPerIndustryReport(filters, pagination);
 
@@ -7088,6 +7090,141 @@ export class ReportGeneratorService {
       `[IndustryWiseReport] Returning ${results.length} industry records`,
     );
 
+    return results;
+  }
+
+  /**
+   * Generate Paid Internships by Industry Report
+   * Only WITH_STIPEND internships (all sources: self-identified + state opportunities).
+   * One row per company + location + branch + stipend, with the number of interns.
+   */
+  async generatePaidInternshipsByIndustryReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const { take, skip } = this.getPaginationParams(pagination);
+    const where: Record<string, unknown> = {
+      internshipType: "WITH_STIPEND",
+      isActive: true,
+    };
+
+    const studentWhere: Record<string, unknown> = {};
+    if (filters?.institutionId) studentWhere.institutionId = filters.institutionId;
+    if (filters?.branchId) studentWhere.branchId = filters.branchId;
+    const isActiveValue = this.parseBooleanLike(filters?.isActive);
+    studentWhere.user = { active: isActiveValue ?? true };
+    where.student = studentWhere;
+
+    let startDateStartValue = filters?.startDateStart;
+    let startDateEndValue = filters?.startDateEnd;
+    if (
+      !startDateStartValue &&
+      !startDateEndValue &&
+      Array.isArray(filters?.startDateRange) &&
+      filters.startDateRange.length === 2
+    ) {
+      startDateStartValue = filters.startDateRange[0];
+      startDateEndValue = filters.startDateRange[1];
+    }
+    if (startDateStartValue || startDateEndValue) {
+      const startDateFilter: Record<string, unknown> = {};
+      if (startDateStartValue) startDateFilter.gte = new Date(startDateStartValue);
+      if (startDateEndValue) {
+        const end = new Date(startDateEndValue);
+        end.setUTCHours(23, 59, 59, 999);
+        startDateFilter.lte = end;
+      }
+      where.startDate = startDateFilter;
+    }
+
+    const applications = await this.prisma.internshipApplication.findMany({
+      where,
+      select: {
+        studentId: true,
+        companyName: true,
+        companyAddress: true,
+        stipend: true,
+        student: {
+          select: {
+            branch: { select: { name: true } },
+            user: { select: { branchName: true } },
+          },
+        },
+        opportunity: {
+          select: {
+            stipend: true,
+            company: { select: { name: true, city: true, address: true } },
+          },
+        },
+      },
+      take: take * 10,
+      skip,
+    });
+
+    const normalize = (s: string) =>
+      s.toLowerCase().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
+
+    const groups = new Map<
+      string,
+      {
+        companyName: string;
+        location: string;
+        branch: string;
+        stipend: number;
+        students: Set<string>;
+      }
+    >();
+
+    for (const app of applications) {
+      const companyName = (
+        app.companyName ?? app.opportunity?.company?.name ?? ""
+      ).trim();
+      if (!companyName) continue;
+
+      const stipend =
+        parseFloat(
+          (app.stipend ?? app.opportunity?.stipend ?? "0")
+            .toString()
+            .replace(/[₹,]/g, "")
+            .trim(),
+        ) || 0;
+      if (stipend <= 0) continue;
+
+      // Location: company city if known, else the second part of the address (as in the internships report)
+      let location = app.opportunity?.company?.city?.trim() ?? "";
+      if (!location) {
+        const address = app.companyAddress ?? app.opportunity?.company?.address;
+        const parts = address?.split(",").map((p) => p.trim()) ?? [];
+        location = parts.length >= 2 ? parts[1] : (parts[0] ?? "");
+      }
+
+      const branch =
+        app.student.branch?.name ?? app.student.user?.branchName ?? "N/A";
+
+      const key = [normalize(companyName), normalize(location), normalize(branch), stipend].join("|");
+      let g = groups.get(key);
+      if (!g) {
+        g = { companyName, location: location || "N/A", branch, stipend, students: new Set() };
+        groups.set(key, g);
+      }
+      g.students.add(app.studentId);
+    }
+
+    const results = Array.from(groups.values())
+      .map((g) => ({
+        companyName: g.companyName,
+        noOfInterns: g.students.size,
+        location: g.location,
+        branch: g.branch,
+        stipendPerIntern: Math.round(g.stipend),
+      }))
+      .sort(
+        (a, b) =>
+          b.noOfInterns - a.noOfInterns ||
+          a.companyName.localeCompare(b.companyName),
+      );
+
+    this.warnOnLargeResultSet(results.length, "PaidInternshipsByIndustryReport");
     return results;
   }
 

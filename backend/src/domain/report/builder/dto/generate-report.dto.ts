@@ -128,8 +128,9 @@ const VALID_REPORT_TYPES = [
   'default-password-users',
   'inactive-users',
   'user-audit-log',
-  // Industry Reports (2)
+  // Industry Reports (3)
   'industry-wise-students-stipend',
+  'paid-internships-by-industry',
   'top-institutes-per-industry',
   // Training Reports (3)
   'training-feedback-responses',

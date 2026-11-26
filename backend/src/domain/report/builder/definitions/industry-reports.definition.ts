@@ -35,6 +35,30 @@ export const industryReportDefinitions: Record<string, ReportDefinition> = {
     exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
+  'paid-internships-by-industry': {
+    type: 'paid-internships-by-industry',
+    name: 'Paid Internships by Industry',
+    description: 'Industries paying a stipend (With Stipend internships only): company, number of interns, location, branch and monthly stipend per intern',
+    category: 'Industry',
+    icon: 'dollar',
+    availableFor: ['STATE_DIRECTORATE', 'PRINCIPAL', 'SYSTEM_ADMIN'],
+    columns: [
+      { id: 'companyName', label: 'Company Name', type: 'string', default: true, sortable: true },
+      { id: 'noOfInterns', label: 'No of Interns', type: 'number', default: true, sortable: true },
+      { id: 'location', label: 'Location', type: 'string', default: true, sortable: true },
+      { id: 'branch', label: 'Branch', type: 'string', default: true, sortable: true },
+      { id: 'stipendPerIntern', label: 'Stipend/intern (per month)', type: 'number', default: true, sortable: true },
+    ],
+    filters: [
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false, placeholder: 'All Institutions' },
+      { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
+      { id: 'startDateRange', label: 'Start Date Range', type: 'dateRange', required: false },
+    ],
+    groupBy: [],
+    sortableColumns: ['companyName', 'noOfInterns', 'location', 'branch', 'stipendPerIntern'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
+  },
+
   'top-institutes-per-industry': {
     type: 'top-institutes-per-industry',
     name: 'Top 3 Institutes per Industry/Company',

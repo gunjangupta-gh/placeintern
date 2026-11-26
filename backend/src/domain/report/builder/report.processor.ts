@@ -367,6 +367,7 @@ export class ReportProcessor extends WorkerHost {
       'institution_performance': 'Institution Performance Report',
       'internship_by_institution': 'Internships by Institution Report',
       'industry_wise_students_stipend': 'Industry-wise Student Distribution & Stipend Analysis',
+      'paid_internships_by_industry': 'Paid Internships by Industry',
       'top_institutes_per_industry': 'Top 3 Institutes per Industry/Company',
       'principal_visit_logs': 'Principal Visit Logs Report',
       'principal_visit_summary': 'Principal Visit Summary Report',
@@ -730,6 +731,13 @@ export class ReportProcessor extends WorkerHost {
         { field: 'avgStipend', header: 'Avg Stipend', type: 'number' as const, width: 12 },
         { field: 'minStipend', header: 'Min Stipend', type: 'number' as const, width: 12 },
         { field: 'maxStipend', header: 'Max Stipend', type: 'number' as const, width: 12 },
+      ],
+      'paid_internships_by_industry': [
+        { field: 'companyName', header: 'Company Name', type: 'string' as const, width: 40 },
+        { field: 'noOfInterns', header: 'No of Interns', type: 'number' as const, width: 14 },
+        { field: 'location', header: 'Location', type: 'string' as const, width: 20 },
+        { field: 'branch', header: 'Branch', type: 'string' as const, width: 35 },
+        { field: 'stipendPerIntern', header: 'Stipend/intern (per month)', type: 'number' as const, width: 24 },
       ],
       'top_institutes_per_industry': [
         { field: 'companyName', header: 'Company/Industry Name', type: 'string' as const, width: 30 },
