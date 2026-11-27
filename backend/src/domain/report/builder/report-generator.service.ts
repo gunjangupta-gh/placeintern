@@ -13,6 +13,7 @@ import {
 import { getMonthCycle } from "../../../common/utils/monthly-cycle.util";
 import { INTERNSHIP_RECORD_WHERE } from '../../../core/common/utils/internship-record.filter';
 import { COMPENSATION_LABELS, isCompensationType } from '../../../common/utils/internship-compensation.util';
+import { cleanText, extractCity } from '../../../common/utils/company-details.util';
 
 /**
  * Pagination options for report generation
@@ -7151,6 +7152,8 @@ export class ReportGeneratorService {
         companyName: true,
         companyAddress: true,
         stipend: true,
+        // Master company record: one name and one address per company, however students typed it
+        company: { select: { name: true, city: true, address: true } },
         student: {
           select: {
             branch: { select: { name: true } },
@@ -7185,8 +7188,9 @@ export class ReportGeneratorService {
     >();
 
     for (const app of applications) {
+      const linkedCompany = app.company ?? app.opportunity?.company ?? null;
       const companyName = (
-        app.companyName ?? app.opportunity?.company?.name ?? ""
+        linkedCompany?.name ?? app.companyName ?? ""
       ).trim();
       if (!companyName) continue;
 
@@ -7199,12 +7203,16 @@ export class ReportGeneratorService {
         ) || 0;
       if (stipend <= 0) continue;
 
-      // Location: company city if known, else the second part of the address (as in the internships report)
-      let location = app.opportunity?.company?.city?.trim() ?? "";
+      // Location: the company's city, else a known city found in its address (so the same company is not
+      // split into many rows by how each student typed the address), else the old address-part fallback
+      let location = linkedCompany?.city?.trim() ?? "";
       if (!location) {
-        const address = app.companyAddress ?? app.opportunity?.company?.address;
-        const parts = address?.split(",").map((p) => p.trim()) ?? [];
-        location = parts.length >= 2 ? parts[1] : (parts[0] ?? "");
+        const address = cleanText(linkedCompany?.address ?? app.companyAddress);
+        location = extractCity(address) ?? "";
+        if (!location) {
+          const parts = address.split(",").map((p) => p.trim());
+          location = parts.length >= 2 ? parts[1] : (parts[0] ?? "");
+        }
       }
 
       const branch =

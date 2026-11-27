@@ -50,6 +50,8 @@
     "revert:company-names": "ts-node scripts/revert-company-names.ts",
     "link:applications-companies":"ts-node prisma/link-applications-to-companies.ts",
     "link:applications-companies:dry": "ts-node prisma/link-applications-to-companies.ts -- --dry-run",
+    "seed:populate-companies": "ts-node prisma/populate-companies.ts",
+    "seed:populate-companies:dry": "ts-node prisma/populate-companies.ts -- --dry-run",
     "seed:normalize-companies": "ts-node prisma/normalize-company-names.ts",
     "seed:normalize-companies:dry": "ts-node prisma/normalize-company-names.ts -- --dry-run",
     "seed:normalize-companies:verbose": "ts-node prisma/normalize-company-names.ts -- --verbose",

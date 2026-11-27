@@ -3,6 +3,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import 'dotenv/config';
 import { ALL_ACTUAL_COMPANY_MAPPINGS } from './company-mappings-actual';
+import { buildSimilarityCanonicals, findReviewCandidates } from '../src/common/utils/company-similarity.util';
 
 // Create PostgreSQL connection pool
 const pool = new Pool({
@@ -191,12 +192,27 @@ function isAbbreviation(word: string): boolean {
 /**
  * Groups similar company names together
  */
-function groupSimilarCompanies(companies: Array<{ name: string; count: number }>): Map<string, Array<{ original: string; count: number }>> {
+function groupSimilarCompanies(
+  companies: Array<{ name: string; count: number }>,
+  preferredNames: Set<string> = new Set(),
+): Map<string, Array<{ original: string; count: number }>> {
   const groups = new Map<string, Array<{ original: string; count: number }>>();
 
+  // Pass 1: mapping table / title case. Pass 2: merge names that differ only by address, suffix or brackets.
+  const normalizedCounts = new Map<string, number>();
   for (const company of companies) {
-    const normalized = normalizeCompanyName(company.name);
+    const n = normalizeCompanyName(company.name);
+    if (n) normalizedCounts.set(n, (normalizedCounts.get(n) || 0) + company.count);
+  }
+  const similarityMap = buildSimilarityCanonicals(
+    [...normalizedCounts].map(([name, count]) => ({ name, count })),
+    preferredNames,
+  );
+
+  for (const company of companies) {
+    let normalized = normalizeCompanyName(company.name);
     if (!normalized) continue;
+    normalized = similarityMap.get(normalized) ?? normalized;
 
     if (!groups.has(normalized)) {
       groups.set(normalized, []);
@@ -284,7 +300,9 @@ async function main() {
   }
 
   // Step 3: Group similar companies
-  const groups = groupSimilarCompanies(uniqueCompanies);
+  // Names already in the Company table win when several spellings are merged
+  const existingCompanies = await prisma.company.findMany({ select: { name: true } });
+  const groups = groupSimilarCompanies(uniqueCompanies, new Set(existingCompanies.map((c) => c.name)));
 
   console.log(`🔄 Normalization Analysis:`);
   console.log(`   - Normalized Company Groups: ${groups.size}\n`);
@@ -334,6 +352,14 @@ async function main() {
 
       groupIndex++;
     }
+  }
+
+  // Names that look related but are NOT merged automatically (different legal entities / branches?)
+  const reviewGroups = findReviewCandidates([...groups.keys()]);
+  if (reviewGroups.length > 0) {
+    console.log('👀 Similar names kept separate (review manually, add to company-mappings-actual.ts to merge):\n');
+    reviewGroups.slice(0, 40).forEach((g) => console.log('   - ' + g.join('  |  ')));
+    console.log('');
   }
 
   // Step 5: Summary of changes

@@ -1015,7 +1015,7 @@ export const ADDITIONAL_COMPANY_MAPPINGS: CompanyMapping = {
     'sonalika international tractor ltd', 'sonalika international tractors limited (itl)',
   ]),
   ...group('Swaraj Engines Limited, Chapar Chiri', [
-    'swaraj tractors chaparchiri mohali', 'sawraj tractors chaparchiri', 'swaraj tractor chappal chiri',
+    'sawraj plant-2', 'swaraj plant-2', 'swaraj tractors chaparchiri mohali', 'sawraj tractors chaparchiri', 'swaraj tractor chappal chiri',
     'swaraj tractors, chapar chiri',
   ]),
   ...group('Swaraj Engines Limited', ['mahindra swaraj tractors', 'mahindra swaraj tractor']),
@@ -1023,10 +1023,11 @@ export const ADDITIONAL_COMPANY_MAPPINGS: CompanyMapping = {
     'gna axles', 'gna axles limited', 'gna axles unit 2', 'gna axles unit-2', 'gna axles limited unit-2',
     'gna axles unit 2 hoshiarpur', 'gna axle limited', 'gna axel', 'gna axels unit 2',
   ]),
-  ...group('GNA Gears', ['gna gears, phagwara hoshiarpur rd, mehtiana', 'gne gear, metiaana']),
+  ...group('GNA Gears Limited', ['gna gears', 'gna gears limited', 'gna gears, phagwara hoshiarpur rd, mehtiana', 'gne gear, metiaana']),
   ...group('MAHLE Anand Thermal Systems', [
     'mahle anand thermal systems', 'mahle anand thermal systems private limited',
     'mahlemahle anand thermal system private limited greater noida', 'mahle anand thermal system private limited noida',
+    'mahle anand thermal system private limited location- greater noida',
   ]),
   ...group('Mahle Anand Filter Systems', ['mahle anand filter system noida', 'mahle anand filter system pvt']),
   ...group('Rane Steering Systems', [
@@ -1046,12 +1047,12 @@ export const ADDITIONAL_COMPANY_MAPPINGS: CompanyMapping = {
   ...group('MOI Engineering', ['moi engineering pvt.ltd', 'moi engeneering pvt ltd', 'moi engineering pvt ltd']),
   ...group('Mahindra & Mahindra', ['mahindra and mahindra', 'mahindra and mahindra ltd']),
   ...group('SML Mahindra Limited', ['sml mahindra ltd.', 'sml mahindra limited']),
-  ...group('Jaewoo Machines', ['jaewoo machines']),
+  ...group('Jaewoo Machines Pvt. Ltd.', ['jaewoo machines', 'jaewoo machines pvt. ltd.']),
   ...group('Keyoffice Automation', ['key office automation']),
   ...group('Ludhiana Beverages Ltd', ['ludhiana beverages']),
   ...group('Central Tool Room Ludhiana', ['central tool room, ludhiana']),
   ...group('Mahashakti Energy', ['mahashakti energy ltd.']),
-  ...group('Trident Group', ['trident group barnala', 'trident group', 'trident group, barnala']),
+  ...group('Trident Limited', ['trident group barnala', 'trident group', 'trident group, barnala']),
   ...group('Punjab Motors Gram Udyog Samiti (Regd) Faridkot', [
     'punjab motors gram udyog samiti (regd) faridkot', 'the punjab motors gram udyog(regd) faridkot',
   ]),
@@ -1077,10 +1078,14 @@ export const ADDITIONAL_COMPANY_MAPPINGS: CompanyMapping = {
     'o7services', 'district bureau of employment & skill development/o7 services jalandhar',
   ]),
   ...group('Blinkit', ['blinkit fc warehouse', 'blinkit']),
+  ...group('Novem Controls', ['november controls', 'novam control', 'novem controls']),
+  ...group('Solitaire Infosys', ['solitaire infosystem pvt ltd', 'solitaire infosystem']),
+  ...group('ONS Logistics India', ['ons logistics pvt ltd, ludhiana', 'ons logistics pvt ltd']),
+  ...group('Baba Farid Roller Flour & Gen. Mills', ['baba farid roller flour & gen. mills, kotkapura']),
 
   // ---- Research / education ----
-  ...group('Central Institute of Hand Tools Jalandhar', [
-    'central institute of hand tool jalandhar', 'ciht hsp', 'chit extension center,hoshipur', 'chit',
+  ...group('Central Institute of Hand Tools', [
+    'central institute of hand tools jalandhar', 'central institute of hand tool jalandhar', 'ciht hsp', 'chit extension center,hoshipur', 'chit',
   ]),
   ...group('CSIR-CSIO Chandigarh', ['csir-central scientific instruments organisation, chandigarh']),
   ...group('CSIR-CMERI Ludhiana', ['csir- central mechanical engineering research institute (cmeri), ludhiana']),
@@ -1089,7 +1094,23 @@ export const ADDITIONAL_COMPANY_MAPPINGS: CompanyMapping = {
 /**
  * Combined mapping of all companies
  */
-export const ALL_ACTUAL_COMPANY_MAPPINGS: CompanyMapping = {
+/**
+ * Canonical names that must collapse into one company (same company, different plant/location).
+ * Applied to every mapping above, and the merged names themselves also become lookup keys.
+ */
+const CANONICAL_MERGES: CompanyMapping = {
+  'Swaraj Engines Limited, Chapar Chiri': 'Swaraj Engines Limited',
+  'Swaraj Engines Limited, Mohali': 'Swaraj Engines Limited',
+};
+
+function applyCanonicalMerges(map: CompanyMapping): CompanyMapping {
+  const out: CompanyMapping = {};
+  for (const [k, v] of Object.entries(map)) out[k] = CANONICAL_MERGES[v] ?? v;
+  for (const [from, to] of Object.entries(CANONICAL_MERGES)) out[from.toLowerCase()] = to;
+  return out;
+}
+
+const RAW_ALL_ACTUAL_COMPANY_MAPPINGS: CompanyMapping = {
   ...PUNJAB_PSU_COMPANIES,
   ...MANUFACTURING_COMPANIES,
   ...IT_COMPANIES,
@@ -1103,6 +1124,8 @@ export const ALL_ACTUAL_COMPANY_MAPPINGS: CompanyMapping = {
   ...TRAINING_COMPANIES,
   ...ADDITIONAL_COMPANY_MAPPINGS,
 };
+
+export const ALL_ACTUAL_COMPANY_MAPPINGS: CompanyMapping = applyCanonicalMerges(RAW_ALL_ACTUAL_COMPANY_MAPPINGS);
 
 /**
  * Export count for reference

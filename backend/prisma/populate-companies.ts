@@ -3,6 +3,8 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import 'dotenv/config';
 import { ALL_ACTUAL_COMPANY_MAPPINGS } from './company-mappings-actual';
+import { buildSimilarityCanonicals, similarityKey } from '../src/common/utils/company-similarity.util';
+import { cleanText, pickBest, extractCity, extractPinCode } from '../src/common/utils/company-details.util';
 
 // Create PostgreSQL connection pool
 const pool = new Pool({
@@ -16,19 +18,24 @@ const prisma = new PrismaClient({ adapter } as any);
 /**
  * Populate Companies Script
  *
- * This script populates the Company table with unique normalized company names
- * and their address information extracted from InternshipApplications.
+ * Creates AND updates the Company table from InternshipApplications so students can pick pre-added companies:
+ *  - one canonical name per company (mapping table + merge of names that differ only by address/suffix)
+ *  - one canonical, cleaned address / contact / email / city / pin code per company
+ *  - new spellings are added as aliases; existing companies are updated, not skipped
+ *  - every application is linked (companyId) and renamed to the canonical company name
  *
  * Usage:
  *   npm run seed:populate-companies           # Normal mode (applies changes)
  *   npm run seed:populate-companies -- --dry-run         # Dry run mode (preview only)
  *   npm run seed:populate-companies -- --verbose         # Verbose output
+ *   npm run seed:populate-companies -- --no-link         # Only create/update companies, do not touch applications
  */
 
 // Parse command line arguments
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
 const VERBOSE = args.includes('--verbose');
+const NO_LINK = args.includes('--no-link');
 
 interface CompanyMapping {
   [key: string]: string;
@@ -176,246 +183,187 @@ function isAbbreviation(word: string): boolean {
  */
 async function main() {
   console.log('\n╔════════════════════════════════════════════════════════════╗');
-  console.log('║     Populate Companies Table Script                        ║');
+  console.log('║     Populate / Update Companies Script                     ║');
   console.log('╚════════════════════════════════════════════════════════════╝\n');
+  if (DRY_RUN) console.log('🔍 DRY RUN MODE - No changes will be applied\n');
 
-  if (DRY_RUN) {
-    console.log('🔍 DRY RUN MODE - No changes will be applied\n');
-  }
-
-  if (VERBOSE) {
-    console.log('📢 VERBOSE MODE - Detailed output enabled\n');
-  }
-
-  // Step 1: Fetch all company data from internship applications
-  console.log('📊 Fetching company data from internship applications...');
-
+  // 1. All applications that carry a company name (as typed by the student)
   const applications = await prisma.internshipApplication.findMany({
-    where: {
-      isSelfIdentified: true,
-      companyName: {
-        not: null,
-      },
-    },
+    where: { isSelfIdentified: true, companyName: { not: null } },
     select: {
+      id: true,
+      companyId: true,
       companyName: true,
       companyAddress: true,
       companyContact: true,
       companyEmail: true,
     },
-    orderBy: {
-      createdAt: 'desc', // Get most recent first for better address data
-    },
+    orderBy: { createdAt: 'desc' },
   });
+  console.log(`📊 Applications with a company name: ${applications.length}`);
+  if (applications.length === 0) return;
 
-  console.log(`✅ Found ${applications.length} internship applications with company data\n`);
+  // 2. Existing master companies
+  const existing = await prisma.company.findMany();
+  console.log(`📚 Companies already in the table:   ${existing.length}`);
+  const existingNames = new Set(existing.map((c) => c.name));
 
-  if (applications.length === 0) {
-    console.log('ℹ️  No company data found. Exiting...');
-    return;
+  // 3. Canonical name for every application: mapping table, then merge names that differ only by
+  //    address / suffix / brackets (names already in the Company table win)
+  const normalizedOf = (raw: string) => normalizeCompanyName(raw) ?? sanitizeCompanyName(raw);
+  const counts = new Map<string, number>();
+  for (const a of applications) {
+    const n = normalizedOf(a.companyName!);
+    counts.set(n, (counts.get(n) || 0) + 1);
   }
+  const similarity = buildSimilarityCanonicals(
+    [...counts].map(([name, count]) => ({ name, count })),
+    existingNames,
+  );
+  const canonicalOf = (raw: string) => {
+    const n = normalizedOf(raw);
+    return similarity.get(n) ?? n;
+  };
 
-  // Step 2: Normalize and deduplicate company names with address info
-  console.log('🔄 Normalizing company names and collecting address data...\n');
-
-  interface CompanyData {
-    alias: string[];
-    address: string | null;
-    contact: string | null;
-    email: string | null;
-  }
-
-  const normalizedCompanies = new Map<string, CompanyData>();
-
-  for (const app of applications) {
-    if (app.companyName) {
-      const normalized = normalizeCompanyName(app.companyName);
-      if (normalized) {
-        if (!normalizedCompanies.has(normalized)) {
-          // First occurrence - store all data
-          normalizedCompanies.set(normalized, {
-            alias: [],
-            address: app.companyAddress,
-            contact: app.companyContact,
-            email: app.companyEmail,
-          });
-        }
-
-        const companyData = normalizedCompanies.get(normalized)!;
-
-        // Add to alias if not already present
-        if (!companyData.alias.includes(app.companyName)) {
-          companyData.alias.push(app.companyName);
-        }
-
-        // Fill in missing address data from other applications
-        if (!companyData.address && app.companyAddress) {
-          companyData.address = app.companyAddress;
-        }
-        if (!companyData.contact && app.companyContact) {
-          companyData.contact = app.companyContact;
-        }
-        if (!companyData.email && app.companyEmail) {
-          companyData.email = app.companyEmail;
-        }
-      }
-    }
-  }
-
-  // Count companies with address data
-  let companiesWithAddress = 0;
-  for (const [, data] of normalizedCompanies) {
-    if (data.address || data.contact || data.email) {
-      companiesWithAddress++;
-    }
-  }
-
-  console.log(`📈 Statistics:`);
-  console.log(`   - Total internship applications: ${applications.length}`);
-  console.log(`   - Normalized unique companies: ${normalizedCompanies.size}`);
-  console.log(`   - Companies with address/contact data: ${companiesWithAddress}\n`);
-
-  // Step 3: Check existing companies in the database
-  console.log('🔍 Checking existing companies in database...');
-
-  const existingCompanies = await prisma.company.findMany({
-    select: {
-      name: true,
-    },
-  });
-
-  const existingNames = new Set(existingCompanies.map(c => c.name));
-  console.log(`   - Existing companies in database: ${existingCompanies.length}\n`);
-
-  // Step 4: Prepare companies to add
-  interface CompanyToAdd {
+  // 4. Group applications per canonical company and pick ONE address / contact / email
+  interface Group {
     name: string;
-    alias: string[];
-    address: string | null;
-    contact: string | null;
-    email: string | null;
+    apps: typeof applications;
   }
+  const groups = new Map<string, Group>();
+  for (const a of applications) {
+    const name = canonicalOf(a.companyName!);
+    (groups.get(name) ?? groups.set(name, { name, apps: [] }).get(name)!).apps.push(a);
+  }
+  console.log(`🔄 Distinct companies after normalization: ${groups.size}\n`);
 
-  const companiesToAdd: CompanyToAdd[] = [];
-
-  for (const [normalized, data] of normalizedCompanies.entries()) {
-    if (!existingNames.has(normalized)) {
-      // Filter out the normalized name from variations
-      const alias = data.alias.filter(v => v !== normalized);
-      companiesToAdd.push({
-        name: normalized,
-        alias: alias,
-        address: data.address,
-        contact: data.contact,
-        email: data.email,
-      });
+  // 5. Match each group to an existing company (exact name, then similar name), else create
+  const existingByName = new Map(existing.map((c) => [c.name, c]));
+  const existingByKey = new Map<string, (typeof existing)[number]>();
+  for (const c of existing) {
+    for (const n of [c.name, ...c.alias]) {
+      const k = similarityKey(n);
+      if (k && !existingByKey.has(k)) existingByKey.set(k, c);
     }
   }
 
-  console.log(`📝 Companies to add: ${companiesToAdd.length}\n`);
+  let created = 0;
+  let updated = 0;
+  let unchanged = 0;
+  let linkedApps = 0;
+  let renamedApps = 0;
+  let errors = 0;
 
-  if (companiesToAdd.length === 0) {
-    console.log('✨ All companies already exist in the database! No new companies to add.\n');
-    return;
-  }
-
-  // Show preview
-  if (VERBOSE) {
-    console.log('📋 Companies to be added:\n');
-    companiesToAdd.slice(0, 20).forEach((company, index) => {
-      console.log(`   ${(index + 1).toString().padStart(3)}. ${company.name}`);
-      if (company.address) {
-        console.log(`        Address: ${company.address.substring(0, 60)}${company.address.length > 60 ? '...' : ''}`);
-      }
-      if (company.contact || company.email) {
-        console.log(`        Contact: ${company.contact || '-'} | Email: ${company.email || '-'}`);
-      }
-      if (company.alias.length > 0) {
-        console.log(`        Aliases: ${company.alias.slice(0, 3).join(', ')}${company.alias.length > 3 ? ` (+${company.alias.length - 3} more)` : ''}`);
-      }
-    });
-
-    if (companiesToAdd.length > 20) {
-      console.log(`\n   ... and ${companiesToAdd.length - 20} more companies\n`);
-    } else {
-      console.log('');
+  for (const g of groups.values()) {
+    const address = pickBest(g.apps.map((a) => a.companyAddress), { address: true });
+    const contact = pickBest(g.apps.map((a) => a.companyContact));
+    const email = pickBest(g.apps.map((a) => a.companyEmail));
+    const city = extractCity(address);
+    const pinCode = extractPinCode(address);
+    const variants = new Set<string>();
+    for (const a of g.apps) {
+      const raw = cleanText(a.companyName);
+      if (raw) variants.add(raw);
     }
-  }
 
-  // Step 5: Add companies to database
-  if (!DRY_RUN) {
-    console.log('💾 Adding companies to database...\n');
+    const match = existingByName.get(g.name) ?? existingByKey.get(similarityKey(g.name));
 
-    let addedCount = 0;
-    let errorCount = 0;
+    try {
+      let company = match;
 
-    for (const company of companiesToAdd) {
-      try {
-        await prisma.company.create({
-          data: {
-            name: company.name,
-            alias: company.alias,
-            address: company.address,
-            contact: company.contact,
-            email: company.email,
-            isActive: true,
-          },
-        });
-        addedCount++;
-
-        if (VERBOSE) {
-          console.log(`   ✅ Added: ${company.name}${company.address ? ' (with address)' : ''}`);
+      if (!company) {
+        created++;
+        if (VERBOSE) console.log(`   + new:     ${g.name}${address ? '  (' + address.slice(0, 50) + ')' : ''}`);
+        if (!DRY_RUN) {
+          company = await prisma.company.create({
+            data: {
+              name: g.name,
+              alias: [...variants].filter((v) => v !== g.name),
+              address,
+              contact,
+              email,
+              city,
+              pinCode,
+              isActive: true,
+            },
+          });
+          existingByName.set(company.name, company);
+          existingByKey.set(similarityKey(company.name), company);
         }
-      } catch (error: any) {
-        errorCount++;
-        if (error.code === 'P2002') {
-          // Unique constraint violation - company already exists
-          if (VERBOSE) {
-            console.log(`   ⚠️  Already exists: ${company.name}`);
-          }
+      } else {
+        // Update: keep the name, add new spellings as aliases, fill / clean details, make sure it is active
+        const alias = new Set(company.alias);
+        for (const v of variants) if (v !== company.name) alias.add(v);
+        const data: Record<string, unknown> = {};
+        if (alias.size !== company.alias.length) data.alias = [...alias];
+        const dirtyAddress = !!company.address && cleanText(company.address) !== company.address;
+        if (address && (!company.address || dirtyAddress)) data.address = address;
+        if (dirtyAddress && !address) data.address = cleanText(company.address);
+        if (contact && !company.contact) data.contact = contact;
+        if (email && !company.email) data.email = email;
+        if (!company.city && city) data.city = city;
+        if (!company.pinCode && pinCode) data.pinCode = pinCode;
+        if (!company.isActive) data.isActive = true;
+
+        if (Object.keys(data).length > 0) {
+          updated++;
+          if (VERBOSE) console.log(`   ~ updated: ${company.name}  [${Object.keys(data).join(', ')}]`);
+          if (!DRY_RUN) company = await prisma.company.update({ where: { id: company.id }, data });
         } else {
-          console.error(`   ❌ Error adding "${company.name}":`, error.message);
+          unchanged++;
         }
       }
-    }
 
-    console.log(`\n✅ Successfully added ${addedCount} companies!`);
-    if (errorCount > 0) {
-      console.log(`⚠️  ${errorCount} companies had errors (likely already existed)\n`);
+      // 6. Point every application at the company so reports and the student form use ONE record
+      if (!NO_LINK) {
+        for (const a of g.apps) {
+          const targetName = company?.name ?? g.name;
+          const needsId = company && a.companyId !== company.id;
+          const needsName = a.companyName !== targetName;
+          if (!needsId && !needsName) continue;
+          if (needsId) linkedApps++;
+          if (needsName) renamedApps++;
+          if (!DRY_RUN && company) {
+            await prisma.internshipApplication.update({
+              where: { id: a.id },
+              data: { companyId: company.id, companyName: company.name },
+            });
+          }
+        }
+      }
+    } catch (error: any) {
+      errors++;
+      console.error(`   ❌ "${g.name}": ${error.message}`);
     }
+  }
+
+  console.log('\n═══════════════════════════════════════════════════════════');
+  console.log(`📊 Summary ${DRY_RUN ? '(dry run, nothing written)' : ''}`);
+  console.log(`   - Companies ${DRY_RUN ? 'to create' : 'created'}:  ${created}`);
+  console.log(`   - Companies ${DRY_RUN ? 'to update' : 'updated'}:  ${updated}`);
+  console.log(`   - Companies already complete: ${unchanged}`);
+  if (NO_LINK) {
+    console.log('   - Applications: not touched (--no-link)');
   } else {
-    console.log('ℹ️  DRY RUN: No changes were applied. Run without --dry-run to add companies.\n');
+    console.log(`   - Applications ${DRY_RUN ? 'to link' : 'linked'} to a company: ${linkedApps}`);
+    console.log(`   - Application names ${DRY_RUN ? 'to rewrite' : 'rewritten'} to the company name: ${renamedApps}`);
   }
+  if (errors) console.log(`   - Errors: ${errors}`);
 
-  // Step 6: Final statistics
-  if (!DRY_RUN) {
-    const finalCount = await prisma.company.count();
-    const withAddress = await prisma.company.count({
-      where: {
-        address: { not: null },
-      },
-    });
-    const withContact = await prisma.company.count({
-      where: {
-        OR: [
-          { contact: { not: null } },
-          { email: { not: null } },
-        ],
-      },
-    });
-
-    console.log('═══════════════════════════════════════════════════════════\n');
-    console.log(`📊 Final Statistics:`);
-    console.log(`   - Total companies in database: ${finalCount}`);
-    console.log(`   - Companies with address: ${withAddress}`);
-    console.log(`   - Companies with contact info: ${withContact}\n`);
+  // Duplicate rows already in the Company table (same company, different spelling) - reported, not merged
+  const dupGroups = new Map<string, string[]>();
+  for (const c of existing) {
+    const k = similarityKey(c.name);
+    if (k.length >= 4) (dupGroups.get(k) ?? dupGroups.set(k, []).get(k)!).push(c.name);
   }
-
-  console.log('═══════════════════════════════════════════════════════════');
-  console.log('🎉 Populate Companies Script Complete!\n');
+  const dups = [...dupGroups.values()].filter((v) => v.length > 1);
+  if (dups.length) {
+    console.log(`\n⚠️  Duplicate rows already in the Company table (merge manually, opportunities may point to them):`);
+    dups.forEach((v) => console.log('   - ' + v.join('  |  ')));
+  }
+  console.log('\n🎉 Populate Companies Script Complete!\n');
 }
 
-// Execute the script
 main()
   .catch((e) => {
     console.error('\n❌ Error:', e);
