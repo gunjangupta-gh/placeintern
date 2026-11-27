@@ -998,6 +998,9 @@ model InternshipApplication {
 
   // Self-Identified Internship Fields
   isSelfIdentified Boolean @default(false)
+  // Master company record (keeps naming consistent); companyName stays as a denormalized copy
+  companyId        String?
+  company          Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   companyName      String?
   companyAddress   String?
   companyContact   String?
@@ -1071,6 +1074,7 @@ model InternshipApplication {
   @@index([studentId, internshipPhase])
   @@index([status, internshipPhase])
   @@index([opportunityId, status])
+  @@index([companyId])
   @@index([internshipType])
   @@map("internship_applications")
 }
@@ -2678,6 +2682,7 @@ model Company {
   isActive Boolean @default(true)
 
   opportunities InternshipOpportunity[]
+  applications  InternshipApplication[]
 
   // Timestamps
   createdAt DateTime @default(now())

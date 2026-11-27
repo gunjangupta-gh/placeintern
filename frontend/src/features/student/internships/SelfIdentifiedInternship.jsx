@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Card,
   Form,
@@ -61,19 +61,24 @@ const SelfIdentifiedInternship = () => {
   const [companies, setCompanies] = useState([]);
   const [companiesLoading, setCompaniesLoading] = useState(false);
   const [companySearchValue, setCompanySearchValue] = useState("");
+  // The company must come from the master list (selectedCompany) or be explicitly added as new
+  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [newCompanyMode, setNewCompanyMode] = useState(false);
+  const searchTimer = useRef(null);
 
   // Fetch institute data, applications, and companies on mount
   useEffect(() => {
     dispatch(fetchInstituteAsync());
     dispatch(fetchApplications({ forceRefresh: true }));
     fetchCompanies();
+    return () => clearTimeout(searchTimer.current);
   }, [dispatch]);
 
-  // Fetch companies from API
+  // Fetch companies from API (server-side search so every company is reachable)
   const fetchCompanies = async (search = "") => {
     try {
       setCompaniesLoading(true);
-      const response = await studentService.getCompanies({ search, limit: 100 });
+      const response = await studentService.getCompanies({ search, limit: 50 });
       setCompanies(response.companies || []);
     } catch (error) {
       console.error("Failed to fetch companies:", error);
@@ -82,28 +87,64 @@ const SelfIdentifiedInternship = () => {
     }
   };
 
-  // Handle company selection from dropdown
-  const handleCompanySelect = (value) => {
-    const selectedCompany = companies.find((c) => c.name === value);
-    if (selectedCompany) {
-      // Auto-fill company fields with selected company data
-      form.setFieldsValue({
-        companyName: selectedCompany.name,
-        companyAddress: selectedCompany.address || "",
-        companyContact: selectedCompany.contact || "",
-        companyEmail: selectedCompany.email || "",
-      });
-      setCompanySearchValue(selectedCompany.name);
-    }
+  const clearCompanyFields = () => {
+    form.setFieldsValue({
+      companyId: undefined,
+      companyName: "",
+      companyAddress: "",
+      companyContact: "",
+      companyEmail: "",
+    });
   };
 
-  // Handle company search input change
+  // Student picked a company from the list: lock its details to the master record
+  const handleCompanySelect = (value, option) => {
+    const company = companies.find((c) => c.id === option?.key) || companies.find((c) => c.name === value);
+    if (!company) return;
+    setSelectedCompany(company);
+    setNewCompanyMode(false);
+    form.setFieldsValue({
+      companyId: company.id,
+      companyName: company.name,
+      companyAddress: company.address || "",
+      companyContact: company.contact || "",
+      companyEmail: company.email || "",
+    });
+    setCompanySearchValue(company.name);
+    setTimeout(() => form.validateFields(["companySearch"]).catch(() => {}), 0);
+  };
+
+  // Typing only searches; it never sets the company. Editing after a selection clears it.
   const handleCompanySearch = (value) => {
     setCompanySearchValue(value);
+    if (selectedCompany && value !== selectedCompany.name) {
+      setSelectedCompany(null);
+      clearCompanyFields();
+    }
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => fetchCompanies((value || "").trim()), 300);
   };
+
+  // Company is not in the list: let the student enter it (backend de-duplicates by name)
+  const handleAddNewCompany = () => {
+    setSelectedCompany(null);
+    setNewCompanyMode(true);
+    clearCompanyFields();
+    form.setFieldsValue({ companyName: companySearchValue.trim() });
+    setTimeout(() => form.validateFields(["companySearch"]).catch(() => {}), 0);
+  };
+
+  const handleCancelNewCompany = () => {
+    setNewCompanyMode(false);
+    clearCompanyFields();
+    setCompanySearchValue("");
+  };
+
+  const companyFieldsLocked = !newCompanyMode;
 
   // Get company options for AutoComplete
   const companyOptions = companies.map((company) => ({
+    key: company.id,
     value: company.name,
     label: (
       <div>
@@ -212,6 +253,7 @@ const SelfIdentifiedInternship = () => {
 
       // Append basic fields
       if (studentId) formData.append("studentId", studentId);
+      if (values.companyId && !newCompanyMode) formData.append("companyId", values.companyId);
       formData.append("companyName", values.companyName || "");
       formData.append("companyAddress", values.companyAddress || "");
       formData.append("companyContact", values.companyContact || "");
@@ -301,6 +343,9 @@ const SelfIdentifiedInternship = () => {
       // Reset form
       form.resetFields();
       setJoiningLetterFile(null);
+      setSelectedCompany(null);
+      setNewCompanyMode(false);
+      setCompanySearchValue("");
     } catch (error) {
       console.error("Submission error:", error);
       const errorMessage = typeof error === 'string' ? error : error?.message || "Failed to submit application. Please try again.";
@@ -372,9 +417,27 @@ const SelfIdentifiedInternship = () => {
               <Row gutter={24}>
                 {/* Company Selection Dropdown */}
                 <Col xs={24}>
+                  <Form.Item name="companyId" hidden>
+                    <Input />
+                  </Form.Item>
                   <Form.Item
-                    label={<span className="font-medium text-text-primary">Search Existing Company</span>}
-                    extra={<Text className="text-[10px] text-text-tertiary">Select a company to auto-fill details, or enter manually below</Text>}
+                    label={<span className="font-medium text-text-primary">Search Company</span>}
+                    name="companySearch"
+                    extra={
+                      <Text className="text-[10px] text-text-tertiary">
+                        {newCompanyMode
+                          ? "Adding a new company. Fill in its details below."
+                          : "Search and select your company from the list. Details fill in automatically."}
+                      </Text>
+                    }
+                    rules={[
+                      {
+                        validator: () =>
+                          selectedCompany || newCompanyMode
+                            ? Promise.resolve()
+                            : Promise.reject(new Error("Please select a company from the list")),
+                      },
+                    ]}
                   >
                     <AutoComplete
                       options={companyOptions}
@@ -382,11 +445,24 @@ const SelfIdentifiedInternship = () => {
                       onSearch={handleCompanySearch}
                       value={companySearchValue}
                       onChange={handleCompanySearch}
-                      placeholder="Search for a company..."
+                      disabled={newCompanyMode}
+                      placeholder="Type to search for a company..."
                       className="w-full"
                       allowClear
-                      filterOption={(inputValue, option) =>
-                        option.value.toLowerCase().includes(inputValue.toLowerCase())
+                      filterOption={false}
+                      notFoundContent={
+                        companiesLoading ? (
+                          <Spin size="small" />
+                        ) : (
+                          <div className="p-2 text-center">
+                            <Text className="text-xs text-text-tertiary block mb-2">
+                              No matching company found
+                            </Text>
+                            <Button type="link" size="small" onClick={handleAddNewCompany}>
+                              My company is not listed, add it
+                            </Button>
+                          </div>
+                        )
                       }
                     >
                       <Input
@@ -395,6 +471,11 @@ const SelfIdentifiedInternship = () => {
                         suffix={companiesLoading ? <Spin size="small" /> : null}
                       />
                     </AutoComplete>
+                    {newCompanyMode && (
+                      <Button type="link" size="small" className="!px-0" onClick={handleCancelNewCompany}>
+                        Cancel and search the list instead
+                      </Button>
+                    )}
                   </Form.Item>
                 </Col>
 
@@ -404,7 +485,7 @@ const SelfIdentifiedInternship = () => {
                     name="companyName"
                     rules={[{ required: true, message: "Please enter company name" }]}
                   >
-                    <Input placeholder="e.g., Google India" className="rounded-lg h-11 bg-background border-border" />
+                    <Input placeholder="e.g., Google India" disabled={companyFieldsLocked} className="rounded-lg h-11 bg-background border-border" />
                   </Form.Item>
                 </Col>
 
@@ -414,7 +495,7 @@ const SelfIdentifiedInternship = () => {
                     name="companyContact"
                     rules={[{ required: true, message: "Please enter contact number" }]}
                   >
-                    <Input placeholder="Phone number" className="rounded-lg h-11 bg-background border-border" />
+                    <Input placeholder="Phone number" disabled={companyFieldsLocked} className="rounded-lg h-11 bg-background border-border" />
                   </Form.Item>
                 </Col>
 
@@ -427,6 +508,7 @@ const SelfIdentifiedInternship = () => {
                     <TextArea
                       rows={2}
                       placeholder="Full official address of the internship location"
+                      disabled={companyFieldsLocked}
                       className="rounded-lg bg-background border-border p-3"
                     />
                   </Form.Item>
@@ -438,7 +520,7 @@ const SelfIdentifiedInternship = () => {
                     name="companyEmail"
                     rules={[{ type: "email", message: "Please enter a valid email" }]}
                   >
-                    <Input placeholder="hr@company.com" className="rounded-lg h-11 bg-background border-border" />
+                    <Input placeholder="hr@company.com" disabled={companyFieldsLocked} className="rounded-lg h-11 bg-background border-border" />
                   </Form.Item>
                 </Col>
 

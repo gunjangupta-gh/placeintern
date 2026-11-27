@@ -45,6 +45,8 @@
     "seed:link-feedback-to-trainings": "ts-node prisma/link-feedback-to-trainings.ts",
     "seed:check-feedback-links": "ts-node prisma/check-feedback-links.ts",
     "seed:analyze-companies": "ts-node prisma/analyze-companies.ts",
+    "link:applications-companies": "ts-node prisma/link-applications-to-companies.ts",
+    "link:applications-companies:dry": "ts-node prisma/link-applications-to-companies.ts -- --dry-run",
     "seed:normalize-companies": "ts-node prisma/normalize-company-names.ts",
     "seed:normalize-companies:dry": "ts-node prisma/normalize-company-names.ts -- --dry-run",
     "seed:normalize-companies:verbose": "ts-node prisma/normalize-company-names.ts -- --verbose",

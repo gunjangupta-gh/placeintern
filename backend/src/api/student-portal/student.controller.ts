@@ -247,6 +247,7 @@ export class StudentController {
 
     // Only known fields are accepted (the student, status and phase are set by the server)
     const dto: Record<string, any> = {
+      companyId: text('companyId'),
       companyName,
       companyAddress: text('companyAddress'),
       companyContact: text('companyContact'),

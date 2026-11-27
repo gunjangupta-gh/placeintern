@@ -26,6 +26,7 @@ import {
   InternshipCompensationType,
 } from "../../generated/prisma/client";
 import { AuditService } from "../../infrastructure/audit/audit.service";
+import { cleanCompanyName, companyNameKey } from "../../common/utils/company-name.util";
 import { StudentSemesterStatusService } from "../../domain/academic/semester-status/student-semester-status.service";
 import { FileStorageService } from "../../infrastructure/file-storage/file-storage.service";
 import {
@@ -1334,11 +1335,70 @@ export class StudentService {
   }
 
   /**
+   * Find the master Company for a self-identified submission, or create it.
+   * 1. companyId sent -> use that company.
+   * 2. Otherwise match the typed name (normalized) against company names and aliases.
+   * 3. Otherwise create a new active company so other students can pick it.
+   */
+  private async resolveCompany(dto: {
+    companyId?: string;
+    companyName: string;
+    companyAddress?: string;
+    companyContact?: string;
+    companyEmail?: string;
+  }) {
+    if (dto.companyId) {
+      const byId = await this.prisma.company.findUnique({ where: { id: dto.companyId } });
+      if (!byId) throw new BadRequestException("Selected company was not found");
+      return byId;
+    }
+
+    const typedName = cleanCompanyName(dto.companyName);
+    const key = companyNameKey(typedName);
+    if (!key) throw new BadRequestException("Company name is required");
+
+    // Cheap prefilter on the first word, then compare normalized keys in memory
+    const firstWord = typedName.split(" ")[0];
+    const candidates = await this.prisma.company.findMany({
+      where: {
+        OR: [
+          { name: { contains: firstWord, mode: "insensitive" } },
+          { alias: { hasSome: [typedName] } },
+        ],
+      },
+    });
+    const match = candidates.find(
+      (c) => companyNameKey(c.name) === key || c.alias.some((a) => companyNameKey(a) === key),
+    );
+    if (match) return match;
+
+    try {
+      return await this.prisma.company.create({
+        data: {
+          name: typedName,
+          address: dto.companyAddress,
+          contact: dto.companyContact,
+          email: dto.companyEmail,
+          isActive: true, // available to other students straight away
+        },
+      });
+    } catch (e: any) {
+      // Another student created the same name at the same moment
+      if (e?.code === "P2002") {
+        const existing = await this.prisma.company.findUnique({ where: { name: typedName } });
+        if (existing) return existing;
+      }
+      throw e;
+    }
+  }
+
+  /**
    * Submit self-identified internship
    */
   async submitSelfIdentified(
     userId: string,
     selfIdentifiedDto: {
+      companyId?: string;
       companyName: string;
       companyAddress: string;
       companyContact?: string;
@@ -1417,6 +1477,15 @@ export class StudentService {
         "You already have an approved self-identified internship. Please edit the existing one instead of creating a new application."
       );
     }
+
+    // Tie the application to a master Company so the same company is never stored under two names
+    const company = await this.resolveCompany(selfIdentifiedDto);
+    selfIdentifiedDto.companyId = company.id;
+    selfIdentifiedDto.companyName = company.name;
+    // Stored company details win over whatever the client sent
+    selfIdentifiedDto.companyAddress = company.address || selfIdentifiedDto.companyAddress;
+    selfIdentifiedDto.companyContact = company.contact || selfIdentifiedDto.companyContact;
+    selfIdentifiedDto.companyEmail = company.email || selfIdentifiedDto.companyEmail;
 
     // Self-identified internships are auto-approved
     // If joiningLetterUrl is provided, auto-approve joining as well
@@ -2988,6 +3057,7 @@ export class StudentService {
     const companies = await this.prisma.company.findMany({
       where,
       select: {
+        id: true,
         name: true,
         address: true,
         contact: true,
