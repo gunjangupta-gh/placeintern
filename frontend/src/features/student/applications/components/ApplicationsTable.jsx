@@ -9,7 +9,7 @@ import {
   CloseCircleOutlined,
   StarOutlined,
 } from '@ant-design/icons';
-import { formatDisplayDate, getStatusColor } from '../utils/applicationUtils';
+import { formatDisplayDate, getStatusColor, getApplicationInfo } from '../utils/applicationUtils';
 import { formatStipend, stipendSorter } from '../../../opportunities/tableUtils';
 import InternshipCompensationTag from '../../../../components/common/InternshipCompensationTag';
 import { compensationAmount } from '../../../../utils/internshipCompensation';
@@ -50,19 +50,17 @@ const ApplicationsTable = ({
       key: 'company',
       width: 250,
       render: (_, record) => {
-        const company = isSelfIdentified
-          ? { companyName: record.companyName, logo: null }
-          : record.internship?.industry;
+        const info = getApplicationInfo(record);
 
         return (
           <div className="flex items-center gap-3">
             <div className="min-w-0">
               <Text strong className="block truncate">
-                {company?.companyName || 'N/A'}
+                {info.companyName || 'N/A'}
               </Text>
-              {!isSelfIdentified && (
+              {record.opportunity && (
                 <Text type="secondary" className="text-xs block truncate">
-                  {record.internship?.title || 'Internship'}
+                  {info.title || 'Internship'}
                 </Text>
               )}
             </div>
@@ -78,8 +76,8 @@ const ApplicationsTable = ({
       render: (_, record) =>
         record.internshipType ? (
           <InternshipCompensationTag application={record} />
-        ) : record.stipend ? (
-          formatStipend(record.stipend)
+        ) : (record.stipend || record.opportunity?.stipend) ? (
+          formatStipend(record.stipend || record.opportunity.stipend)
         ) : (
           'Not specified'
         ),
@@ -89,12 +87,7 @@ const ApplicationsTable = ({
       key: 'duration',
       width: 150,
       render: (_, record) => {
-        const startDate = isSelfIdentified
-          ? record.startDate
-          : record.internship?.startDate;
-        const endDate = isSelfIdentified
-          ? record.endDate
-          : record.internship?.endDate;
+        const { startDate, endDate } = getApplicationInfo(record);
 
         return (
           <div className="text-xs">

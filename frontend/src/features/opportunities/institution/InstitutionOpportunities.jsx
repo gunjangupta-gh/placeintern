@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Input, Select, Space, Tabs, Tag, Typography } from 'antd';
+import { Alert, Button, Descriptions, Input, Select, Space, Tabs, Tag, Tooltip, Typography } from 'antd';
 import { AppTable, AppModal } from '../../../components/ui';
-import { RollbackOutlined } from '@ant-design/icons';
+import { EyeOutlined, RollbackOutlined } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -85,6 +85,7 @@ const InstitutionOpportunities = () => {
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [viewing, setViewing] = useState(null); // opportunity shown in the details modal
 
   const confirmWithdraw = async () => {
     setSubmitting(true);
@@ -115,6 +116,14 @@ const InstitutionOpportunities = () => {
     { title: 'Seats left', ...col('seatsLeft'), render: (_, r) => `${r.seatsLeft} of ${r.positions}` },
     { title: 'Deadline', dataIndex: 'applicationDeadline', ...col('deadline'), render: formatDate },
     { title: 'Status', dataIndex: 'status', ...col('status'), render: (s) => <Tag color={STATUS_COLOR[s]}>{statusLabel(s)}</Tag> },
+    {
+      title: 'Action',
+      render: (_, r) => (
+        <Tooltip title="View details">
+          <Button size="small" type="text" aria-label="View details" icon={<EyeOutlined />} onClick={() => setViewing(r)} />
+        </Tooltip>
+      ),
+    },
   ];
 
   const applicationColumns = (col) => [
@@ -176,6 +185,38 @@ const InstitutionOpportunities = () => {
           },
         ]}
       />
+      <AppModal
+        open={!!viewing}
+        title={viewing ? `${viewing.title} at ${viewing.company?.name}` : ''}
+        width={680}
+        onCancel={() => setViewing(null)}
+        footer={<Button onClick={() => setViewing(null)}>Close</Button>}
+        destroyOnHidden
+      >
+        {viewing && (
+          <>
+            <Descriptions size="small" bordered column={{ xs: 1, sm: 2 }} style={{ marginBottom: 12 }}>
+              <Descriptions.Item label="Company">{viewing.company?.name}</Descriptions.Item>
+              <Descriptions.Item label="Position">{viewing.title}</Descriptions.Item>
+              <Descriptions.Item label="District">{viewing.district || '-'}</Descriptions.Item>
+              <Descriptions.Item label="Stipend (your branch)">{formatMyBranchStipend(viewing)}</Descriptions.Item>
+              <Descriptions.Item label="Duration">{viewing.durationMonths} {viewing.durationMonths > 1 ? 'Months' : 'Month'}</Descriptions.Item>
+              <Descriptions.Item label="Starts">{formatDate(viewing.startDate)}</Descriptions.Item>
+              <Descriptions.Item label="Apply by">{formatDate(viewing.applicationDeadline)}</Descriptions.Item>
+              <Descriptions.Item label="Seats left">{viewing.seatsLeft} of {viewing.positions}</Descriptions.Item>
+              <Descriptions.Item label="Eligible years">{viewing.eligibleYears?.length ? viewing.eligibleYears.join(', ') : 'All years'}</Descriptions.Item>
+              <Descriptions.Item label="Status"><Tag color={STATUS_COLOR[viewing.status]}>{statusLabel(viewing.status)}</Tag></Descriptions.Item>
+              <Descriptions.Item label="Branches" span={2}>
+                {viewing.branches?.map((x) => <Tag key={x.id} color={x.approvedCount >= x.positions ? 'red' : undefined}>{x.code} {x.approvedCount}/{x.positions}</Tag>)}
+              </Descriptions.Item>
+            </Descriptions>
+            <Text strong>Description</Text>
+            <div style={{ maxHeight: 260, overflowY: 'auto', whiteSpace: 'pre-wrap', marginTop: 4 }}>
+              {viewing.description || <Text type="secondary">No description provided.</Text>}
+            </div>
+          </>
+        )}
+      </AppModal>
       <AppModal
         open={!!withdrawing}
         title="Withdraw this application?"

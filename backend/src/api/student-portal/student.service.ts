@@ -1016,7 +1016,20 @@ export class StudentService {
         skip,
         take: limit,
         include: {
-          // Internship and Industry models removed - self-identified only
+          // State-published opportunity (null for self-identified). No contact/import fields.
+          opportunity: {
+            select: {
+              id: true,
+              title: true,
+              description: true,
+              district: true,
+              durationMonths: true,
+              stipend: true,
+              startDate: true,
+              applicationDeadline: true,
+              company: { select: { name: true, address: true } },
+            },
+          },
           mentor: {
             select: {
               id: true,

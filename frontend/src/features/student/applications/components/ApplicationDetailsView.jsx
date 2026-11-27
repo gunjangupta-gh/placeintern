@@ -17,7 +17,7 @@ import {
   CalendarOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { hasInternshipStarted } from '../utils/applicationUtils';
+import { hasInternshipStarted, getApplicationInfo } from '../utils/applicationUtils';
 import InternshipTypeBadge from '../../../../components/common/InternshipTypeBadge';
 import {
   ApplicationDetailsTab,
@@ -54,21 +54,18 @@ const ApplicationDetailsView = ({
 
   if (!application) return null;
 
-  const isSelfIdentified = application.isSelfIdentified || !application.internship;
-  const internship = application.internship;
-  const industry = internship?.industry || {};
+  const isSelfIdentified = !application.opportunity;
+  const info = getApplicationInfo(application);
   const internshipStarted = hasInternshipStarted(application);
 
-  const company = isSelfIdentified
-    ? { companyName: application.companyName, city: application.companyAddress?.split(',')[0] }
-    : industry;
+  const company = { companyName: info.companyName };
 
   const hasJoiningLetter = !!(application?.joiningLetterUrl || application?.joiningLetter);
   const joiningLetterUrl = application?.joiningLetterUrl || application?.joiningLetter;
 
   // Calculate progress
-  const startDate = application.joiningDate || application.startDate || internship?.startDate;
-  const endDate = application.endDate || internship?.endDate;
+  const startDate = application.joiningDate || info.startDate;
+  const endDate = info.endDate;
   const totalDays = endDate && startDate ? dayjs(endDate).diff(dayjs(startDate), 'day') : 0;
   const daysCompleted = startDate ? Math.max(0, dayjs().diff(dayjs(startDate), 'day')) : 0;
   const progressPercent = totalDays > 0 ? Math.min(Math.round((daysCompleted / totalDays) * 100), 100) : 0;
@@ -139,8 +136,7 @@ const ApplicationDetailsView = ({
         <ApplicationDetailsTab
           application={application}
           isSelfIdentified={isSelfIdentified}
-          internship={internship}
-          industry={industry}
+          info={info}
         />
       ),
     },
@@ -219,9 +215,9 @@ const ApplicationDetailsView = ({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
                 <Text strong className="text-base truncate" style={{ color: token.colorText }}>{company.companyName || 'Company'}</Text>
-                <InternshipTypeBadge isSelfIdentified={application.isSelfIdentified} className="text-[10px] rounded-full shrink-0" />
+                <InternshipTypeBadge isSelfIdentified={isSelfIdentified} className="text-[10px] rounded-full shrink-0" />
               </div>
-              <Text className="text-xs block truncate" style={{ color: token.colorTextTertiary }}>{application.jobProfile || internship?.title || 'Internship'}</Text>
+              <Text className="text-xs block truncate" style={{ color: token.colorTextTertiary }}>{info.title || 'Internship'}</Text>
             </div>
           </div>
 

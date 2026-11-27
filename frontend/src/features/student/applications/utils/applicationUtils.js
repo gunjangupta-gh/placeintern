@@ -5,6 +5,36 @@ export const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
+/**
+ * Display fields for an application, whether self-identified or for a State-published
+ * opportunity (application.opportunity). End date = start date + duration for opportunities.
+ */
+export const getApplicationInfo = (application) => {
+  const opp = application?.opportunity;
+  if (!opp) {
+    return {
+      companyName: application?.companyName,
+      title: application?.jobProfile,
+      startDate: application?.startDate,
+      endDate: application?.endDate,
+      address: application?.companyAddress,
+    };
+  }
+  const startDate = opp.startDate;
+  return {
+    companyName: opp.company?.name,
+    title: opp.title,
+    description: opp.description,
+    district: opp.district,
+    durationMonths: opp.durationMonths,
+    stipend: opp.stipend,
+    applicationDeadline: opp.applicationDeadline,
+    startDate,
+    endDate: startDate && opp.durationMonths ? dayjs(startDate).add(opp.durationMonths, 'month').toDate() : null,
+    address: opp.company?.address,
+  };
+};
+
 export const formatDisplayDate = (dateString, showTime = false) => {
   if (!dateString) return 'Not specified';
   const date = new Date(dateString);
@@ -74,7 +104,7 @@ export const getAllowedReportMonths = (application) => {
 
   const startDate = application.isSelfIdentified
     ? application.startDate
-    : application.joiningDate || application.internship?.startDate;
+    : application.joiningDate || application.opportunity?.startDate || application.internship?.startDate;
   const endDate = application.isSelfIdentified
     ? application.endDate
     : application.internship?.endDate;
@@ -122,7 +152,7 @@ export const hasInternshipStarted = (application) => {
 
   const startDate = application.isSelfIdentified
     ? application.startDate
-    : application.joiningDate || application.internship?.startDate;
+    : application.joiningDate || application.opportunity?.startDate || application.internship?.startDate;
 
   if (!startDate) return false;
 
