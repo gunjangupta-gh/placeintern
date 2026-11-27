@@ -737,6 +737,7 @@ export class ReportProcessor extends WorkerHost {
         { field: 'noOfInterns', header: 'No of Interns', type: 'number' as const, width: 14 },
         { field: 'location', header: 'Location', type: 'string' as const, width: 20 },
         { field: 'branch', header: 'Branch', type: 'string' as const, width: 35 },
+        { field: 'batch', header: 'Batch', type: 'string' as const, width: 12 },
         { field: 'stipendPerIntern', header: 'Stipend/intern (per month)', type: 'number' as const, width: 24 },
       ],
       'top_institutes_per_industry': [

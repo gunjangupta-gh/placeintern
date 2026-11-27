@@ -47,15 +47,21 @@ export const industryReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'noOfInterns', label: 'No of Interns', type: 'number', default: true, sortable: true },
       { id: 'location', label: 'Location', type: 'string', default: true, sortable: true },
       { id: 'branch', label: 'Branch', type: 'string', default: true, sortable: true },
+      { id: 'batch', label: 'Batch', type: 'string', default: true, sortable: true },
       { id: 'stipendPerIntern', label: 'Stipend/intern (per month)', type: 'number', default: true, sortable: true },
     ],
     filters: [
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false, placeholder: 'All Institutions' },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
+      { id: 'batchName', label: 'Batch', type: 'text', required: false, placeholder: 'e.g. 2023-26 (blank = all batches)' },
+      { id: 'isActive', label: 'Student Status', type: 'select', required: false, placeholder: 'Active + Inactive', options: [
+        { label: 'Active', value: true },
+        { label: 'Inactive', value: false },
+      ]},
       { id: 'startDateRange', label: 'Start Date Range', type: 'dateRange', required: false },
     ],
     groupBy: [],
-    sortableColumns: ['companyName', 'noOfInterns', 'location', 'branch', 'stipendPerIntern'],
+    sortableColumns: ['companyName', 'noOfInterns', 'location', 'branch', 'batch', 'stipendPerIntern'],
     exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 

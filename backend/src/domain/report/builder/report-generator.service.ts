@@ -7105,14 +7105,21 @@ export class ReportGeneratorService {
     const { take, skip } = this.getPaginationParams(pagination);
     const where: Record<string, unknown> = {
       internshipType: "WITH_STIPEND",
-      isActive: true,
     };
 
     const studentWhere: Record<string, unknown> = {};
     if (filters?.institutionId) studentWhere.institutionId = filters.institutionId;
     if (filters?.branchId) studentWhere.branchId = filters.branchId;
+    if (typeof filters?.batchName === "string" && filters.batchName.trim()) {
+      studentWhere.batch = {
+        name: { contains: filters.batchName.trim(), mode: "insensitive" },
+      };
+    }
+    // Inactive students are included by default; filter to Active/Inactive only if asked.
     const isActiveValue = this.parseBooleanLike(filters?.isActive);
-    studentWhere.user = { active: isActiveValue ?? true };
+    if (isActiveValue !== undefined) {
+      studentWhere.user = { active: isActiveValue };
+    }
     where.student = studentWhere;
 
     let startDateStartValue = filters?.startDateStart;
@@ -7147,6 +7154,7 @@ export class ReportGeneratorService {
         student: {
           select: {
             branch: { select: { name: true } },
+            batch: { select: { name: true } },
             user: { select: { branchName: true } },
           },
         },
@@ -7170,6 +7178,7 @@ export class ReportGeneratorService {
         companyName: string;
         location: string;
         branch: string;
+        batch: string;
         stipend: number;
         students: Set<string>;
       }
@@ -7201,10 +7210,12 @@ export class ReportGeneratorService {
       const branch =
         app.student.branch?.name ?? app.student.user?.branchName ?? "N/A";
 
-      const key = [normalize(companyName), normalize(location), normalize(branch), stipend].join("|");
+      const batch = app.student.batch?.name ?? "N/A";
+
+      const key = [normalize(companyName), normalize(location), normalize(branch), normalize(batch), stipend].join("|");
       let g = groups.get(key);
       if (!g) {
-        g = { companyName, location: location || "N/A", branch, stipend, students: new Set() };
+        g = { companyName, location: location || "N/A", branch, batch, stipend, students: new Set() };
         groups.set(key, g);
       }
       g.students.add(app.studentId);
@@ -7216,6 +7227,7 @@ export class ReportGeneratorService {
         noOfInterns: g.students.size,
         location: g.location,
         branch: g.branch,
+        batch: g.batch,
         stipendPerIntern: Math.round(g.stipend),
       }))
       .sort(
