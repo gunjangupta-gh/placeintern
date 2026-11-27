@@ -964,6 +964,129 @@ export const TRAINING_COMPANIES: CompanyMapping = {
 };
 
 /**
+ * Builds a mapping from "canonical name -> list of variants".
+ * Variants are matched case-insensitively (lookup key is the lowercased, whitespace-collapsed name).
+ */
+function group(canonical: string, variants: string[]): CompanyMapping {
+  const out: CompanyMapping = {};
+  for (const v of variants) out[v.toLowerCase()] = canonical;
+  return out;
+}
+
+/**
+ * Additional variants found by the link-applications-to-companies dry run.
+ * NOTE: individual PSPCL/PSTCL substations are merged into PSPCL / PSTCL, same as the existing entries above.
+ */
+export const ADDITIONAL_COMPANY_MAPPINGS: CompanyMapping = {
+  // ---- Punjab power utilities ----
+  ...group('PSPCL', [
+    'pspcl sabsutaion', 'pspcl substation morinda', 'pspcl substation 66kv zira gate', 'pspcl 66 kv sub station',
+    'pspcl substation ferozepur', 'pspcl 66kv sub station maur', 'pspcl 66kv substation mallanwala khas',
+    'pspcl 66 kv substation mall road hoshiarpur', 'pspcl substation', '66kv pspcl substation', '66 kv substation pspcl',
+    'transfer repair workshop p.s.p.c.l . jagraon district ludhiana.',
+    '66 kv switchyard circle office', '66kv switchyard circle office hoshiarpur', '66 kv switchyard circle office hoshiarpur',
+    '66 kv grid substation barnala', '66kv grid barnala', '66 kv grid barnala', '66kv grid bhadour',
+    '66 kv chabbewal', '66 kv substation badbar', '66kv substation, badbar', '66kv substation baje ke',
+    '66 kv sub station mall road hoshiarpur', '66 kv substation mall road hoshiarpur', '66 kv substation barnala',
+    '66 kv substation sukhpura mour', '66kv substation sukhpura mour', '66 kv substation joga ralla',
+    '66 kv substation kheri-chahalan', '66 kv substation kattu', '66 kv substation sunam', '66 kv substation , ubhawal',
+    '66 kv sub station',
+  ]),
+  ...group('PSTCL', [
+    'pstcl punjab', '132kv substation pstcl kot kapura-2 grid', '132 k.v s/s pstcl,faridkot', '132kv sub station faridkot',
+    '132kv sub station pstcl sri muktsar sahib', 'sr.xen, p&m division, pstcl sri muktsar sahib',
+  ]),
+  ...group('Public Works Department Punjab', [
+    'pwd b & r', 'pwd b&r', 'pwd (b&r)', 'pwd bnr', 'pwd tarantaran sahib',
+    'exicutive engineer provisional division pw.d b&r mansa',
+  ]),
+  ...group('Guru Hargobind Thermal Power Plant, Lehra Mohabbat', [
+    'guru hargovind thermal plant lahra mohabbat', 'guru hargobind thermal power plant lahra mahobbat bathinda',
+    'guru hargobind thermal power plant',
+  ]),
+  ...group('Guru Gobind Singh Refinery, Rotostate (RSPL)', [
+    'guru gobind singh refinery rotostate (r.s.p.l)', 'guru gobind singh refinery company-rotostate(r.s.p.l)',
+  ]),
+
+  // ---- Manufacturing ----
+  ...group('Sonalika International Tractors Ltd.', [
+    'international tractors ltd. (sonalika)', 'sonalika tractor limited ltd', 'itl sonalica', 'sonalika interna',
+    'itl,sonalika', 'itl , sonalika', 'itl, sonalika', 'itl ,sonalika', 'sonalika international tractor pvt ltd',
+    'sonalika international tractor ltd', 'sonalika international tractors limited (itl)',
+  ]),
+  ...group('Swaraj Engines Limited, Chapar Chiri', [
+    'swaraj tractors chaparchiri mohali', 'sawraj tractors chaparchiri', 'swaraj tractor chappal chiri',
+    'swaraj tractors, chapar chiri',
+  ]),
+  ...group('Swaraj Engines Limited', ['mahindra swaraj tractors', 'mahindra swaraj tractor']),
+  ...group('GNA Axles Ltd', [
+    'gna axles', 'gna axles limited', 'gna axles unit 2', 'gna axles unit-2', 'gna axles limited unit-2',
+    'gna axles unit 2 hoshiarpur', 'gna axle limited', 'gna axel', 'gna axels unit 2',
+  ]),
+  ...group('GNA Gears', ['gna gears, phagwara hoshiarpur rd, mehtiana', 'gne gear, metiaana']),
+  ...group('MAHLE Anand Thermal Systems', [
+    'mahle anand thermal systems', 'mahle anand thermal systems private limited',
+    'mahlemahle anand thermal system private limited greater noida', 'mahle anand thermal system private limited noida',
+  ]),
+  ...group('Mahle Anand Filter Systems', ['mahle anand filter system noida', 'mahle anand filter system pvt']),
+  ...group('Rane Steering Systems', [
+    'rane steering systems manufacturing,company', 'rane steering system pvt, ltd', 'rane steering systems manufacturing',
+    'rane steering system pvt ltd', 'rane steering system private limited', 'rana steering system pvt.ltd',
+    '– rane steering systems manufacturing,company,ahemdabad gujrat',
+    '– rane steering systems manufacturing,company,ahemdabad gujra',
+  ]),
+  ...group('JREW Engineering Limited', [
+    'jrew engineering limited mohali', 'jrew engineering ltd', 'jrew engeneering ltd', 'jrew engineering',
+    'jrew engineering limited', 'jrew',
+  ]),
+  ...group('J R Transformers', ['jr transformers pvt. ltd', 'j.r. transformer pvt.ltd.']),
+  ...group('Groz-Beckert Asia Pvt. Ltd.', ['groz beckert', 'groz beckert asia pvt ltd']),
+  ...group('J.D. Agri Gears Limited', ['j.d agri gears limited', 'j. d. agri gears limited', 'j.d.agri gears limited']),
+  ...group('Sukrit Machine Tools', ['sukrit machine tolls', 'sukrit machine tool', 'sukrit machine tools']),
+  ...group('MOI Engineering', ['moi engineering pvt.ltd', 'moi engeneering pvt ltd', 'moi engineering pvt ltd']),
+  ...group('Mahindra & Mahindra', ['mahindra and mahindra', 'mahindra and mahindra ltd']),
+  ...group('SML Mahindra Limited', ['sml mahindra ltd.', 'sml mahindra limited']),
+  ...group('Jaewoo Machines', ['jaewoo machines']),
+  ...group('Keyoffice Automation', ['key office automation']),
+  ...group('Ludhiana Beverages Ltd', ['ludhiana beverages']),
+  ...group('Central Tool Room Ludhiana', ['central tool room, ludhiana']),
+  ...group('Mahashakti Energy', ['mahashakti energy ltd.']),
+  ...group('Trident Group', ['trident group barnala', 'trident group', 'trident group, barnala']),
+  ...group('Punjab Motors Gram Udyog Samiti (Regd) Faridkot', [
+    'punjab motors gram udyog samiti (regd) faridkot', 'the punjab motors gram udyog(regd) faridkot',
+  ]),
+  ...group('Himachal Merchants', ['himachal marchants', 'himachal marchant (nitin choudhary', 'himachal marchant']),
+  ...group('Shriram Finance', ['shriram finance ltd']),
+
+  // ---- IT / services ----
+  ...group('Sortiq Solutions', [
+    'sortiq solution pvt. lmt.', 'sortiq solutions private linited', 'sortq solutions private limited',
+    'sortiq solution pvt ltd', 'sortiq solutions pvt.ltd',
+  ]),
+  ...group('ISC Projects', ['(isc projects pvt ltd)', 'isc project pvt ltd', 'isc projects tvt ltd']),
+  ...group('Thinknext Technologies', [
+    'thinknext technology private limited', 'thinknext technology', 'thinknext private limetd', 'thinknext.co. in',
+  ]),
+  ...group('SPRN Entrepreneurs Pvt. Ltd.', [
+    'sprn.pvt.ltd', 'sprn pvt ltd', 'sprn.ltd pvt', 'sprnpvt.ltd', 'sprn enterpreneurs pvt. ltd.',
+  ]),
+  ...group('Bexo Technologies', ['bexo technologies (bexo.ai)', 'bexo .ai pvt ltd']),
+  ...group('Autologiq Tech Solutions', ['autologiq tech solutions', 'autologiq tech. solutions']),
+  ...group('Macron Logi Services', ['macron logi services pvt ltd', 'macron logi service pvt ltd']),
+  ...group('O7 Services', [
+    'o7services', 'district bureau of employment & skill development/o7 services jalandhar',
+  ]),
+  ...group('Blinkit', ['blinkit fc warehouse', 'blinkit']),
+
+  // ---- Research / education ----
+  ...group('Central Institute of Hand Tools Jalandhar', [
+    'central institute of hand tool jalandhar', 'ciht hsp', 'chit extension center,hoshipur', 'chit',
+  ]),
+  ...group('CSIR-CSIO Chandigarh', ['csir-central scientific instruments organisation, chandigarh']),
+  ...group('CSIR-CMERI Ludhiana', ['csir- central mechanical engineering research institute (cmeri), ludhiana']),
+};
+
+/**
  * Combined mapping of all companies
  */
 export const ALL_ACTUAL_COMPANY_MAPPINGS: CompanyMapping = {
@@ -978,6 +1101,7 @@ export const ALL_ACTUAL_COMPANY_MAPPINGS: CompanyMapping = {
   ...HEALTHCARE,
   ...OTHER_INDUSTRIES,
   ...TRAINING_COMPANIES,
+  ...ADDITIONAL_COMPANY_MAPPINGS,
 };
 
 /**
